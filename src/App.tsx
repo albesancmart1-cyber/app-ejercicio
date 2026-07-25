@@ -1,16 +1,17 @@
 import { useState } from 'react'
 import { useAppData } from './store/store'
+import Icon from './components/Icon'
 import Onboarding from './screens/Onboarding'
 import Today from './screens/Today'
 import History from './screens/History'
 import Settings from './screens/Settings'
 
-type Tab = 'hoy' | 'historial' | 'ajustes'
+type Tab = 'hoy' | 'cuerpo' | 'ajustes'
 
-const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: 'hoy', label: 'Hoy', icon: '🌅' },
-  { id: 'historial', label: 'Tu cuerpo', icon: '🌗' },
-  { id: 'ajustes', label: 'Ajustes', icon: '🌾' }
+const TABS: { id: Tab; label: string; icon: 'horizon' | 'body' | 'leaf' }[] = [
+  { id: 'hoy', label: 'Hoy', icon: 'horizon' },
+  { id: 'cuerpo', label: 'Tu cuerpo', icon: 'body' },
+  { id: 'ajustes', label: 'Ajustes', icon: 'leaf' }
 ]
 
 export default function App() {
@@ -29,17 +30,18 @@ export default function App() {
     <>
       <main className="app-main">
         {tab === 'hoy' && <Today />}
-        {tab === 'historial' && <History />}
+        {tab === 'cuerpo' && <History />}
         {tab === 'ajustes' && <Settings />}
       </main>
       <nav className="tabbar">
         {TABS.map((t) => (
           <button
             key={t.id}
-            className={`tab ${tab === t.id ? 'active' : ''}`}
+            className="tab"
+            aria-current={tab === t.id ? 'page' : undefined}
             onClick={() => setTab(t.id)}
           >
-            <span className="icon">{t.icon}</span>
+            <Icon name={t.icon} />
             {t.label}
           </button>
         ))}

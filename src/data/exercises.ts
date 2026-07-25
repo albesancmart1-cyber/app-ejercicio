@@ -13,7 +13,10 @@ export const EXERCISES: Exercise[] = [
   { id: 'puente_gluteo', name: 'Puente de glúteo', primary: 'cuadriceps_gluteo', secondary: ['femoral', 'core'], equipment: ['peso_corporal', 'barra'], stress: 'bajo', loadFactor: 0.4 },
 
   // ── Femoral ────────────────────────────────────────────────
-  { id: 'peso_muerto_rumano', name: 'Peso muerto rumano', primary: 'femoral', secondary: ['espalda', 'cuadriceps_gluteo'], equipment: ['barra', 'mancuernas', 'kettlebell'], stress: 'alto', loadFactor: 0.45 },
+  { id: 'puente_femoral', name: 'Puente de glúteo con talones elevados', primary: 'femoral', secondary: ['cuadriceps_gluteo', 'core'], equipment: ['peso_corporal', 'banco'], stress: 'bajo', bodyweightOnly: true },
+  { id: 'curl_femoral_banda', name: 'Curl femoral tumbado con banda', primary: 'femoral', secondary: [], equipment: ['bandas'], stress: 'bajo', loadFactor: 0.2 },
+  { id: 'peso_muerto_mancuernas', name: 'Peso muerto rumano con mancuernas', primary: 'femoral', secondary: ['espalda', 'cuadriceps_gluteo'], equipment: ['mancuernas'], stress: 'medio', loadFactor: 0.5 },
+  { id: 'peso_muerto_rumano', name: 'Peso muerto rumano con barra', primary: 'femoral', secondary: ['espalda', 'cuadriceps_gluteo'], equipment: ['barra', 'kettlebell'], stress: 'alto', loadFactor: 0.45 },
   { id: 'curl_femoral', name: 'Curl femoral en máquina', primary: 'femoral', secondary: [], equipment: ['maquina_femoral'], stress: 'bajo', loadFactor: 0.5 },
   { id: 'buenos_dias', name: 'Buenos días con banda o barra', primary: 'femoral', secondary: ['espalda'], equipment: ['bandas', 'barra'], stress: 'medio', loadFactor: 0.25 },
   { id: 'curl_nordico_asistido', name: 'Curl nórdico asistido', primary: 'femoral', secondary: ['core'], equipment: ['peso_corporal'], stress: 'medio', bodyweightOnly: true },

@@ -1,6 +1,15 @@
 import { useState } from 'react'
 import type { PlannedExercise, Session } from '../domain/types'
 import { actions } from '../store/store'
+import Icon from '../components/Icon'
+
+function planLabel(pe: PlannedExercise): string {
+  const parts = [`${pe.plan.sets} × ${pe.plan.reps}`]
+  if (pe.plan.weightKg) parts.push(`${pe.plan.weightKg} kg`)
+  if (pe.plan.rir !== undefined && pe.primary !== 'cardio') parts.push(`RIR ${pe.plan.rir}`)
+  if (pe.plan.restSeconds) parts.push(`${Math.round(pe.plan.restSeconds / 60)}′ descanso`)
+  return parts.join(' · ')
+}
 
 export default function SessionScreen({ session }: { session: Session }) {
   const [exercises, setExercises] = useState<PlannedExercise[]>(session.exercises)
@@ -8,51 +17,39 @@ export default function SessionScreen({ session }: { session: Session }) {
   const [finishing, setFinishing] = useState(false)
 
   function toggleDone(i: number) {
-    setExercises((prev) =>
-      prev.map((e, idx) => (idx === i ? { ...e, done: e.done === true ? false : true } : e))
-    )
+    setExercises((prev) => prev.map((e, idx) => (idx === i ? { ...e, done: e.done !== true } : e)))
   }
 
   function setWeight(i: number, value: string) {
     setExercises((prev) =>
-      prev.map((e, idx) =>
-        idx === i ? { ...e, actualWeightKg: value ? Number(value) : undefined } : e
-      )
+      prev.map((e, idx) => (idx === i ? { ...e, actualWeightKg: value ? Number(value) : undefined } : e))
     )
   }
 
-  const anyDone = exercises.some((e) => e.done)
-
-  function finish() {
-    actions.saveSession({
-      ...session,
-      exercises,
-      rpe: rpe ?? undefined,
-      completed: true
-    })
-  }
-
-  function discard() {
-    actions.discardSession(session.id)
-  }
+  const doneCount = exercises.filter((e) => e.done).length
 
   return (
-    <div>
+    <div className="fade-in">
+      <p className="eyebrow">En marcha</p>
       <h1>{session.title}</h1>
-      <p className="subtitle">A tu ritmo. Si algo no sale hoy, no pasa nada.</p>
+      <p className="lede">
+        {doneCount} de {exercises.length} hechos. A tu ritmo: quedarte con ganas de más es la idea.
+      </p>
 
-      <div className="card">
+      <div className="card" style={{ marginTop: 24 }}>
         {exercises.map((e, i) => (
-          <div className="exercise-item" key={`${e.exerciseId}-${i}`}>
-            <button className={`exercise-check ${e.done ? 'done' : ''}`} onClick={() => toggleDone(i)}>
-              ✓
+          <div className="item" key={`${e.exerciseId}-${i}`}>
+            <button
+              className="check"
+              aria-pressed={e.done === true}
+              aria-label={`Marcar ${e.name}`}
+              onClick={() => toggleDone(i)}
+            >
+              <Icon name="check" />
             </button>
-            <div className="exercise-info">
-              <div className="exercise-name">{e.name}</div>
-              <div className="exercise-plan">
-                {e.plan.sets} × {e.plan.reps}
-                {e.plan.weightKg ? ` · sugerido ${e.plan.weightKg} kg` : ''}
-              </div>
+            <div className="item-body">
+              <div className="item-title">{e.name}</div>
+              <div className="item-meta">{planLabel(e)}</div>
             </div>
             {e.plan.weightKg !== undefined && (
               <input
@@ -70,27 +67,37 @@ export default function SessionScreen({ session }: { session: Session }) {
 
       {!finishing ? (
         <>
-          <button className="btn-primary" disabled={!anyDone} onClick={() => setFinishing(true)}>
-            Terminar sesión
+          <button className="btn btn-primary" disabled={doneCount === 0} onClick={() => setFinishing(true)}>
+            Terminar
           </button>
-          <button className="btn-ghost" onClick={discard}>
+          <button className="btn-quiet" onClick={() => actions.discardSession(session.id)}>
             Hoy no puedo — descartar sin culpa
           </button>
         </>
       ) : (
-        <div className="card">
-          <h2>¿Cómo te has sentido?</h2>
-          <p className="muted" style={{ marginBottom: 10 }}>1 = muy duro · 5 = muy cómodo</p>
-          <div className="scale-row">
+        <div className="card fade-in">
+          <p className="eyebrow">Última pregunta</p>
+          <h2 style={{ marginBottom: 16 }}>¿Cómo te has sentido?</h2>
+          <div className="scale">
             {([1, 2, 3, 4, 5] as const).map((n) => (
-              <button key={n} className={`scale-dot ${rpe === n ? 'selected' : ''}`} onClick={() => setRpe(n)}>
+              <button key={n} aria-pressed={rpe === n} onClick={() => setRpe(n)}>
                 {n}
               </button>
             ))}
           </div>
-          <div style={{ height: 16 }} />
-          <button className="btn-primary" onClick={finish}>
-            Guardar sesión
+          <div className="scale-legend">
+            <span className="faint">Muy duro</span>
+            <span className="faint">Muy cómodo</span>
+          </div>
+          <p className="faint" style={{ marginTop: 14 }}>
+            Con esto ajustamos las cargas de la próxima sesión.
+          </p>
+          <div style={{ height: 20 }} />
+          <button
+            className="btn btn-primary"
+            onClick={() => actions.saveSession({ ...session, exercises, rpe: rpe ?? undefined, completed: true })}
+          >
+            Guardar
           </button>
         </div>
       )}

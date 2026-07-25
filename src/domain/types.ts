@@ -95,6 +95,8 @@ export interface Profile {
   equipment: Equipment[]
   /** Peso máximo disponible por equipo (kg). */
   maxWeights: Partial<Record<Equipment, number>>
+  /** Fecha (ISO) en que empezó la alimentación cetogénica, si la sigue. */
+  ketoSince?: string
 }
 
 export type StressLevel = 'bajo' | 'medio' | 'alto'
@@ -131,6 +133,10 @@ export interface PlannedSet {
   sets: number
   reps: string // p.ej. "8-10" o "12-15"
   weightKg?: number
+  /** Repeticiones en reserva objetivo (cuántas dejas sin hacer). */
+  rir?: number
+  /** Descanso recomendado entre series. */
+  restSeconds?: number
 }
 
 export interface PlannedExercise {
@@ -161,6 +167,16 @@ export interface Recommendation {
   focus: MuscleGroup[]
   intensity: 'suave' | 'moderada' | 'media-alta'
   cardioMinutes?: number
+  /** Multiplicador de volumen (vuelta progresiva tras un parón). */
+  volumeScale: number
+  /** Repeticiones en reserva objetivo para la sesión. */
+  rir: number
+  /** Por qué se recomienda esto, en lenguaje llano. */
+  reasons: string[]
+  /** Paso actual de la vuelta progresiva, si procede. */
+  reentry?: { step: number; total: number }
+  /** El cuerpo aún se está adaptando a la cetosis. */
+  ketoAdapting?: boolean
 }
 
 export interface AppData {

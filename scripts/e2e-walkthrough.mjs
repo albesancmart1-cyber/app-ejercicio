@@ -1,76 +1,104 @@
-// Recorrido end-to-end de verificación: onboarding → check-in →
-// recomendación → sesión → historial. Guarda capturas en OUT_DIR.
+// Recorrido end-to-end de verificación: onboarding → check-in → recomendación →
+// sesión → historial, más las cuatro paletas horarias. Capturas en OUT_DIR.
 import { chromium } from 'playwright-core'
 
 const OUT = process.env.OUT_DIR ?? '/tmp/shots'
+const BASE = process.env.BASE_URL ?? 'http://localhost:4173/'
+
 const browser = await chromium.launch({
   executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
 })
 const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
-page.on('pageerror', (e) => console.error('PAGE ERROR:', e.message))
+const errors = []
+page.on('pageerror', (e) => errors.push(e.message))
+page.on('console', (m) => m.type() === 'error' && errors.push(m.text()))
 
 async function shot(name) {
-  await page.waitForTimeout(700) // deja terminar la animación de entrada
+  await page.waitForTimeout(600)
   await page.screenshot({ path: `${OUT}/${name}.png` })
-  console.log('shot', name)
+  console.log('·', name)
 }
-async function clickText(text) {
-  await page.getByText(text, { exact: false }).first().click()
-}
+const byText = (t) => page.getByText(t, { exact: false }).first()
 
-await page.goto('http://localhost:4173/')
+await page.goto(BASE)
 
-// ── Onboarding ──
-await shot('01-onboarding')
+// ── Onboarding ────────────────────────────────────────────
+await shot('01-bienvenida')
 await page.getByPlaceholder('Tu nombre').fill('Alberto')
-await clickText('Continuar')
-await clickText('Recomposición corporal')
+await page.getByPlaceholder('Opcional').nth(1).fill('78')
+await byText('Continuar').click()
+
+await byText('Recomposición corporal').click()
 await shot('02-objetivo')
-await clickText('Continuar')
+await byText('Continuar').click()
+
 for (const eq of ['Mancuernas', 'Bandas elásticas', 'Banco', 'Bicicleta', 'Poder salir a correr']) {
-  await clickText(eq)
+  await byText(eq).click()
 }
 await shot('03-equipamiento')
-await clickText('Continuar')
+await byText('Continuar').click()
+
 await page.getByPlaceholder('kg').first().fill('24')
-await clickText('Continuar')
-await shot('04-listo')
-await clickText('Empezar')
+await shot('04-pesos')
+await byText('Continuar').click()
 
-// ── Check-in ──
-await shot('05-hoy')
-await clickText('Empezar el check-in')
-const scaleGroups = page.locator('.scale-row')
-await scaleGroups.nth(0).locator('.scale-dot').nth(3).click() // sueño 4
-const chips = page.locator('.checkin-q .chip-row')
-for (let i = 0; i < 5; i++) await chips.nth(i).getByText('Sí', { exact: true }).click()
-await scaleGroups.nth(1).locator('.scale-dot').nth(3).click() // energía 4
-await page.locator('.checkin-q').last().getByText('Ninguna', { exact: true }).click()
-await shot('06-checkin')
-await clickText('Ver qué me conviene hoy')
+await page.locator('input[type=date]').fill('2026-07-01')
+await shot('05-cetosis')
+await byText('Empezar').click()
 
-// ── Recomendación ──
-await shot('07-recomendacion')
-const recoText = await page.locator('.reco-kind').textContent()
-console.log('RECOMENDACION:', recoText)
-await clickText('Preparar la sesión')
+// ── Check-in ──────────────────────────────────────────────
+await shot('06-hoy')
+await byText('Empezar').click()
 
-// ── Sesión ──
-await shot('08-sesion')
-const checks = page.locator('.exercise-check')
+const scales = page.locator('.scale')
+await scales.nth(0).locator('button').nth(3).click() // sueño 4
+await scales.nth(1).locator('button').nth(3).click() // energía 4
+const habitRows = page.locator('.card').nth(1).locator('.row')
+const habitCount = await habitRows.count()
+for (let i = 0; i < habitCount; i++) {
+  await habitRows.nth(i).getByText('Sí', { exact: true }).click()
+}
+await page.locator('.card').nth(2).getByText('Ninguna', { exact: true }).click()
+await shot('07-checkin')
+await byText('Ver qué me conviene').click()
+
+// ── Recomendación ─────────────────────────────────────────
+await shot('08-recomendacion')
+console.log('  → recomienda:', await page.locator('.eyebrow').nth(1).textContent())
+await byText('Por qué esto hoy').click()
+await shot('09-por-que')
+await byText('Preparar la sesión').click()
+
+// ── Sesión ────────────────────────────────────────────────
+await shot('10-sesion')
+const checks = page.locator('.check')
 const n = await checks.count()
-console.log('ejercicios propuestos:', n)
+console.log('  → ejercicios propuestos:', n)
 for (let i = 0; i < n; i++) await checks.nth(i).click()
-await clickText('Terminar sesión')
-await page.locator('.scale-dot').nth(3).click()
-await shot('09-fin-sesion')
-await clickText('Guardar sesión')
-await shot('10-completado')
+const weights = page.locator('.weight-input')
+if ((await weights.count()) > 0) await weights.first().fill('12')
+await byText('Terminar').click()
+await page.locator('.scale button').nth(3).click()
+await shot('11-sensacion')
+await byText('Guardar').click()
+await shot('12-completada')
 
-// ── Historial ──
-await page.locator('nav .tab', { hasText: 'Tu cuerpo' }).click()
-await page.waitForTimeout(900)
-await shot('11-historial')
+// ── Historial ─────────────────────────────────────────────
+await page.locator('.tab', { hasText: 'Tu cuerpo' }).click()
+await shot('13-tu-cuerpo')
+await page.locator('.tab', { hasText: 'Ajustes' }).click()
+await shot('14-ajustes')
+
+// ── Paletas horarias ──────────────────────────────────────
+await page.locator('.tab', { hasText: 'Hoy' }).click()
+for (const t of ['dawn', 'day', 'dusk', 'night']) {
+  await page.evaluate((v) => (document.body.dataset.daytime = v), t)
+  await shot(`15-paleta-${t}`)
+}
 
 await browser.close()
-console.log('walkthrough OK')
+if (errors.length) {
+  console.error('ERRORES EN CONSOLA:', errors)
+  process.exit(1)
+}
+console.log('recorrido completo sin errores')

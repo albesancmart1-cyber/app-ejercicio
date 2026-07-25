@@ -4,16 +4,18 @@ import { computeReadiness } from '../domain/readiness'
 import { recommend } from '../domain/recommender'
 import { buildSession } from '../domain/workoutBuilder'
 import { actions, todayIso, useAppData } from '../store/store'
+import Icon from '../components/Icon'
 import SessionScreen from './Session'
 
 type Scale = 1 | 2 | 3 | 4 | 5
+type YesNoKey = 'lightHygiene' | 'sunrise' | 'sunsetYesterday' | 'sunExposure' | 'keto'
 
-const YESNO: { q: string; key: 'lightHygiene' | 'sunrise' | 'sunsetYesterday' | 'sunExposure' | 'keto' }[] = [
-  { q: '¿Respetaste anoche la higiene lumínica (sin pantallas ni luz azul)?', key: 'lightHygiene' },
+const HABITS: { q: string; key: YesNoKey }[] = [
+  { q: '¿Respetaste anoche la higiene lumínica?', key: 'lightHygiene' },
   { q: '¿Has visto el amanecer hoy?', key: 'sunrise' },
   { q: '¿Viste el atardecer ayer?', key: 'sunsetYesterday' },
-  { q: '¿Te expusiste al sol adecuadamente ayer?', key: 'sunExposure' },
-  { q: '¿Estás respetando la alimentación cetogénica?', key: 'keto' }
+  { q: '¿Te dio el sol ayer?', key: 'sunExposure' },
+  { q: '¿Sigues en cetosis?', key: 'keto' }
 ]
 
 function greeting(): string {
@@ -23,6 +25,34 @@ function greeting(): string {
   return 'Buenas noches'
 }
 
+function ScaleInput({
+  value,
+  onChange,
+  low,
+  high
+}: {
+  value: Scale | null
+  onChange: (v: Scale) => void
+  low: string
+  high: string
+}) {
+  return (
+    <>
+      <div className="scale">
+        {([1, 2, 3, 4, 5] as Scale[]).map((n) => (
+          <button key={n} aria-pressed={value === n} onClick={() => onChange(n)}>
+            {n}
+          </button>
+        ))}
+      </div>
+      <div className="scale-legend">
+        <span className="faint">{low}</span>
+        <span className="faint">{high}</span>
+      </div>
+    </>
+  )
+}
+
 export default function Today() {
   const data = useAppData()
   const profile = data.profile!
@@ -30,199 +60,216 @@ export default function Today() {
 
   const activeSession = data.sessions.find((s) => s.date === today && !s.completed)
   const doneToday = data.sessions.find((s) => s.date === today && s.completed)
-  const existingCheckIn = data.checkIns.find((c) => c.date === today)
+  const saved = data.checkIns.find((c) => c.date === today)
 
-  const [phase, setPhase] = useState<'inicio' | 'checkin' | 'recomendacion'>('inicio')
-  const [sleep, setSleep] = useState<Scale | null>(existingCheckIn?.sleep ?? null)
-  const [energy, setEnergy] = useState<Scale | null>(existingCheckIn?.energy ?? null)
-  const [yesno, setYesno] = useState<Record<string, boolean | null>>({
-    lightHygiene: existingCheckIn?.lightHygiene ?? null,
-    sunrise: existingCheckIn?.sunrise ?? null,
-    sunsetYesterday: existingCheckIn?.sunsetYesterday ?? null,
-    sunExposure: existingCheckIn?.sunExposure ?? null,
-    keto: existingCheckIn?.keto ?? null
+  const [phase, setPhase] = useState<'inicio' | 'checkin' | 'plan'>('inicio')
+  const [showWhy, setShowWhy] = useState(false)
+  const [sleep, setSleep] = useState<Scale | null>(saved?.sleep ?? null)
+  const [energy, setEnergy] = useState<Scale | null>(saved?.energy ?? null)
+  const [habits, setHabits] = useState<Record<YesNoKey, boolean | null>>({
+    lightHygiene: saved?.lightHygiene ?? null,
+    sunrise: saved?.sunrise ?? null,
+    sunsetYesterday: saved?.sunsetYesterday ?? null,
+    sunExposure: saved?.sunExposure ?? null,
+    keto: saved?.keto ?? null
   })
-  const [discomfort, setDiscomfort] = useState<Discomfort | null>(existingCheckIn?.discomfort ?? null)
+  const [discomfort, setDiscomfort] = useState<Discomfort | null>(saved?.discomfort ?? null)
 
-  const checkInComplete =
-    sleep !== null && energy !== null && discomfort !== null && Object.values(yesno).every((v) => v !== null)
+  const complete =
+    sleep !== null && energy !== null && discomfort !== null && Object.values(habits).every((v) => v !== null)
 
   const checkIn: CheckIn | null = useMemo(() => {
-    if (!checkInComplete) return null
+    if (!complete) return null
     return {
       date: today,
       sleep: sleep!,
       energy: energy!,
-      lightHygiene: yesno.lightHygiene!,
-      sunrise: yesno.sunrise!,
-      sunsetYesterday: yesno.sunsetYesterday!,
-      sunExposure: yesno.sunExposure!,
-      keto: yesno.keto!,
+      lightHygiene: habits.lightHygiene!,
+      sunrise: habits.sunrise!,
+      sunsetYesterday: habits.sunsetYesterday!,
+      sunExposure: habits.sunExposure!,
+      keto: habits.keto!,
       discomfort: discomfort!
     }
-  }, [checkInComplete, today, sleep, energy, yesno, discomfort])
+  }, [complete, today, sleep, energy, habits, discomfort])
 
   const readiness = checkIn ? computeReadiness(checkIn) : null
   const recommendation =
-    readiness && phase === 'recomendacion' && !activeSession
-      ? recommend(profile, readiness, data.sessions, today)
-      : null
-
-  function confirmCheckIn() {
-    if (!checkIn) return
-    actions.saveCheckIn(checkIn)
-    setPhase('recomendacion')
-  }
+    readiness && phase === 'plan' ? recommend(profile, readiness, data.sessions, today) : null
 
   function startSession() {
     if (!recommendation) return
-    const session = buildSession(recommendation, profile, data.sessions, today)
-    actions.saveSession(session)
-    // Al terminar o descartar la sesión volvemos a la vista de inicio.
+    actions.saveSession(buildSession(recommendation, profile, data.sessions, today, checkIn?.keto ?? false))
     setPhase('inicio')
   }
 
-  if (activeSession) {
-    return <SessionScreen session={activeSession} />
-  }
+  if (activeSession) return <SessionScreen session={activeSession} />
 
   return (
-    <div>
-      <h1>{greeting()}{profile.name !== 'Tú' ? `, ${profile.name}` : ''}</h1>
-      <p className="subtitle">Hoy es un buen día para escuchar a tu cuerpo.</p>
-
-      {doneToday && phase === 'inicio' && (
-        <div className="card reco-card">
-          <span className="big-sun">🌇</span>
-          <h2>Sesión de hoy completada</h2>
-          <p className="muted">
-            «{doneToday.title}» ya está registrada. Tu cuerpo agradece ahora el descanso — nos vemos
-            mañana, o cuando tú y tu cuerpo queráis.
-          </p>
-        </div>
+    <div className="fade-in">
+      {phase !== 'plan' && (
+        <>
+          <p className="eyebrow">{greeting()}</p>
+          <h1>{profile.name !== 'Tú' ? profile.name : 'Hoy'}</h1>
+        </>
       )}
 
-      {phase === 'inicio' && !doneToday && (
-        <div className="card reco-card">
-          <span className="big-sun">☀️</span>
-          <h2>¿Quieres moverte hoy?</h2>
-          <p className="muted">
-            Antes de proponerte nada, cuéntanos en 30 segundos cómo estás. Con eso diseñamos el
-            entreno que hoy te suma salud sin robarte energía.
-          </p>
-          <div style={{ height: 16 }} />
-          <button className="btn-primary" onClick={() => setPhase('checkin')}>
-            Empezar el check-in
+      {phase === 'inicio' && (
+        <div style={{ marginTop: 28 }}>
+          {doneToday ? (
+            <div className="card">
+              <Icon name="moon" className="sun-mark" />
+              <h2>Sesión completada</h2>
+              <p className="dim" style={{ marginTop: 8 }}>
+                «{doneToday.title}» queda registrada. Ahora el descanso es la parte que construye:
+                nos vemos cuando tu cuerpo quiera.
+              </p>
+            </div>
+          ) : (
+            <div className="card">
+              <Icon name="sun" className="sun-mark" />
+              <h2>¿Cómo estás hoy?</h2>
+              <p className="dim" style={{ marginTop: 8 }}>
+                Antes de proponerte nada, cuéntame en medio minuto cómo has dormido y cómo andas de
+                energía. Con eso decidimos si hoy toca empujar o recuperar.
+              </p>
+            </div>
+          )}
+          <button className="btn btn-primary" onClick={() => setPhase('checkin')}>
+            {doneToday ? 'Preparar otra sesión' : 'Empezar'}
           </button>
         </div>
       )}
 
-      {phase === 'inicio' && doneToday && (
-        <button className="btn-ghost" onClick={() => setPhase('checkin')}>
-          Quiero hacer otra sesión hoy
-        </button>
-      )}
-
       {phase === 'checkin' && (
-        <div className="card">
-          <h2>¿Cómo estás hoy?</h2>
-          <div className="divider" />
-
-          <div className="checkin-q">
-            <p>¿Cómo has dormido?</p>
-            <div className="scale-row">
-              {([1, 2, 3, 4, 5] as Scale[]).map((n) => (
-                <button key={n} className={`scale-dot ${sleep === n ? 'selected' : ''}`} onClick={() => setSleep(n)}>
-                  {n}
-                </button>
-              ))}
-            </div>
-            <p className="muted" style={{ marginTop: 5, fontSize: '0.78rem' }}>1 = muy mal · 5 = de maravilla</p>
+        <div className="stack" style={{ marginTop: 28 }}>
+          <div className="card">
+            <p className="eyebrow">Descanso</p>
+            <h2 style={{ marginBottom: 16 }}>¿Cómo has dormido?</h2>
+            <ScaleInput value={sleep} onChange={setSleep} low="Muy mal" high="De maravilla" />
+            <hr className="rule" />
+            <h2 style={{ marginBottom: 16 }}>¿Cuánta energía tienes?</h2>
+            <ScaleInput value={energy} onChange={setEnergy} low="Agotado" high="A tope" />
           </div>
 
-          {YESNO.map(({ q, key }) => (
-            <div className="checkin-q" key={key}>
-              <p>{q}</p>
-              <div className="chip-row">
-                <button
-                  className={`chip ${yesno[key] === true ? 'selected' : ''}`}
-                  onClick={() => setYesno((p) => ({ ...p, [key]: true }))}
-                >
-                  Sí
-                </button>
-                <button
-                  className={`chip ${yesno[key] === false ? 'selected' : ''}`}
-                  onClick={() => setYesno((p) => ({ ...p, [key]: false }))}
-                >
-                  No
-                </button>
+          <div className="card">
+            <p className="eyebrow">Ritmos</p>
+            {HABITS.map(({ q, key }, i) => (
+              <div key={key} style={{ marginTop: i === 0 ? 0 : 18 }}>
+                <div className="row">
+                  <span style={{ fontSize: '0.9rem' }}>{q}</span>
+                  <div className="options" style={{ flexWrap: 'nowrap' }}>
+                    <button
+                      className="opt"
+                      aria-pressed={habits[key] === true}
+                      onClick={() => setHabits((p) => ({ ...p, [key]: true }))}
+                    >
+                      Sí
+                    </button>
+                    <button
+                      className="opt"
+                      aria-pressed={habits[key] === false}
+                      onClick={() => setHabits((p) => ({ ...p, [key]: false }))}
+                    >
+                      No
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
-
-          <div className="checkin-q">
-            <p>¿Cuánta energía tienes?</p>
-            <div className="scale-row">
-              {([1, 2, 3, 4, 5] as Scale[]).map((n) => (
-                <button key={n} className={`scale-dot ${energy === n ? 'selected' : ''}`} onClick={() => setEnergy(n)}>
-                  {n}
-                </button>
-              ))}
-            </div>
-            <p className="muted" style={{ marginTop: 5, fontSize: '0.78rem' }}>1 = agotado · 5 = a tope</p>
+            ))}
           </div>
 
-          <div className="checkin-q">
-            <p>¿Agujetas o molestias?</p>
-            <div className="chip-row">
-              <button className={`chip ${discomfort === 'ninguna' ? 'selected' : ''}`} onClick={() => setDiscomfort('ninguna')}>
+          <div className="card">
+            <p className="eyebrow">Cuerpo</p>
+            <h2 style={{ marginBottom: 14 }}>¿Molestias o agujetas?</h2>
+            <div className="options">
+              <button className="opt" aria-pressed={discomfort === 'ninguna'} onClick={() => setDiscomfort('ninguna')}>
                 Ninguna
               </button>
-              <button className={`chip ${discomfort === 'leves' ? 'selected' : ''}`} onClick={() => setDiscomfort('leves')}>
+              <button className="opt" aria-pressed={discomfort === 'leves'} onClick={() => setDiscomfort('leves')}>
                 Leves
               </button>
               {MUSCLE_GROUPS.filter((g) => g !== 'cardio').map((g: MuscleGroup) => (
-                <button
-                  key={g}
-                  className={`chip ${discomfort === g ? 'selected' : ''}`}
-                  onClick={() => setDiscomfort(g)}
-                >
+                <button key={g} className="opt" aria-pressed={discomfort === g} onClick={() => setDiscomfort(g)}>
                   {MUSCLE_LABELS[g]}
                 </button>
               ))}
             </div>
           </div>
 
-          <button className="btn-primary" disabled={!checkInComplete} onClick={confirmCheckIn}>
-            Ver qué me conviene hoy
+          <button
+            className="btn btn-primary"
+            disabled={!complete}
+            onClick={() => {
+              if (checkIn) actions.saveCheckIn(checkIn)
+              setPhase('plan')
+            }}
+          >
+            Ver qué me conviene
+          </button>
+          <button className="btn-quiet" onClick={() => setPhase('inicio')}>
+            Ahora no
           </button>
         </div>
       )}
 
-      {phase === 'recomendacion' && recommendation && readiness && (
-        <>
-          <div className="card reco-card">
-            <span className="reco-kind">{recommendation.title}</span>
-            <h2 style={{ marginBottom: 8 }}>
-              Disposición del cuerpo: {readiness.score}/100
-            </h2>
+      {phase === 'plan' && recommendation && readiness && (
+        <div className="fade-in">
+          <p className="eyebrow">Disposición del cuerpo</p>
+          <div className="row" style={{ alignItems: 'flex-end' }}>
+            <span className="score">
+              {readiness.score}
+              <small> / 100</small>
+            </span>
+            <span className="tag accent">{readiness.level}</span>
+          </div>
+          <div className="meter" aria-hidden="true">
+            {Array.from({ length: 10 }, (_, i) => (
+              <span key={i} className={i < Math.round(readiness.score / 10) ? 'on' : ''} />
+            ))}
+          </div>
+
+          <div className="card" style={{ marginTop: 24 }}>
+            <p className="eyebrow">{recommendation.title}</p>
             <p>{recommendation.message}</p>
-            {readiness.notes.length > 0 && (
-              <ul className="note-list">
+
+            <div className="tag-row">
+              <span className="tag">Intensidad {recommendation.intensity}</span>
+              {recommendation.kind !== 'descanso_activo' && recommendation.kind !== 'cardio_suave' && (
+                <span className="tag">{recommendation.rir} reps en reserva</span>
+              )}
+              {recommendation.reentry && (
+                <span className="tag">
+                  Vuelta {recommendation.reentry.step}/{recommendation.reentry.total}
+                </span>
+              )}
+              {recommendation.ketoAdapting && <span className="tag">Adaptación cetogénica</span>}
+            </div>
+
+            <hr className="rule" />
+            <button className="disclose" aria-expanded={showWhy} onClick={() => setShowWhy(!showWhy)}>
+              <Icon name="chevron" />
+              Por qué esto hoy
+            </button>
+            {showWhy && (
+              <ul className="reasons">
+                {recommendation.reasons.map((r, i) => (
+                  <li key={i}>{r}</li>
+                ))}
                 {readiness.notes.map((n, i) => (
-                  <li key={i}>{n}</li>
+                  <li key={`n${i}`}>{n}</li>
                 ))}
               </ul>
             )}
-            <div style={{ height: 16 }} />
-            <button className="btn-primary" onClick={startSession}>
-              Preparar la sesión
-            </button>
-            <button className="btn-ghost" onClick={() => setPhase('checkin')}>
-              Revisar mis respuestas
-            </button>
           </div>
-        </>
+
+          <button className="btn btn-primary" onClick={startSession}>
+            Preparar la sesión
+          </button>
+          <button className="btn-quiet" onClick={() => setPhase('checkin')}>
+            Revisar mis respuestas
+          </button>
+        </div>
       )}
     </div>
   )

@@ -8,6 +8,7 @@ import type {
   Recommendation,
   Session
 } from './types'
+import { repPrescription, setsFor } from './protocol'
 
 let idCounter = 0
 function newId(): string {
@@ -17,6 +18,11 @@ function newId(): string {
 
 function hasEquipment(exercise: Exercise, owned: Equipment[]): boolean {
   return exercise.equipment.some((eq) => owned.includes(eq) || eq === 'peso_corporal')
+}
+
+/** Un básico multiarticular necesita más descanso que un accesorio. */
+function isCompound(exercise: Exercise): boolean {
+  return exercise.stress !== 'bajo' && exercise.secondary.length > 0
 }
 
 /** Peso máximo disponible entre los equipos válidos para el ejercicio. */
@@ -29,62 +35,71 @@ function availableMax(exercise: Exercise, profile: Profile): number | undefined 
   return Math.max(...maxes)
 }
 
+/** Redondeo a discos de 2,5 kg, solo para la primera estimación. */
 function roundWeight(kg: number): number {
   return Math.max(1, Math.round(kg / 2.5) * 2.5)
 }
 
-interface RepScheme {
-  sets: number
-  reps: string
-  loadScale: number // multiplicador sobre el loadFactor base
+/** Al progresar respetamos el peso real que usó el usuario, en pasos de 0,5 kg. */
+function roundStep(kg: number): number {
+  return Math.max(1, Math.round(kg * 2) / 2)
 }
 
-function repScheme(profile: Profile, intensity: Recommendation['intensity']): RepScheme {
-  const base: RepScheme =
-    profile.goal === 'masa'
-      ? { sets: 3, reps: '6-10', loadScale: 1.0 }
-      : profile.goal === 'tonificar'
-        ? { sets: 3, reps: '12-15', loadScale: 0.75 }
-        : { sets: 3, reps: '8-12', loadScale: 0.85 }
-
-  if (intensity === 'suave') return { sets: 2, reps: '10-12', loadScale: base.loadScale * 0.6 }
-  if (intensity === 'moderada') return { ...base, loadScale: base.loadScale * 0.85 }
-  return base
+interface LastPerformance {
+  weightKg?: number
+  rpe?: number
 }
 
-/** Peso sugerido: parte del catálogo y, si ya hay registros, progresa suave desde el último. */
+function lastPerformance(exerciseId: string, history: Session[]): LastPerformance | undefined {
+  const sorted = [...history].filter((s) => s.completed).sort((a, b) => (a.date < b.date ? 1 : -1))
+  for (const s of sorted) {
+    const pe = s.exercises.find((p) => p.exerciseId === exerciseId && p.done === true)
+    if (pe) return { weightKg: pe.actualWeightKg ?? pe.plan.weightKg, rpe: s.rpe }
+  }
+  return undefined
+}
+
+/**
+ * Peso sugerido. Si ya hay registros, progresa desde el último teniendo en cuenta
+ * cómo se sintió esa sesión: si costó mucho, se mantiene la carga.
+ */
 function suggestWeight(
   exercise: Exercise,
   profile: Profile,
-  scheme: RepScheme,
+  loadScale: number,
   history: Session[]
 ): number | undefined {
-  if (exercise.bodyweightOnly && availableMax(exercise, profile) === undefined) return undefined
   const max = availableMax(exercise, profile)
   if (max === undefined || !exercise.loadFactor) return undefined
 
-  // Último peso usado en este ejercicio.
-  let last: number | undefined
-  for (const s of [...history].sort((a, b) => (a.date < b.date ? 1 : -1))) {
-    const pe = s.exercises.find((p) => p.exerciseId === exercise.id && p.done !== false)
-    if (pe?.actualWeightKg) {
-      last = pe.actualWeightKg
-      break
-    }
+  const last = lastPerformance(exercise.id, history)
+  if (last?.weightKg) {
+    // Sensación 1–2 = muy duro → mantenemos. 4–5 = cómodo → subimos algo más.
+    const hard = last.rpe !== undefined && last.rpe <= 2
+    const easy = last.rpe !== undefined && last.rpe >= 4
+    if (hard) return Math.min(last.weightKg, max)
+    const factor = easy ? 1.05 : 1.025
+    // Al menos medio kilo, para que la progresión no se quede en nada.
+    const next = Math.max(last.weightKg + 0.5, last.weightKg * factor)
+    return Math.min(roundStep(next), max)
   }
+  return Math.min(roundWeight(max * exercise.loadFactor * loadScale), max)
+}
 
-  if (last) {
-    // Progresión conservadora: +2.5% aprox, sin pasar del material disponible.
-    return Math.min(roundWeight(last * 1.025), max)
-  }
-  return Math.min(roundWeight(max * exercise.loadFactor * scheme.loadScale), max)
+/** Ejercicios usados en la última sesión, para no repetir siempre lo mismo. */
+function recentExerciseIds(history: Session[]): Set<string> {
+  const last = [...history]
+    .filter((s) => s.completed)
+    .sort((a, b) => (a.date < b.date ? 1 : -1))[0]
+  return new Set(last ? last.exercises.map((e) => e.exerciseId) : [])
 }
 
 function pickForGroup(
   group: MuscleGroup,
   profile: Profile,
   maxStress: 'bajo' | 'medio' | 'alto',
-  exclude: Set<string>
+  exclude: Set<string>,
+  recent: Set<string>
 ): Exercise | undefined {
   const stressRank = { bajo: 0, medio: 1, alto: 2 }
   const candidates = EXERCISES.filter(
@@ -95,8 +110,16 @@ function pickForGroup(
       hasEquipment(e, profile.equipment) &&
       stressRank[e.stress] <= stressRank[maxStress]
   )
-  // Preferimos el ejercicio de mayor estímulo permitido (mejor dosis por ejercicio).
-  candidates.sort((a, b) => stressRank[b.stress] - stressRank[a.stress])
+  if (candidates.length === 0) return undefined
+
+  // Preferimos no repetir lo de la última sesión; dentro de eso, el mayor
+  // estímulo permitido (más músculo por ejercicio, menos ejercicios totales).
+  candidates.sort((a, b) => {
+    const repeatA = recent.has(a.id) ? 1 : 0
+    const repeatB = recent.has(b.id) ? 1 : 0
+    if (repeatA !== repeatB) return repeatA - repeatB
+    return stressRank[b.stress] - stressRank[a.stress]
+  })
   return candidates[0]
 }
 
@@ -116,11 +139,12 @@ export function buildSession(
   recommendation: Recommendation,
   profile: Profile,
   history: Session[],
-  todayIso: string
+  todayIso: string,
+  keto = false
 ): Session {
-  const scheme = repScheme(profile, recommendation.intensity)
   const exercises: PlannedExercise[] = []
   const used = new Set<string>()
+  const recent = recentExerciseIds(history)
 
   const maxStress =
     recommendation.intensity === 'suave'
@@ -130,32 +154,43 @@ export function buildSession(
         : 'alto'
 
   if (recommendation.kind === 'fuerza' || recommendation.kind === 'reacondicionamiento') {
-    // 2 ejercicios del grupo prioritario, 1 de cada grupo siguiente, + core si cabe.
-    const [first, ...rest] = recommendation.focus.filter((g) => g !== 'cardio')
-    const plan: MuscleGroup[] = first ? [first, first, ...rest.slice(0, 3)] : rest.slice(0, 4)
+    const groups = recommendation.focus.filter((g) => g !== 'cardio')
+    // En fuerza doblamos el grupo prioritario; en la vuelta progresiva repartimos
+    // el trabajo por todo el cuerpo con poco volumen en cada zona.
+    const plan: MuscleGroup[] =
+      recommendation.kind === 'fuerza' && groups.length > 0
+        ? [groups[0], groups[0], ...groups.slice(1, 3)]
+        : groups.slice(0, 4)
+
     for (const group of plan) {
-      const ex = pickForGroup(group, profile, maxStress, used)
+      const ex = pickForGroup(group, profile, maxStress, used, recent)
       if (!ex) continue
       used.add(ex.id)
+      const rx = repPrescription(profile.goal, recommendation.intensity, keto, isCompound(ex))
       exercises.push({
         exerciseId: ex.id,
         name: ex.name,
         primary: ex.primary,
         plan: {
-          sets: recommendation.kind === 'reacondicionamiento' ? 2 : scheme.sets,
-          reps: scheme.reps,
-          weightKg: suggestWeight(ex, profile, scheme, history)
+          sets: setsFor(recommendation.intensity, recommendation.volumeScale),
+          reps: rx.reps,
+          weightKg: suggestWeight(ex, profile, rx.loadScale, history),
+          rir: recommendation.rir,
+          restSeconds: rx.restSeconds
         }
       })
     }
-    if (!used.has('plancha') && exercises.length < 5) {
-      const core = pickForGroup('core', profile, 'bajo', used)
+
+    // Un poco de core siempre que la sesión no se haya alargado.
+    if (exercises.length < 5 && !used.has('plancha')) {
+      const core = pickForGroup('core', profile, 'bajo', used, recent)
       if (core) {
+        used.add(core.id)
         exercises.push({
           exerciseId: core.id,
           name: core.name,
           primary: 'core',
-          plan: { sets: 2, reps: '30-45 s' }
+          plan: { sets: 2, reps: '30-45 s', rir: recommendation.rir, restSeconds: 60 }
         })
       }
     }

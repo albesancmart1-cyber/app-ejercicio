@@ -1,5 +1,6 @@
 import { MUSCLE_GROUPS, MUSCLE_LABELS } from '../domain/types'
-import { computeBalance } from '../domain/muscleBalance'
+import { computeBalance, weeklySets } from '../domain/muscleBalance'
+import { WEEKLY_SETS } from '../domain/protocol'
 import { todayIso, useAppData } from '../store/store'
 
 function lastNDays(n: number): string[] {
@@ -9,8 +10,7 @@ function lastNDays(n: number): string[] {
     const d = new Date(now)
     d.setDate(now.getDate() - i)
     const m = String(d.getMonth() + 1).padStart(2, '0')
-    const day = String(d.getDate()).padStart(2, '0')
-    days.push(`${d.getFullYear()}-${m}-${day}`)
+    days.push(`${d.getFullYear()}-${m}-${String(d.getDate()).padStart(2, '0')}`)
   }
   return days
 }
@@ -19,75 +19,86 @@ export default function History() {
   const data = useAppData()
   const today = todayIso()
   const balance = computeBalance(data.sessions, today)
+  const week = weeklySets(data.sessions, today)
   const maxBalance = Math.max(0.1, ...MUSCLE_GROUPS.map((g) => balance[g]))
-  const days = lastNDays(28)
-  const trainedDates = new Set(data.sessions.filter((s) => s.completed).map((s) => s.date))
+  const trained = new Set(data.sessions.filter((s) => s.completed).map((s) => s.date))
   const completed = data.sessions.filter((s) => s.completed)
 
+  const strengthGroups = MUSCLE_GROUPS.filter((g) => g !== 'cardio')
+  const covered = strengthGroups.filter((g) => week[g] >= WEEKLY_SETS.minimoEficaz).length
+
   return (
-    <div>
+    <div className="fade-in">
+      <p className="eyebrow">Últimas dos semanas</p>
       <h1>Tu cuerpo</h1>
-      <p className="subtitle">Cómo has trabajado en los últimos 14 días.</p>
+
+      <div className="card" style={{ marginTop: 28 }}>
+        <div className="row" style={{ alignItems: 'flex-end', marginBottom: 4 }}>
+          <span className="score">
+            {covered}
+            <small> / {strengthGroups.length}</small>
+          </span>
+          <span className="tag">grupos cubiertos</span>
+        </div>
+        <p className="faint" style={{ marginTop: 10 }}>
+          Con {WEEKLY_SETS.minimoEficaz} series semanales por grupo ya se sostiene el músculo. Lo que
+          buscamos aquí no es acumular, es que no quede ninguno olvidado.
+        </p>
+      </div>
 
       <div className="card">
-        <h2>Balance muscular</h2>
-        <p className="muted" style={{ marginBottom: 14 }}>
-          Los grupos con menos color son los que la app priorizará en tus próximos entrenos. No hay
-          nada que corregir: solo equilibrio que buscar.
-        </p>
+        <p className="eyebrow">Balance muscular</p>
         {MUSCLE_GROUPS.map((g) => {
           const pct = Math.round((balance[g] / maxBalance) * 100)
           return (
-            <div className="balance-row" key={g}>
-              <span className="balance-label">{MUSCLE_LABELS[g]}</span>
-              <div className="balance-track">
-                <div
-                  className={`balance-fill ${pct < 35 ? 'low' : ''}`}
-                  style={{ width: `${Math.max(4, pct)}%` }}
-                />
+            <div className="bar" key={g}>
+              <span className="bar-label">{MUSCLE_LABELS[g]}</span>
+              <div className="bar-track">
+                <div className={`bar-fill ${pct < 30 ? 'low' : ''}`} style={{ width: `${Math.max(3, pct)}%` }} />
               </div>
             </div>
           )
         })}
+        <p className="faint" style={{ marginTop: 14 }}>
+          Los más cortos son los que la app pondrá primero en tus próximos entrenos.
+        </p>
       </div>
 
       <div className="card">
-        <h2>Últimas 4 semanas</h2>
-        <p className="muted" style={{ marginBottom: 14 }}>
-          Los huecos también forman parte del camino.
-        </p>
-        <div className="calendar-grid">
-          {days.map((d) => (
-            <div
-              key={d}
-              className={`calendar-day ${trainedDates.has(d) ? 'trained' : ''} ${d === today ? 'today' : ''}`}
-            >
+        <p className="eyebrow">Cuatro semanas</p>
+        <div className="calendar">
+          {lastNDays(28).map((d) => (
+            <div key={d} className={`day ${trained.has(d) ? 'on' : ''} ${d === today ? 'now' : ''}`}>
               {Number(d.slice(8))}
             </div>
           ))}
         </div>
+        <p className="faint" style={{ marginTop: 14 }}>
+          Los huecos también forman parte del camino.
+        </p>
       </div>
 
       <div className="card">
-        <h2>Sesiones</h2>
-        {completed.length === 0 && (
-          <p className="muted">Aún no hay sesiones registradas. Todo llegará, sin prisa.</p>
-        )}
-        {[...completed]
-          .sort((a, b) => (a.date < b.date ? 1 : -1))
-          .slice(0, 10)
-          .map((s) => (
-            <div className="exercise-item" key={s.id}>
-              <div className="exercise-info">
-                <div className="exercise-name">{s.title}</div>
-                <div className="exercise-plan">
-                  {s.date}
-                  {s.rpe ? ` · sensación ${s.rpe}/5` : ''}
-                  {s.cardioMinutes ? ` · ${s.cardioMinutes} min` : ''}
+        <p className="eyebrow">Sesiones</p>
+        {completed.length === 0 ? (
+          <p className="dim">Aún no hay nada registrado. Todo llegará, sin prisa.</p>
+        ) : (
+          [...completed]
+            .sort((a, b) => (a.date < b.date ? 1 : -1))
+            .slice(0, 12)
+            .map((s) => (
+              <div className="item" key={s.id}>
+                <div className="item-body">
+                  <div className="item-title">{s.title}</div>
+                  <div className="item-meta">
+                    {s.date}
+                    {s.rpe ? ` · sensación ${s.rpe}/5` : ''}
+                    {s.cardioMinutes ? ` · ${s.cardioMinutes} min` : ''}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+        )}
       </div>
     </div>
   )

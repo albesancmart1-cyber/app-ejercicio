@@ -7,6 +7,8 @@ export interface Readiness {
   /** Grupos a evitar hoy por molestias. */
   avoid: MuscleGroup[]
   notes: string[]
+  /** Si hoy se está respetando la alimentación cetogénica. */
+  keto: boolean
 }
 
 /**
@@ -18,18 +20,19 @@ export interface Readiness {
 export function computeReadiness(checkIn: CheckIn): Readiness {
   const notes: string[] = []
 
-  // Sueño y energía: 70 puntos entre ambos (35 cada uno, escala 1–5).
-  const sleepPts = ((checkIn.sleep - 1) / 4) * 35
-  const energyPts = ((checkIn.energy - 1) / 4) * 35
+  // Sueño y energía mandan: 80 puntos entre ambos (40 cada uno, escala 1–5).
+  // Son los que determinan si el cuerpo puede asimilar el entreno de hoy.
+  const sleepPts = ((checkIn.sleep - 1) / 4) * 40
+  const energyPts = ((checkIn.energy - 1) / 4) * 40
 
-  // Hábitos: 30 puntos repartidos.
+  // Hábitos: 20 puntos. Acompañan, pero no compensan una mala noche.
   let habitPts = 0
-  if (checkIn.lightHygiene) habitPts += 7
+  if (checkIn.lightHygiene) habitPts += 5
   else notes.push('Anoche hubo luz azul: el descanso pudo resentirse.')
-  if (checkIn.sunrise) habitPts += 6
-  if (checkIn.sunsetYesterday) habitPts += 4
-  if (checkIn.sunExposure) habitPts += 7
-  if (checkIn.keto) habitPts += 6
+  if (checkIn.sunrise) habitPts += 4
+  if (checkIn.sunsetYesterday) habitPts += 3
+  if (checkIn.sunExposure) habitPts += 4
+  if (checkIn.keto) habitPts += 4
 
   let score = Math.round(sleepPts + energyPts + habitPts)
 
@@ -44,9 +47,12 @@ export function computeReadiness(checkIn: CheckIn): Readiness {
     notes.push('Hoy dejamos descansar la zona con molestias.')
   }
 
-  const level: Readiness['level'] = score < 40 ? 'bajo' : score < 65 ? 'medio' : 'alto'
+  let level: Readiness['level'] = score < 40 ? 'bajo' : score < 65 ? 'medio' : 'alto'
+
+  // Unos hábitos impecables no compensan llegar sin dormir y sin energía.
+  if (checkIn.sleep <= 2 && checkIn.energy <= 2) level = 'bajo'
 
   if (checkIn.sleep <= 2) notes.push('Con poco sueño, forzar hoy estresaría más de lo que ayuda.')
 
-  return { score, level, avoid, notes }
+  return { score, level, avoid, notes, keto: checkIn.keto }
 }

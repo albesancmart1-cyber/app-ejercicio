@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { computeReadiness } from './readiness'
-import { recommend } from './recommender'
+import { recommend, reentryState } from './recommender'
 import { buildSession } from './workoutBuilder'
-import { computeBalance, neglectedGroups } from './muscleBalance'
-import type { CheckIn, Profile, Session } from './types'
+import { computeBalance, neglectedGroups, recentlyWorked, weeklySets } from './muscleBalance'
+import { ketoAdaptationWeeksLeft, proteinTarget, reentrySteps, repPrescription } from './protocol'
+import { MUSCLE_GROUPS, type CheckIn, type MuscleGroup, type Profile, type Session, type SessionKind } from './types'
+
+const TODAY = '2026-07-25'
 
 const profile: Profile = {
   name: 'Test',
@@ -14,7 +17,7 @@ const profile: Profile = {
 
 function checkIn(overrides: Partial<CheckIn> = {}): CheckIn {
   return {
-    date: '2026-07-25',
+    date: TODAY,
     sleep: 4,
     lightHygiene: true,
     sunrise: true,
@@ -27,128 +30,289 @@ function checkIn(overrides: Partial<CheckIn> = {}): CheckIn {
   }
 }
 
-function strengthSession(date: string, exerciseIds: string[], names: string[] = []): Session {
+const goodDay = () => computeReadiness(checkIn())
+const badDay = () =>
+  computeReadiness(
+    checkIn({
+      sleep: 1,
+      energy: 1,
+      lightHygiene: false,
+      sunrise: false,
+      keto: false,
+      sunExposure: false,
+      sunsetYesterday: false
+    })
+  )
+
+function session(
+  date: string,
+  exerciseIds: string[],
+  opts: { kind?: SessionKind; cardioMinutes?: number; sets?: number; rpe?: 1 | 2 | 3 | 4 | 5 } = {}
+): Session {
   return {
-    id: `t-${date}`,
+    id: `t-${date}-${exerciseIds.join('-')}`,
     date,
-    kind: 'fuerza',
+    kind: opts.kind ?? 'fuerza',
     title: 'test',
-    exercises: exerciseIds.map((id, i) => ({
+    exercises: exerciseIds.map((id) => ({
       exerciseId: id,
-      name: names[i] ?? id,
-      primary: 'pecho',
-      plan: { sets: 3, reps: '8-12' },
+      name: id,
+      primary: 'pecho' as MuscleGroup,
+      plan: { sets: opts.sets ?? 3, reps: '8-12' },
       done: true
     })),
+    cardioMinutes: opts.cardioMinutes,
+    rpe: opts.rpe,
     completed: true
   }
 }
 
-const TODAY = '2026-07-25'
+/** Historial establecido y variado, para salir de la rampa de principiante. */
+function establishedHistory(): Session[] {
+  return [
+    session('2026-07-14', ['flexiones', 'remo_mancuerna']),
+    session('2026-07-17', ['sentadilla_goblet', 'press_militar_mancuernas']),
+    session('2026-07-19', ['flexiones_inclinadas', 'curl_biceps']),
+    session('2026-07-21', ['remo_banda', 'elevaciones_laterales'])
+  ]
+}
 
 describe('readiness', () => {
-  it('buen sueño y buenos hábitos → readiness alto', () => {
-    const r = computeReadiness(checkIn())
-    expect(r.level).toBe('alto')
+  it('buen sueño y buenos hábitos → disposición alta', () => {
+    expect(goodDay().level).toBe('alto')
   })
 
-  it('mala noche y cansancio → readiness bajo', () => {
-    const r = computeReadiness(
-      checkIn({ sleep: 1, energy: 1, lightHygiene: false, sunrise: false, keto: false, sunExposure: false, sunsetYesterday: false })
-    )
-    expect(r.level).toBe('bajo')
+  it('mala noche y cansancio → disposición baja', () => {
+    expect(badDay().level).toBe('bajo')
   })
 
-  it('molestia localizada excluye ese grupo sin hundir el score', () => {
+  it('molestia localizada excluye ese grupo sin hundir la puntuación', () => {
     const r = computeReadiness(checkIn({ discomfort: 'espalda' }))
     expect(r.avoid).toContain('espalda')
     expect(r.level).toBe('alto')
   })
+
+  it('recoge si hoy se respeta la cetosis', () => {
+    expect(computeReadiness(checkIn({ keto: false })).keto).toBe(false)
+  })
 })
 
-describe('recommender', () => {
-  it('dos semanas sin entrenar → reacondicionamiento suave', () => {
-    const old = strengthSession('2026-07-10', ['flexiones'])
-    const rec = recommend(profile, computeReadiness(checkIn()), [old], TODAY)
+describe('vuelta progresiva tras un parón (regla 50/30/20/10)', () => {
+  it('la rampa es más larga cuanto más largo fue el parón', () => {
+    expect(reentrySteps(5)).toBe(0)
+    expect(reentrySteps(15)).toBe(2)
+    expect(reentrySteps(45)).toBe(3)
+    expect(reentrySteps(120)).toBe(4)
+  })
+
+  it('dos semanas sin entrenar → reacondicionamiento al 50 % de volumen', () => {
+    const rec = recommend(profile, goodDay(), [session('2026-07-10', ['flexiones'])], TODAY)
     expect(rec.kind).toBe('reacondicionamiento')
+    expect(rec.volumeScale).toBe(0.5)
     expect(rec.intensity).toBe('suave')
+    expect(rec.reentry).toEqual({ step: 1, total: 2 })
   })
 
-  it('sin historial → primera sesión de reacondicionamiento', () => {
-    const rec = recommend(profile, computeReadiness(checkIn()), [], TODAY)
+  it('parón de meses → arranca por cardio suave y rampa de 4 pasos', () => {
+    const rec = recommend(profile, goodDay(), [session('2026-01-10', ['flexiones'])], TODAY)
     expect(rec.kind).toBe('reacondicionamiento')
+    expect(rec.cardioMinutes).toBeGreaterThan(0)
+    expect(rec.reentry?.total).toBe(4)
   })
 
-  it('mala noche → descanso activo, nunca fuerza', () => {
-    const recent = strengthSession('2026-07-23', ['flexiones'])
-    const bad = computeReadiness(
-      checkIn({ sleep: 1, energy: 1, lightHygiene: false, sunrise: false, keto: false, sunExposure: false, sunsetYesterday: false })
+  it('la rampa sube de volumen sesión a sesión', () => {
+    const base = [session('2026-06-01', ['flexiones'])] // parón largo hasta el 20 de julio
+    const paso1 = reentryState([...base, ], '2026-07-20')
+    expect(paso1?.scale).toBe(0.5)
+    const paso2 = reentryState([...base, session('2026-07-20', ['flexiones'])], '2026-07-22')
+    expect(paso2?.scale).toBe(0.7)
+    const paso3 = reentryState(
+      [...base, session('2026-07-20', ['flexiones']), session('2026-07-22', ['sentadilla_goblet'])],
+      '2026-07-24'
     )
-    const rec = recommend(profile, bad, [recent], TODAY)
+    expect(paso3?.scale).toBe(0.8)
+  })
+
+  it('un historial establecido ya no está en rampa', () => {
+    expect(reentryState(establishedHistory(), TODAY)).toBeNull()
+  })
+
+  it('quien empieza de cero también entra en rodaje', () => {
+    const rec = recommend(profile, goodDay(), [], TODAY)
+    expect(rec.kind).toBe('reacondicionamiento')
+    expect(rec.reentry).toEqual({ step: 1, total: 3 })
+  })
+
+  it('durante la rampa nunca se llega cerca del fallo', () => {
+    const rec = recommend(profile, goodDay(), [session('2026-07-08', ['flexiones'])], TODAY)
+    expect(rec.rir).toBeGreaterThanOrEqual(4)
+  })
+})
+
+describe('protección de la recuperación', () => {
+  it('mala noche → descanso activo, nunca fuerza', () => {
+    const rec = recommend(profile, badDay(), establishedHistory(), TODAY)
     expect(rec.kind).toBe('descanso_activo')
   })
 
-  it('semana con torso trabajado y pierna olvidada → prioridad pierna', () => {
-    const sessions = [
-      strengthSession('2026-07-21', ['flexiones', 'remo_mancuerna', 'press_militar_mancuernas']),
-      strengthSession('2026-07-23', ['press_banca_mancuernas', 'jalon_polea', 'curl_biceps'])
+  it('tres días seguidos entrenando → día de respiro', () => {
+    const history = [
+      ...establishedHistory(),
+      session('2026-07-22', ['flexiones']),
+      session('2026-07-23', ['sentadilla_goblet']),
+      session('2026-07-24', ['remo_mancuerna'])
     ]
-    // Un cardio reciente para que no salte la regla de alternancia.
-    sessions.push({ ...strengthSession('2026-07-24', []), kind: 'cardio_suave', cardioMinutes: 20 })
-    const rec = recommend(profile, computeReadiness(checkIn()), sessions, TODAY)
-    expect(rec.kind).toBe('fuerza')
-    expect(['cuadriceps_gluteo', 'femoral']).toContain(rec.focus[0])
+    const medio = computeReadiness(checkIn({ sleep: 3, energy: 3 }))
+    const rec = recommend(profile, medio, history, TODAY)
+    expect(rec.kind).toBe('descanso_activo')
+    expect(rec.title).toBe('Día de respiro')
   })
 
-  it('varias sesiones de fuerza seguidas → toca cardio', () => {
-    const sessions = [
-      strengthSession('2026-07-22', ['flexiones']),
-      strengthSession('2026-07-24', ['remo_mancuerna'])
-    ]
-    const rec = recommend(profile, computeReadiness(checkIn()), sessions, TODAY)
-    expect(['cardio_suave', 'cardio_medio']).toContain(rec.kind)
+  it('no repite un grupo entrenado hace menos de 48 h', () => {
+    const history = [...establishedHistory(), session('2026-07-24', ['sentadilla_goblet'])]
+    expect(recentlyWorked(history, TODAY, 2)).toContain('cuadriceps_gluteo')
+    const rec = recommend(profile, goodDay(), history, TODAY)
+    expect(rec.focus).not.toContain('cuadriceps_gluteo')
   })
 
-  it('molestia en espalda → la sesión no incluye espalda', () => {
-    const sessions = [
-      { ...strengthSession('2026-07-24', []), kind: 'cardio_suave' as const, cardioMinutes: 20 }
-    ]
-    const readiness = computeReadiness(checkIn({ discomfort: 'espalda' }))
-    const rec = recommend(profile, readiness, sessions, TODAY)
+  it('molestia en una zona la deja fuera de la sesión', () => {
+    const rec = recommend(profile, computeReadiness(checkIn({ discomfort: 'espalda' })), establishedHistory(), TODAY)
     expect(rec.focus).not.toContain('espalda')
   })
 })
 
-describe('workoutBuilder', () => {
+describe('equilibrio y alternancia', () => {
+  it('torso trabajado y pierna olvidada → prioridad pierna', () => {
+    const history = [
+      session('2026-07-14', ['flexiones', 'remo_mancuerna']),
+      session('2026-07-19', ['press_banca_mancuernas', 'remo_banda']),
+      session('2026-07-21', ['press_militar_mancuernas', 'curl_biceps']),
+      session('2026-07-24', [], { kind: 'cardio_suave', cardioMinutes: 20 })
+    ]
+    const rec = recommend(profile, goodDay(), history, TODAY)
+    expect(rec.kind).toBe('fuerza')
+    expect(['cuadriceps_gluteo', 'femoral']).toContain(rec.focus[0])
+  })
+
+  it('dos sesiones de fuerza seguidas → toca cardio', () => {
+    const history = [...establishedHistory(), session('2026-07-22', ['flexiones']), session('2026-07-24', ['remo_banda'])]
+    const rec = recommend(profile, goodDay(), history, TODAY)
+    expect(['cardio_suave', 'cardio_medio']).toContain(rec.kind)
+  })
+
+  it('sin material de cardio no fuerza a salir a correr', () => {
+    const gymOnly: Profile = { ...profile, equipment: ['peso_corporal', 'mancuernas', 'banco'] }
+    const history = [...establishedHistory(), session('2026-07-22', ['flexiones']), session('2026-07-24', ['remo_banda'])]
+    const rec = recommend(gymOnly, goodDay(), history, TODAY)
+    expect(rec.kind).toBe('fuerza')
+  })
+
+  it('el balance no cuenta los ejercicios que no marcaste como hechos', () => {
+    const partial = session('2026-07-24', ['flexiones', 'sentadilla_goblet'])
+    partial.exercises[1].done = undefined
+    const balance = computeBalance([partial], TODAY)
+    expect(balance.pecho).toBeGreaterThan(0)
+    expect(balance.cuadriceps_gluteo).toBe(0)
+  })
+
+  it('el cardio no se contabiliza por duplicado', () => {
+    const cardio = session('2026-07-24', ['bici_suave'], { kind: 'cardio_suave', cardioMinutes: 30 })
+    const balance = computeBalance([cardio], TODAY)
+    // 30 min ≈ 3 series efectivas para el corazón, no 3 + la del ejercicio.
+    expect(balance.cardio).toBeLessThanOrEqual(3)
+    expect(balance.cardio).toBeGreaterThan(0)
+  })
+
+  it('cuenta series semanales por grupo muscular', () => {
+    const week = weeklySets([session('2026-07-23', ['flexiones'], { sets: 3 })], TODAY)
+    expect(week.pecho).toBe(3)
+  })
+
+  it('detecta el grupo menos trabajado', () => {
+    const balance = computeBalance([session('2026-07-23', ['flexiones', 'flexiones_inclinadas'])], TODAY)
+    expect(neglectedGroups(balance)[0]).not.toBe('pecho')
+    expect(balance.pecho).toBeGreaterThan(0)
+  })
+})
+
+describe('cetosis', () => {
+  it('durante la adaptación quedan semanas por delante', () => {
+    expect(ketoAdaptationWeeksLeft('2026-07-18', TODAY)).toBeGreaterThan(0)
+    expect(ketoAdaptationWeeksLeft('2026-01-01', TODAY)).toBe(0)
+    expect(ketoAdaptationWeeksLeft(undefined, TODAY)).toBe(0)
+  })
+
+  it('en adaptación cetogénica no se sube a intensidad media-alta', () => {
+    const ketoNuevo: Profile = { ...profile, ketoSince: '2026-07-15' }
+    const rec = recommend(ketoNuevo, goodDay(), establishedHistory(), TODAY)
+    expect(rec.ketoAdapting).toBe(true)
+    expect(rec.intensity).not.toBe('media-alta')
+  })
+
+  it('en cetosis se evitan las series de muchísimas repeticiones', () => {
+    const conKeto = repPrescription('tonificar', 'media-alta', true, true)
+    const sinKeto = repPrescription('tonificar', 'media-alta', false, true)
+    expect(conKeto.reps).toBe('10-12')
+    expect(sinKeto.reps).toBe('12-15')
+    // Y se descansa más, que es lo que sostiene la calidad sin glucógeno.
+    expect(conKeto.restSeconds).toBeGreaterThan(sinKeto.restSeconds)
+  })
+
+  it('los básicos descansan más que los accesorios', () => {
+    const basico = repPrescription('masa', 'media-alta', false, true)
+    const accesorio = repPrescription('masa', 'media-alta', false, false)
+    expect(basico.restSeconds).toBeGreaterThan(accesorio.restSeconds)
+  })
+
+  it('calcula el objetivo de proteína diaria', () => {
+    const t = proteinTarget(75, 'recomposicion')
+    expect(t.min).toBe(150)
+    expect(t.max).toBe(195)
+  })
+})
+
+describe('construcción de la sesión', () => {
   it('solo propone ejercicios con el equipamiento disponible', () => {
-    const rec = recommend(profile, computeReadiness(checkIn()), [], TODAY)
-    const session = buildSession(rec, profile, [], TODAY)
-    expect(session.exercises.length).toBeGreaterThan(0)
-    for (const pe of session.exercises) {
-      // Nada de barra, poleas ni máquinas: el perfil no las tiene.
-      expect(pe.exerciseId).not.toMatch(/barra$|polea|maquina|prensa/)
+    const rec = recommend(profile, goodDay(), establishedHistory(), TODAY)
+    const s = buildSession(rec, profile, establishedHistory(), TODAY)
+    expect(s.exercises.length).toBeGreaterThan(0)
+    for (const pe of s.exercises) {
+      expect(pe.exerciseId).not.toMatch(/_barra$|polea|maquina|prensa|kettlebell|dominadas/)
     }
   })
 
   it('el peso sugerido nunca supera el material disponible', () => {
-    const massProfile: Profile = { ...profile, goal: 'masa' }
-    const rec = {
-      kind: 'fuerza' as const,
-      title: 't',
-      message: '',
-      focus: ['pecho' as const, 'espalda' as const],
-      intensity: 'media-alta' as const
-    }
-    const session = buildSession(rec, massProfile, [], TODAY)
-    for (const pe of session.exercises) {
+    const rec = recommend({ ...profile, goal: 'masa' }, goodDay(), establishedHistory(), TODAY)
+    const s = buildSession(rec, { ...profile, goal: 'masa' }, establishedHistory(), TODAY)
+    for (const pe of s.exercises) {
       if (pe.plan.weightKg) expect(pe.plan.weightKg).toBeLessThanOrEqual(24)
     }
   })
 
-  it('progresa suave a partir del último peso registrado', () => {
-    const history: Session[] = [
+  it('cada serie lleva repeticiones en reserva y descanso', () => {
+    const rec = recommend(profile, goodDay(), establishedHistory(), TODAY)
+    const s = buildSession(rec, profile, establishedHistory(), TODAY, true)
+    const fuerza = s.exercises.filter((e) => e.primary !== 'cardio')
+    expect(fuerza.length).toBeGreaterThan(0)
+    for (const pe of fuerza) {
+      expect(pe.plan.rir).toBeGreaterThanOrEqual(2)
+      expect(pe.plan.restSeconds).toBeGreaterThan(0)
+    }
+  })
+
+  it('la vuelta progresiva reduce las series', () => {
+    const history = [session('2026-07-05', ['flexiones'])]
+    const rec = recommend(profile, goodDay(), history, TODAY)
+    const s = buildSession(rec, profile, history, TODAY)
+    for (const pe of s.exercises) expect(pe.plan.sets).toBeLessThanOrEqual(2)
+  })
+
+  /** Historial donde el press se hizo a 14 kg, y después otra sesión distinta. */
+  function pressHistory(rpe: 1 | 5): Session[] {
+    return [
       {
-        ...strengthSession('2026-07-20', ['press_banca_mancuernas']),
+        ...session('2026-07-18', ['press_banca_mancuernas']),
+        rpe,
         exercises: [
           {
             exerciseId: 'press_banca_mancuernas',
@@ -159,28 +323,66 @@ describe('workoutBuilder', () => {
             actualWeightKg: 14
           }
         ]
-      }
+      },
+      session('2026-07-21', ['sentadilla_goblet'])
     ]
-    const rec = {
-      kind: 'fuerza' as const,
-      title: 't',
-      message: '',
-      focus: ['pecho' as const],
-      intensity: 'media-alta' as const
-    }
-    const session = buildSession(rec, profile, history, TODAY)
-    const press = session.exercises.find((e) => e.exerciseId === 'press_banca_mancuernas')
-    expect(press?.plan.weightKg).toBeGreaterThanOrEqual(14)
-    expect(press?.plan.weightKg).toBeLessThanOrEqual(16.5)
+  }
+
+  it('si la última sesión costó mucho, no sube el peso', () => {
+    const s = buildSession({ ...baseRec(), focus: ['pecho'] }, profile, pressHistory(1), TODAY)
+    const press = s.exercises.find((e) => e.exerciseId === 'press_banca_mancuernas')
+    expect(press?.plan.weightKg).toBe(14)
+  })
+
+  it('si la última sesión fue cómoda, progresa', () => {
+    const s = buildSession({ ...baseRec(), focus: ['pecho'] }, profile, pressHistory(5), TODAY)
+    const press = s.exercises.find((e) => e.exerciseId === 'press_banca_mancuernas')
+    expect(press?.plan.weightKg).toBeGreaterThan(14)
+  })
+
+  it('varía los ejercicios respecto a la última sesión', () => {
+    const history = [...establishedHistory(), session('2026-07-22', ['press_banca_mancuernas'])]
+    const rec = { ...baseRec(), focus: ['pecho' as MuscleGroup] }
+    const s = buildSession(rec, profile, history, TODAY)
+    expect(s.exercises[0].exerciseId).not.toBe('press_banca_mancuernas')
+  })
+
+  it('explica siempre por qué recomienda lo que recomienda', () => {
+    const rec = recommend(profile, goodDay(), establishedHistory(), TODAY)
+    expect(rec.reasons.length).toBeGreaterThan(0)
+  })
+
+  it('la sesión de vuelta mantiene al menos 2 series por ejercicio', () => {
+    const history = [session('2026-07-05', ['flexiones'])]
+    const rec = recommend(profile, goodDay(), history, TODAY)
+    const s = buildSession(rec, profile, history, TODAY)
+    for (const pe of s.exercises) expect(pe.plan.sets).toBeGreaterThanOrEqual(2)
   })
 })
 
-describe('muscleBalance', () => {
-  it('detecta el grupo menos trabajado', () => {
-    const sessions = [strengthSession('2026-07-23', ['flexiones', 'flexiones_inclinadas'])]
-    const balance = computeBalance(sessions, TODAY)
-    const neglected = neglectedGroups(balance)
-    expect(neglected[0]).not.toBe('pecho')
-    expect(balance.pecho).toBeGreaterThan(0)
-  })
+describe('cobertura del catálogo', () => {
+  // Sin esto, un grupo sin opción suave desaparece de las sesiones de vuelta,
+  // que son justo las que más lo necesitan.
+  const minimo: Profile = { ...profile, equipment: ['peso_corporal', 'bandas'], maxWeights: {} }
+
+  for (const group of MUSCLE_GROUPS.filter((g) => g !== 'cardio')) {
+    it(`${group} tiene ejercicio suave solo con peso corporal y bandas`, () => {
+      const rec = { ...baseRec(), focus: [group], intensity: 'suave' as const, volumeScale: 0.5 }
+      const s = buildSession(rec, minimo, [], TODAY)
+      expect(s.exercises.some((e) => e.primary === group)).toBe(true)
+    })
+  }
 })
+
+function baseRec() {
+  return {
+    kind: 'fuerza' as const,
+    title: 't',
+    message: '',
+    focus: [] as MuscleGroup[],
+    intensity: 'media-alta' as const,
+    volumeScale: 1,
+    rir: 2,
+    reasons: []
+  }
+}

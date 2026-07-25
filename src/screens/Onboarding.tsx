@@ -8,8 +8,15 @@ import {
   type Profile
 } from '../domain/types'
 import { actions } from '../store/store'
+import Icon from '../components/Icon'
 
 const ALL_EQUIPMENT = Object.keys(EQUIPMENT_LABELS) as Equipment[]
+
+const GOAL_HINTS: Record<Goal, string> = {
+  masa: 'Cargas algo más altas, 6–10 repeticiones, más descanso entre series.',
+  tonificar: 'Repeticiones medias y sesiones más ligeras, sin buscar el fallo.',
+  recomposicion: 'Rango intermedio de 8–12, equilibrando fuerza y gasto.'
+}
 
 export default function Onboarding() {
   const [step, setStep] = useState(0)
@@ -19,10 +26,10 @@ export default function Onboarding() {
   const [goal, setGoal] = useState<Goal | null>(null)
   const [equipment, setEquipment] = useState<Equipment[]>(['peso_corporal'])
   const [maxWeights, setMaxWeights] = useState<Partial<Record<Equipment, number>>>({})
+  const [ketoSince, setKetoSince] = useState('')
 
-  function toggleEquipment(eq: Equipment) {
-    setEquipment((prev) => (prev.includes(eq) ? prev.filter((e) => e !== eq) : [...prev, eq]))
-  }
+  const ownedWeighted = WEIGHTED_EQUIPMENT.filter((eq) => equipment.includes(eq))
+  const total = 5
 
   function finish() {
     if (!goal) return
@@ -32,136 +39,158 @@ export default function Onboarding() {
       weightKg: weight ? Number(weight) : undefined,
       goal,
       equipment,
-      maxWeights
+      maxWeights,
+      ketoSince: ketoSince || undefined
     }
     actions.saveProfile(profile)
   }
 
-  const ownedWeighted = WEIGHTED_EQUIPMENT.filter((eq) => equipment.includes(eq))
-
   return (
-    <div>
-      <h1>Ritmo</h1>
-      <p className="subtitle">Entrenar sin estrés, al ritmo de tu cuerpo.</p>
+    <div className="fade-in">
+      <div className="meter" style={{ marginBottom: 28 }} aria-hidden="true">
+        {Array.from({ length: total }, (_, i) => (
+          <span key={i} className={i <= step ? 'on' : ''} />
+        ))}
+      </div>
 
       {step === 0 && (
-        <div className="card">
-          <span className="big-sun">🌅</span>
-          <h2>Bienvenido</h2>
-          <p className="muted">
-            Esta app no te impone un plan: escucha cómo está tu cuerpo, mira qué has trabajado y te
-            propone cada día lo que más te conviene. El ejercicio como acompañante de tus hábitos —
-            luz solar, ritmos circadianos, buen descanso — no como una obligación más.
+        <>
+          <Icon name="sun" className="sun-mark" />
+          <h1>Ritmo</h1>
+          <p className="lede">
+            El ejercicio como acompañante de tus hábitos, no como una obligación más. La app mira
+            cómo estás, qué has trabajado y cuánto llevas parado, y decide por ti.
           </p>
-          <div className="divider" />
-          <label className="field">
-            <span>¿Cómo te llamas?</span>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre" />
-          </label>
-          <div style={{ display: 'flex', gap: 12 }}>
-            <label className="field" style={{ flex: 1 }}>
-              <span>Edad (opcional)</span>
-              <input type="number" value={age} onChange={(e) => setAge(e.target.value)} placeholder="—" />
+          <div className="card" style={{ marginTop: 28 }}>
+            <label className="field">
+              <span>¿Cómo te llamas?</span>
+              <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre" />
             </label>
-            <label className="field" style={{ flex: 1 }}>
-              <span>Peso kg (opcional)</span>
-              <input type="number" value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="—" />
-            </label>
+            <div className="field-row" style={{ marginTop: 16 }}>
+              <label className="field">
+                <span>Edad</span>
+                <input type="number" value={age} onChange={(e) => setAge(e.target.value)} placeholder="Opcional" />
+              </label>
+              <label className="field">
+                <span>Peso (kg)</span>
+                <input type="number" value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="Opcional" />
+              </label>
+            </div>
           </div>
-          <button className="btn-primary" onClick={() => setStep(1)}>Continuar</button>
-        </div>
+          <button className="btn btn-primary" onClick={() => setStep(1)}>
+            Continuar
+          </button>
+        </>
       )}
 
       {step === 1 && (
-        <div className="card">
-          <h2>¿Cuál es tu objetivo?</h2>
-          <p className="muted" style={{ marginBottom: 14 }}>
-            Los entrenos se diseñarán para lograrlo estresando el cuerpo lo mínimo posible.
-          </p>
-          <div className="chip-row" style={{ flexDirection: 'column' }}>
+        <>
+          <p className="eyebrow">Paso 2</p>
+          <h1>¿Qué buscas?</h1>
+          <p className="lede">Ajusta series, repeticiones y cargas para llegar ahí con el mínimo estrés.</p>
+          <div className="options options-col" style={{ marginTop: 24 }}>
             {(Object.keys(GOAL_LABELS) as Goal[]).map((g) => (
-              <button
-                key={g}
-                className={`chip ${goal === g ? 'selected' : ''}`}
-                style={{ width: '100%', textAlign: 'left', padding: '14px 16px' }}
-                onClick={() => setGoal(g)}
-              >
+              <button key={g} className="opt opt-block" aria-pressed={goal === g} onClick={() => setGoal(g)}>
                 {GOAL_LABELS[g]}
+                <span className="opt-desc">{GOAL_HINTS[g]}</span>
               </button>
             ))}
           </div>
-          <div style={{ height: 16 }} />
-          <button className="btn-primary" disabled={!goal} onClick={() => setStep(2)}>
+          <div style={{ height: 20 }} />
+          <button className="btn btn-primary" disabled={!goal} onClick={() => setStep(2)}>
             Continuar
           </button>
-          <button className="btn-ghost" onClick={() => setStep(0)}>Atrás</button>
-        </div>
+          <button className="btn-quiet" onClick={() => setStep(0)}>
+            Atrás
+          </button>
+        </>
       )}
 
       {step === 2 && (
-        <div className="card">
-          <h2>¿Qué tienes para entrenar?</h2>
-          <p className="muted" style={{ marginBottom: 14 }}>
-            Marca tu equipamiento. Solo te propondremos ejercicios que puedas hacer.
-          </p>
-          <div className="chip-row">
+        <>
+          <p className="eyebrow">Paso 3</p>
+          <h1>¿Qué tienes?</h1>
+          <p className="lede">Solo se te propondrán ejercicios que puedas hacer de verdad.</p>
+          <div className="options" style={{ marginTop: 24 }}>
             {ALL_EQUIPMENT.map((eq) => (
               <button
                 key={eq}
-                className={`chip ${equipment.includes(eq) ? 'selected' : ''}`}
-                onClick={() => toggleEquipment(eq)}
+                className="opt"
+                aria-pressed={equipment.includes(eq)}
+                onClick={() =>
+                  setEquipment((prev) => (prev.includes(eq) ? prev.filter((e) => e !== eq) : [...prev, eq]))
+                }
               >
                 {EQUIPMENT_LABELS[eq]}
               </button>
             ))}
           </div>
-          <div style={{ height: 16 }} />
-          <button className="btn-primary" onClick={() => setStep(ownedWeighted.length > 0 ? 3 : 4)}>
+          <div style={{ height: 20 }} />
+          <button className="btn btn-primary" onClick={() => setStep(ownedWeighted.length ? 3 : 4)}>
             Continuar
           </button>
-          <button className="btn-ghost" onClick={() => setStep(1)}>Atrás</button>
-        </div>
+          <button className="btn-quiet" onClick={() => setStep(1)}>
+            Atrás
+          </button>
+        </>
       )}
 
       {step === 3 && (
-        <div className="card">
-          <h2>¿Hasta qué peso llegas?</h2>
-          <p className="muted" style={{ marginBottom: 14 }}>
-            Peso máximo disponible en cada equipo (kg). Así las sugerencias serán realistas.
-          </p>
-          {ownedWeighted.map((eq) => (
-            <label className="field" key={eq}>
-              <span>{EQUIPMENT_LABELS[eq]}</span>
-              <input
-                type="number"
-                placeholder="kg"
-                value={maxWeights[eq] ?? ''}
-                onChange={(e) =>
-                  setMaxWeights((prev) => ({
-                    ...prev,
-                    [eq]: e.target.value ? Number(e.target.value) : undefined
-                  }))
-                }
-              />
-            </label>
-          ))}
-          <button className="btn-primary" onClick={() => setStep(4)}>Continuar</button>
-          <button className="btn-ghost" onClick={() => setStep(2)}>Atrás</button>
-        </div>
+        <>
+          <p className="eyebrow">Paso 4</p>
+          <h1>¿Cuánto peso?</h1>
+          <p className="lede">El máximo del que dispones en cada equipo, para que las cargas sean realistas.</p>
+          <div className="card" style={{ marginTop: 24 }}>
+            {ownedWeighted.map((eq, i) => (
+              <label className="field" key={eq} style={{ marginTop: i ? 16 : 0 }}>
+                <span>{EQUIPMENT_LABELS[eq]}</span>
+                <input
+                  type="number"
+                  placeholder="kg"
+                  value={maxWeights[eq] ?? ''}
+                  onChange={(e) =>
+                    setMaxWeights((prev) => ({
+                      ...prev,
+                      [eq]: e.target.value ? Number(e.target.value) : undefined
+                    }))
+                  }
+                />
+              </label>
+            ))}
+          </div>
+          <button className="btn btn-primary" onClick={() => setStep(4)}>
+            Continuar
+          </button>
+          <button className="btn-quiet" onClick={() => setStep(2)}>
+            Atrás
+          </button>
+        </>
       )}
 
       {step === 4 && (
-        <div className="card">
-          <span className="big-sun">🌄</span>
-          <h2>Todo listo{name ? `, ${name.trim()}` : ''}</h2>
-          <p className="muted">
-            A partir de ahora, cada día que quieras entrenar te haremos unas preguntas rápidas sobre
-            cómo estás — sueño, luz, energía — y te propondremos lo que tu cuerpo necesita: fuerza,
-            cardio o descanso. Sin culpas, sin rachas, sin presión.
+        <>
+          <p className="eyebrow">Paso 5</p>
+          <h1>Cetosis</h1>
+          <p className="lede">
+            Las primeras semanas en cetosis el rendimiento se resiente mientras el cuerpo se adapta.
+            Si me dices desde cuándo, bajo la exigencia durante ese periodo.
           </p>
-          <div style={{ height: 16 }} />
-          <button className="btn-primary" onClick={finish}>Empezar</button>
-        </div>
+          <div className="card" style={{ marginTop: 24 }}>
+            <label className="field">
+              <span>Desde cuándo llevas dieta cetogénica</span>
+              <input type="date" value={ketoSince} onChange={(e) => setKetoSince(e.target.value)} />
+            </label>
+            <p className="faint" style={{ marginTop: 12 }}>
+              Déjalo vacío si no la sigues o si ya llevas mucho tiempo adaptado.
+            </p>
+          </div>
+          <button className="btn btn-primary" onClick={finish}>
+            Empezar
+          </button>
+          <button className="btn-quiet" onClick={() => setStep(ownedWeighted.length ? 3 : 2)}>
+            Atrás
+          </button>
+        </>
       )}
     </div>
   )
