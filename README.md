@@ -128,6 +128,22 @@ app no debería ser la que te rompa la higiene lumínica que te está pidiendo r
 El lenguaje acompaña y nunca presiona. No hay rachas que romper ni notificaciones de culpa; hasta
 el botón de cancelar dice «Hoy no puedo — descartar sin culpa».
 
+## Instalarla en el móvil
+
+Cada subida a la rama principal despliega la app sola en GitHub Pages
+(`.github/workflows/deploy.yml`), y solo publica si los tests pasan. La URL es
+**https://albesancmart1-cyber.github.io/app-ejercicio/**.
+
+Ábrela ahí en el móvil y añádela a la pantalla de inicio: en Android, menú de Chrome → «Instalar
+aplicación»; en iPhone, Safari → compartir → «Añadir a pantalla de inicio». Queda con su icono, a
+pantalla completa y funcionando sin conexión.
+
+La primera vez hay que activar Pages en el repositorio: **Settings → Pages → Source: GitHub
+Actions**.
+
+En local la app se sirve en la raíz y en Pages bajo `/app-ejercicio/`. Lo controla `BASE_PATH` en
+`vite.config.ts`, que el workflow define al construir.
+
 ## Desarrollo
 
 ```bash
