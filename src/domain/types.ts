@@ -99,6 +99,8 @@ export interface Profile {
   ketoSince?: string
   /** mg de DHA por pastilla de suplemento, si tiene. */
   dhaPillMg?: number
+  /** Altura en cm, necesaria para el FFMI. */
+  heightCm?: number
 }
 
 export type StressLevel = 'bajo' | 'medio' | 'alto'
@@ -147,13 +149,28 @@ export interface PlannedSet {
   restSeconds?: number
 }
 
+/** Lo que realmente se hizo en una serie concreta. */
+export interface SetLog {
+  /** Peso real usado, en kg. Ausente en ejercicios de peso corporal. */
+  weightKg?: number
+  /** Repeticiones realmente completadas. */
+  reps?: number
+  done: boolean
+}
+
 export interface PlannedExercise {
   exerciseId: string
   name: string
   primary: MuscleGroup
   plan: PlannedSet
+  /**
+   * Se mantienen por compatibilidad: el balance muscular y la progresión los leen.
+   * Cuando hay `logs`, se recalculan a partir de ellos en `syncExercise`.
+   */
   done?: boolean
   actualWeightKg?: number
+  /** Registro serie a serie. Ausente en las sesiones guardadas antes de existir. */
+  logs?: SetLog[]
 }
 
 export interface Session {
@@ -189,9 +206,18 @@ export interface Recommendation {
   userOverride?: boolean
 }
 
+/** Una lectura de la báscula. Los porcentajes vienen tal cual del aparato. */
+export interface BodyMeasurement {
+  date: string // ISO yyyy-mm-dd
+  weightKg: number
+  fatPercent?: number
+  musclePercent?: number
+}
+
 export interface AppData {
   version: 1
   profile: Profile | null
   checkIns: CheckIn[]
   sessions: Session[]
+  measurements: BodyMeasurement[]
 }

@@ -1,4 +1,13 @@
-import { MUSCLE_GROUPS, MUSCLE_LABELS } from '../domain/types'
+import { useState } from 'react'
+import { MUSCLE_GROUPS, MUSCLE_LABELS, type BodyMeasurement } from '../domain/types'
+import {
+  compareComposition,
+  computeComposition,
+  esMedicionValida,
+  formatDelta,
+  sortMeasurements
+} from '../domain/body'
+import { actions } from '../store/store'
 import { computeBalance, weeklySets } from '../domain/muscleBalance'
 import { computeLeptinSignal } from '../domain/leptin'
 import { WEEKLY_SETS } from '../domain/protocol'
@@ -14,6 +23,165 @@ function lastNDays(n: number): string[] {
     days.push(`${d.getFullYear()}-${m}-${String(d.getDate()).padStart(2, '0')}`)
   }
   return days
+}
+
+function BodyCompositionCard({
+  measurements,
+  heightCm,
+  today
+}: {
+  measurements: BodyMeasurement[]
+  heightCm?: number
+  today: string
+}) {
+  const [abierto, setAbierto] = useState(false)
+  const [peso, setPeso] = useState('')
+  const [grasa, setGrasa] = useState('')
+  const [musculo, setMusculo] = useState('')
+  const [error, setError] = useState<string | null>(null)
+
+  const ordenadas = sortMeasurements(measurements)
+  const ultima = ordenadas[0]
+  const anterior = ordenadas[1]
+  const primera = ordenadas[ordenadas.length - 1]
+
+  const actual = ultima ? computeComposition(ultima, heightCm) : null
+  const vsAnterior = actual && anterior ? compareComposition(actual, computeComposition(anterior, heightCm)) : null
+  const vsPrimera =
+    actual && primera && primera !== ultima
+      ? compareComposition(actual, computeComposition(primera, heightCm))
+      : null
+
+  function guardar() {
+    const medicion: BodyMeasurement = {
+      date: today,
+      weightKg: Number(peso),
+      fatPercent: grasa ? Number(grasa) : undefined,
+      musclePercent: musculo ? Number(musculo) : undefined
+    }
+    if (!esMedicionValida(medicion)) {
+      setError('Esos números no cuadran. Revisa el peso y que grasa y músculo no sumen más de 100 %.')
+      return
+    }
+    actions.saveMeasurement(medicion)
+    setPeso('')
+    setGrasa('')
+    setMusculo('')
+    setError(null)
+    setAbierto(false)
+  }
+
+  return (
+    <div className="card">
+      <p className="eyebrow">Composición corporal</p>
+
+      {actual ? (
+        <>
+          <div className="row" style={{ alignItems: 'flex-end' }}>
+            <span className="score">
+              {actual.weightKg.toLocaleString('es-ES')}
+              <small> kg</small>
+            </span>
+            {actual.ffmi !== undefined && <span className="tag accent">FFMI {actual.ffmi}</span>}
+          </div>
+
+          <div style={{ marginTop: 16 }}>
+            {actual.fatKg !== undefined && (
+              <div className="row" style={{ padding: '7px 0' }}>
+                <span className="dim">Grasa</span>
+                <span>
+                  {actual.fatKg} kg{' '}
+                  {vsAnterior?.fatKg !== undefined && (
+                    <span className={vsAnterior.fatKg <= 0 ? 'accent' : 'faint'}>
+                      ({formatDelta(vsAnterior.fatKg)})
+                    </span>
+                  )}
+                </span>
+              </div>
+            )}
+            {actual.muscleKg !== undefined && (
+              <div className="row" style={{ padding: '7px 0' }}>
+                <span className="dim">Músculo</span>
+                <span>
+                  {actual.muscleKg} kg{' '}
+                  {vsAnterior?.muscleKg !== undefined && (
+                    <span className={vsAnterior.muscleKg >= 0 ? 'accent' : 'faint'}>
+                      ({formatDelta(vsAnterior.muscleKg)})
+                    </span>
+                  )}
+                </span>
+              </div>
+            )}
+            {actual.leanKg !== undefined && (
+              <div className="row" style={{ padding: '7px 0' }}>
+                <span className="dim">Masa libre de grasa</span>
+                <span>{actual.leanKg} kg</span>
+              </div>
+            )}
+          </div>
+
+          {vsAnterior?.recomposicion && (
+            <p className="dim" style={{ marginTop: 14 }}>
+              Grasa abajo y músculo arriba a la vez: eso es recomposición, y es exactamente lo que
+              buscas. El peso solo no lo habría contado.
+            </p>
+          )}
+          {vsPrimera && (
+            <p className="faint" style={{ marginTop: 14 }}>
+              Desde la primera medida: peso {formatDelta(vsPrimera.weightKg)}, grasa{' '}
+              {formatDelta(vsPrimera.fatKg)}, músculo {formatDelta(vsPrimera.muscleKg)}.
+            </p>
+          )}
+          <p className="faint" style={{ marginTop: 14 }}>
+            La masa libre de grasa incluye hueso, órganos y agua, por eso siempre supera a la
+            muscular. La bioimpedancia se mueve ±3–5 % según la hidratación: mide siempre en las
+            mismas condiciones y fíjate en la tendencia, no en una lectura suelta.
+          </p>
+        </>
+      ) : (
+        <p className="dim">
+          Cuando te peses, anota aquí el peso y los porcentajes de grasa y músculo que te dé la
+          báscula, y te los paso a kilos. Es la única forma de ver si estás recomponiendo.
+        </p>
+      )}
+
+      <hr className="rule" />
+      {!abierto ? (
+        <button className="btn-quiet" onClick={() => setAbierto(true)}>
+          Anotar una medición
+        </button>
+      ) : (
+        <div className="fade-in">
+          <div className="field-row">
+            <label className="field">
+              <span>Peso (kg)</span>
+              <input type="number" inputMode="decimal" value={peso} onChange={(e) => setPeso(e.target.value)} />
+            </label>
+            <label className="field">
+              <span>Grasa (%)</span>
+              <input type="number" inputMode="decimal" value={grasa} onChange={(e) => setGrasa(e.target.value)} />
+            </label>
+            <label className="field">
+              <span>Músculo (%)</span>
+              <input type="number" inputMode="decimal" value={musculo} onChange={(e) => setMusculo(e.target.value)} />
+            </label>
+          </div>
+          {error && (
+            <p className="faint" style={{ marginTop: 10 }}>
+              {error}
+            </p>
+          )}
+          <div style={{ height: 14 }} />
+          <button className="btn btn-primary" disabled={!peso} onClick={guardar}>
+            Guardar medición
+          </button>
+          <button className="btn-quiet" onClick={() => setAbierto(false)}>
+            Cancelar
+          </button>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function History() {
@@ -47,6 +215,8 @@ export default function History() {
           buscamos aquí no es acumular, es que no quede ninguno olvidado.
         </p>
       </div>
+
+      <BodyCompositionCard measurements={data.measurements} heightCm={data.profile?.heightCm} today={today} />
 
       <div className="card">
         <p className="eyebrow">Señal de leptina</p>

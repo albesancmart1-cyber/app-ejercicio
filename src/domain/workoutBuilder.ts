@@ -9,6 +9,7 @@ import type {
   Session
 } from './types'
 import { repPrescription, setsFor } from './protocol'
+import { initLogs, repVerdict, type RepVerdict } from './setLogs'
 
 let idCounter = 0
 function newId(): string {
@@ -48,13 +49,21 @@ function roundStep(kg: number): number {
 interface LastPerformance {
   weightKg?: number
   rpe?: number
+  /** Veredicto de las repeticiones registradas, si las hubo. */
+  verdict?: RepVerdict
 }
 
 function lastPerformance(exerciseId: string, history: Session[]): LastPerformance | undefined {
   const sorted = [...history].filter((s) => s.completed).sort((a, b) => (a.date < b.date ? 1 : -1))
   for (const s of sorted) {
     const pe = s.exercises.find((p) => p.exerciseId === exerciseId && p.done === true)
-    if (pe) return { weightKg: pe.actualWeightKg ?? pe.plan.weightKg, rpe: s.rpe }
+    if (pe) {
+      return {
+        weightKg: pe.actualWeightKg ?? pe.plan.weightKg,
+        rpe: s.rpe,
+        verdict: repVerdict(pe)
+      }
+    }
   }
   return undefined
 }
@@ -74,7 +83,14 @@ function suggestWeight(
 
   const last = lastPerformance(exercise.id, history)
   if (last?.weightKg) {
-    // Sensación 1–2 = muy duro → mantenemos. 4–5 = cómodo → subimos algo más.
+    // Las repeticiones registradas son dato objetivo: mandan sobre la sensación.
+    if (last.verdict === 'mantiene') return Math.min(last.weightKg, max)
+    if (last.verdict === 'sube') {
+      const next = Math.max(last.weightKg + 1, last.weightKg * 1.05)
+      return Math.min(roundStep(next), max)
+    }
+
+    // Sin repeticiones registradas, seguimos guiándonos por la sensación.
     const hard = last.rpe !== undefined && last.rpe <= 2
     const easy = last.rpe !== undefined && last.rpe >= 4
     if (hard) return Math.min(last.weightKg, max)
@@ -219,7 +235,8 @@ export function buildSession(
     date: todayIso,
     kind: recommendation.kind,
     title: recommendation.title,
-    exercises,
+    // Cada ejercicio nace con sus series listas para rellenar.
+    exercises: exercises.map((pe) => ({ ...pe, logs: initLogs(pe.plan) })),
     cardioMinutes: recommendation.cardioMinutes,
     completed: false
   }

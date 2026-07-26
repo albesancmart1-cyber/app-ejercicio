@@ -23,6 +23,7 @@ export default function Onboarding() {
   const [name, setName] = useState('')
   const [age, setAge] = useState('')
   const [weight, setWeight] = useState('')
+  const [height, setHeight] = useState('')
   const [goal, setGoal] = useState<Goal | null>(null)
   const [equipment, setEquipment] = useState<Equipment[]>(['peso_corporal'])
   const [maxWeights, setMaxWeights] = useState<Partial<Record<Equipment, number>>>({})
@@ -38,6 +39,7 @@ export default function Onboarding() {
       name: name.trim() || 'Tú',
       age: age ? Number(age) : undefined,
       weightKg: weight ? Number(weight) : undefined,
+      heightCm: height ? Number(height) : undefined,
       goal,
       equipment,
       maxWeights,
@@ -76,6 +78,10 @@ export default function Onboarding() {
               <label className="field">
                 <span>Peso (kg)</span>
                 <input type="number" value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="Opcional" />
+              </label>
+              <label className="field">
+                <span>Altura (cm)</span>
+                <input type="number" value={height} onChange={(e) => setHeight(e.target.value)} placeholder="Opcional" />
               </label>
             </div>
           </div>

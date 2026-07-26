@@ -100,6 +100,33 @@ export default function Settings() {
       </div>
 
       <div className="card">
+        <p className="eyebrow">Tus medidas</p>
+        <div className="field-row">
+          <label className="field">
+            <span>Peso (kg)</span>
+            <input
+              type="number"
+              placeholder="—"
+              value={profile.weightKg ?? ''}
+              onChange={(e) => update({ weightKg: e.target.value ? Number(e.target.value) : undefined })}
+            />
+          </label>
+          <label className="field">
+            <span>Altura (cm)</span>
+            <input
+              type="number"
+              placeholder="—"
+              value={profile.heightCm ?? ''}
+              onChange={(e) => update({ heightCm: e.target.value ? Number(e.target.value) : undefined })}
+            />
+          </label>
+        </div>
+        <p className="faint" style={{ marginTop: 10 }}>
+          La altura solo se usa para calcular el FFMI en la pestaña Cuerpo.
+        </p>
+      </div>
+
+      <div className="card">
         <p className="eyebrow">Cetosis y descanso</p>
         <label className="field">
           <span>Dieta cetogénica desde</span>

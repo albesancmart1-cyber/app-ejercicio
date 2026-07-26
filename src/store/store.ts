@@ -1,9 +1,11 @@
 import { useSyncExternalStore } from 'react'
-import type { AppData, CheckIn, Profile, Session } from '../domain/types'
+import type { AppData, BodyMeasurement, CheckIn, Profile, Session } from '../domain/types'
 
 const STORAGE_KEY = 'ritmo-data-v1'
 
-const emptyData: AppData = { version: 1, profile: null, checkIns: [], sessions: [] }
+// Los datos guardados antes de existir `measurements` cargan igual: `load()`
+// fusiona sobre esta base, así que la clave que falte queda con su valor vacío.
+const emptyData: AppData = { version: 1, profile: null, checkIns: [], sessions: [], measurements: [] }
 
 function load(): AppData {
   try {
@@ -65,6 +67,15 @@ export const actions = {
   },
   discardSession(id: string) {
     setState((s) => ({ ...s, sessions: s.sessions.filter((x) => x.id !== id) }))
+  },
+  saveMeasurement(measurement: BodyMeasurement) {
+    setState((s) => ({
+      ...s,
+      measurements: [...s.measurements.filter((m) => m.date !== measurement.date), measurement]
+    }))
+  },
+  deleteMeasurement(date: string) {
+    setState((s) => ({ ...s, measurements: s.measurements.filter((m) => m.date !== date) }))
   },
   exportData(): string {
     return JSON.stringify(state, null, 2)

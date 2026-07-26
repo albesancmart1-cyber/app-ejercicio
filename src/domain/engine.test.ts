@@ -417,6 +417,70 @@ describe('construcción de la sesión', () => {
     expect(press?.plan.weightKg).toBeGreaterThan(14)
   })
 
+  it('las repeticiones registradas mandan sobre la sensación', () => {
+    // Sesión cómoda (RPE 5) pero sin llegar al mínimo del rango: se mantiene el
+    // peso, porque el dato objetivo pesa más que la sensación.
+    const history: Session[] = [
+      {
+        ...session('2026-07-18', ['press_banca_mancuernas']),
+        rpe: 5,
+        exercises: [
+          {
+            exerciseId: 'press_banca_mancuernas',
+            name: 'Press banca',
+            primary: 'pecho',
+            plan: { sets: 2, reps: '8-12' },
+            done: true,
+            actualWeightKg: 14,
+            logs: [
+              { weightKg: 14, reps: 10, done: true },
+              { weightKg: 14, reps: 6, done: true }
+            ]
+          }
+        ]
+      },
+      session('2026-07-21', ['sentadilla_goblet'])
+    ]
+    const s = buildSession({ ...baseRec(), focus: ['pecho'] }, profile, history, TODAY)
+    expect(s.exercises.find((e) => e.exerciseId === 'press_banca_mancuernas')?.plan.weightKg).toBe(14)
+  })
+
+  it('llegar al tope del rango sube el peso aunque costara', () => {
+    const history: Session[] = [
+      {
+        ...session('2026-07-18', ['press_banca_mancuernas']),
+        rpe: 2,
+        exercises: [
+          {
+            exerciseId: 'press_banca_mancuernas',
+            name: 'Press banca',
+            primary: 'pecho',
+            plan: { sets: 2, reps: '8-12' },
+            done: true,
+            actualWeightKg: 14,
+            logs: [
+              { weightKg: 14, reps: 12, done: true },
+              { weightKg: 14, reps: 12, done: true }
+            ]
+          }
+        ]
+      },
+      session('2026-07-21', ['sentadilla_goblet'])
+    ]
+    const s = buildSession({ ...baseRec(), focus: ['pecho'] }, profile, history, TODAY)
+    const press = s.exercises.find((e) => e.exerciseId === 'press_banca_mancuernas')
+    expect(press?.plan.weightKg).toBeGreaterThan(14)
+  })
+
+  it('las sesiones nuevas nacen con sus series listas para rellenar', () => {
+    const rec = recommend(profile, goodDay(), establishedHistory(), TODAY)
+    const s = buildSession(rec, profile, establishedHistory(), TODAY)
+    for (const pe of s.exercises) {
+      expect(pe.logs, pe.name).toHaveLength(pe.plan.sets)
+      expect(pe.logs!.every((l) => !l.done)).toBe(true)
+    }
+  })
+
   it('varía los ejercicios respecto a la última sesión', () => {
     const history = [...establishedHistory(), session('2026-07-22', ['press_banca_mancuernas'])]
     const rec = { ...baseRec(), focus: ['pecho' as MuscleGroup] }

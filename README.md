@@ -23,9 +23,11 @@ servidor.
    apetecen pesas, «Prefiero algo con pesas» te lo cambia por fuerza contenida: sube un escalón,
    pero nunca se acerca al fallo y sigue respetando tus molestias, las 48 h de recuperación y la
    rampa de vuelta tras un parón.
-4. **Sesión** — ejercicios concretos con series, repeticiones, repeticiones en reserva, descanso
-   y peso sugerido. Al terminar indicas cómo te sentiste, y eso ajusta las cargas de la próxima.
-5. **Cuerpo** — señal de leptina, balance muscular de 14 días, grupos cubiertos y calendario.
+4. **Sesión** — ejercicios concretos con series, repeticiones, repeticiones en reserva, descanso y
+   peso sugerido. Anotas **serie a serie** el peso y las repeticiones que has hecho de verdad, y al
+   marcar una serie arranca solo el **temporizador de descanso**, que vibra al terminar.
+5. **Cuerpo** — composición corporal, señal de leptina, balance muscular de 14 días, grupos
+   cubiertos y calendario.
 6. **Mesa** — ideas de comida completa cetogénica para cuando no sabes qué cocinar.
 
 ## Base científica
@@ -112,6 +114,38 @@ Fuentes: [CSCCa/NSCA Transition Periods](https://www.nsca.com/about-us/position-
 Nada de esto sustituye el criterio de un profesional, y menos si hay lesiones o patologías de por
 medio.
 
+## Composición corporal
+
+Cuando te peses, anotas el peso y los porcentajes de grasa y músculo que dé la báscula, y la app los
+pasa a kilos: `grasa = peso × %grasa / 100`, `músculo = peso × %músculo / 100` y
+`masa libre de grasa = peso − grasa`. Con la altura calcula además el **FFMI** (masa libre de grasa
+dividida por la altura al cuadrado) y su versión **normalizada a 1,80 m** con la corrección habitual
+`+ 6,1 × (1,80 − altura)`, que permite comparar entre estaturas.
+
+Lo importante no es la lectura suelta sino la **variación**: para un objetivo de recomposición el
+peso puede quedarse clavado mientras baja la grasa y sube el músculo, y eso solo se ve en kilos. La
+app lo detecta y lo dice.
+
+Dos avisos que van en la propia pantalla, porque son la diferencia entre un dato útil y uno
+engañoso:
+
+- **Masa muscular y masa libre de grasa no son lo mismo.** La libre de grasa incluye hueso, órganos
+  y agua, así que siempre es mayor. Se muestran por separado para no confundir agua con músculo.
+- **La bioimpedancia se mueve ±3–5 % según la hidratación.** Conviene medir siempre en las mismas
+  condiciones y mirar la tendencia — lo mismo que pasa con el peso al día siguiente de un entreno
+  fuerte, que sube por retención de líquidos y no por grasa.
+
+Las lecturas imposibles se rechazan: porcentajes fuera de rango, o grasa y músculo sumando más de
+100 %.
+
+## Progresión de cargas
+
+Al registrar las repeticiones reales, la app aplica **doble progresión**, que es el método estándar:
+si completas todas las series en el tope del rango prescrito, sube el peso; si alguna se queda por
+debajo del mínimo, lo mantiene; en medio, progresa suave. Las repeticiones registradas mandan sobre
+la sensación porque son dato objetivo — puedes haber acabado cómodo y aun así no haber llegado al
+rango. Si no anotas repeticiones, se guía por la sensación como hacía antes.
+
 ## Mesa
 
 Un recetario para los días en que no sabes qué comer. **59 platos completos** de base animal —
@@ -192,7 +226,7 @@ En local la app se sirve en la raíz y en Pages bajo `/app-ejercicio/`. Lo contr
 ```bash
 npm install
 npm run dev       # servidor de desarrollo
-npm test          # 95 tests del motor, del catálogo, del DHA y de la leptina
+npm test          # 127 tests: motor, catálogo, DHA, leptina y composición corporal
 npm run build     # build de producción (PWA)
 npm run preview   # servir la build
 ```

@@ -1,73 +1,157 @@
 import { useState } from 'react'
-import type { PlannedExercise, Session } from '../domain/types'
+import type { PlannedExercise, Session, SetLog } from '../domain/types'
+import { initLogs, syncExercise, volumeLoad } from '../domain/setLogs'
 import { actions } from '../store/store'
 import Icon from '../components/Icon'
+import RestTimer from '../components/RestTimer'
 
 function planLabel(pe: PlannedExercise): string {
   const parts = [`${pe.plan.sets} × ${pe.plan.reps}`]
-  if (pe.plan.weightKg) parts.push(`${pe.plan.weightKg} kg`)
   if (pe.plan.rir !== undefined && pe.primary !== 'cardio') parts.push(`RIR ${pe.plan.rir}`)
   if (pe.plan.restSeconds) parts.push(`${Math.round(pe.plan.restSeconds / 60)}′ descanso`)
   return parts.join(' · ')
 }
 
+/** Dónde está el descanso activo: qué ejercicio y tras qué serie. */
+interface Resting {
+  exercise: number
+  set: number
+  seconds: number
+}
+
 export default function SessionScreen({ session }: { session: Session }) {
-  const [exercises, setExercises] = useState<PlannedExercise[]>(session.exercises)
+  const [exercises, setExercises] = useState<PlannedExercise[]>(() =>
+    // Las sesiones creadas antes de existir el registro no traen series.
+    session.exercises.map((e) => (e.logs ? e : { ...e, logs: initLogs(e.plan) }))
+  )
   const [rpe, setRpe] = useState<1 | 2 | 3 | 4 | 5 | null>(null)
   const [finishing, setFinishing] = useState(false)
+  const [resting, setResting] = useState<Resting | null>(null)
 
-  function toggleDone(i: number) {
-    setExercises((prev) => prev.map((e, idx) => (idx === i ? { ...e, done: e.done !== true } : e)))
-  }
-
-  function setWeight(i: number, value: string) {
+  function updateSet(ei: number, si: number, patch: Partial<SetLog>) {
     setExercises((prev) =>
-      prev.map((e, idx) => (idx === i ? { ...e, actualWeightKg: value ? Number(value) : undefined } : e))
+      prev.map((e, i) => {
+        if (i !== ei) return e
+        const logs = (e.logs ?? []).map((l, j) => (j === si ? { ...l, ...patch } : l))
+        return syncExercise({ ...e, logs })
+      })
     )
   }
 
-  const doneCount = exercises.filter((e) => e.done).length
+  function toggleSet(ei: number, si: number) {
+    const ejercicio = exercises[ei]
+    const serie = ejercicio.logs?.[si]
+    const marcando = !serie?.done
+    updateSet(ei, si, { done: marcando })
+
+    // El descanso arranca solo al completar una serie que no sea la última.
+    const esUltima = si === (ejercicio.logs?.length ?? 1) - 1
+    const descanso = ejercicio.plan.restSeconds
+    if (marcando && !esUltima && descanso && ejercicio.primary !== 'cardio') {
+      setResting({ exercise: ei, set: si, seconds: descanso })
+    } else if (!marcando) {
+      setResting(null)
+    }
+  }
+
+  const doneSets = exercises.reduce((acc, e) => acc + (e.logs ?? []).filter((l) => l.done).length, 0)
+  const totalSets = exercises.reduce((acc, e) => acc + (e.logs ?? []).length, 0)
+  const volumen = exercises.reduce((acc, e) => acc + volumeLoad(e), 0)
 
   return (
     <div className="fade-in">
       <p className="eyebrow">En marcha</p>
       <h1>{session.title}</h1>
       <p className="lede">
-        {doneCount} de {exercises.length} hechos. A tu ritmo: quedarte con ganas de más es la idea.
+        {doneSets} de {totalSets} series. A tu ritmo: quedarte con ganas de más es la idea.
       </p>
 
-      <div className="card" style={{ marginTop: 24 }}>
-        {exercises.map((e, i) => (
-          <div className="item" key={`${e.exerciseId}-${i}`}>
-            <button
-              className="check"
-              aria-pressed={e.done === true}
-              aria-label={`Marcar ${e.name}`}
-              onClick={() => toggleDone(i)}
-            >
-              <Icon name="check" />
-            </button>
-            <div className="item-body">
-              <div className="item-title">{e.name}</div>
-              <div className="item-meta">{planLabel(e)}</div>
-            </div>
-            {e.plan.weightKg !== undefined && (
-              <input
-                type="number"
-                className="weight-input"
-                placeholder={`${e.plan.weightKg}`}
-                value={e.actualWeightKg ?? ''}
-                onChange={(ev) => setWeight(i, ev.target.value)}
-                aria-label={`Peso usado en ${e.name}`}
-              />
-            )}
+      {exercises.map((e, ei) => (
+        <div className="card" key={`${e.exerciseId}-${ei}`}>
+          <div className="item-title">{e.name}</div>
+          <div className="item-meta" style={{ marginBottom: 14 }}>
+            {planLabel(e)}
           </div>
-        ))}
-      </div>
+
+          {e.primary === 'cardio' ? (
+            <div className="set-row">
+              <span className="set-index">·</span>
+              <span className="dim" style={{ flex: 1 }}>
+                {e.plan.reps}
+              </span>
+              <button
+                className="check"
+                aria-pressed={e.logs?.[0]?.done === true}
+                aria-label={`Marcar ${e.name}`}
+                onClick={() => toggleSet(ei, 0)}
+              >
+                <Icon name="check" />
+              </button>
+            </div>
+          ) : (
+            (e.logs ?? []).map((serie, si) => (
+              <div key={si}>
+                <div className="set-row">
+                  <span className="set-index">{si + 1}</span>
+                  <label className="set-field">
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      placeholder={e.plan.weightKg ? `${e.plan.weightKg}` : '—'}
+                      value={serie.weightKg ?? ''}
+                      onChange={(ev) =>
+                        updateSet(ei, si, {
+                          weightKg: ev.target.value ? Number(ev.target.value) : undefined
+                        })
+                      }
+                      aria-label={`Peso de la serie ${si + 1} de ${e.name}`}
+                    />
+                    <span>kg</span>
+                  </label>
+                  <label className="set-field">
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      placeholder={e.plan.reps.split('-')[0]}
+                      value={serie.reps ?? ''}
+                      onChange={(ev) =>
+                        updateSet(ei, si, {
+                          reps: ev.target.value ? Number(ev.target.value) : undefined
+                        })
+                      }
+                      aria-label={`Repeticiones de la serie ${si + 1} de ${e.name}`}
+                    />
+                    <span>reps</span>
+                  </label>
+                  <button
+                    className="check"
+                    aria-pressed={serie.done}
+                    aria-label={`Marcar serie ${si + 1} de ${e.name}`}
+                    onClick={() => toggleSet(ei, si)}
+                  >
+                    <Icon name="check" />
+                  </button>
+                </div>
+                {resting && resting.exercise === ei && resting.set === si && (
+                  <RestTimer
+                    seconds={resting.seconds}
+                    onSkip={() => setResting(null)}
+                  />
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      ))}
 
       {!finishing ? (
         <>
-          <button className="btn btn-primary" disabled={doneCount === 0} onClick={() => setFinishing(true)}>
+          {volumen > 0 && (
+            <p className="faint" style={{ margin: '0 4px 14px' }}>
+              Volumen de hoy: {Math.round(volumen).toLocaleString('es-ES')} kg levantados.
+            </p>
+          )}
+          <button className="btn btn-primary" disabled={doneSets === 0} onClick={() => setFinishing(true)}>
             Terminar
           </button>
           <button className="btn-quiet" onClick={() => actions.discardSession(session.id)}>
@@ -90,7 +174,7 @@ export default function SessionScreen({ session }: { session: Session }) {
             <span className="faint">Muy cómodo</span>
           </div>
           <p className="faint" style={{ marginTop: 14 }}>
-            Con esto ajustamos las cargas de la próxima sesión.
+            Con las repeticiones que has anotado y esta sensación ajustamos las cargas de la próxima.
           </p>
           <div style={{ height: 20 }} />
           <button

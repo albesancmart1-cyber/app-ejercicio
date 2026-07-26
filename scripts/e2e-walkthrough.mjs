@@ -25,7 +25,8 @@ await page.goto(BASE)
 // ── Onboarding ────────────────────────────────────────────
 await shot('01-bienvenida')
 await page.getByPlaceholder('Tu nombre').fill('Alberto')
-await page.getByPlaceholder('Opcional').nth(1).fill('78')
+await page.getByPlaceholder('Opcional').nth(1).fill('78') // peso
+await page.getByPlaceholder('Opcional').nth(2).fill('180') // altura, para el FFMI
 await byText('Continuar').click()
 
 await byText('Recomposición corporal').click()
@@ -105,14 +106,50 @@ if (await botonPesas.count()) {
 }
 await byText('Preparar la sesión').click()
 
-// ── Sesión ────────────────────────────────────────────────
+// ── Sesión: registro serie a serie y descanso ─────────────
 await shot('10-sesion')
-const checks = page.locator('.check')
-const n = await checks.count()
-console.log('  → ejercicios propuestos:', n)
-for (let i = 0; i < n; i++) await checks.nth(i).click()
-const weights = page.locator('.weight-input')
-if ((await weights.count()) > 0) await weights.first().fill('12')
+const filas = page.locator('.set-row')
+const totalSeries = await filas.count()
+console.log('  → series a registrar:', totalSeries)
+if (totalSeries === 0) {
+  console.error('ERROR: la sesión no ofrece series que registrar')
+  process.exit(1)
+}
+
+// Rellenar peso y repeticiones reales de la primera serie.
+const primeraFila = filas.first()
+const campos = primeraFila.locator('input')
+if (await campos.count()) {
+  await campos.nth(0).fill('12')
+  await campos.nth(1).fill('10')
+}
+await primeraFila.locator('.check').click()
+await page.waitForTimeout(400)
+
+// El temporizador debe aparecer solo tras completar una serie que no es la última.
+if (await page.locator('.rest-timer').count()) {
+  console.log('  → temporizador de descanso arrancado solo')
+  await shot('10b-descanso')
+  await byText('Saltar descanso').click()
+  await page.waitForTimeout(200)
+  if (await page.locator('.rest-timer').count()) {
+    console.error('ERROR: el descanso no se puede saltar')
+    process.exit(1)
+  }
+} else {
+  console.error('ERROR: el temporizador no arrancó al completar una serie')
+  process.exit(1)
+}
+
+// Completar el resto de series.
+const checks = page.locator('.set-row .check')
+for (let i = 0; i < (await checks.count()); i++) {
+  await checks.nth(i).click()
+  await page.waitForTimeout(120)
+  const saltar = page.getByText('Saltar descanso')
+  if (await saltar.count()) await saltar.click()
+}
+await shot('10c-series-registradas')
 await byText('Terminar').click()
 await page.locator('.scale button').nth(3).click()
 await shot('11-sensacion')
@@ -121,6 +158,30 @@ await shot('12-completada')
 
 // ── Cuerpo: balance muscular y señal de leptina ───────────
 await page.locator('.tab', { hasText: 'Cuerpo' }).click()
+
+// ── Composición corporal ──────────────────────────────────
+await byText('Anotar una medición').click()
+const medida = page.locator('.card').filter({ hasText: 'COMPOSICIÓN CORPORAL' }).locator('input')
+await medida.nth(0).fill('80')
+await medida.nth(1).fill('20')
+await medida.nth(2).fill('40')
+await byText('Guardar medición').click()
+await page.waitForTimeout(400)
+// 80 kg con 20 % de grasa y 40 % de músculo → 16 kg de grasa, 32 de músculo, 64 magros.
+for (const esperado of ['16 kg', '32 kg', '64 kg']) {
+  if (!(await page.getByText(esperado, { exact: false }).count())) {
+    console.error('ERROR: no muestra', esperado, 'en la composición corporal')
+    process.exit(1)
+  }
+}
+// Con 1,80 m: 64 kg magros / 1,8² = 19,8 de FFMI.
+if (!(await page.getByText('FFMI 19.8').count())) {
+  console.error('ERROR: el FFMI no cuadra con 64 kg magros y 1,80 m')
+  process.exit(1)
+}
+console.log('  → composición: 16 kg grasa, 32 kg músculo, 64 kg magros, FFMI 19,8')
+await shot('13-composicion')
+
 await shot('13-leptina')
 await page.locator('.card').filter({ hasText: 'Balance muscular' }).scrollIntoViewIfNeeded()
 await shot('13b-balance')
