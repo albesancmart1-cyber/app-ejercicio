@@ -114,7 +114,7 @@ medio.
 
 ## Mesa
 
-Un recetario para los días en que no sabes qué comer. **60 platos completos** de base animal —
+Un recetario para los días en que no sabes qué comer. **59 platos completos** de base animal —
 huevos, carne, casquería, pescado, marisco, lácteos enteros y chocolate del 95 % — **sin ningún
 fruto seco ni semilla**, restricción que vigila un test para que no se cuele nunca al ampliar el
 catálogo. La verdura, cuando aparece, es acompañamiento y jamás el plato.
