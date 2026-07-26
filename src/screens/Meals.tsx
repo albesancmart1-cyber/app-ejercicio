@@ -15,7 +15,8 @@ import {
 } from '../data/meals'
 import { proteinTarget } from '../domain/protocol'
 import { complementarConPastillas, esVerano, objetivoDhaDiario } from '../domain/dha'
-import { todayIso, useAppData } from '../store/store'
+import { useAppData } from '../store/store'
+import { useToday } from '../store/clock'
 import Icon from '../components/Icon'
 
 const BASES = Object.keys(BASE_LABELS) as MealBase[]
@@ -76,7 +77,7 @@ export default function Meals() {
   const [current, setCurrent] = useState<Meal | null>(null)
   const [browsing, setBrowsing] = useState(false)
 
-  const today = todayIso()
+  const today = useToday()
   const pillMg = profile.dhaPillMg ?? 0
   const objetivoDha = objetivoDhaDiario(today)
   const protein = profile.weightKg ? proteinTarget(profile.weightKg, profile.goal) : null

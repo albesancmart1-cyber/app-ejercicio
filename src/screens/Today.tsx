@@ -3,7 +3,9 @@ import { MUSCLE_GROUPS, MUSCLE_LABELS, type CheckIn, type Discomfort, type Muscl
 import { computeReadiness } from '../domain/readiness'
 import { canIntensify, recommend, withMoreIntensity } from '../domain/recommender'
 import { buildSession } from '../domain/workoutBuilder'
-import { actions, todayIso, useAppData } from '../store/store'
+import { actions, useAppData } from '../store/store'
+import { useToday } from '../store/clock'
+import { findActiveSession } from '../domain/activeSession'
 import Icon from '../components/Icon'
 import SessionScreen from './Session'
 
@@ -69,9 +71,10 @@ function ScaleInput({
 export default function Today() {
   const data = useAppData()
   const profile = data.profile!
-  const today = todayIso()
+  const today = useToday()
 
-  const activeSession = data.sessions.find((s) => s.date === today && !s.completed)
+  // Tolera el cruce de medianoche: un entreno empezado a las 23:50 no se pierde.
+  const activeSession = findActiveSession(data.sessions, today)
   const doneToday = data.sessions.find((s) => s.date === today && s.completed)
   const saved = data.checkIns.find((c) => c.date === today)
 

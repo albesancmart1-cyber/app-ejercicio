@@ -15,7 +15,8 @@ import { formatDuration } from '../components/Chrono'
 import { computeBalance, weeklySets } from '../domain/muscleBalance'
 import { computeLeptinSignal } from '../domain/leptin'
 import { WEEKLY_SETS } from '../domain/protocol'
-import { todayIso, useAppData } from '../store/store'
+import { useAppData } from '../store/store'
+import { useToday } from '../store/clock'
 
 function lastNDays(n: number): string[] {
   const days: string[] = []
@@ -240,7 +241,7 @@ function BodyCompositionCard({
 
 export default function History() {
   const data = useAppData()
-  const today = todayIso()
+  const today = useToday()
   const balance = computeBalance(data.sessions, today)
   const week = weeklySets(data.sessions, today)
   const maxBalance = Math.max(0.1, ...MUSCLE_GROUPS.map((g) => balance[g]))

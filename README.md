@@ -159,6 +159,24 @@ va mal. Dos reglas gobiernan ese comentario:
   Nunca más de dos sugerencias a la vez, nunca hablando de calorías, y nunca en clave de culpa ni de
   racha rota. Cuando vas bien, la recomendación es explícitamente no tocar nada.
 
+## El cambio de día
+
+A las 00:00 empieza un día nuevo: la app vuelve a preguntarte el check-in para planificar la
+jornada, con las preguntas que miran al día anterior (atardecer, sol, antojos).
+
+Esto no salía gratis. La fecha se calculaba al dibujar la pantalla, pero **nada obligaba a
+redibujarla al cambiar el día**: con la app abierta o recuperada de segundo plano —lo normal en el
+móvil— seguía creyendo que era ayer y daba el check-in por hecho. Ahora el día es una fuente a la
+que las pantallas se suscriben (`src/store/clock.ts`), y se actualiza por tres vías: un temporizador
+ajustado a los milisegundos que faltan para medianoche, el regreso desde segundo plano —clave,
+porque mientras el móvil duerme los temporizadores no corren— y la recuperación del foco.
+
+Y una salvaguarda para quien entrene de noche: **un entreno empezado a las 23:50 no desaparece al
+dar las doce**. Una sesión ya iniciada sigue activa unas horas aunque cambie la fecha, mientras que
+una que se preparó ayer y nunca se empezó no bloquea el día nuevo.
+
+`node scripts/check-midnight.mjs` lo verifica falseando el reloj del navegador por los dos caminos.
+
 ## Cambiar un ejercicio que no encaja
 
 Si un ejercicio no te sirve —no te gusta o no tienes con qué hacerlo—, un toque en **«cambiar
@@ -290,7 +308,7 @@ En local la app se sirve en la raíz y en Pages bajo `/app-ejercicio/`. Lo contr
 ```bash
 npm install
 npm run dev       # servidor de desarrollo
-npm test          # 164 tests: motor, catálogo, DHA, leptina, composición, tendencia y sustituciones
+npm test          # 176 tests: motor, catálogo, DHA, leptina, composición, tendencia, cambios y calendario
 npm run build     # build de producción (PWA)
 npm run preview   # servir la build
 ```
@@ -300,3 +318,5 @@ npm run preview   # servir la build
 - `node scripts/icons.mjs` — regenera los iconos PNG desde `public/icon.svg`.
 - `node scripts/e2e-walkthrough.mjs` — recorrido completo automatizado con capturas.
   Requiere `npm run preview` en marcha; define `OUT_DIR` para el destino de las capturas.
+- `node scripts/check-midnight.mjs` — comprueba el cambio de día falseando el reloj del navegador,
+  con la app abierta y recuperándola de segundo plano.

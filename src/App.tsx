@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAppData } from './store/store'
+import { useToday } from './store/clock'
 import Icon from './components/Icon'
 import Onboarding from './screens/Onboarding'
 import Today from './screens/Today'
@@ -18,6 +19,7 @@ const TABS: { id: Tab; label: string; icon: 'horizon' | 'body' | 'plate' | 'leaf
 
 export default function App() {
   const data = useAppData()
+  const today = useToday()
   const [tab, setTab] = useState<Tab>('hoy')
 
   if (!data.profile) {
@@ -31,9 +33,12 @@ export default function App() {
   return (
     <>
       <main className="app-main">
-        {tab === 'hoy' && <Today />}
-        {tab === 'cuerpo' && <History />}
-        {tab === 'mesa' && <Meals />}
+        {/* La clave por fecha rearranca las pantallas al cruzar la medianoche:
+            el check-in del día nuevo empieza en blanco en vez de heredar las
+            respuestas de ayer, que viven en el estado local del componente. */}
+        {tab === 'hoy' && <Today key={today} />}
+        {tab === 'cuerpo' && <History key={today} />}
+        {tab === 'mesa' && <Meals key={today} />}
         {tab === 'ajustes' && <Settings />}
       </main>
       <nav className="tabbar">

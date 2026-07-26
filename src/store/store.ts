@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { todayIsoAt } from './clock'
 import type { AppData, BodyMeasurement, CheckIn, Profile, Session } from '../domain/types'
 
 const STORAGE_KEY = 'ritmo-data-v1'
@@ -42,11 +43,13 @@ export function useAppData(): AppData {
   )
 }
 
+/**
+ * Fecha de hoy para quien no necesite reaccionar al cambio de día. En los
+ * componentes hay que usar `useToday()` de `clock.ts`, que sí se actualiza sola
+ * al cruzar la medianoche.
+ */
 export function todayIso(): string {
-  const d = new Date()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${d.getFullYear()}-${m}-${day}`
+  return todayIsoAt(new Date())
 }
 
 export const actions = {
