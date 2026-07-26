@@ -1,8 +1,12 @@
 import { useState } from 'react'
 import {
   BASE_LABELS,
+  DHA_BOOSTERS,
+  DHA_LABELS,
   EFFORT_LABELS,
   MEALS,
+  bestDhaTier,
+  dhaLevel,
   filterMeals,
   suggestMeal,
   type Meal,
@@ -17,11 +21,18 @@ const BASES = Object.keys(BASE_LABELS) as MealBase[]
 const EFFORTS = Object.keys(EFFORT_LABELS) as MealEffort[]
 
 function MealCard({ meal }: { meal: Meal }) {
+  const nivel = dhaLevel(meal)
+  // Un plato que no puede ser alto en DHA por naturaleza al menos dice cómo serlo.
+  const booster = nivel === 'alto' ? null : DHA_BOOSTERS[meal.name.length % DHA_BOOSTERS.length]
+
   return (
     <>
       <h2>{meal.name}</h2>
       <div className="tag-row">
-        <span className="tag accent">≈ {meal.proteinG} g de proteína</span>
+        <span className={`tag ${nivel === 'alto' ? 'accent' : ''}`}>
+          {DHA_LABELS[nivel]} · {meal.dhaMg} mg
+        </span>
+        <span className="tag">≈ {meal.proteinG} g de proteína</span>
         <span className="tag">{EFFORT_LABELS[meal.effort]}</span>
       </div>
       <hr className="rule" />
@@ -33,6 +44,11 @@ function MealCard({ meal }: { meal: Meal }) {
       <p className="dim" style={{ marginTop: 14 }}>
         {meal.steps}
       </p>
+      {booster && (
+        <p className="faint" style={{ marginTop: 12 }}>
+          Para subirle el DHA: {booster.charAt(0).toLowerCase() + booster.slice(1)}
+        </p>
+      )}
     </>
   )
 }
@@ -47,6 +63,8 @@ export default function Meals() {
 
   const protein = profile.weightKg ? proteinTarget(profile.weightKg, profile.goal) : null
   const available = filterMeals(base, effort)
+  // Qué DHA es capaz de dar el filtro elegido, para avisar antes de sugerir.
+  const mejorNivel = available.length > 0 ? dhaLevel(bestDhaTier(available)[0]) : null
 
   function roll() {
     setCurrent(suggestMeal(base, effort, current?.id) ?? null)
@@ -57,8 +75,8 @@ export default function Meals() {
       <p className="eyebrow">Cuando no sabes qué comer</p>
       <h1>Mesa</h1>
       <p className="lede">
-        Platos completos, de base animal y sin frutos secos. Come hasta saciarte de verdad: la
-        proteína por delante y el resto se regula solo.
+        Platos completos, de base animal y sin frutos secos, priorizando siempre el DHA. Come hasta
+        saciarte de verdad: la proteína por delante y el resto se regula solo.
       </p>
 
       <div className="card" style={{ marginTop: 28 }}>
@@ -90,6 +108,12 @@ export default function Meals() {
         {available.length === 0 && (
           <p className="faint" style={{ marginTop: 16 }}>
             Con esa combinación no tengo nada. Prueba a soltar uno de los dos filtros.
+          </p>
+        )}
+        {mejorNivel && mejorNivel !== 'alto' && (
+          <p className="faint" style={{ marginTop: 16 }}>
+            Ojo: por aquí no hay nada con DHA alto — solo el pescado azul y el marisco lo tienen de
+            verdad. Te doy lo mejor que hay y cómo enriquecerlo.
           </p>
         )}
       </div>
@@ -135,7 +159,7 @@ export default function Meals() {
                     <div className="item-body">
                       <div className="item-title">{m.name}</div>
                       <div className="item-meta">
-                        {EFFORT_LABELS[m.effort]} · ≈ {m.proteinG} g de proteína
+                        {DHA_LABELS[dhaLevel(m)]} · {EFFORT_LABELS[m.effort]} · ≈ {m.proteinG} g de proteína
                       </div>
                     </div>
                     <Icon name="chevron" className="check" />

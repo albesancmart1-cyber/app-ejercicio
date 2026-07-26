@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { MUSCLE_GROUPS, MUSCLE_LABELS, type CheckIn, type Discomfort, type MuscleGroup } from '../domain/types'
 import { computeReadiness } from '../domain/readiness'
-import { recommend } from '../domain/recommender'
+import { canIntensify, recommend, withMoreIntensity } from '../domain/recommender'
 import { buildSession } from '../domain/workoutBuilder'
 import { actions, todayIso, useAppData } from '../store/store'
 import Icon from '../components/Icon'
@@ -77,6 +77,7 @@ export default function Today() {
 
   const [phase, setPhase] = useState<'inicio' | 'checkin' | 'plan'>('inicio')
   const [showWhy, setShowWhy] = useState(false)
+  const [intensified, setIntensified] = useState(false)
   const [sleep, setSleep] = useState<Scale | null>(saved?.sleep ?? null)
   const [energy, setEnergy] = useState<Scale | null>(saved?.energy ?? null)
   const [habits, setHabits] = useState<Record<YesNoKey, boolean | null>>({
@@ -135,8 +136,13 @@ export default function Today() {
   )
 
   const readiness = checkIn ? computeReadiness(checkIn) : null
-  const recommendation =
+  const suggested =
     readiness && phase === 'plan' ? recommend(profile, readiness, data.sessions, today) : null
+  // El usuario puede pedir pesas aunque tocara paseo; los guardas siguen puestos.
+  const recommendation =
+    suggested && intensified && readiness
+      ? withMoreIntensity(suggested, profile, readiness, data.sessions, today)
+      : suggested
 
   function startSession() {
     if (!recommendation) return
@@ -272,7 +278,29 @@ export default function Today() {
                 </span>
               )}
               {recommendation.ketoAdapting && <span className="tag">Adaptación cetogénica</span>}
+              {recommendation.userOverride && <span className="tag accent">A petición tuya</span>}
             </div>
+
+            {canIntensify(recommendation) && !intensified && (
+              <>
+                <hr className="rule" />
+                <button className="btn btn-secondary" onClick={() => setIntensified(true)}>
+                  Prefiero algo con pesas
+                </button>
+                <p className="faint" style={{ marginTop: 10 }}>
+                  Te lo cambio por fuerza contenida, respetando igualmente tus molestias y las 48 h
+                  de recuperación.
+                </p>
+              </>
+            )}
+            {intensified && (
+              <>
+                <hr className="rule" />
+                <button className="btn-quiet" onClick={() => setIntensified(false)}>
+                  Volver a lo que me tocaba
+                </button>
+              </>
+            )}
 
             <hr className="rule" />
             <button className="disclose" aria-expanded={showWhy} onClick={() => setShowWhy(!showWhy)}>

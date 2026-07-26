@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { computeReadiness } from './readiness'
-import { recommend, reentryState } from './recommender'
+import { canIntensify, recommend, reentryState, withMoreIntensity } from './recommender'
 import { buildSession } from './workoutBuilder'
 import { computeBalance, neglectedGroups, recentlyWorked, weeklySets } from './muscleBalance'
 import { ketoAdaptationWeeksLeft, proteinTarget, reentrySteps, repPrescription } from './protocol'
@@ -178,6 +178,83 @@ describe('protección de la recuperación', () => {
   it('molestia en una zona la deja fuera de la sesión', () => {
     const rec = recommend(profile, computeReadiness(checkIn({ discomfort: 'espalda' })), establishedHistory(), TODAY)
     expect(rec.focus).not.toContain('espalda')
+  })
+})
+
+describe('subir el listón a petición del usuario', () => {
+  /** Semana con tres días seguidos: la app propone descanso activo. */
+  function historialDeRespiro(): Session[] {
+    return [
+      ...establishedHistory(),
+      session('2026-07-22', ['flexiones']),
+      session('2026-07-23', ['sentadilla_goblet']),
+      session('2026-07-24', ['remo_mancuerna'])
+    ]
+  }
+
+  it('cambia una caminata por pesas cuando el usuario lo pide', () => {
+    const readiness = computeReadiness(checkIn({ sleep: 3, energy: 3 }))
+    const base = recommend(profile, readiness, historialDeRespiro(), TODAY)
+    expect(base.kind).toBe('descanso_activo')
+
+    const subida = withMoreIntensity(base, profile, readiness, historialDeRespiro(), TODAY)
+    expect(subida.kind).toBe('fuerza')
+    expect(subida.userOverride).toBe(true)
+    const s = buildSession(subida, profile, historialDeRespiro(), TODAY)
+    expect(s.exercises.some((e) => e.primary !== 'cardio')).toBe(true)
+  })
+
+  it('con disposición baja mueve peso pero no pasa de suave', () => {
+    const base = recommend(profile, badDay(), establishedHistory(), TODAY)
+    const subida = withMoreIntensity(base, profile, badDay(), establishedHistory(), TODAY)
+    expect(subida.kind).toBe('fuerza')
+    expect(subida.intensity).toBe('suave')
+    expect(subida.rir).toBeGreaterThanOrEqual(4)
+  })
+
+  it('nunca se acerca al fallo, por mucho que se suba', () => {
+    for (const r of [goodDay(), badDay(), computeReadiness(checkIn({ sleep: 3, energy: 3 }))]) {
+      const base = recommend(profile, r, establishedHistory(), TODAY)
+      const subida = withMoreIntensity(base, profile, r, establishedHistory(), TODAY)
+      expect(subida.rir).toBeGreaterThanOrEqual(2)
+    }
+  })
+
+  it('sigue respetando las molestias al subir el listón', () => {
+    const readiness = computeReadiness(checkIn({ discomfort: 'espalda' }))
+    const base = recommend(profile, readiness, establishedHistory(), TODAY)
+    const subida = withMoreIntensity(base, profile, readiness, establishedHistory(), TODAY)
+    expect(subida.focus).not.toContain('espalda')
+    const s = buildSession(subida, profile, establishedHistory(), TODAY)
+    expect(s.exercises.every((e) => e.primary !== 'espalda')).toBe(true)
+  })
+
+  it('sigue respetando las 48 h de recuperación', () => {
+    const history = [...establishedHistory(), session('2026-07-24', ['sentadilla_goblet'])]
+    const base = recommend(profile, goodDay(), history, TODAY)
+    const subida = withMoreIntensity(base, profile, goodDay(), history, TODAY)
+    expect(subida.focus).not.toContain('cuadriceps_gluteo')
+  })
+
+  it('durante la vuelta de un parón mantiene el volumen reducido', () => {
+    const history = [session('2026-07-05', ['flexiones'])]
+    const base = recommend(profile, goodDay(), history, TODAY)
+    const subida = withMoreIntensity(base, profile, goodDay(), history, TODAY)
+    expect(subida.volumeScale).toBeLessThan(1)
+    expect(subida.intensity).not.toBe('media-alta')
+  })
+
+  it('explica que la subida es decisión del usuario y qué tocaba en realidad', () => {
+    const readiness = computeReadiness(checkIn({ sleep: 3, energy: 3 }))
+    const base = recommend(profile, readiness, historialDeRespiro(), TODAY)
+    const subida = withMoreIntensity(base, profile, readiness, historialDeRespiro(), TODAY)
+    expect(subida.reasons.join(' ')).toContain('Has pedido tú')
+    expect(subida.reasons.join(' ').toLowerCase()).toContain(base.title.toLowerCase())
+  })
+
+  it('no se ofrece subir cuando ya se está en lo más alto', () => {
+    expect(canIntensify({ ...baseRec(), kind: 'fuerza', intensity: 'media-alta' })).toBe(false)
+    expect(canIntensify({ ...baseRec(), kind: 'descanso_activo', intensity: 'suave' })).toBe(true)
   })
 })
 

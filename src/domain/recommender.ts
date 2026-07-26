@@ -296,6 +296,75 @@ export function recommend(
 }
 
 /**
+ * «Hoy quiero pesas, no un paseo.» Convierte la recomendación en algo más
+ * exigente sin saltarse los guardas: nunca se acerca al fallo, respeta las
+ * molestias y las 48 h de recuperación, y mantiene el volumen reducido si
+ * estamos en una vuelta progresiva. La decisión es del usuario; el trabajo de
+ * la app es que esa decisión no le pase factura.
+ */
+export function withMoreIntensity(
+  base: Recommendation,
+  profile: Profile,
+  readiness: Readiness,
+  sessions: Session[],
+  todayIso: string
+): Recommendation {
+  const balance = computeBalance(sessions, todayIso)
+  const recovering = recentlyWorked(sessions, todayIso, MUSCLE_RECOVERY_DAYS)
+  const reentry = reentryState(sessions, todayIso)
+  const focus = pickFocus(balance, [...readiness.avoid, ...recovering], readiness.avoid)
+
+  // Un escalón por encima de lo que tocaba, con techo según el estado real.
+  let intensity: Intensity
+  if (readiness.level === 'bajo') intensity = 'suave'
+  else if (base.intensity === 'suave') intensity = 'moderada'
+  else if (base.intensity === 'moderada') intensity = readiness.level === 'alto' ? 'media-alta' : 'moderada'
+  else intensity = 'media-alta'
+  if (base.ketoAdapting && intensity === 'media-alta') intensity = 'moderada'
+  if (reentry && intensity === 'media-alta') intensity = 'moderada'
+
+  const rir = Math.max(2, targetRir(reentry ? { reentryStep: reentry.step, intensity } : { intensity }))
+
+  const reasons = [
+    'Has pedido tú subir el listón, así que lo subimos.',
+    `Lo que tocaba era «${base.title.toLowerCase()}», y ese motivo sigue ahí.`,
+    `Por eso lo hacemos con pesas pero a intensidad ${intensity}, dejando ${rir} repeticiones en reserva.`,
+    ...base.reasons.filter((r) => r.includes('molestias') || r.includes('recuperación') || r.includes('48'))
+  ]
+  if (readiness.level === 'bajo') {
+    reasons.push('Con tu disposición de hoy no subo de suave: mover peso sí, machacarte no.')
+  }
+  if (recovering.length > 0) {
+    reasons.push(
+      `Seguimos dejando descansar ${recovering.map((g) => MUSCLE_LABELS[g].toLowerCase()).join(', ')}.`
+    )
+  }
+
+  const primary = focus[0]
+  return {
+    kind: 'fuerza',
+    title: primary ? `Fuerza suave · ${MUSCLE_LABELS[primary].toLowerCase()}` : 'Fuerza suave',
+    message:
+      readiness.level === 'bajo'
+        ? 'Vamos con pesas, pero de verdad ligeras y sin acercarnos al fallo. Si a mitad notas que no toca, dejarlo también es ganar.'
+        : 'Pesas en vez de caminata, con carga contenida y lejos del fallo. Suficiente para sentir que has entrenado, sin la factura de mañana.',
+    focus: focus.length > 0 ? focus : base.focus.filter((g) => g !== 'cardio'),
+    intensity,
+    volumeScale: reentry?.scale ?? (readiness.level === 'bajo' ? 0.7 : 1),
+    rir,
+    reasons,
+    reentry: reentry ? { step: reentry.step, total: reentry.total } : undefined,
+    ketoAdapting: base.ketoAdapting,
+    userOverride: true
+  }
+}
+
+/** ¿Tiene sentido ofrecer la opción de subir el listón? */
+export function canIntensify(rec: Recommendation): boolean {
+  return rec.kind !== 'fuerza' || rec.intensity !== 'media-alta'
+}
+
+/**
  * Elige los grupos de la sesión: primero los descompensados que estén disponibles;
  * si la recuperación deja fuera a todos, se relaja el filtro antes que no entrenar.
  */

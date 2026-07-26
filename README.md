@@ -19,7 +19,10 @@ servidor.
    exposición solar, cetosis, molestias, y dos señales de apetito (hambre al despertar y antojos).
    De ahí salen el índice de disposición del día y la señal de leptina de la semana.
 3. **Recomendación** — reglas en cascada, de la más protectora a la más exigente. Cada
-   recomendación viene con un «por qué» desplegable en lenguaje llano.
+   recomendación viene con un «por qué» desplegable en lenguaje llano. Si te toca paseo pero te
+   apetecen pesas, «Prefiero algo con pesas» te lo cambia por fuerza contenida: sube un escalón,
+   pero nunca se acerca al fallo y sigue respetando tus molestias, las 48 h de recuperación y la
+   rampa de vuelta tras un parón.
 4. **Sesión** — ejercicios concretos con series, repeticiones, repeticiones en reserva, descanso
    y peso sugerido. Al terminar indicas cómo te sentiste, y eso ajusta las cargas de la próxima.
 5. **Cuerpo** — señal de leptina, balance muscular de 14 días, grupos cubiertos y calendario.
@@ -108,16 +111,24 @@ medio.
 
 ## Mesa
 
-Un recetario para los días en que no sabes qué comer. **45 platos completos** de base animal —
+Un recetario para los días en que no sabes qué comer. **55 platos completos** de base animal —
 huevos, carne, casquería, pescado, marisco, lácteos enteros y chocolate del 95 % — **sin ningún
 fruto seco ni semilla**, restricción que vigila un test para que no se cuele nunca al ampliar el
 catálogo. La verdura, cuando aparece, es acompañamiento y jamás el plato.
 
 Eliges qué te apetece y cuánto tiempo tienes (sin cocinar, menos de 15 minutos, o con calma), pulsas
-«Dame una idea» y sale un plato concreto con ingredientes, dos líneas de preparación y su proteína
-aproximada; la siguiente idea nunca repite la anterior. Debajo queda el recetario completo para
+«Dame una idea» y sale un plato concreto con ingredientes, dos líneas de preparación, su proteína y
+su DHA; la siguiente idea nunca repite la anterior. Debajo queda el recetario completo para
 curiosear. Se muestra tu referencia diaria de proteína, pero **no se registra nada**: es
 orientación, no contabilidad.
+
+**El DHA manda.** Sin filtros, toda sugerencia es de DHA alto (≥600 mg por ración) — hay 18 platos
+en esa categoría, así que no se repiten. Ahora bien, el DHA solo existe en cantidad relevante en
+pescado azul y marisco: la caballa ronda los 1.400 mg/100 g y las sardinas los 700, mientras que
+la carne, los lácteos y el cacao están prácticamente a cero, y el huevo convencional aporta unos
+45 mg por yema. Por eso la app no finge: si filtras por carne o por capricho, te avisa de que ahí
+no hay DHA alto, te da lo mejor disponible y te dice cómo enriquecerlo — unas anchoas, media lata
+de sardinas, o huevos enriquecidos en omega-3, que multiplican por cuatro el DHA de la yema.
 
 ## Diseño
 
@@ -149,7 +160,7 @@ En local la app se sirve en la raíz y en Pages bajo `/app-ejercicio/`. Lo contr
 ```bash
 npm install
 npm run dev       # servidor de desarrollo
-npm test          # 65 tests del motor, del catálogo y de la señal de leptina
+npm test          # 81 tests del motor, del catálogo y de la señal de leptina
 npm run build     # build de producción (PWA)
 npm run preview   # servir la build
 ```

@@ -80,9 +80,28 @@ await byText('Ver qué me conviene').click()
 
 // ── Recomendación ─────────────────────────────────────────
 await shot('08-recomendacion')
-console.log('  → recomienda:', await page.locator('.eyebrow').nth(1).textContent())
+const recomendado = await page.locator('.eyebrow').nth(1).textContent()
+console.log('  → recomienda:', recomendado)
 await byText('Por qué esto hoy').click()
 await shot('09-por-que')
+
+// Subir el listón: pesas en vez de lo que tocara, si la app lo permite.
+const botonPesas = page.getByText('Prefiero algo con pesas')
+if (await botonPesas.count()) {
+  await botonPesas.click()
+  await page.waitForTimeout(300)
+  const subido = await page.locator('.eyebrow').nth(1).textContent()
+  console.log('  → tras pedir pesas:', subido)
+  if (subido === recomendado) {
+    console.error('ERROR: pedir pesas no cambió la recomendación')
+    process.exit(1)
+  }
+  await shot('09b-con-pesas')
+  await byText('Volver a lo que me tocaba').click()
+  await page.waitForTimeout(300)
+  await botonPesas.click()
+  await page.waitForTimeout(300)
+}
 await byText('Preparar la sesión').click()
 
 // ── Sesión ────────────────────────────────────────────────
@@ -119,11 +138,37 @@ if (primera === segunda) {
   console.error('ERROR: la sugerencia repitió el mismo plato')
   process.exit(1)
 }
+// El DHA manda: sin filtros, toda sugerencia debe ser de DHA alto.
+for (let i = 0; i < 6; i++) {
+  await byText('Dame otra idea').click()
+  await page.waitForTimeout(150)
+  const etiqueta = await page.locator('.card .tag').first().textContent()
+  if (!etiqueta.includes('DHA alto')) {
+    console.error('ERROR: sugerencia sin DHA alto →', etiqueta)
+    process.exit(1)
+  }
+}
+console.log('  → seis sugerencias seguidas, todas de DHA alto')
+
 // Filtro por base y esfuerzo.
 await byText('Marisco').click()
 await byText('Sin cocinar').click()
 await byText('Dame otra idea').click()
 await shot('16-idea-filtrada')
+
+// Con carne no existe DHA alto: debe avisar en vez de fingir.
+await byText('Carne').click()
+await byText('Da igual').click()
+await byText('Dame otra idea').click()
+await page.waitForTimeout(200)
+const aviso = await page.getByText('no hay nada con DHA alto').count()
+if (!aviso) {
+  console.error('ERROR: con carne debería avisar de que no hay DHA alto')
+  process.exit(1)
+}
+console.log('  → con carne avisa honestamente de que no hay DHA alto')
+await shot('16b-carne-sin-dha')
+await byText('Lo que sea').click()
 await byText('Ver los ').click()
 await shot('17-recetario')
 

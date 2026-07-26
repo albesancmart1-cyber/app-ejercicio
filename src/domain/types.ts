@@ -183,6 +183,8 @@ export interface Recommendation {
   reentry?: { step: number; total: number }
   /** El cuerpo aún se está adaptando a la cetosis. */
   ketoAdapting?: boolean
+  /** El usuario pidió subir el listón por encima de lo que tocaba. */
+  userOverride?: boolean
 }
 
 export interface AppData {

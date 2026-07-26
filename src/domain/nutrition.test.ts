@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { BASE_LABELS, EFFORT_LABELS, MEALS, filterMeals, mealById, suggestMeal, type MealBase, type MealEffort } from '../data/meals'
+import {
+  BASE_LABELS,
+  DHA_THRESHOLDS,
+  EFFORT_LABELS,
+  MEALS,
+  bestDhaTier,
+  dhaLevel,
+  filterMeals,
+  mealById,
+  suggestMeal,
+  type MealBase,
+  type MealEffort
+} from '../data/meals'
 import { computeLeptinSignal } from './leptin'
 import type { CheckIn } from './types'
 
@@ -85,16 +97,74 @@ describe('sugerencia de comida', () => {
     expect(suggestMeal('dulce', 'rapido', solo[0].id)?.id).toBe(solo[0].id)
   })
 
-  it('sin filtros recorre todo el catálogo', () => {
+  it('sin filtros recorre todo el abanico de DHA alto sin encasillarse', () => {
+    // Con la priorización activa solo salen platos de DHA alto —eso es lo que se
+    // busca—, pero deben salir casi todos ellos, no siempre los mismos tres.
+    const altos = MEALS.filter((m) => dhaLevel(m) === 'alto')
     const vistos = new Set<string>()
-    for (let i = 0; i < MEALS.length; i++) {
-      vistos.add(suggestMeal(null, null, undefined, () => i / MEALS.length)!.id)
+    for (let i = 0; i < altos.length; i++) {
+      vistos.add(suggestMeal(null, null, undefined, () => i / altos.length)!.id)
     }
-    expect(vistos.size).toBeGreaterThan(MEALS.length * 0.8)
+    expect(vistos.size).toBeGreaterThan(altos.length * 0.8)
   })
 
   it('un filtro sin resultados no rompe', () => {
     expect(suggestMeal('dulce', 'con_calma')).toBeUndefined()
+  })
+})
+
+describe('priorización de DHA', () => {
+  it('sin filtros siempre sugiere un plato de DHA alto', () => {
+    for (let i = 0; i < 30; i++) {
+      const meal = suggestMeal(null, null, undefined, () => i / 30)!
+      expect(dhaLevel(meal), meal.name).toBe('alto')
+    }
+  })
+
+  it('respeta el filtro aunque eso obligue a bajar de DHA', () => {
+    // No existe carne con DHA alto y no vamos a inventarla: se devuelve carne.
+    const meal = suggestMeal('carne', null)!
+    expect(meal.base).toBe('carne')
+  })
+
+  it('dentro de un filtro elige el mejor escalón disponible', () => {
+    const marisco = suggestMeal('marisco', null)!
+    const mejor = bestDhaTier(filterMeals('marisco', null))
+    expect(mejor.map((m) => m.id)).toContain(marisco.id)
+    expect(dhaLevel(marisco)).not.toBe('bajo')
+  })
+
+  it('se puede desactivar la priorización para explorar el catálogo', () => {
+    const vistos = new Set<string>()
+    for (let i = 0; i < MEALS.length; i++) {
+      vistos.add(suggestMeal(null, null, undefined, () => i / MEALS.length, false)!.id)
+    }
+    const niveles = new Set([...vistos].map((id) => dhaLevel(mealById(id)!)))
+    expect(niveles.size).toBeGreaterThan(1)
+  })
+
+  it('hay platos de DHA alto sin cocinar, para los días de cero ganas', () => {
+    const altos = filterMeals(null, 'sin_cocinar').filter((m) => dhaLevel(m) === 'alto')
+    expect(altos.length).toBeGreaterThanOrEqual(4)
+  })
+
+  it('el catálogo tiene suficiente variedad de DHA alto para no repetirse', () => {
+    expect(MEALS.filter((m) => dhaLevel(m) === 'alto').length).toBeGreaterThanOrEqual(15)
+  })
+
+  it('los niveles de DHA respetan sus umbrales', () => {
+    for (const meal of MEALS) {
+      const nivel = dhaLevel(meal)
+      if (nivel === 'alto') expect(meal.dhaMg).toBeGreaterThanOrEqual(DHA_THRESHOLDS.alto)
+      if (nivel === 'bajo') expect(meal.dhaMg).toBeLessThan(DHA_THRESHOLDS.medio)
+    }
+  })
+
+  it('el pescado azul supera a la carne en DHA, como manda la biología', () => {
+    const pescado = MEALS.filter((m) => m.base === 'pescado')
+    const carne = MEALS.filter((m) => m.base === 'carne')
+    const media = (l: typeof MEALS) => l.reduce((a, m) => a + m.dhaMg, 0) / l.length
+    expect(media(pescado)).toBeGreaterThan(media(carne) * 10)
   })
 })
 
