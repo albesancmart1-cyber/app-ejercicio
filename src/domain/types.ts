@@ -125,6 +125,12 @@ export interface CheckIn {
   keto: boolean
   energy: 1 | 2 | 3 | 4 | 5
   discomfort: Discomfort
+  // Señales de leptina. Opcionales: los check-ins guardados antes de existir
+  // estas preguntas siguen siendo válidos y no penalizan el cálculo.
+  /** Despertarse con hambre voraz apunta a una señal nocturna alterada. */
+  wokeHungry?: boolean
+  /** Los antojos son el marcador clásico de leptina que no llega. */
+  cravings?: boolean
 }
 
 export type SessionKind = 'fuerza' | 'cardio_suave' | 'cardio_medio' | 'reacondicionamiento' | 'descanso_activo'

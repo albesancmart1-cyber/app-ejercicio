@@ -53,13 +53,29 @@ await byText('Empezar').click()
 const scales = page.locator('.scale')
 await scales.nth(0).locator('button').nth(3).click() // sueño 4
 await scales.nth(1).locator('button').nth(3).click() // energía 4
-const habitRows = page.locator('.card').nth(1).locator('.row')
-const habitCount = await habitRows.count()
-for (let i = 0; i < habitCount; i++) {
-  await habitRows.nth(i).getByText('Sí', { exact: true }).click()
+
+// Selectores por texto, no por índice: así añadir tarjetas no rompe el recorrido.
+const card = (titulo) => page.locator('.card').filter({ hasText: titulo })
+const answer = async (pregunta, respuesta) =>
+  page.locator('.row').filter({ hasText: pregunta }).getByText(respuesta, { exact: true }).click()
+
+for (const q of [
+  '¿Respetaste anoche la higiene lumínica?',
+  '¿Has visto el amanecer hoy?',
+  '¿Viste el atardecer ayer?',
+  '¿Te dio el sol ayer?',
+  '¿Sigues en cetosis?'
+]) {
+  await answer(q, 'Sí')
 }
-await page.locator('.card').nth(2).getByText('Ninguna', { exact: true }).click()
+// Señales de leptina: sin hambre voraz ni antojos.
+await answer('¿Te despertaste con mucha hambre?', 'No')
+await answer('¿Tuviste antojos ayer?', 'No')
 await shot('07-checkin')
+await card('Apetito').scrollIntoViewIfNeeded()
+await shot('07b-apetito')
+
+await card('Cuerpo').getByText('Ninguna', { exact: true }).click()
 await byText('Ver qué me conviene').click()
 
 // ── Recomendación ─────────────────────────────────────────
@@ -83,17 +99,42 @@ await shot('11-sensacion')
 await byText('Guardar').click()
 await shot('12-completada')
 
-// ── Historial ─────────────────────────────────────────────
-await page.locator('.tab', { hasText: 'Tu cuerpo' }).click()
-await shot('13-tu-cuerpo')
+// ── Cuerpo: balance muscular y señal de leptina ───────────
+await page.locator('.tab', { hasText: 'Cuerpo' }).click()
+await shot('13-leptina')
+await page.locator('.card').filter({ hasText: 'Balance muscular' }).scrollIntoViewIfNeeded()
+await shot('13b-balance')
+
+// ── Mesa: idea de comida ──────────────────────────────────
+await page.locator('.tab', { hasText: 'Mesa' }).click()
+await shot('14-mesa')
+await byText('Dame una idea').click()
+const primera = await page.locator('.card h2').first().textContent()
+await shot('15-idea')
+await byText('Dame otra idea').click()
+const segunda = await page.locator('.card h2').first().textContent()
+console.log('  → primera idea:', primera)
+console.log('  → segunda idea:', segunda)
+if (primera === segunda) {
+  console.error('ERROR: la sugerencia repitió el mismo plato')
+  process.exit(1)
+}
+// Filtro por base y esfuerzo.
+await byText('Marisco').click()
+await byText('Sin cocinar').click()
+await byText('Dame otra idea').click()
+await shot('16-idea-filtrada')
+await byText('Ver los ').click()
+await shot('17-recetario')
+
 await page.locator('.tab', { hasText: 'Ajustes' }).click()
-await shot('14-ajustes')
+await shot('18-ajustes')
 
 // ── Paletas horarias ──────────────────────────────────────
 await page.locator('.tab', { hasText: 'Hoy' }).click()
 for (const t of ['dawn', 'day', 'dusk', 'night']) {
   await page.evaluate((v) => (document.body.dataset.daytime = v), t)
-  await shot(`15-paleta-${t}`)
+  await shot(`19-paleta-${t}`)
 }
 
 await browser.close()

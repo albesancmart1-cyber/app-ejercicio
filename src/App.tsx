@@ -4,13 +4,15 @@ import Icon from './components/Icon'
 import Onboarding from './screens/Onboarding'
 import Today from './screens/Today'
 import History from './screens/History'
+import Meals from './screens/Meals'
 import Settings from './screens/Settings'
 
-type Tab = 'hoy' | 'cuerpo' | 'ajustes'
+type Tab = 'hoy' | 'cuerpo' | 'mesa' | 'ajustes'
 
-const TABS: { id: Tab; label: string; icon: 'horizon' | 'body' | 'leaf' }[] = [
+const TABS: { id: Tab; label: string; icon: 'horizon' | 'body' | 'plate' | 'leaf' }[] = [
   { id: 'hoy', label: 'Hoy', icon: 'horizon' },
-  { id: 'cuerpo', label: 'Tu cuerpo', icon: 'body' },
+  { id: 'cuerpo', label: 'Cuerpo', icon: 'body' },
+  { id: 'mesa', label: 'Mesa', icon: 'plate' },
   { id: 'ajustes', label: 'Ajustes', icon: 'leaf' }
 ]
 
@@ -31,6 +33,7 @@ export default function App() {
       <main className="app-main">
         {tab === 'hoy' && <Today />}
         {tab === 'cuerpo' && <History />}
+        {tab === 'mesa' && <Meals />}
         {tab === 'ajustes' && <Settings />}
       </main>
       <nav className="tabbar">

@@ -1,5 +1,6 @@
 import { MUSCLE_GROUPS, MUSCLE_LABELS } from '../domain/types'
 import { computeBalance, weeklySets } from '../domain/muscleBalance'
+import { computeLeptinSignal } from '../domain/leptin'
 import { WEEKLY_SETS } from '../domain/protocol'
 import { todayIso, useAppData } from '../store/store'
 
@@ -26,10 +27,11 @@ export default function History() {
 
   const strengthGroups = MUSCLE_GROUPS.filter((g) => g !== 'cardio')
   const covered = strengthGroups.filter((g) => week[g] >= WEEKLY_SETS.minimoEficaz).length
+  const leptin = computeLeptinSignal(data.checkIns, today, data.profile?.goal)
 
   return (
     <div className="fade-in">
-      <p className="eyebrow">Últimas dos semanas</p>
+      <p className="eyebrow">Cómo vas</p>
       <h1>Tu cuerpo</h1>
 
       <div className="card" style={{ marginTop: 28 }}>
@@ -47,6 +49,57 @@ export default function History() {
       </div>
 
       <div className="card">
+        <p className="eyebrow">Señal de leptina</p>
+        {leptin.days === 0 ? (
+          <p className="dim">{leptin.muscleNote}</p>
+        ) : (
+          <>
+            <div className="row" style={{ alignItems: 'flex-end' }}>
+              <span className="score">
+                {leptin.score}
+                <small> / 100</small>
+              </span>
+              <span className="tag accent">{leptin.level}</span>
+            </div>
+            <div className="meter" aria-hidden="true">
+              {Array.from({ length: 10 }, (_, i) => (
+                <span key={i} className={i < Math.round(leptin.score / 10) ? 'on' : ''} />
+              ))}
+            </div>
+            <p className="dim" style={{ marginTop: 14 }}>
+              {leptin.muscleNote}
+            </p>
+            {leptin.hurting.length > 0 && (
+              <>
+                <hr className="rule" />
+                <p className="eyebrow">Lo que resta</p>
+                <ul className="reasons">
+                  {leptin.hurting.map((h, i) => (
+                    <li key={i}>{h}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {leptin.helping.length > 0 && (
+              <>
+                <hr className="rule" />
+                <p className="eyebrow">Lo que suma</p>
+                <ul className="reasons">
+                  {leptin.helping.map((h, i) => (
+                    <li key={i}>{h}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+            <p className="faint" style={{ marginTop: 14 }}>
+              Calculado sobre {leptin.days} {leptin.days === 1 ? 'día' : 'días'} de la última semana.
+              La leptina responde a patrones, no a una noche suelta.
+            </p>
+          </>
+        )}
+      </div>
+
+      <div className="card">
         <p className="eyebrow">Balance muscular</p>
         {MUSCLE_GROUPS.map((g) => {
           const pct = Math.round((balance[g] / maxBalance) * 100)
@@ -60,7 +113,7 @@ export default function History() {
           )
         })}
         <p className="faint" style={{ marginTop: 14 }}>
-          Los más cortos son los que la app pondrá primero en tus próximos entrenos.
+          Últimos 14 días. Los más cortos son los que la app pondrá primero en tus próximos entrenos.
         </p>
       </div>
 

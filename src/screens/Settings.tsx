@@ -118,8 +118,8 @@ export default function Settings() {
           {protein ? (
             <>
               Con {profile.weightKg} kg, apunta a <span className="accent">{protein.min}–{protein.max} g de proteína al día</span>.
-              En cetosis es lo que sostiene el músculo, y ganar masa necesita además comer algo por
-              encima de tu gasto.
+              En cetosis es lo que sostiene el músculo. Del resto no lleves cuentas: come hasta
+              saciarte de verdad y deja que la leptina regule lo demás.
             </>
           ) : (
             'Añade tu peso al perfil para calcular tu objetivo diario de proteína.'

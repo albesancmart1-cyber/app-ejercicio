@@ -16,12 +16,14 @@ servidor.
 1. **Perfil** — objetivo (masa, tonificar o recomposición), equipamiento disponible con el peso
    máximo de cada equipo, y desde cuándo sigues dieta cetogénica.
 2. **Check-in diario** (medio minuto) — sueño, energía, higiene lumínica, amanecer, atardecer,
-   exposición solar, cetosis y molestias. De ahí sale un índice de disposición sobre 100.
+   exposición solar, cetosis, molestias, y dos señales de apetito (hambre al despertar y antojos).
+   De ahí salen el índice de disposición del día y la señal de leptina de la semana.
 3. **Recomendación** — reglas en cascada, de la más protectora a la más exigente. Cada
    recomendación viene con un «por qué» desplegable en lenguaje llano.
 4. **Sesión** — ejercicios concretos con series, repeticiones, repeticiones en reserva, descanso
    y peso sugerido. Al terminar indicas cómo te sentiste, y eso ajusta las cargas de la próxima.
-5. **Tu cuerpo** — balance muscular de 14 días, grupos cubiertos esta semana y calendario.
+5. **Cuerpo** — señal de leptina, balance muscular de 14 días, grupos cubiertos y calendario.
+6. **Mesa** — ideas de comida completa cetogénica para cuando no sabes qué cocinar.
 
 ## Base científica
 
@@ -52,8 +54,35 @@ coinciden en que la cetosis no compromete la fuerza máxima, pero sí el trabajo
 muchas repeticiones con descansos cortos, que es el que depende del glucógeno muscular. Por eso en
 cetosis la app acorta los rangos altos de repeticiones, sube algo la carga y alarga los descansos
 30 segundos. Durante las primeras 6 semanas de adaptación mantiene la intensidad por debajo del
-máximo. Y recuerda lo que la evidencia deja claro: ganar masa magra exige superávit energético y
-proteína alta (1,6–2,2 g/kg, hasta 2,6 en recomposición).
+máximo. La proteína es la única cifra que la app pide vigilar: 1,6–2,2 g/kg, hasta 2,6 en
+recomposición.
+
+**Leptina en lugar de calorías.** La app no cuenta calorías ni habla de déficit ni de superávit.
+La leptina es la hormona con la que el tejido graso informa al cerebro de la disponibilidad
+energética del cuerpo: es el propio sensor que esas cuentas intentan estimar desde fuera. Así que
+en vez de estimarlo, se cuida la señal y se come hasta saciedad real con la proteína por delante.
+Cuando la señal llega limpia, el apetito se autorregula y el entorno hormonal es permisivo para
+construir músculo; cuando se ensucia, aparecen hambre voraz, antojos y peor recuperación por bien
+que se entrene.
+
+`src/domain/leptin.ts` calcula esa señal sobre **una ventana de 7 días**, no del día: la leptina
+responde a patrones, no a una noche suelta. Es lo que la distingue del índice de disposición, que
+sí es diario. Las palancas, ordenadas por el peso que les da la evidencia:
+
+- **Sueño** (el peso mayor). La restricción de sueño baja la leptina un 18–19 %: 6 días de
+  restricción reducen un 19 % los niveles de 24 h, y bastan 2 días para un 18 % diurno.
+- **Luz de la mañana.** Aumenta la leptina incluso en personas con el sueño restringido, así que la
+  pregunta del amanecer es literalmente una palanca hormonal.
+- **Higiene lumínica nocturna.** El desalineamiento circadiano induce resistencia a la leptina.
+- **Exposición solar diurna y atardecer.** Refuerzan el contraste luz/oscuridad que sincroniza el
+  ritmo propio de la hormona, que tiene su pico unas 2 h antes del amanecer.
+- **Hambre al despertar y antojos.** Marcadores prácticos de que la señal de saciedad no llega.
+
+Cuando coinciden poca energía sostenida y antojos, la app avisa de que probablemente se está
+comiendo por debajo de lo necesario: la baja disponibilidad energética suprime leptina e IGF-1, y
+eso sí frena el músculo. Se detecta por señales, no por una cuenta. En sentido contrario, entrenar
+ayuda: la carga muscular crónica aumenta los receptores de leptina en el propio músculo (+62 % de
+OB-R170 en el brazo dominante de tenistas profesionales).
 
 **Cardio.** El efecto de interferencia entre fuerza y resistencia es menor a volúmenes moderados y
 desaparece separando las sesiones, así que la app alterna días en vez de mezclarlos: tras dos
@@ -67,10 +96,28 @@ Fuentes: [CSCCa/NSCA Transition Periods](https://www.nsca.com/about-us/position-
 [Cetosis y fuerza (meta-análisis)](https://www.mdpi.com/2072-6643/16/14/2200) ·
 [Cetosis e hipertrofia (meta-análisis)](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9564904/) ·
 [Memoria muscular](https://www.frontiersin.org/journals/nutrition/articles/10.3389/fnut.2025.1701520/full) ·
-[Entrenamiento concurrente](https://www.strongerbyscience.com/research-spotlight-interference-effect/)
+[Entrenamiento concurrente](https://www.strongerbyscience.com/research-spotlight-interference-effect/) ·
+[Leptina y sueño](https://pmc.ncbi.nlm.nih.gov/articles/PMC4131947/) ·
+[Luz de la mañana y leptina](https://onlinelibrary.wiley.com/doi/full/10.1155/2012/530726) ·
+[Disfunción circadiana y resistencia a la leptina](https://www.cell.com/cell-metabolism/fulltext/S1550-4131(15)00272-7) ·
+[Ritmo circadiano de la leptina](https://journals.physiology.org/doi/full/10.1152/japplphysiol.00630.2013) ·
+[Horarios de comida y balance energético](https://www.jci.org/articles/view/144655)
 
 Nada de esto sustituye el criterio de un profesional, y menos si hay lesiones o patologías de por
 medio.
+
+## Mesa
+
+Un recetario para los días en que no sabes qué comer. **45 platos completos** de base animal —
+huevos, carne, casquería, pescado, marisco, lácteos enteros y chocolate del 95 % — **sin ningún
+fruto seco ni semilla**, restricción que vigila un test para que no se cuele nunca al ampliar el
+catálogo. La verdura, cuando aparece, es acompañamiento y jamás el plato.
+
+Eliges qué te apetece y cuánto tiempo tienes (sin cocinar, menos de 15 minutos, o con calma), pulsas
+«Dame una idea» y sale un plato concreto con ingredientes, dos líneas de preparación y su proteína
+aproximada; la siguiente idea nunca repite la anterior. Debajo queda el recetario completo para
+curiosear. Se muestra tu referencia diaria de proteína, pero **no se registra nada**: es
+orientación, no contabilidad.
 
 ## Diseño
 
@@ -86,7 +133,7 @@ el botón de cancelar dice «Hoy no puedo — descartar sin culpa».
 ```bash
 npm install
 npm run dev       # servidor de desarrollo
-npm test          # 43 tests del motor de recomendación
+npm test          # 65 tests del motor, del catálogo y de la señal de leptina
 npm run build     # build de producción (PWA)
 npm run preview   # servir la build
 ```

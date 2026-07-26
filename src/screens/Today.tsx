@@ -8,7 +8,14 @@ import Icon from '../components/Icon'
 import SessionScreen from './Session'
 
 type Scale = 1 | 2 | 3 | 4 | 5
-type YesNoKey = 'lightHygiene' | 'sunrise' | 'sunsetYesterday' | 'sunExposure' | 'keto'
+type YesNoKey =
+  | 'lightHygiene'
+  | 'sunrise'
+  | 'sunsetYesterday'
+  | 'sunExposure'
+  | 'keto'
+  | 'wokeHungry'
+  | 'cravings'
 
 const HABITS: { q: string; key: YesNoKey }[] = [
   { q: '¿Respetaste anoche la higiene lumínica?', key: 'lightHygiene' },
@@ -16,6 +23,12 @@ const HABITS: { q: string; key: YesNoKey }[] = [
   { q: '¿Viste el atardecer ayer?', key: 'sunsetYesterday' },
   { q: '¿Te dio el sol ayer?', key: 'sunExposure' },
   { q: '¿Sigues en cetosis?', key: 'keto' }
+]
+
+/** Señales de leptina: no cambian el entreno de hoy, alimentan la lectura semanal. */
+const APPETITE: { q: string; key: YesNoKey }[] = [
+  { q: '¿Te despertaste con mucha hambre?', key: 'wokeHungry' },
+  { q: '¿Tuviste antojos ayer?', key: 'cravings' }
 ]
 
 function greeting(): string {
@@ -71,7 +84,9 @@ export default function Today() {
     sunrise: saved?.sunrise ?? null,
     sunsetYesterday: saved?.sunsetYesterday ?? null,
     sunExposure: saved?.sunExposure ?? null,
-    keto: saved?.keto ?? null
+    keto: saved?.keto ?? null,
+    wokeHungry: saved?.wokeHungry ?? null,
+    cravings: saved?.cravings ?? null
   })
   const [discomfort, setDiscomfort] = useState<Discomfort | null>(saved?.discomfort ?? null)
 
@@ -89,9 +104,35 @@ export default function Today() {
       sunsetYesterday: habits.sunsetYesterday!,
       sunExposure: habits.sunExposure!,
       keto: habits.keto!,
+      wokeHungry: habits.wokeHungry!,
+      cravings: habits.cravings!,
       discomfort: discomfort!
     }
   }, [complete, today, sleep, energy, habits, discomfort])
+
+  const renderYesNo = ({ q, key }: { q: string; key: YesNoKey }, i: number) => (
+    <div key={key} style={{ marginTop: i === 0 ? 0 : 18 }}>
+      <div className="row">
+        <span style={{ fontSize: '0.9rem' }}>{q}</span>
+        <div className="options" style={{ flexWrap: 'nowrap' }}>
+          <button
+            className="opt"
+            aria-pressed={habits[key] === true}
+            onClick={() => setHabits((p) => ({ ...p, [key]: true }))}
+          >
+            Sí
+          </button>
+          <button
+            className="opt"
+            aria-pressed={habits[key] === false}
+            onClick={() => setHabits((p) => ({ ...p, [key]: false }))}
+          >
+            No
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 
   const readiness = checkIn ? computeReadiness(checkIn) : null
   const recommendation =
@@ -154,29 +195,16 @@ export default function Today() {
 
           <div className="card">
             <p className="eyebrow">Ritmos</p>
-            {HABITS.map(({ q, key }, i) => (
-              <div key={key} style={{ marginTop: i === 0 ? 0 : 18 }}>
-                <div className="row">
-                  <span style={{ fontSize: '0.9rem' }}>{q}</span>
-                  <div className="options" style={{ flexWrap: 'nowrap' }}>
-                    <button
-                      className="opt"
-                      aria-pressed={habits[key] === true}
-                      onClick={() => setHabits((p) => ({ ...p, [key]: true }))}
-                    >
-                      Sí
-                    </button>
-                    <button
-                      className="opt"
-                      aria-pressed={habits[key] === false}
-                      onClick={() => setHabits((p) => ({ ...p, [key]: false }))}
-                    >
-                      No
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
+            {HABITS.map(renderYesNo)}
+          </div>
+
+          <div className="card">
+            <p className="eyebrow">Apetito</p>
+            {APPETITE.map(renderYesNo)}
+            <p className="faint" style={{ marginTop: 16 }}>
+              Estas dos no deciden tu entreno de hoy: son las señales con las que leo tu leptina a
+              lo largo de la semana.
+            </p>
           </div>
 
           <div className="card">

@@ -25,6 +25,19 @@ const paths: Record<string, JSX.Element> = {
       <path d="M9 15c2-3 5-5 8-6" />
     </>
   ),
+  plate: (
+    <>
+      <circle cx="11" cy="13" r="7.5" />
+      <circle cx="11" cy="13" r="3.5" />
+      <path d="M20.5 4v16" />
+    </>
+  ),
+  spark: (
+    <>
+      <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" />
+      <path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z" />
+    </>
+  ),
   check: <path d="M4 12.5l5 5L20 6.5" />,
   chevron: <path d="M9 5l7 7-7 7" />,
   moon: <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z" />

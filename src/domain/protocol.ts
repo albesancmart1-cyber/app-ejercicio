@@ -12,8 +12,9 @@
  *   muscular ya producen ganancias sustanciales; 10–20 maximizan. Frecuencia 2×/semana
  *   iguala o supera a 1×/semana a volumen equiparado.
  * - ISSN Position Stand: Ketogenic Diets (JISSN, 2024): la cetosis no compromete la fuerza
- *   máxima, pero sí el trabajo glucolítico de altas repeticiones; ganar masa magra exige
- *   superávit energético y proteína alta.
+ *   máxima, pero sí el trabajo glucolítico de altas repeticiones; construir músculo exige
+ *   proteína alta y que el cuerpo perciba disponibilidad energética suficiente —lo que aquí
+ *   se gestiona por la señal de leptina, en `leptin.ts`, y no contando calorías.
  * - Vargas-Molina et al. (2024), meta-análisis de dieta cetogénica y fuerza.
  * - Guías de entrenamiento concurrente: separar cardio y fuerza ≥6 h, o hacer la fuerza
  *   primero si van el mismo día.
@@ -126,7 +127,10 @@ export function ketoAdaptationWeeksLeft(ketoSince: string | undefined, todayIso:
   return Math.max(0, Math.ceil(KETO_ADAPTATION_WEEKS - weeks))
 }
 
-/** Proteína diaria recomendada (g/día) según peso y objetivo. */
+/**
+ * Proteína diaria recomendada (g/día) según peso y objetivo. Es la única cifra que
+ * la app pide vigilar: lo demás se regula comiendo hasta saciedad real.
+ */
 export function proteinTarget(weightKg: number, goal: Goal): { min: number; max: number } {
   // 1,6–2,2 g/kg de base; hasta 2,3–3,1 g/kg si se busca perder grasa conservando músculo.
   const [lo, hi] = goal === 'recomposicion' ? [2.0, 2.6] : goal === 'masa' ? [1.8, 2.2] : [1.6, 2.0]

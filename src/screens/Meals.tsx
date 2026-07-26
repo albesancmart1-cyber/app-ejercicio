@@ -1,0 +1,151 @@
+import { useState } from 'react'
+import {
+  BASE_LABELS,
+  EFFORT_LABELS,
+  MEALS,
+  filterMeals,
+  suggestMeal,
+  type Meal,
+  type MealBase,
+  type MealEffort
+} from '../data/meals'
+import { proteinTarget } from '../domain/protocol'
+import { useAppData } from '../store/store'
+import Icon from '../components/Icon'
+
+const BASES = Object.keys(BASE_LABELS) as MealBase[]
+const EFFORTS = Object.keys(EFFORT_LABELS) as MealEffort[]
+
+function MealCard({ meal }: { meal: Meal }) {
+  return (
+    <>
+      <h2>{meal.name}</h2>
+      <div className="tag-row">
+        <span className="tag accent">≈ {meal.proteinG} g de proteína</span>
+        <span className="tag">{EFFORT_LABELS[meal.effort]}</span>
+      </div>
+      <hr className="rule" />
+      <ul className="reasons">
+        {meal.ingredients.map((ing, i) => (
+          <li key={i}>{ing}</li>
+        ))}
+      </ul>
+      <p className="dim" style={{ marginTop: 14 }}>
+        {meal.steps}
+      </p>
+    </>
+  )
+}
+
+export default function Meals() {
+  const data = useAppData()
+  const profile = data.profile!
+  const [base, setBase] = useState<MealBase | null>(null)
+  const [effort, setEffort] = useState<MealEffort | null>(null)
+  const [current, setCurrent] = useState<Meal | null>(null)
+  const [browsing, setBrowsing] = useState(false)
+
+  const protein = profile.weightKg ? proteinTarget(profile.weightKg, profile.goal) : null
+  const available = filterMeals(base, effort)
+
+  function roll() {
+    setCurrent(suggestMeal(base, effort, current?.id) ?? null)
+  }
+
+  return (
+    <div className="fade-in">
+      <p className="eyebrow">Cuando no sabes qué comer</p>
+      <h1>Mesa</h1>
+      <p className="lede">
+        Platos completos, de base animal y sin frutos secos. Come hasta saciarte de verdad: la
+        proteína por delante y el resto se regula solo.
+      </p>
+
+      <div className="card" style={{ marginTop: 28 }}>
+        <p className="eyebrow">¿Qué te apetece?</p>
+        <div className="options">
+          <button className="opt" aria-pressed={base === null} onClick={() => setBase(null)}>
+            Lo que sea
+          </button>
+          {BASES.map((b) => (
+            <button key={b} className="opt" aria-pressed={base === b} onClick={() => setBase(b)}>
+              {BASE_LABELS[b]}
+            </button>
+          ))}
+        </div>
+
+        <hr className="rule" />
+        <p className="eyebrow">¿Cuánto tiempo tienes?</p>
+        <div className="options">
+          <button className="opt" aria-pressed={effort === null} onClick={() => setEffort(null)}>
+            Da igual
+          </button>
+          {EFFORTS.map((e) => (
+            <button key={e} className="opt" aria-pressed={effort === e} onClick={() => setEffort(e)}>
+              {EFFORT_LABELS[e]}
+            </button>
+          ))}
+        </div>
+
+        {available.length === 0 && (
+          <p className="faint" style={{ marginTop: 16 }}>
+            Con esa combinación no tengo nada. Prueba a soltar uno de los dos filtros.
+          </p>
+        )}
+      </div>
+
+      <button className="btn btn-primary" disabled={available.length === 0} onClick={roll}>
+        {current ? 'Dame otra idea' : 'Dame una idea'}
+      </button>
+
+      {current && (
+        <div className="card fade-in" style={{ marginTop: 16 }} key={current.id}>
+          <MealCard meal={current} />
+        </div>
+      )}
+
+      {protein && (
+        <p className="faint" style={{ margin: '18px 4px' }}>
+          Referencia del día: {protein.min}–{protein.max} g de proteína. No hace falta que la
+          apuntes; con dos o tres platos como estos sale sola.
+        </p>
+      )}
+
+      <button className="btn-quiet" onClick={() => setBrowsing(!browsing)}>
+        {browsing ? 'Ocultar el recetario' : `Ver los ${MEALS.length} platos`}
+      </button>
+
+      {browsing && (
+        <div className="fade-in" style={{ marginTop: 16 }}>
+          {BASES.map((b) => {
+            const meals = MEALS.filter((m) => m.base === b)
+            return (
+              <div className="card" key={b}>
+                <p className="eyebrow">{BASE_LABELS[b]}</p>
+                {meals.map((m) => (
+                  <button
+                    className="item"
+                    key={m.id}
+                    style={{ width: '100%', textAlign: 'left' }}
+                    onClick={() => {
+                      setCurrent(m)
+                      window.scrollTo({ top: 0, behavior: 'smooth' })
+                    }}
+                  >
+                    <div className="item-body">
+                      <div className="item-title">{m.name}</div>
+                      <div className="item-meta">
+                        {EFFORT_LABELS[m.effort]} · ≈ {m.proteinG} g de proteína
+                      </div>
+                    </div>
+                    <Icon name="chevron" className="check" />
+                  </button>
+                ))}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
