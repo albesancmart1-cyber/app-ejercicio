@@ -11,6 +11,7 @@ import { actions } from '../store/store'
 import { interpretTrend, type TrendReading } from '../domain/trend'
 import TrendChart from '../components/TrendChart'
 import Icon from '../components/Icon'
+import { formatDuration } from '../components/Chrono'
 import { computeBalance, weeklySets } from '../domain/muscleBalance'
 import { computeLeptinSignal } from '../domain/leptin'
 import { WEEKLY_SETS } from '../domain/protocol'
@@ -373,6 +374,7 @@ export default function History() {
                   <div className="item-title">{s.title}</div>
                   <div className="item-meta">
                     {s.date}
+                    {s.durationSec ? ` · ${formatDuration(s.durationSec)}` : ''}
                     {s.rpe ? ` · sensación ${s.rpe}/5` : ''}
                     {s.cardioMinutes ? ` · ${s.cardioMinutes} min` : ''}
                   </div>

@@ -106,8 +106,53 @@ if (await botonPesas.count()) {
 }
 await byText('Preparar la sesión').click()
 
+// ── El plan, antes de arrancar nada ───────────────────────
+await shot('10-plan')
+if (!(await page.getByText('Empezar entrenamiento').count())) {
+  console.error('ERROR: debería mostrar el plan y esperar a que empieces')
+  process.exit(1)
+}
+
+// Cambiar un ejercicio que no encaja.
+const nombreAntes = await page.locator('.item-title').first().textContent()
+const metaAntes = await page.locator('.item-meta').first().textContent()
+await page.getByText('Cambiar ejercicio').first().click()
+await page.waitForTimeout(400)
+const nombreDespues = await page.locator('.item-title').first().textContent()
+if (nombreAntes === nombreDespues) {
+  console.error('ERROR: cambiar ejercicio no lo sustituyó')
+  process.exit(1)
+}
+console.log('  → cambia', nombreAntes, '→', nombreDespues)
+const metaDespues = await page.locator('.item-meta').first().textContent()
+if (metaAntes === metaDespues && metaAntes.includes('descanso')) {
+  console.log('  → (mismo plan, puede ser legítimo si coinciden tipo y carga)')
+}
+await shot('10a-cambiado')
+
+// Reordenar.
+const primeroAntes = await page.locator('.item-title').first().textContent()
+await page.locator('.reorder button', { hasText: '↓' }).first().click()
+await page.waitForTimeout(300)
+const primeroDespues = await page.locator('.item-title').first().textContent()
+if (primeroAntes === primeroDespues) {
+  console.error('ERROR: reordenar no cambió el orden')
+  process.exit(1)
+}
+console.log('  → reordenado:', primeroAntes, 'baja')
+
+// Arrancar el cronómetro.
+await page.getByText('Empezar entrenamiento').click()
+await page.waitForTimeout(2200)
+const crono = await page.locator('.chrono').textContent()
+if (!crono || !/\d+:\d\d/.test(crono)) {
+  console.error('ERROR: el cronómetro no arrancó →', crono)
+  process.exit(1)
+}
+console.log('  → cronómetro en marcha:', crono)
+await shot('10b-en-marcha')
+
 // ── Sesión: registro serie a serie y descanso ─────────────
-await shot('10-sesion')
 const filas = page.locator('.set-row')
 const totalSeries = await filas.count()
 console.log('  → series a registrar:', totalSeries)
@@ -124,7 +169,7 @@ if (await campos.count()) {
   await campos.nth(1).fill('10')
 }
 // La referencia visual del ejercicio, para salir de dudas.
-await byText('¿Cómo se hace?').click()
+await page.getByText('¿Cómo se hace?').first().click()
 await page.waitForTimeout(400)
 if (!(await page.locator('.exercise-anim').count())) {
   console.error('ERROR: no aparece la animación del ejercicio')
@@ -135,7 +180,7 @@ if (!(await page.locator('.exercise-anim animate').count())) {
   process.exit(1)
 }
 console.log('  → animación del patrón con sus avisos de técnica')
-await shot('10a-como-se-hace')
+await shot('10e-como-se-hace')
 await byText('¿Cómo se hace?').click()
 
 await primeraFila.locator('.check').click()
@@ -144,7 +189,7 @@ await page.waitForTimeout(400)
 // El temporizador debe aparecer solo tras completar una serie que no es la última.
 if (await page.locator('.rest-timer').count()) {
   console.log('  → temporizador de descanso arrancado solo')
-  await shot('10b-descanso')
+  await shot('10f-descanso-serie')
   await byText('Saltar descanso').click()
   await page.waitForTimeout(200)
   if (await page.locator('.rest-timer').count()) {
@@ -156,15 +201,42 @@ if (await page.locator('.rest-timer').count()) {
   process.exit(1)
 }
 
+// Terminar el PRIMER ejercicio: al marcar su última serie debe saltar el
+// descanso entre ejercicios, anunciando el siguiente. Hay que comprobarlo aquí,
+// antes de descartarlo, o el propio recorrido lo salta y no se ve.
+const primerEjercicio = page.locator('.card').filter({ has: page.locator('.set-row') }).first()
+const seriesPrimero = primerEjercicio.locator('.set-row .check')
+const nSeriesPrimero = await seriesPrimero.count()
+for (let i = 1; i < nSeriesPrimero; i++) {
+  await seriesPrimero.nth(i).click()
+  await page.waitForTimeout(250)
+  if (i < nSeriesPrimero - 1) {
+    const saltar = page.getByText('Saltar descanso')
+    if (await saltar.count()) await saltar.click()
+  }
+}
+const anuncioSiguiente = await page.getByText('siguiente:').count()
+if (!anuncioSiguiente) {
+  console.error('ERROR: al terminar un ejercicio debe arrancar el descanso hacia el siguiente')
+  process.exit(1)
+}
+const etiqueta = await page.locator('.rest-timer .eyebrow').first().textContent()
+console.log('  → descanso entre ejercicios:', etiqueta.trim())
+await shot('10d-descanso-entre-ejercicios')
+await byText('Saltar descanso').click()
+
 // Completar el resto de series.
 const checks = page.locator('.set-row .check')
 for (let i = 0; i < (await checks.count()); i++) {
+  const marcado = await checks.nth(i).getAttribute('aria-pressed')
+  if (marcado === 'true') continue
   await checks.nth(i).click()
-  await page.waitForTimeout(120)
+  await page.waitForTimeout(150)
   const saltar = page.getByText('Saltar descanso')
   if (await saltar.count()) await saltar.click()
 }
 await shot('10c-series-registradas')
+
 await byText('Terminar').click()
 await page.locator('.scale button').nth(3).click()
 await shot('11-sensacion')

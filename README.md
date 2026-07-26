@@ -23,9 +23,11 @@ servidor.
    apetecen pesas, «Prefiero algo con pesas» te lo cambia por fuerza contenida: sube un escalón,
    pero nunca se acerca al fallo y sigue respetando tus molestias, las 48 h de recuperación y la
    rampa de vuelta tras un parón.
-4. **Sesión** — ejercicios concretos con series, repeticiones, repeticiones en reserva, descanso y
-   peso sugerido. Anotas **serie a serie** el peso y las repeticiones que has hecho de verdad, y al
-   marcar una serie arranca solo el **temporizador de descanso**, que vibra al terminar.
+4. **Sesión** — primero ves el plan completo y lo ajustas con calma: **cambias** lo que no encaje y
+   **reordenas** los ejercicios. Al pulsar «empezar entrenamiento» arranca un **cronómetro**. Anotas
+   **serie a serie** el peso y las repeticiones reales, y al marcar una serie salta solo el
+   **temporizador de descanso**, que vibra al terminar — entre series el que toque por el tipo de
+   ejercicio, y **2 minutos al cambiar de ejercicio**, anunciando cuál viene.
 5. **Cuerpo** — composición corporal, señal de leptina, balance muscular de 14 días, grupos
    cubiertos y calendario.
 6. **Mesa** — ideas de comida completa cetogénica para cuando no sabes qué cocinar.
@@ -157,6 +159,25 @@ va mal. Dos reglas gobiernan ese comentario:
   Nunca más de dos sugerencias a la vez, nunca hablando de calorías, y nunca en clave de culpa ni de
   racha rota. Cuando vas bien, la recomendación es explícitamente no tocar nada.
 
+## Cambiar un ejercicio que no encaja
+
+Si un ejercicio no te sirve —no te gusta o no tienes con qué hacerlo—, un toque en **«cambiar
+ejercicio»** lo sustituye por otro del mismo grupo muscular, **priorizando que trabaje de otra
+manera**: para eso se usan los patrones de movimiento, prefiriendo siempre un patrón distinto al que
+descartas. Tocar de nuevo sigue rotando por las alternativas.
+
+Los descartados **se recuerdan** y dejan de proponerse; se revisan y readmiten desde Ajustes. Con
+una salvaguarda: si descartar todos los de un grupo lo dejara sin nada, la app ignora la lista antes
+que montarte una sesión coja.
+
+Esto destapó un fallo real de fondo: el filtro de material daba por disponible cualquier ejercicio
+que listara «peso corporal» aunque además necesitara algo, y por eso proponía **subidas al cajón a
+quien no tiene cajón**. Ahora subidas al cajón y fondos en banco exigen banco. Corregirlo dejaba
+huecos —alguien solo con su cuerpo se quedaba sin ningún ejercicio de brazo—, así que el catálogo
+creció a 60 ejercicios, con la garantía, vigilada por un test, de que **todo grupo muscular tiene al
+menos dos opciones aun entrenando solo con peso corporal**. Entre los nuevos está la extensión de
+cuádriceps en máquina.
+
 ## Cómo se hace cada ejercicio
 
 Cada ejercicio tiene un desplegable **«¿cómo se hace?»** con un muñeco animado del patrón de
@@ -269,7 +290,7 @@ En local la app se sirve en la raíz y en Pages bajo `/app-ejercicio/`. Lo contr
 ```bash
 npm install
 npm run dev       # servidor de desarrollo
-npm test          # 149 tests: motor, catálogo, DHA, leptina, composición y tendencia
+npm test          # 164 tests: motor, catálogo, DHA, leptina, composición, tendencia y sustituciones
 npm run build     # build de producción (PWA)
 npm run preview   # servir la build
 ```

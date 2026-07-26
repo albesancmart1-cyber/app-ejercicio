@@ -711,6 +711,48 @@ input:focus {
   margin-top: 1px;
 }
 
+/* ── Cronómetro y controles de la sesión ────────────────── */
+
+.chrono {
+  font-size: 1.15rem;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  letter-spacing: -0.01em;
+}
+
+.reorder {
+  display: flex;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.reorder button {
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.reorder button:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.exercise-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 10px;
+}
+
+.exercise-actions .disclose {
+  padding: 2px 0;
+}
+
 /* ── Animación de ejercicios ────────────────────────────── */
 
 .how-to {

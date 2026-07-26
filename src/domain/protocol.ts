@@ -115,6 +115,13 @@ export function setsFor(_intensity: Intensity, volumeScale: number): number {
   return Math.max(2, Math.round(BASE_SETS * volumeScale))
 }
 
+/**
+ * Descanso al cambiar de ejercicio. Es más largo que el de un accesorio porque
+ * entre medias hay que recoger, montar el siguiente y recolocarse: llegar a la
+ * primera serie del ejercicio nuevo con la respiración alta arruina esa serie.
+ */
+export const DESCANSO_ENTRE_EJERCICIOS = 120
+
 /** Semanas de adaptación a la cetosis durante las que el rendimiento aún se resiente. */
 export const KETO_ADAPTATION_WEEKS = 6
 

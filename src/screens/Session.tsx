@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import type { PlannedExercise, Session, SetLog } from '../domain/types'
 import { initLogs, syncExercise, volumeLoad } from '../domain/setLogs'
-import { actions } from '../store/store'
+import { DESCANSO_ENTRE_EJERCICIOS } from '../domain/protocol'
+import { nextAlternative, swapExercise } from '../domain/swap'
+import { actions, useAppData } from '../store/store'
 import Icon from '../components/Icon'
 import RestTimer from '../components/RestTimer'
+import Chrono, { elapsedSeconds } from '../components/Chrono'
 import ExerciseAnimation from '../components/ExerciseAnimation'
 import { patternOf } from '../data/patterns'
 
@@ -14,22 +17,29 @@ function planLabel(pe: PlannedExercise): string {
   return parts.join(' · ')
 }
 
-/** Dónde está el descanso activo: qué ejercicio y tras qué serie. */
+/** Dónde está el descanso activo y de qué tipo. */
 interface Resting {
   exercise: number
   set: number
   seconds: number
+  /** Nombre del ejercicio que viene, cuando el descanso es entre ejercicios. */
+  nextName?: string
 }
 
 export default function SessionScreen({ session }: { session: Session }) {
+  const data = useAppData()
+  const profile = data.profile!
   const [exercises, setExercises] = useState<PlannedExercise[]>(() =>
-    // Las sesiones creadas antes de existir el registro no traen series.
     session.exercises.map((e) => (e.logs ? e : { ...e, logs: initLogs(e.plan) }))
   )
+  const [startedAt, setStartedAt] = useState<number | undefined>(session.startedAt)
   const [rpe, setRpe] = useState<1 | 2 | 3 | 4 | 5 | null>(null)
   const [finishing, setFinishing] = useState(false)
   const [resting, setResting] = useState<Resting | null>(null)
   const [comoSeHace, setComoSeHace] = useState<number | null>(null)
+  const [aviso, setAviso] = useState<string | null>(null)
+
+  const keto = data.checkIns.find((c) => c.date === session.date)?.keto ?? false
 
   function updateSet(ei: number, si: number, patch: Partial<SetLog>) {
     setExercises((prev) =>
@@ -43,41 +53,129 @@ export default function SessionScreen({ session }: { session: Session }) {
 
   function toggleSet(ei: number, si: number) {
     const ejercicio = exercises[ei]
-    const serie = ejercicio.logs?.[si]
-    const marcando = !serie?.done
+    const marcando = ejercicio.logs?.[si]?.done !== true
     updateSet(ei, si, { done: marcando })
 
-    // El descanso arranca solo al completar una serie que no sea la última.
-    const esUltima = si === (ejercicio.logs?.length ?? 1) - 1
-    const descanso = ejercicio.plan.restSeconds
-    if (marcando && !esUltima && descanso && ejercicio.primary !== 'cardio') {
-      setResting({ exercise: ei, set: si, seconds: descanso })
-    } else if (!marcando) {
+    if (!marcando) {
       setResting(null)
+      return
     }
+    if (ejercicio.primary === 'cardio') return
+
+    const esUltimaSerie = si === (ejercicio.logs?.length ?? 1) - 1
+    const siguiente = exercises[ei + 1]
+
+    if (!esUltimaSerie && ejercicio.plan.restSeconds) {
+      setResting({ exercise: ei, set: si, seconds: ejercicio.plan.restSeconds })
+    } else if (esUltimaSerie && siguiente) {
+      // Antes no había pausa al cambiar de ejercicio: se encadenaba la última
+      // serie de uno con la primera del siguiente.
+      setResting({
+        exercise: ei,
+        set: si,
+        seconds: DESCANSO_ENTRE_EJERCICIOS,
+        nextName: siguiente.name
+      })
+    }
+  }
+
+  function cambiarEjercicio(ei: number) {
+    const actual = exercises[ei]
+    const alternativa = nextAlternative(actual, profile, { ...session, exercises })
+    if (!alternativa) {
+      setAviso(
+        `No tengo otra opción de ${actual.name.toLowerCase()} con tu material. Añade equipamiento en Ajustes y aparecerán más.`
+      )
+      return
+    }
+    const sustituto = swapExercise(actual, alternativa, profile, data.sessions, {
+      intensity: 'moderada',
+      volumeScale: 1,
+      keto
+    })
+    setExercises((prev) => prev.map((e, i) => (i === ei ? sustituto : e)))
+    // Se recuerda para no volver a proponerlo en futuras sesiones.
+    actions.saveProfile({
+      ...profile,
+      dislikedExercises: [...new Set([...(profile.dislikedExercises ?? []), actual.exerciseId])]
+    })
+    setResting(null)
+    setComoSeHace(null)
+    setAviso(null)
+  }
+
+  function mover(ei: number, delta: number) {
+    const destino = ei + delta
+    if (destino < 0 || destino >= exercises.length) return
+    setExercises((prev) => {
+      const copia = [...prev]
+      ;[copia[ei], copia[destino]] = [copia[destino], copia[ei]]
+      return copia
+    })
+    setResting(null)
+    setComoSeHace(null)
+  }
+
+  function empezar() {
+    const ahora = Date.now()
+    setStartedAt(ahora)
+    actions.saveSession({ ...session, exercises, startedAt: ahora })
+  }
+
+  function guardar() {
+    actions.saveSession({
+      ...session,
+      exercises,
+      rpe: rpe ?? undefined,
+      startedAt,
+      durationSec: startedAt ? elapsedSeconds(startedAt) : undefined,
+      completed: true
+    })
   }
 
   const doneSets = exercises.reduce((acc, e) => acc + (e.logs ?? []).filter((l) => l.done).length, 0)
   const totalSets = exercises.reduce((acc, e) => acc + (e.logs ?? []).length, 0)
   const volumen = exercises.reduce((acc, e) => acc + volumeLoad(e), 0)
+  const enMarcha = startedAt !== undefined
 
   return (
     <div className="fade-in">
-      <p className="eyebrow">En marcha</p>
+      <div className="row">
+        <p className="eyebrow" style={{ margin: 0 }}>
+          {enMarcha ? 'En marcha' : 'Tu plan de hoy'}
+        </p>
+        {enMarcha && <Chrono startedAt={startedAt!} />}
+      </div>
       <h1>{session.title}</h1>
       <p className="lede">
-        {doneSets} de {totalSets} series. A tu ritmo: quedarte con ganas de más es la idea.
+        {enMarcha
+          ? `${doneSets} de ${totalSets} series. A tu ritmo: quedarte con ganas de más es la idea.`
+          : 'Revisa el plan con calma: cambia lo que no encaje y ordénalo como quieras. Cuando estés, empezamos.'}
       </p>
 
       {exercises.map((e, ei) => (
         <div className="card" key={`${e.exerciseId}-${ei}`}>
-          <div className="item-title">{e.name}</div>
-          <div className="item-meta" style={{ marginBottom: 14 }}>
-            {planLabel(e)}
+          <div className="row" style={{ alignItems: 'flex-start' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="item-title">{e.name}</div>
+              <div className="item-meta">{planLabel(e)}</div>
+            </div>
+            <div className="reorder">
+              <button onClick={() => mover(ei, -1)} disabled={ei === 0} aria-label={`Subir ${e.name}`}>
+                ↑
+              </button>
+              <button
+                onClick={() => mover(ei, 1)}
+                disabled={ei === exercises.length - 1}
+                aria-label={`Bajar ${e.name}`}
+              >
+                ↓
+              </button>
+            </div>
           </div>
 
-          {patternOf(e.exerciseId) && (
-            <>
+          <div className="exercise-actions">
+            {patternOf(e.exerciseId) && (
               <button
                 className="disclose"
                 aria-expanded={comoSeHace === ei}
@@ -86,13 +184,21 @@ export default function SessionScreen({ session }: { session: Session }) {
                 <Icon name="chevron" />
                 ¿Cómo se hace?
               </button>
-              {comoSeHace === ei && (
-                <div className="how-to fade-in">
-                  <ExerciseAnimation pattern={patternOf(e.exerciseId)!} />
-                </div>
-              )}
-            </>
+            )}
+            {e.primary !== 'cardio' && (
+              <button className="disclose" onClick={() => cambiarEjercicio(ei)}>
+                <Icon name="spark" />
+                Cambiar ejercicio
+              </button>
+            )}
+          </div>
+          {comoSeHace === ei && (
+            <div className="how-to fade-in">
+              <ExerciseAnimation pattern={patternOf(e.exerciseId)!} />
+            </div>
           )}
+
+          <div style={{ height: 10 }} />
 
           {e.primary === 'cardio' ? (
             <div className="set-row">
@@ -121,9 +227,7 @@ export default function SessionScreen({ session }: { session: Session }) {
                       placeholder={e.plan.weightKg ? `${e.plan.weightKg}` : '—'}
                       value={serie.weightKg ?? ''}
                       onChange={(ev) =>
-                        updateSet(ei, si, {
-                          weightKg: ev.target.value ? Number(ev.target.value) : undefined
-                        })
+                        updateSet(ei, si, { weightKg: ev.target.value ? Number(ev.target.value) : undefined })
                       }
                       aria-label={`Peso de la serie ${si + 1} de ${e.name}`}
                     />
@@ -136,9 +240,7 @@ export default function SessionScreen({ session }: { session: Session }) {
                       placeholder={e.plan.reps.split('-')[0]}
                       value={serie.reps ?? ''}
                       onChange={(ev) =>
-                        updateSet(ei, si, {
-                          reps: ev.target.value ? Number(ev.target.value) : undefined
-                        })
+                        updateSet(ei, si, { reps: ev.target.value ? Number(ev.target.value) : undefined })
                       }
                       aria-label={`Repeticiones de la serie ${si + 1} de ${e.name}`}
                     />
@@ -156,6 +258,7 @@ export default function SessionScreen({ session }: { session: Session }) {
                 {resting && resting.exercise === ei && resting.set === si && (
                   <RestTimer
                     seconds={resting.seconds}
+                    label={resting.nextName ? `Descanso · siguiente: ${resting.nextName}` : undefined}
                     onSkip={() => setResting(null)}
                   />
                 )}
@@ -165,7 +268,22 @@ export default function SessionScreen({ session }: { session: Session }) {
         </div>
       ))}
 
-      {!finishing ? (
+      {aviso && (
+        <p className="faint" style={{ margin: '0 4px 14px' }}>
+          {aviso}
+        </p>
+      )}
+
+      {!enMarcha ? (
+        <>
+          <button className="btn btn-primary" onClick={empezar}>
+            Empezar entrenamiento
+          </button>
+          <button className="btn-quiet" onClick={() => actions.discardSession(session.id)}>
+            Hoy no puedo — descartar sin culpa
+          </button>
+        </>
+      ) : !finishing ? (
         <>
           {volumen > 0 && (
             <p className="faint" style={{ margin: '0 4px 14px' }}>
@@ -198,10 +316,7 @@ export default function SessionScreen({ session }: { session: Session }) {
             Con las repeticiones que has anotado y esta sensación ajustamos las cargas de la próxima.
           </p>
           <div style={{ height: 20 }} />
-          <button
-            className="btn btn-primary"
-            onClick={() => actions.saveSession({ ...session, exercises, rpe: rpe ?? undefined, completed: true })}
-          >
+          <button className="btn btn-primary" onClick={guardar}>
             Guardar
           </button>
         </div>

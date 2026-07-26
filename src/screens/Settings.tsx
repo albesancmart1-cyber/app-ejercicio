@@ -8,6 +8,7 @@ import {
 } from '../domain/types'
 import { ketoAdaptationWeeksLeft, proteinTarget } from '../domain/protocol'
 import { esVerano, objetivoDhaDiario } from '../domain/dha'
+import { exerciseById } from '../data/exercises'
 import { actions, todayIso, useAppData } from '../store/store'
 
 const ALL_EQUIPMENT = Object.keys(EQUIPMENT_LABELS) as Equipment[]
@@ -176,6 +177,30 @@ export default function Settings() {
           la reparación muscular, no grasa.
         </p>
       </div>
+
+      {(profile.dislikedExercises ?? []).length > 0 && (
+        <div className="card">
+          <p className="eyebrow">Ejercicios descartados</p>
+          <p className="dim" style={{ marginBottom: 14 }}>
+            Estos ya no se te proponen. Si quieres recuperar alguno, quítalo de la lista.
+          </p>
+          {(profile.dislikedExercises ?? []).map((id) => (
+            <div className="item" key={id}>
+              <div className="item-body">
+                <div className="item-title">{exerciseById(id)?.name ?? id}</div>
+              </div>
+              <button
+                className="opt"
+                onClick={() =>
+                  update({ dislikedExercises: (profile.dislikedExercises ?? []).filter((x) => x !== id) })
+                }
+              >
+                Readmitir
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="card">
         <p className="eyebrow">Tus datos</p>

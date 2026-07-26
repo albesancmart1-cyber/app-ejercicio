@@ -45,6 +45,7 @@ export type Equipment =
   | 'maquina_remo'
   | 'maquina_pecho'
   | 'maquina_femoral'
+  | 'maquina_extension'
   | 'bici'
   | 'correr'
 
@@ -62,6 +63,7 @@ export const EQUIPMENT_LABELS: Record<Equipment, string> = {
   maquina_remo: 'Máquina de remo',
   maquina_pecho: 'Máquina de pecho',
   maquina_femoral: 'Máquina de femoral',
+  maquina_extension: 'Máquina de extensión de cuádriceps',
   bici: 'Bicicleta',
   correr: 'Poder salir a correr / caminar'
 }
@@ -76,7 +78,8 @@ export const WEIGHTED_EQUIPMENT: Equipment[] = [
   'maquina_prensa',
   'maquina_remo',
   'maquina_pecho',
-  'maquina_femoral'
+  'maquina_femoral',
+  'maquina_extension'
 ]
 
 export type Goal = 'masa' | 'tonificar' | 'recomposicion'
@@ -101,9 +104,19 @@ export interface Profile {
   dhaPillMg?: number
   /** Altura en cm, necesaria para el FFMI. */
   heightCm?: number
+  /** Ejercicios que el usuario ha descartado y no quiere que se le propongan. */
+  dislikedExercises?: string[]
 }
 
 export type StressLevel = 'bajo' | 'medio' | 'alto'
+
+/** Cronometrado de la sesión. */
+export interface SessionTiming {
+  /** Época en ms en que se pulsó «empezar». */
+  startedAt?: number
+  /** Duración final en segundos, al guardar. */
+  durationSec?: number
+}
 
 export interface Exercise {
   id: string
@@ -183,6 +196,10 @@ export interface Session {
   cardioMinutes?: number
   rpe?: 1 | 2 | 3 | 4 | 5
   completed: boolean
+  /** Época en ms en que se pulsó «empezar entrenamiento». */
+  startedAt?: number
+  /** Duración total en segundos, guardada al terminar. */
+  durationSec?: number
 }
 
 export interface Recommendation {

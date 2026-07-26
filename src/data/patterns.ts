@@ -1,7 +1,7 @@
 /**
  * Patrones de movimiento y avisos de técnica.
  *
- * 49 ejercicios se reducen a un puñado de patrones: sentadilla, bisagra de
+ * El catálogo entero se reduce a un puñado de patrones: sentadilla, bisagra de
  * cadera, empujar, traccionar, sostener. Animar el patrón —y no cada ejercicio—
  * es lo que hace viable tener una referencia visual para todos sin depender de
  * vídeos externos ni de conexión.
@@ -132,11 +132,15 @@ export const EXERCISE_PATTERNS: Record<string, MovementPattern> = {
   sentadilla_barra: 'sentadilla',
   prensa: 'sentadilla',
   subida_cajon: 'sentadilla',
+  sentadilla_pared: 'sentadilla',
+  sentadilla_bulgara: 'zancada',
+  extension_cuadriceps: 'curl_femoral',
   zancadas: 'zancada',
 
   // Cadena posterior
   puente_gluteo: 'puente',
   puente_femoral: 'puente',
+  puente_una_pierna: 'puente',
   curl_femoral: 'curl_femoral',
   curl_femoral_banda: 'curl_femoral',
   curl_nordico_asistido: 'curl_femoral',
@@ -154,11 +158,15 @@ export const EXERCISE_PATTERNS: Record<string, MovementPattern> = {
   remo_banda: 'traccion_horizontal',
   face_pull: 'traccion_horizontal',
   superman: 'extension_espalda',
+  ytw_prono: 'extension_espalda',
+  remo_invertido: 'traccion_horizontal',
   pajaros: 'extension_espalda',
 
   // Pecho y hombro
   flexiones: 'empuje_horizontal',
   flexiones_inclinadas: 'empuje_horizontal',
+  flexiones_rodillas: 'empuje_horizontal',
+  flexiones_amplias: 'empuje_horizontal',
   press_banca_mancuernas: 'empuje_horizontal',
   press_banca_barra: 'empuje_horizontal',
   press_maquina: 'empuje_horizontal',
@@ -166,6 +174,7 @@ export const EXERCISE_PATTERNS: Record<string, MovementPattern> = {
   press_militar_mancuernas: 'empuje_vertical',
   press_militar_barra: 'empuje_vertical',
   pike_pushup: 'empuje_vertical',
+  plancha_toque_hombro: 'isometrico',
   elevaciones_laterales: 'empuje_vertical',
 
   // Brazo
@@ -173,6 +182,8 @@ export const EXERCISE_PATTERNS: Record<string, MovementPattern> = {
   curl_martillo: 'flexion_codo',
   extension_triceps: 'extension_codo',
   fondos_banco: 'extension_codo',
+  flexiones_diamante: 'extension_codo',
+  fondos_entre_sillas: 'extension_codo',
 
   // Core
   plancha: 'isometrico',

@@ -9,10 +9,13 @@ import { useEffect, useRef, useState } from 'react'
  */
 export default function RestTimer({
   seconds,
+  label,
   onDone,
   onSkip
 }: {
   seconds: number
+  /** Para el descanso entre ejercicios, que además anuncia el siguiente. */
+  label?: string
   onDone?: () => void
   onSkip: () => void
 }) {
@@ -47,7 +50,7 @@ export default function RestTimer({
     <div className="rest-timer fade-in">
       <div className="row">
         <span className="eyebrow" style={{ margin: 0 }}>
-          {terminado ? 'Descanso terminado' : 'Descansando'}
+          {terminado ? 'Descanso terminado' : (label ?? 'Descansando')}
         </span>
         <span className={`rest-clock ${terminado ? 'done' : ''}`}>
           {minutos}:{String(segundos).padStart(2, '0')}

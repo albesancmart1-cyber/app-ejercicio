@@ -4,6 +4,7 @@ import type {
   Exercise,
   MuscleGroup,
   PlannedExercise,
+  PlannedSet,
   Profile,
   Recommendation,
   Session
@@ -17,12 +18,12 @@ function newId(): string {
   return `s-${Date.now().toString(36)}-${idCounter}`
 }
 
-function hasEquipment(exercise: Exercise, owned: Equipment[]): boolean {
+export function hasEquipment(exercise: Exercise, owned: Equipment[]): boolean {
   return exercise.equipment.some((eq) => owned.includes(eq) || eq === 'peso_corporal')
 }
 
 /** Un básico multiarticular necesita más descanso que un accesorio. */
-function isCompound(exercise: Exercise): boolean {
+export function isCompound(exercise: Exercise): boolean {
   return exercise.stress !== 'bajo' && exercise.secondary.length > 0
 }
 
@@ -72,7 +73,7 @@ function lastPerformance(exerciseId: string, history: Session[]): LastPerformanc
  * Peso sugerido. Si ya hay registros, progresa desde el último teniendo en cuenta
  * cómo se sintió esa sesión: si costó mucho, se mantiene la carga.
  */
-function suggestWeight(
+export function suggestWeight(
   exercise: Exercise,
   profile: Profile,
   loadScale: number,
@@ -110,6 +111,32 @@ function recentExerciseIds(history: Session[]): Set<string> {
   return new Set(last ? last.exercises.map((e) => e.exerciseId) : [])
 }
 
+/**
+ * Construye el plan de un ejercicio concreto. Lo usan tanto la creación de la
+ * sesión como la sustitución, para que un ejercicio cambiado reciba exactamente
+ * el mismo trato que uno propuesto de origen.
+ */
+export function planFor(
+  exercise: Exercise,
+  profile: Profile,
+  intensity: Recommendation['intensity'],
+  volumeScale: number,
+  rir: number,
+  history: Session[],
+  keto: boolean
+): PlannedSet {
+  const rx = repPrescription(profile.goal, intensity, keto, isCompound(exercise))
+  return {
+    sets: setsFor(intensity, volumeScale),
+    reps: rx.reps,
+    weightKg: suggestWeight(exercise, profile, rx.loadScale, history),
+    rir,
+    restSeconds: rx.restSeconds
+  }
+}
+
+export const STRESS_RANK = { bajo: 0, medio: 1, alto: 2 }
+
 function pickForGroup(
   group: MuscleGroup,
   profile: Profile,
@@ -117,15 +144,19 @@ function pickForGroup(
   exclude: Set<string>,
   recent: Set<string>
 ): Exercise | undefined {
-  const stressRank = { bajo: 0, medio: 1, alto: 2 }
-  const candidates = EXERCISES.filter(
-    (e) =>
-      e.primary === group &&
-      e.primary !== 'cardio' &&
-      !exclude.has(e.id) &&
-      hasEquipment(e, profile.equipment) &&
-      stressRank[e.stress] <= stressRank[maxStress]
-  )
+  const stressRank = STRESS_RANK
+  const base = (e: Exercise) =>
+    e.primary === group &&
+    e.primary !== 'cardio' &&
+    !exclude.has(e.id) &&
+    hasEquipment(e, profile.equipment) &&
+    stressRank[e.stress] <= stressRank[maxStress]
+
+  // Los descartados dejan de proponerse… salvo que descartarlos todos dejara al
+  // grupo sin nada. Antes un ejercicio que no entusiasma que una sesión coja.
+  const descartados = new Set(profile.dislikedExercises ?? [])
+  let candidates = EXERCISES.filter((e) => base(e) && !descartados.has(e.id))
+  if (candidates.length === 0) candidates = EXERCISES.filter(base)
   if (candidates.length === 0) return undefined
 
   // Preferimos no repetir lo de la última sesión; dentro de eso, el mayor
@@ -182,18 +213,19 @@ export function buildSession(
       const ex = pickForGroup(group, profile, maxStress, used, recent)
       if (!ex) continue
       used.add(ex.id)
-      const rx = repPrescription(profile.goal, recommendation.intensity, keto, isCompound(ex))
       exercises.push({
         exerciseId: ex.id,
         name: ex.name,
         primary: ex.primary,
-        plan: {
-          sets: setsFor(recommendation.intensity, recommendation.volumeScale),
-          reps: rx.reps,
-          weightKg: suggestWeight(ex, profile, rx.loadScale, history),
-          rir: recommendation.rir,
-          restSeconds: rx.restSeconds
-        }
+        plan: planFor(
+          ex,
+          profile,
+          recommendation.intensity,
+          recommendation.volumeScale,
+          recommendation.rir,
+          history,
+          keto
+        )
       })
     }
 
