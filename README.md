@@ -138,8 +138,8 @@ Cada subida a la rama principal despliega la app sola en GitHub Pages
 aplicación»; en iPhone, Safari → compartir → «Añadir a pantalla de inicio». Queda con su icono, a
 pantalla completa y funcionando sin conexión.
 
-La primera vez hay que activar Pages en el repositorio: **Settings → Pages → Source: GitHub
-Actions**.
+El propio workflow activa Pages la primera vez (`enablement: true`), así que no hace falta tocar
+nada en los ajustes del repositorio.
 
 En local la app se sirve en la raíz y en Pages bajo `/app-ejercicio/`. Lo controla `BASE_PATH` en
 `vite.config.ts`, que el workflow define al construir.
