@@ -126,6 +126,49 @@ Lo importante no es la lectura suelta sino la **variación**: para un objetivo d
 peso puede quedarse clavado mientras baja la grasa y sube el músculo, y eso solo se ve en kilos. La
 app lo detecta y lo dice.
 
+### La gráfica
+
+Grasa (~16 kg) y músculo (~32 kg) tienen escalas muy distintas. En vez de recurrir a un doble eje
+—que es el error clásico y deforma la comparación—, ambas series se **indexan a una base común: el
+cambio en kg desde la primera medición**, con la línea de cero como referencia. Además de ser
+correcto, es justo donde la recomposición se ve: dos líneas separándose del origen.
+
+Los colores de serie son fijos (la identidad sigue al dato, no al acento horario) y están
+**validados con el script del sistema de visualización**, no elegidos a ojo: `#cf6d4d` para grasa y
+`#5596d0` para músculo pasan banda de luminosidad, croma, separación para daltonismo (ΔE 19,0),
+suelo de visión normal y contraste, en las cuatro superficies oscuras de la app. Un primer intento
+coral/verde se descartó justamente por dar ΔE 6,1 en deuteranopía. Leyenda siempre presente,
+etiquetas directas y marcas distintas (círculo y cuadrado) para que la identidad nunca dependa solo
+del color.
+
+### El veredicto
+
+Debajo de la gráfica la app dice si estás recomponiendo, si vas bien, si estás estancado o si algo
+va mal. Dos reglas gobiernan ese comentario:
+
+- **No inventar señal donde no la hay.** La pendiente se calcula por mínimos cuadrados sobre todas
+  las mediciones, no comparando la última con la anterior, así que una lectura rara no cambia el
+  veredicto. No opina con menos de 3 mediciones ni menos de 3 semanas, y trata como plano todo lo
+  que quede por debajo de 0,3 kg al mes. Decir «te has estancado» a partir de ruido de báscula sería
+  fabricar ansiedad.
+- **Quitar carga mental, no añadirla.** Si algo no funciona se dice claro, pero se señala **una sola
+  palanca**, sacada de lo que la app ya sabe de ti: la señal de leptina que peor esté, tu
+  consistencia real de entrenamiento, los grupos musculares que se quedan fuera o la proteína.
+  Nunca más de dos sugerencias a la vez, nunca hablando de calorías, y nunca en clave de culpa ni de
+  racha rota. Cuando vas bien, la recomendación es explícitamente no tocar nada.
+
+## Cómo se hace cada ejercicio
+
+Cada ejercicio tiene un desplegable **«¿cómo se hace?»** con un muñeco animado del patrón de
+movimiento y dos o tres avisos de técnica. Los 49 ejercicios se agrupan en 15 patrones —sentadilla,
+bisagra de cadera, empuje horizontal y vertical, tracción, plancha, cardio…—, que es lo que hace
+viable tener referencia visual para todos sin depender de vídeos externos ni de conexión.
+
+Las animaciones son SVG con SMIL: sin JavaScript, sin dependencias y funcionando con la app
+instalada y sin red. Respetan el ajuste de reducir movimiento del sistema congelando la pose
+inicial. Son esquemáticas a propósito: resuelven la duda de en qué dirección va el movimiento y qué
+se mueve, y no sustituyen a que alguien te vea y te corrija.
+
 Dos avisos que van en la propia pantalla, porque son la diferencia entre un dato útil y uno
 engañoso:
 
@@ -226,7 +269,7 @@ En local la app se sirve en la raíz y en Pages bajo `/app-ejercicio/`. Lo contr
 ```bash
 npm install
 npm run dev       # servidor de desarrollo
-npm test          # 127 tests: motor, catálogo, DHA, leptina y composición corporal
+npm test          # 149 tests: motor, catálogo, DHA, leptina, composición y tendencia
 npm run build     # build de producción (PWA)
 npm run preview   # servir la build
 ```

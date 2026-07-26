@@ -123,6 +123,21 @@ if (await campos.count()) {
   await campos.nth(0).fill('12')
   await campos.nth(1).fill('10')
 }
+// La referencia visual del ejercicio, para salir de dudas.
+await byText('¿Cómo se hace?').click()
+await page.waitForTimeout(400)
+if (!(await page.locator('.exercise-anim').count())) {
+  console.error('ERROR: no aparece la animación del ejercicio')
+  process.exit(1)
+}
+if (!(await page.locator('.exercise-anim animate').count())) {
+  console.error('ERROR: la animación no tiene movimiento')
+  process.exit(1)
+}
+console.log('  → animación del patrón con sus avisos de técnica')
+await shot('10a-como-se-hace')
+await byText('¿Cómo se hace?').click()
+
 await primeraFila.locator('.check').click()
 await page.waitForTimeout(400)
 
@@ -181,6 +196,48 @@ if (!(await page.getByText('FFMI 19.8').count())) {
 }
 console.log('  → composición: 16 kg grasa, 32 kg músculo, 64 kg magros, FFMI 19,8')
 await shot('13-composicion')
+
+// Sembrar un historial de recomposición para ver gráfica y veredicto.
+await page.evaluate(() => {
+  const datos = JSON.parse(localStorage.getItem('ritmo-data-v1'))
+  const hoy = new Date()
+  datos.measurements = [0, 1, 2, 3].map((i) => {
+    const d = new Date(hoy)
+    d.setDate(d.getDate() - (3 - i) * 14)
+    const peso = 80
+    const grasa = 19 - i
+    const musculo = 31 + i * 0.7
+    return {
+      date: d.toISOString().slice(0, 10),
+      weightKg: peso,
+      fatPercent: (grasa / peso) * 100,
+      musclePercent: (musculo / peso) * 100
+    }
+  })
+  localStorage.setItem('ritmo-data-v1', JSON.stringify(datos))
+})
+await page.reload()
+await page.locator('.tab', { hasText: 'Cuerpo' }).click()
+await page.waitForTimeout(600)
+
+if (!(await page.locator('.trend-chart').count())) {
+  console.error('ERROR: no se dibuja la gráfica de tendencia')
+  process.exit(1)
+}
+const series = await page.locator('.trend-chart polyline').count()
+const leyenda = await page.locator('.trend-legend').count()
+if (series < 2 || !leyenda) {
+  console.error('ERROR: la gráfica necesita dos series y leyenda; hay', series, 'y leyenda:', leyenda)
+  process.exit(1)
+}
+const veredicto = await page.locator('.verdict .item-title').textContent()
+console.log('  → gráfica con dos series y leyenda; veredicto:', veredicto)
+if (!veredicto.toLowerCase().includes('recompon')) {
+  console.error('ERROR: con grasa abajo y músculo arriba debería detectar recomposición')
+  process.exit(1)
+}
+await page.locator('.trend-chart').scrollIntoViewIfNeeded()
+await shot('13a-tendencia')
 
 await shot('13-leptina')
 await page.locator('.card').filter({ hasText: 'Balance muscular' }).scrollIntoViewIfNeeded()

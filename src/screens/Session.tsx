@@ -4,6 +4,8 @@ import { initLogs, syncExercise, volumeLoad } from '../domain/setLogs'
 import { actions } from '../store/store'
 import Icon from '../components/Icon'
 import RestTimer from '../components/RestTimer'
+import ExerciseAnimation from '../components/ExerciseAnimation'
+import { patternOf } from '../data/patterns'
 
 function planLabel(pe: PlannedExercise): string {
   const parts = [`${pe.plan.sets} × ${pe.plan.reps}`]
@@ -27,6 +29,7 @@ export default function SessionScreen({ session }: { session: Session }) {
   const [rpe, setRpe] = useState<1 | 2 | 3 | 4 | 5 | null>(null)
   const [finishing, setFinishing] = useState(false)
   const [resting, setResting] = useState<Resting | null>(null)
+  const [comoSeHace, setComoSeHace] = useState<number | null>(null)
 
   function updateSet(ei: number, si: number, patch: Partial<SetLog>) {
     setExercises((prev) =>
@@ -72,6 +75,24 @@ export default function SessionScreen({ session }: { session: Session }) {
           <div className="item-meta" style={{ marginBottom: 14 }}>
             {planLabel(e)}
           </div>
+
+          {patternOf(e.exerciseId) && (
+            <>
+              <button
+                className="disclose"
+                aria-expanded={comoSeHace === ei}
+                onClick={() => setComoSeHace(comoSeHace === ei ? null : ei)}
+              >
+                <Icon name="chevron" />
+                ¿Cómo se hace?
+              </button>
+              {comoSeHace === ei && (
+                <div className="how-to fade-in">
+                  <ExerciseAnimation pattern={patternOf(e.exerciseId)!} />
+                </div>
+              )}
+            </>
+          )}
 
           {e.primary === 'cardio' ? (
             <div className="set-row">

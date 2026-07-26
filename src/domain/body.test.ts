@@ -8,6 +8,8 @@ import {
 } from './body'
 import { completedSets, initLogs, parseRepRange, repVerdict, syncExercise, volumeLoad } from './setLogs'
 import type { BodyMeasurement, PlannedExercise } from './types'
+import { EXERCISES } from '../data/exercises'
+import { PATTERN_CUES, cuesFor, patternOf } from '../data/patterns'
 
 describe('composición corporal: de porcentajes a kilos', () => {
   const medicion: BodyMeasurement = {
@@ -196,6 +198,36 @@ describe('registro serie a serie', () => {
       ]
     })
     expect(volumeLoad(pe)).toBe(252) // 140 + 112, la no hecha no suma
+  })
+})
+
+describe('cobertura de patrones de movimiento', () => {
+  // Sin esto, añadir un ejercicio al catálogo lo dejaría sin animación ni avisos
+  // de técnica, y el usuario se quedaría con la duda justo donde la app promete
+  // resolverla.
+  it('los 49 ejercicios tienen patrón asignado', () => {
+    for (const ex of EXERCISES) {
+      expect(patternOf(ex.id), `${ex.id} sin patrón`).toBeDefined()
+    }
+  })
+
+  it('todo ejercicio tiene avisos de técnica', () => {
+    for (const ex of EXERCISES) {
+      expect(cuesFor(ex.id).length, ex.id).toBeGreaterThanOrEqual(2)
+    }
+  })
+
+  it('todos los patrones declarados tienen sus avisos', () => {
+    for (const [patron, avisos] of Object.entries(PATTERN_CUES)) {
+      expect(avisos.length, patron).toBeGreaterThanOrEqual(3)
+    }
+  })
+
+  it('no hay patrones huérfanos que nadie use', () => {
+    const usados = new Set(EXERCISES.map((e) => patternOf(e.id)))
+    for (const patron of Object.keys(PATTERN_CUES)) {
+      expect(usados.has(patron as never), `${patron} no lo usa ningún ejercicio`).toBe(true)
+    }
   })
 })
 

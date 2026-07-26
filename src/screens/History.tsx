@@ -8,6 +8,9 @@ import {
   sortMeasurements
 } from '../domain/body'
 import { actions } from '../store/store'
+import { interpretTrend, type TrendReading } from '../domain/trend'
+import TrendChart from '../components/TrendChart'
+import Icon from '../components/Icon'
 import { computeBalance, weeklySets } from '../domain/muscleBalance'
 import { computeLeptinSignal } from '../domain/leptin'
 import { WEEKLY_SETS } from '../domain/protocol'
@@ -25,14 +28,56 @@ function lastNDays(n: number): string[] {
   return days
 }
 
+/** El color de estado va acompañado de icono y texto, nunca solo. */
+function Verdict({ reading }: { reading: TrendReading }) {
+  const clase =
+    reading.state === 'recomposicion' || reading.state === 'progreso'
+      ? 'verdict verdict-good'
+      : reading.state === 'atencion'
+        ? 'verdict verdict-warn'
+        : 'verdict'
+  const icono = reading.state === 'recomposicion' || reading.state === 'progreso' ? 'check' : 'sun'
+
+  return (
+    <>
+      <div className={clase}>
+        <Icon name={icono} className="verdict-icon" />
+        <div>
+          <div className="item-title">{reading.titular}</div>
+          <p className="dim" style={{ marginTop: 6 }}>
+            {reading.mensaje}
+          </p>
+        </div>
+      </div>
+      {reading.sugerencias.length > 0 && (
+        <>
+          <p className="eyebrow" style={{ marginTop: 18 }}>
+            Por dónde empezar
+          </p>
+          <ul className="reasons">
+            {reading.sugerencias.map((s, i) => (
+              <li key={i}>{s}</li>
+            ))}
+          </ul>
+          <p className="faint" style={{ marginTop: 10 }}>
+            Una cosa cada vez. No hace falta cambiarlo todo a la vez, ni pesarse más a menudo.
+          </p>
+        </>
+      )}
+    </>
+  )
+}
+
 function BodyCompositionCard({
   measurements,
   heightCm,
-  today
+  today,
+  reading
 }: {
   measurements: BodyMeasurement[]
   heightCm?: number
   today: string
+  reading: TrendReading
 }) {
   const [abierto, setAbierto] = useState(false)
   const [peso, setPeso] = useState('')
@@ -120,12 +165,20 @@ function BodyCompositionCard({
             )}
           </div>
 
-          {vsAnterior?.recomposicion && (
-            <p className="dim" style={{ marginTop: 14 }}>
-              Grasa abajo y músculo arriba a la vez: eso es recomposición, y es exactamente lo que
-              buscas. El peso solo no lo habría contado.
-            </p>
+          {ordenadas.length >= 2 && (
+            <div style={{ marginTop: 18 }}>
+              <TrendChart
+                points={[...ordenadas].reverse().map((m) => {
+                  const c = computeComposition(m, heightCm)
+                  return { date: m.date, fatKg: c.fatKg, muscleKg: c.muscleKg }
+                })}
+              />
+            </div>
           )}
+
+          <hr className="rule" />
+          <Verdict reading={reading} />
+
           {vsPrimera && (
             <p className="faint" style={{ marginTop: 14 }}>
               Desde la primera medida: peso {formatDelta(vsPrimera.weightKg)}, grasa{' '}
@@ -216,7 +269,12 @@ export default function History() {
         </p>
       </div>
 
-      <BodyCompositionCard measurements={data.measurements} heightCm={data.profile?.heightCm} today={today} />
+      <BodyCompositionCard
+        measurements={data.measurements}
+        heightCm={data.profile?.heightCm}
+        today={today}
+        reading={interpretTrend(data.measurements, data.profile, data.checkIns, data.sessions, today)}
+      />
 
       <div className="card">
         <p className="eyebrow">Señal de leptina</p>
