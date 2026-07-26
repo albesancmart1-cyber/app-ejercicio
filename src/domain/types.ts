@@ -97,6 +97,8 @@ export interface Profile {
   maxWeights: Partial<Record<Equipment, number>>
   /** Fecha (ISO) en que empezó la alimentación cetogénica, si la sigue. */
   ketoSince?: string
+  /** mg de DHA por pastilla de suplemento, si tiene. */
+  dhaPillMg?: number
 }
 
 export type StressLevel = 'bajo' | 'medio' | 'alto'

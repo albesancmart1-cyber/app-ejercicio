@@ -7,6 +7,7 @@ import {
   type Goal
 } from '../domain/types'
 import { ketoAdaptationWeeksLeft, proteinTarget } from '../domain/protocol'
+import { esVerano, objetivoDhaDiario } from '../domain/dha'
 import { actions, todayIso, useAppData } from '../store/store'
 
 const ALL_EQUIPMENT = Object.keys(EQUIPMENT_LABELS) as Equipment[]
@@ -34,6 +35,7 @@ export default function Settings() {
   const ownedWeighted = WEIGHTED_EQUIPMENT.filter((eq) => profile.equipment.includes(eq))
   const protein = profile.weightKg ? proteinTarget(profile.weightKg, profile.goal) : null
   const ketoWeeks = ketoAdaptationWeeksLeft(profile.ketoSince, todayIso())
+  const objetivoDha = objetivoDhaDiario(todayIso())
 
   return (
     <div className="fade-in">
@@ -113,6 +115,22 @@ export default function Settings() {
             intensidad por debajo del máximo.
           </p>
         )}
+        <hr className="rule" />
+        <p className="eyebrow">DHA</p>
+        <label className="field">
+          <span>mg de DHA por pastilla</span>
+          <input
+            type="number"
+            placeholder="p. ej. 1000"
+            value={profile.dhaPillMg ?? ''}
+            onChange={(e) => update({ dhaPillMg: e.target.value ? Number(e.target.value) : undefined })}
+          />
+        </label>
+        <p className="faint" style={{ marginTop: 10 }}>
+          Objetivo de hoy: {objetivoDha.toLocaleString('es-ES')} mg
+          {esVerano(todayIso()) ? ' (subido por ser verano)' : ''}. Nunca te sugeriré más de
+          1.000 mg de suplemento al día: es el techo que la EFSA respalda para el DHA aislado.
+        </p>
         <hr className="rule" />
         <p className="dim">
           {protein ? (

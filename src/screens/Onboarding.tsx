@@ -27,6 +27,7 @@ export default function Onboarding() {
   const [equipment, setEquipment] = useState<Equipment[]>(['peso_corporal'])
   const [maxWeights, setMaxWeights] = useState<Partial<Record<Equipment, number>>>({})
   const [ketoSince, setKetoSince] = useState('')
+  const [dhaPillMg, setDhaPillMg] = useState('')
 
   const ownedWeighted = WEIGHTED_EQUIPMENT.filter((eq) => equipment.includes(eq))
   const total = 5
@@ -40,7 +41,8 @@ export default function Onboarding() {
       goal,
       equipment,
       maxWeights,
-      ketoSince: ketoSince || undefined
+      ketoSince: ketoSince || undefined,
+      dhaPillMg: dhaPillMg ? Number(dhaPillMg) : undefined
     }
     actions.saveProfile(profile)
   }
@@ -170,7 +172,7 @@ export default function Onboarding() {
       {step === 4 && (
         <>
           <p className="eyebrow">Paso 5</p>
-          <h1>Cetosis</h1>
+          <h1>Cetosis y DHA</h1>
           <p className="lede">
             Las primeras semanas en cetosis el rendimiento se resiente mientras el cuerpo se adapta.
             Si me dices desde cuándo, bajo la exigencia durante ese periodo.
@@ -182,6 +184,19 @@ export default function Onboarding() {
             </label>
             <p className="faint" style={{ marginTop: 12 }}>
               Déjalo vacío si no la sigues o si ya llevas mucho tiempo adaptado.
+            </p>
+            <hr className="rule" />
+            <label className="field">
+              <span>mg de DHA por pastilla, si tomas</span>
+              <input
+                type="number"
+                placeholder="p. ej. 1000"
+                value={dhaPillMg}
+                onChange={(e) => setDhaPillMg(e.target.value)}
+              />
+            </label>
+            <p className="faint" style={{ marginTop: 12 }}>
+              Con esto calculo cuánto te falta cada día, sin pasar nunca de 1.000 mg de suplemento.
             </p>
           </div>
           <button className="btn btn-primary" onClick={finish}>

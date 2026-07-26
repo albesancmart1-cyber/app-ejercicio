@@ -44,6 +44,13 @@ export interface Meal {
   dhaMg: number
   /** false solo si lleva algún acompañamiento vegetal. */
   animalOnly: boolean
+  /**
+   * Tope de veces por semana, para los platos que no pueden ser diarios por algo
+   * distinto del DHA. Hoy solo aplica a los hígados, por la vitamina A preformada:
+   * su límite superior en adultos son 3.000 µg RAE al día y una sola ración los
+   * supera de largo.
+   */
+  limit?: { maxPerWeek: number; reason: string }
 }
 
 export type DhaLevel = 'alto' | 'medio' | 'bajo'
@@ -71,7 +78,8 @@ export const DHA_BOOSTERS = [
   'Añade dos o tres anchoas o unas huevas por encima.',
   'Acompáñalo con media lata de sardinas o de caballa.',
   'Usa huevos enriquecidos en omega-3, que multiplican por cuatro el DHA de la yema.',
-  'Empieza con unas ostras o unos mejillones antes del plato principal.'
+  'Empieza con unas ostras o unos mejillones antes del plato principal.',
+  'Media lata de hígado de bacalao en su aceite al lado: unos 1.000 mg de golpe.'
 ]
 
 export const MEALS: Meal[] = [
@@ -263,7 +271,12 @@ export const MEALS: Meal[] = [
     steps: 'Pocha la cebolla despacio en mantequilla y sella el hígado un minuto por cara: si se pasa, se pone correoso.',
     proteinG: 45,
     dhaMg: 45,
-    animalOnly: false
+    animalOnly: false,
+    limit: {
+      maxPerWeek: 1,
+      reason:
+        'Una ración de hígado de ternera lleva más del triple del límite diario de vitamina A. Una vez por semana es un lujo nutricional; a diario, un problema hepático.'
+    }
   },
   {
     id: 'steak_tartar',
@@ -488,6 +501,60 @@ export const MEALS: Meal[] = [
     proteinG: 32,
     dhaMg: 885,
     animalOnly: true
+  },
+
+  {
+    id: 'higado_bacalao',
+    name: 'Hígado de bacalao en su aceite',
+    base: 'pescado',
+    effort: 'sin_cocinar',
+    ingredients: ['Lata de hígado de bacalao en su propio aceite', 'Huevo cocido', 'Limón', 'Sal'],
+    steps: 'De la lata al plato, con su aceite, que es donde está el omega-3. Untado sobre huevo cocido queda redondo.',
+    proteinG: 22,
+    dhaMg: 2160,
+    animalOnly: true,
+    limit: {
+      maxPerWeek: 2,
+      reason:
+        'Densísimo en DHA, pero una lata ronda los 5.000 µg de vitamina A y el límite diario son 3.000. Dos veces por semana como mucho, y ese día sin otra casquería.'
+    }
+  },
+  {
+    id: 'hamburguesa_sardinas',
+    name: 'Hamburguesa con sardinas encima',
+    base: 'carne',
+    effort: 'rapido',
+    ingredients: ['300 g de carne picada', 'Lata de sardinas en aceite de oliva', 'Sal', 'Pimienta'],
+    steps: 'Sella la hamburguesa y corona con las sardinas y su aceite. Suena extraño y sabe a hamburguesa con anchoas, que es justo la idea.',
+    proteinG: 55,
+    dhaMg: 715,
+    animalOnly: true
+  },
+  {
+    id: 'pollo_caballa',
+    name: 'Muslos de pollo con caballa al lado',
+    base: 'carne',
+    effort: 'rapido',
+    ingredients: ['Muslos de pollo con piel', 'Media lata de caballa en aceite de oliva', 'Sal'],
+    steps: 'Haz el pollo a la sartén y sirve la caballa al lado con su aceite. La forma más fácil de que una comida de carne no se quede a cero de DHA.',
+    proteinG: 52,
+    dhaMg: 1150,
+    animalOnly: true
+  },
+  {
+    id: 'higado_bacalao_carne',
+    name: 'Carne roja con hígado de bacalao al lado',
+    base: 'carne',
+    effort: 'rapido',
+    ingredients: ['Filete de ternera o entrecot', 'Media lata de hígado de bacalao en su aceite', 'Sal en escamas'],
+    steps: 'Haz la carne como siempre y sirve el hígado de bacalao al lado, con su aceite por encima. Es la forma de que una comida de carne no se quede a cero de DHA.',
+    proteinG: 48,
+    dhaMg: 1095,
+    animalOnly: true,
+    limit: {
+      maxPerWeek: 2,
+      reason: 'Lleva hígado de bacalao, así que cuenta para el tope semanal de vitamina A.'
+    }
   },
 
   // ── Marisco ────────────────────────────────────────────────

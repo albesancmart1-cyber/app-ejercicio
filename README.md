@@ -100,6 +100,9 @@ Fuentes: [CSCCa/NSCA Transition Periods](https://www.nsca.com/about-us/position-
 [Cetosis e hipertrofia (meta-análisis)](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9564904/) ·
 [Memoria muscular](https://www.frontiersin.org/journals/nutrition/articles/10.3389/fnut.2025.1701520/full) ·
 [Entrenamiento concurrente](https://www.strongerbyscience.com/research-spotlight-interference-effect/) ·
+[EFSA 2026: DHA suplementario](https://efsa.onlinelibrary.wiley.com/doi/10.2903/j.efsa.2026.9858) ·
+[EFSA 2012: EPA, DHA y DPA](https://efsa.onlinelibrary.wiley.com/doi/10.2903/j.efsa.2012.2815) ·
+[Retinol en hígados (estudio BfR MEAL)](https://pmc.ncbi.nlm.nih.gov/articles/PMC9530835/) ·
 [Leptina y sueño](https://pmc.ncbi.nlm.nih.gov/articles/PMC4131947/) ·
 [Luz de la mañana y leptina](https://onlinelibrary.wiley.com/doi/full/10.1155/2012/530726) ·
 [Disfunción circadiana y resistencia a la leptina](https://www.cell.com/cell-metabolism/fulltext/S1550-4131(15)00272-7) ·
@@ -111,7 +114,7 @@ medio.
 
 ## Mesa
 
-Un recetario para los días en que no sabes qué comer. **55 platos completos** de base animal —
+Un recetario para los días en que no sabes qué comer. **60 platos completos** de base animal —
 huevos, carne, casquería, pescado, marisco, lácteos enteros y chocolate del 95 % — **sin ningún
 fruto seco ni semilla**, restricción que vigila un test para que no se cuele nunca al ampliar el
 catálogo. La verdura, cuando aparece, es acompañamiento y jamás el plato.
@@ -122,13 +125,42 @@ su DHA; la siguiente idea nunca repite la anterior. Debajo queda el recetario co
 curiosear. Se muestra tu referencia diaria de proteína, pero **no se registra nada**: es
 orientación, no contabilidad.
 
-**El DHA manda.** Sin filtros, toda sugerencia es de DHA alto (≥600 mg por ración) — hay 18 platos
-en esa categoría, así que no se repiten. Ahora bien, el DHA solo existe en cantidad relevante en
-pescado azul y marisco: la caballa ronda los 1.400 mg/100 g y las sardinas los 700, mientras que
-la carne, los lácteos y el cacao están prácticamente a cero, y el huevo convencional aporta unos
-45 mg por yema. Por eso la app no finge: si filtras por carne o por capricho, te avisa de que ahí
-no hay DHA alto, te da lo mejor disponible y te dice cómo enriquecerlo — unas anchoas, media lata
-de sardinas, o huevos enriquecidos en omega-3, que multiplican por cuatro el DHA de la yema.
+**El DHA manda.** Sin filtros, toda sugerencia es de DHA alto (≥600 mg por ración). El DHA es el
+ácido graso estructural de las membranas — los segmentos externos de los fotorreceptores rondan el
+50 % — y solo existe en cantidad relevante en pescado azul y marisco: la caballa anda por los
+1.400 mg/100 g y las sardinas por los 700, mientras que la carne, los lácteos y el cacao están
+prácticamente a cero y una yema convencional aporta unos 45 mg.
+
+Aun así, pedir carne no te deja sin DHA: hay platos que la acompañan de algo del mar — muslos de
+pollo con caballa al lado, hamburguesa con sardinas encima, o hígado de bacalao en su aceite junto
+al filete. Donde no hay salida (lácteos, capricho) la app lo dice claramente en vez de fingir, y
+sugiere cómo enriquecer el plato: anchoas, huevas, media lata de sardinas o huevos enriquecidos en
+omega-3, que multiplican por cuatro el DHA de la yema.
+
+### Cuánto DHA, y dónde está el límite
+
+El objetivo diario es de 2.000 mg, que suben a 2.600 en los meses de más sol. Los topes están en
+`src/domain/dha.ts` con sus fuentes:
+
+- **EFSA (2026)**, opinión específica sobre DHA suplementario: hasta **1.000 mg/día de DHA aislado**
+  no plantean problemas de seguridad en ninguna población. No es un límite máximo tolerable — por
+  encima no está demostrado que sea peligroso —, sino el techo que la evidencia actual permite
+  respaldar. Por eso la app **nunca sugiere más de una pastilla de 1 g al día**, y calcula sola
+  cuántas te faltan para el objetivo a partir del plato que elijas.
+- **EFSA (2012)**, EPA + DHA combinados: hasta ~5 g/día de suplemento no aumentan el sangrado
+  espontáneo ni alteran el control glucémico, la función inmune o la peroxidación lipídica.
+- El techo operativo total de la app son 3.000 mg diarios sumando comida y pastilla. Entre 2 y 3 g
+  de DHA suplementario puede subir el LDL (y también el HDL), aunque la propia EFSA no considera
+  ese cambio adverso hasta 4 g durante 16 semanas.
+
+**Vitamina A: el otro límite.** El hígado de bacalao es de lo más denso en DHA que existe, pero una
+lata ronda los 5.000 µg de retinol y el límite superior en adultos son 3.000 µg al día. Por eso los
+platos con hígado llevan un tope semanal visible con su motivo — dos veces por semana el de bacalao,
+una el de ternera —, y un test impide que se añada casquería al catálogo sin ese tope.
+
+Subir el objetivo en verano es una preferencia razonable y segura dentro de estos límites, pero
+conviene ser claro: que el DHA sea material de construcción de las membranas está fuera de
+discusión; que el cuerpo *necesite* más en verano no es algo que la literatura establezca.
 
 ## Diseño
 
@@ -160,7 +192,7 @@ En local la app se sirve en la raíz y en Pages bajo `/app-ejercicio/`. Lo contr
 ```bash
 npm install
 npm run dev       # servidor de desarrollo
-npm test          # 81 tests del motor, del catálogo y de la señal de leptina
+npm test          # 95 tests del motor, del catálogo, del DHA y de la leptina
 npm run build     # build de producción (PWA)
 npm run preview   # servir la build
 ```

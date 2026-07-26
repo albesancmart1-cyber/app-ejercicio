@@ -43,6 +43,7 @@ await shot('04-pesos')
 await byText('Continuar').click()
 
 await page.locator('input[type=date]').fill('2026-07-01')
+await page.getByPlaceholder('p. ej. 1000').fill('1000')
 await shot('05-cetosis')
 await byText('Empezar').click()
 
@@ -130,6 +131,12 @@ await shot('14-mesa')
 await byText('Dame una idea').click()
 const primera = await page.locator('.card h2').first().textContent()
 await shot('15-idea')
+// Con pastillas de 1000 mg configuradas, debe decir cómo completar el objetivo.
+const complemento = await page.getByText(/pastilla|cubre el objetivo/).count()
+if (!complemento) {
+  console.error('ERROR: no calcula el complemento con pastillas')
+  process.exit(1)
+}
 await byText('Dame otra idea').click()
 const segunda = await page.locator('.card h2').first().textContent()
 console.log('  → primera idea:', primera)
@@ -138,11 +145,14 @@ if (primera === segunda) {
   console.error('ERROR: la sugerencia repitió el mismo plato')
   process.exit(1)
 }
+// La tarjeta del plato es la única con h2: así no la confundimos con la del objetivo.
+const platoCard = page.locator('.card').filter({ has: page.locator('h2') })
+
 // El DHA manda: sin filtros, toda sugerencia debe ser de DHA alto.
 for (let i = 0; i < 6; i++) {
   await byText('Dame otra idea').click()
   await page.waitForTimeout(150)
-  const etiqueta = await page.locator('.card .tag').first().textContent()
+  const etiqueta = await platoCard.locator('.tag').first().textContent()
   if (!etiqueta.includes('DHA alto')) {
     console.error('ERROR: sugerencia sin DHA alto →', etiqueta)
     process.exit(1)
@@ -156,20 +166,48 @@ await byText('Sin cocinar').click()
 await byText('Dame otra idea').click()
 await shot('16-idea-filtrada')
 
-// Con carne no existe DHA alto: debe avisar en vez de fingir.
+// Aun pidiendo carne debe resolver el DHA, acompañándola de algo del mar.
 await byText('Carne').click()
 await byText('Da igual').click()
 await byText('Dame otra idea').click()
-await page.waitForTimeout(200)
-const aviso = await page.getByText('no hay nada con DHA alto').count()
-if (!aviso) {
-  console.error('ERROR: con carne debería avisar de que no hay DHA alto')
+await page.waitForTimeout(250)
+const etiquetaCarne = await platoCard.locator('.tag').first().textContent()
+if (!etiquetaCarne.includes('DHA alto')) {
+  console.error('ERROR: con carne debería resolver el DHA con un acompañamiento marino →', etiquetaCarne)
   process.exit(1)
 }
-console.log('  → con carne avisa honestamente de que no hay DHA alto')
-await shot('16b-carne-sin-dha')
+console.log('  → con carne resuelve el DHA:', await platoCard.locator('h2').textContent())
+await shot('16b-carne-con-dha')
+
+// Los lácteos sí son un callejón sin salida para el DHA: ahí debe avisar.
+await byText('Lácteos').click()
+await byText('Dame otra idea').click()
+await page.waitForTimeout(250)
+if (!(await page.getByText('no hay nada con DHA alto').count())) {
+  console.error('ERROR: con lácteos debería avisar de que no hay DHA alto')
+  process.exit(1)
+}
+console.log('  → con lácteos avisa honestamente de que no hay DHA alto')
+await shot('16c-lacteos-sin-dha')
 await byText('Lo que sea').click()
+
+// El hígado de bacalao debe salir con su tope semanal por la vitamina A.
+await byText('Pescado').click()
 await byText('Ver los ').click()
+await page.getByText('Hígado de bacalao en su aceite').first().click()
+await page.waitForTimeout(400)
+const tope = await page.getByText('Máximo 2 por semana').count()
+const motivo = await page.getByText('vitamina A').count()
+if (!tope || !motivo) {
+  console.error('ERROR: el hígado de bacalao debe avisar del tope por vitamina A')
+  process.exit(1)
+}
+console.log('  → hígado de bacalao con su tope semanal y el motivo')
+await page.getByText('Máximo 2 por semana').scrollIntoViewIfNeeded()
+await shot('16d-higado-bacalao')
+
+// El recetario sigue abierto desde la comprobación anterior.
+await page.locator('.card').filter({ hasText: 'PESCADO' }).first().scrollIntoViewIfNeeded()
 await shot('17-recetario')
 
 await page.locator('.tab', { hasText: 'Ajustes' }).click()

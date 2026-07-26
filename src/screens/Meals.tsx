@@ -14,16 +14,18 @@ import {
   type MealEffort
 } from '../data/meals'
 import { proteinTarget } from '../domain/protocol'
-import { useAppData } from '../store/store'
+import { complementarConPastillas, esVerano, objetivoDhaDiario } from '../domain/dha'
+import { todayIso, useAppData } from '../store/store'
 import Icon from '../components/Icon'
 
 const BASES = Object.keys(BASE_LABELS) as MealBase[]
 const EFFORTS = Object.keys(EFFORT_LABELS) as MealEffort[]
 
-function MealCard({ meal }: { meal: Meal }) {
+function MealCard({ meal, pillMg, today }: { meal: Meal; pillMg: number; today: string }) {
   const nivel = dhaLevel(meal)
   // Un plato que no puede ser alto en DHA por naturaleza al menos dice cómo serlo.
   const booster = nivel === 'alto' ? null : DHA_BOOSTERS[meal.name.length % DHA_BOOSTERS.length]
+  const complemento = pillMg > 0 ? complementarConPastillas(meal.dhaMg, pillMg, today) : null
 
   return (
     <>
@@ -49,6 +51,19 @@ function MealCard({ meal }: { meal: Meal }) {
           Para subirle el DHA: {booster.charAt(0).toLowerCase() + booster.slice(1)}
         </p>
       )}
+      {complemento && complemento.nota && (
+        <p className="dim" style={{ marginTop: 12 }}>
+          {complemento.cubierto ? '✓ ' : ''}
+          {complemento.nota}
+        </p>
+      )}
+      {meal.limit && (
+        <>
+          <hr className="rule" />
+          <p className="eyebrow">Máximo {meal.limit.maxPerWeek} por semana</p>
+          <p className="faint">{meal.limit.reason}</p>
+        </>
+      )}
     </>
   )
 }
@@ -61,6 +76,9 @@ export default function Meals() {
   const [current, setCurrent] = useState<Meal | null>(null)
   const [browsing, setBrowsing] = useState(false)
 
+  const today = todayIso()
+  const pillMg = profile.dhaPillMg ?? 0
+  const objetivoDha = objetivoDhaDiario(today)
   const protein = profile.weightKg ? proteinTarget(profile.weightKg, profile.goal) : null
   const available = filterMeals(base, effort)
   // Qué DHA es capaz de dar el filtro elegido, para avisar antes de sugerir.
@@ -80,6 +98,24 @@ export default function Meals() {
       </p>
 
       <div className="card" style={{ marginTop: 28 }}>
+        <div className="row" style={{ alignItems: 'flex-end', marginBottom: 4 }}>
+          <span className="score">
+            {objetivoDha.toLocaleString('es-ES')}
+            <small> mg</small>
+          </span>
+          <span className="tag accent">{esVerano(today) ? 'objetivo de verano' : 'objetivo del día'}</span>
+        </div>
+        <p className="faint" style={{ marginTop: 10 }}>
+          {esVerano(today)
+            ? 'En los meses de más sol subimos el DHA: es el material con el que se construyen las membranas.'
+            : 'DHA a diario, que es el ácido graso estructural de tus membranas celulares.'}
+          {pillMg > 0
+            ? ` Tus pastillas son de ${pillMg.toLocaleString('es-ES')} mg y nunca te sugeriré pasar de 1.000 mg de suplemento al día.`
+            : ' Si tomas pastillas de DHA, dímelo en Ajustes y te calculo el complemento.'}
+        </p>
+      </div>
+
+      <div className="card">
         <p className="eyebrow">¿Qué te apetece?</p>
         <div className="options">
           <button className="opt" aria-pressed={base === null} onClick={() => setBase(null)}>
@@ -124,7 +160,7 @@ export default function Meals() {
 
       {current && (
         <div className="card fade-in" style={{ marginTop: 16 }} key={current.id}>
-          <MealCard meal={current} />
+          <MealCard meal={current} pillMg={pillMg} today={today} />
         </div>
       )}
 
