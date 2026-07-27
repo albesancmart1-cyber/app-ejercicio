@@ -113,22 +113,101 @@ if (!(await page.getByText('Empezar entrenamiento').count())) {
   process.exit(1)
 }
 
-// Cambiar un ejercicio que no encaja.
+// Cambiar un ejercicio que no encaja, eligiéndolo de la lista.
 const nombreAntes = await page.locator('.item-title').first().textContent()
-const metaAntes = await page.locator('.item-meta').first().textContent()
 await page.getByText('Cambiar ejercicio').first().click()
 await page.waitForTimeout(400)
-const nombreDespues = await page.locator('.item-title').first().textContent()
-if (nombreAntes === nombreDespues) {
-  console.error('ERROR: cambiar ejercicio no lo sustituyó')
+if (!(await page.locator('.picker').count())) {
+  console.error('ERROR: cambiar ejercicio debe abrir la lista para elegir')
   process.exit(1)
 }
-console.log('  → cambia', nombreAntes, '→', nombreDespues)
-const metaDespues = await page.locator('.item-meta').first().textContent()
-if (metaAntes === metaDespues && metaAntes.includes('descanso')) {
-  console.log('  → (mismo plan, puede ser legítimo si coinciden tipo y carga)')
+const opciones = await page.locator('.picker-pick').count()
+if (opciones < 3) {
+  console.error('ERROR: la lista debería ofrecer varias opciones; hay', opciones)
+  process.exit(1)
 }
+console.log('  → la lista ofrece', opciones, 'ejercicios del grupo')
+await shot('10a1-lista')
+
+// Marcar un favorito desde la propia lista y elegir ese mismo ejercicio.
+const elegido = await page.locator('.picker-pick .item-title').nth(1).textContent()
+await page.locator('.picker-star').nth(1).click()
+await page.waitForTimeout(150)
+if ((await page.locator('.picker-star[aria-pressed="true"]').count()) === 0) {
+  console.error('ERROR: la estrella no marcó el favorito')
+  process.exit(1)
+}
+// Marcarlo favorito lo sube al principio de la lista: se busca por nombre, no por posición.
+if ((await page.locator('.picker-pick .item-title').first().textContent()) !== elegido) {
+  console.error('ERROR: marcar favorito debería subirlo al principio de la lista')
+  process.exit(1)
+}
+await page.locator('.picker-pick').filter({ hasText: elegido }).first().click()
+await page.waitForTimeout(400)
+if (await page.locator('.picker').count()) {
+  console.error('ERROR: elegir de la lista debería cerrarla')
+  process.exit(1)
+}
+const nombreDespues = await page.locator('.item-title').first().textContent()
+if (nombreAntes === nombreDespues || nombreDespues !== elegido) {
+  console.error('ERROR: no puso el ejercicio elegido →', nombreAntes, '/', nombreDespues, '/', elegido)
+  process.exit(1)
+}
+console.log('  → cambia', nombreAntes, '→', nombreDespues, '(elegido a mano)')
 await shot('10a-cambiado')
+
+// Buscar por nombre y añadir un ejercicio más a la sesión.
+const cuantosAntes = await page.locator('.set-row').count()
+await page.getByText('Añadir un ejercicio de la lista').click()
+await page.waitForTimeout(300)
+// Sin tilde: la búsqueda debe encontrar «Curl de bíceps» igualmente.
+await page.getByPlaceholder('Buscar por nombre').fill('biceps')
+await page.waitForTimeout(300)
+const resultados = await page.locator('.picker-pick').count()
+if (resultados === 0) {
+  console.error('ERROR: la búsqueda sin tilde no encuentra «bíceps»')
+  process.exit(1)
+}
+const anadido = await page.locator('.picker-pick .item-title').first().textContent()
+await page.locator('.picker-pick').first().click()
+await page.waitForTimeout(400)
+if (!(await page.getByText(anadido, { exact: false }).count())) {
+  console.error('ERROR: el ejercicio añadido no aparece en la sesión →', anadido)
+  process.exit(1)
+}
+if ((await page.locator('.set-row').count()) <= cuantosAntes) {
+  console.error('ERROR: añadir un ejercicio no sumó series a la sesión')
+  process.exit(1)
+}
+console.log('  → añadido de la lista:', anadido)
+await shot('10a2-anadido')
+
+// La forma de hacerlo: con qué y a uno o dos lados. Cambia el peso sugerido.
+const conVariantes = page.locator('.card').filter({ has: page.locator('.variant-row') }).first()
+if (!(await conVariantes.count())) {
+  console.error('ERROR: ningún ejercicio ofrece elegir cómo se hace')
+  process.exit(1)
+}
+await conVariantes.scrollIntoViewIfNeeded()
+const metaAntesVariante = await conVariantes.locator('.item-meta').first().textContent()
+const unLado = conVariantes.getByText('A un lado cada vez')
+if (!(await unLado.count())) {
+  console.error('ERROR: falta la opción de hacerlo a un lado cada vez')
+  process.exit(1)
+}
+await unLado.click()
+await page.waitForTimeout(300)
+const metaConVariante = await conVariantes.locator('.item-meta').first().textContent()
+if (!metaConVariante.includes('a un lado cada vez')) {
+  console.error('ERROR: la forma elegida no queda anotada en el plan →', metaConVariante)
+  process.exit(1)
+}
+if (metaConVariante === metaAntesVariante) {
+  console.error('ERROR: elegir la forma no cambió nada del plan')
+  process.exit(1)
+}
+console.log('  → forma anotada:', metaConVariante.trim())
+await shot('10a3-variante')
 
 // Reordenar.
 const primeroAntes = await page.locator('.item-title').first().textContent()
@@ -425,6 +504,36 @@ await shot('17-recetario')
 
 await page.locator('.tab', { hasText: 'Ajustes' }).click()
 await shot('18-ajustes')
+
+// Los favoritos marcados durante la sesión deben estar aquí, y poderse ampliar.
+const tarjetaFav = page.locator('.card').filter({ hasText: 'Ejercicios favoritos' })
+if (!(await tarjetaFav.count())) {
+  console.error('ERROR: falta la tarjeta de ejercicios favoritos en Ajustes')
+  process.exit(1)
+}
+await tarjetaFav.scrollIntoViewIfNeeded()
+const favGuardado = await tarjetaFav.locator('.item-title').first().textContent()
+if (!favGuardado) {
+  console.error('ERROR: el favorito marcado durante la sesión no se guardó')
+  process.exit(1)
+}
+console.log('  → favorito guardado:', favGuardado)
+await shot('18b-favoritos')
+
+await tarjetaFav.getByText('Elegir favoritos del catálogo').click()
+await page.waitForTimeout(400)
+if (!(await page.locator('.picker').count())) {
+  console.error('ERROR: Ajustes debería abrir el catálogo para marcar favoritos')
+  process.exit(1)
+}
+const marcados = await page.locator('.picker-star[aria-pressed="true"]').count()
+if (marcados === 0) {
+  console.error('ERROR: el catálogo no refleja los favoritos ya marcados')
+  process.exit(1)
+}
+await shot('18c-catalogo-favoritos')
+await page.locator('.picker-close').click()
+await page.waitForTimeout(300)
 
 // ── Paletas horarias ──────────────────────────────────────
 await page.locator('.tab', { hasText: 'Hoy' }).click()

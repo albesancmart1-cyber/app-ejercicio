@@ -2,6 +2,7 @@ import { EXERCISES } from '../data/exercises'
 import type {
   Equipment,
   Exercise,
+  ExerciseVariant,
   MuscleGroup,
   PlannedExercise,
   PlannedSet,
@@ -11,6 +12,7 @@ import type {
 } from './types'
 import { BASE_SETS, repPrescription } from './protocol'
 import { initLogs, parseRepRange, repVerdict, type RepVerdict } from './setLogs'
+import { FACTOR_UNILATERAL, defaultVariant, sameVariant, scaleForSide } from './variants'
 
 let idCounter = 0
 function newId(): string {
@@ -27,8 +29,16 @@ export function isCompound(exercise: Exercise): boolean {
   return exercise.stress !== 'bajo' && exercise.secondary.length > 0
 }
 
-/** Peso máximo disponible entre los equipos válidos para el ejercicio. */
-function availableMax(exercise: Exercise, profile: Profile): number | undefined {
+/**
+ * Peso máximo disponible entre los equipos válidos para el ejercicio. Si se ha
+ * elegido con qué hacerlo, manda ese material: el tope de la polea no tiene por
+ * qué ser el de las mancuernas.
+ */
+function availableMax(exercise: Exercise, profile: Profile, variant?: ExerciseVariant): number | undefined {
+  if (variant?.implement && profile.equipment.includes(variant.implement)) {
+    const w = profile.maxWeights[variant.implement]
+    if (typeof w === 'number' && w > 0) return w
+  }
   const maxes = exercise.equipment
     .filter((eq) => profile.equipment.includes(eq))
     .map((eq) => profile.maxWeights[eq])
@@ -52,21 +62,36 @@ interface LastPerformance {
   rpe?: number
   /** Veredicto de las repeticiones registradas, si las hubo. */
   verdict?: RepVerdict
+  /** Cómo se hizo aquella vez, para no comparar peras con manzanas. */
+  variant?: ExerciseVariant
 }
 
-function lastPerformance(exerciseId: string, history: Session[]): LastPerformance | undefined {
+/**
+ * La última vez que se hizo este ejercicio **de esta misma forma**. Si nunca se
+ * ha hecho así, se admite el registro más reciente sea cual sea la variante:
+ * mejor una referencia aproximada, que luego se corrige por el lado, que
+ * empezar de cero cada vez que se cambia de agarre.
+ */
+function lastPerformance(
+  exerciseId: string,
+  history: Session[],
+  variant?: ExerciseVariant
+): LastPerformance | undefined {
   const sorted = [...history].filter((s) => s.completed).sort((a, b) => (a.date < b.date ? 1 : -1))
+  let cualquiera: LastPerformance | undefined
   for (const s of sorted) {
     const pe = s.exercises.find((p) => p.exerciseId === exerciseId && p.done === true)
-    if (pe) {
-      return {
-        weightKg: pe.actualWeightKg ?? pe.plan.weightKg,
-        rpe: s.rpe,
-        verdict: repVerdict(pe)
-      }
+    if (!pe) continue
+    const registro: LastPerformance = {
+      weightKg: pe.actualWeightKg ?? pe.plan.weightKg,
+      rpe: s.rpe,
+      verdict: repVerdict(pe),
+      variant: pe.variant
     }
+    if (sameVariant(variant, pe.variant)) return registro
+    if (!cualquiera) cualquiera = registro
   }
-  return undefined
+  return cualquiera
 }
 
 /**
@@ -77,30 +102,41 @@ export function suggestWeight(
   exercise: Exercise,
   profile: Profile,
   loadScale: number,
-  history: Session[]
+  history: Session[],
+  variant?: ExerciseVariant
 ): number | undefined {
-  const max = availableMax(exercise, profile)
+  const max = availableMax(exercise, profile, variant)
   if (max === undefined || !exercise.loadFactor) return undefined
 
-  const last = lastPerformance(exercise.id, history)
+  const last = lastPerformance(exercise.id, history, variant)
   if (last?.weightKg) {
+    // Si el referente es de otra forma de hacerlo, se traduce la carga antes de
+    // progresar: la mitad al pasar a un lado, el doble al volver a los dos.
+    const base = roundStep(last.weightKg * scaleForSide(variant?.side, last.variant?.side))
+    // Cambiar de material o de lado invalida el veredicto: es otro ejercicio a
+    // efectos de carga, así que se parte de la traducción sin subir nada.
+    if (!sameVariant(variant, last.variant)) return Math.min(base, max)
+
     // Las repeticiones registradas son dato objetivo: mandan sobre la sensación.
-    if (last.verdict === 'mantiene') return Math.min(last.weightKg, max)
+    if (last.verdict === 'mantiene') return Math.min(base, max)
     if (last.verdict === 'sube') {
-      const next = Math.max(last.weightKg + 1, last.weightKg * 1.05)
+      const next = Math.max(base + 1, base * 1.05)
       return Math.min(roundStep(next), max)
     }
 
     // Sin repeticiones registradas, seguimos guiándonos por la sensación.
     const hard = last.rpe !== undefined && last.rpe <= 2
     const easy = last.rpe !== undefined && last.rpe >= 4
-    if (hard) return Math.min(last.weightKg, max)
+    if (hard) return Math.min(base, max)
     const factor = easy ? 1.05 : 1.025
     // Al menos medio kilo, para que la progresión no se quede en nada.
-    const next = Math.max(last.weightKg + 0.5, last.weightKg * factor)
+    const next = Math.max(base + 0.5, base * factor)
     return Math.min(roundStep(next), max)
   }
-  return Math.min(roundWeight(max * exercise.loadFactor * loadScale), max)
+  const estimado = roundWeight(max * exercise.loadFactor * loadScale)
+  // A un lado cada vez se mueve alrededor de la mitad del peso total.
+  const porLado = variant?.side === 'unilateral' ? roundStep(estimado * FACTOR_UNILATERAL) : estimado
+  return Math.min(porLado, max)
 }
 
 /** Ejercicios usados en la última sesión, para no repetir siempre lo mismo. */
@@ -124,7 +160,8 @@ export function planFor(
   rir: number,
   history: Session[],
   keto: boolean,
-  volume?: Recommendation['volume']
+  volume?: Recommendation['volume'],
+  variant?: ExerciseVariant
 ): PlannedSet {
   const rx = repPrescription(profile.goal, intensity, keto, isCompound(exercise))
   // El nivel de volumen manda sobre las series base, pero la rampa de vuelta
@@ -134,9 +171,52 @@ export function planFor(
   return {
     sets,
     reps: volume?.repBias === 'variado' ? variarRango(rx.reps) : rx.reps,
-    weightKg: suggestWeight(exercise, profile, rx.loadScale, history),
+    weightKg: suggestWeight(exercise, profile, rx.loadScale, history, variant),
     rir,
     restSeconds: rx.restSeconds
+  }
+}
+
+/**
+ * Prepara un ejercicio completo —variante por defecto, plan y series en blanco—
+ * para meterlo en una sesión. Lo usan tanto la construcción de la sesión como
+ * añadir o cambiar un ejercicio a mano, de modo que un ejercicio elegido por el
+ * usuario recibe exactamente el mismo trato que uno propuesto por la app.
+ */
+export function prepareExercise(
+  exercise: Exercise,
+  profile: Profile,
+  opts: {
+    intensity: Recommendation['intensity']
+    volumeScale: number
+    rir: number
+    history: Session[]
+    keto: boolean
+    volume?: Recommendation['volume']
+    variant?: ExerciseVariant
+    addedByUser?: boolean
+  }
+): PlannedExercise {
+  const variant = opts.variant ?? defaultVariant(exercise, profile)
+  const plan = planFor(
+    exercise,
+    profile,
+    opts.intensity,
+    opts.volumeScale,
+    opts.rir,
+    opts.history,
+    opts.keto,
+    opts.volume,
+    variant
+  )
+  return {
+    exerciseId: exercise.id,
+    name: exercise.name,
+    primary: exercise.primary,
+    plan,
+    variant,
+    logs: initLogs(plan),
+    ...(opts.addedByUser ? { addedByUser: true } : {})
   }
 }
 
@@ -174,9 +254,15 @@ function pickForGroup(
   if (candidates.length === 0) candidates = EXERCISES.filter(base)
   if (candidates.length === 0) return undefined
 
-  // Preferimos no repetir lo de la última sesión; dentro de eso, el mayor
-  // estímulo permitido (más músculo por ejercicio, menos ejercicios totales).
+  // Con un catálogo grande, lo que hace que las sesiones se parezcan a lo que
+  // uno quiere entrenar son los favoritos: van primero. Después, no repetir lo
+  // de la última sesión —así se rota entre los favoritos en vez de caer siempre
+  // en el mismo—, y por último el mayor estímulo permitido.
+  const favoritos = new Set(profile.favoriteExercises ?? [])
   candidates.sort((a, b) => {
+    const favA = favoritos.has(a.id) ? 0 : 1
+    const favB = favoritos.has(b.id) ? 0 : 1
+    if (favA !== favB) return favA - favB
     const repeatA = recent.has(a.id) ? 1 : 0
     const repeatB = recent.has(b.id) ? 1 : 0
     if (repeatA !== repeatB) return repeatA - repeatB
@@ -230,21 +316,16 @@ export function buildSession(
       const ex = pickForGroup(group, profile, maxStress, used, recent)
       if (!ex) continue
       used.add(ex.id)
-      exercises.push({
-        exerciseId: ex.id,
-        name: ex.name,
-        primary: ex.primary,
-        plan: planFor(
-          ex,
-          profile,
-          recommendation.intensity,
-          recommendation.volumeScale,
-          recommendation.rir,
+      exercises.push(
+        prepareExercise(ex, profile, {
+          intensity: recommendation.intensity,
+          volumeScale: recommendation.volumeScale,
+          rir: recommendation.rir,
           history,
           keto,
-          recommendation.volume
-        )
-      })
+          volume: recommendation.volume
+        })
+      )
     }
 
     // Un poco de core siempre que la sesión no se haya alargado.

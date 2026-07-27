@@ -23,8 +23,10 @@ servidor.
    apetecen pesas, «Prefiero algo con pesas» te lo cambia por fuerza contenida: sube un escalón,
    pero nunca se acerca al fallo y sigue respetando tus molestias, las 48 h de recuperación y la
    rampa de vuelta tras un parón.
-4. **Sesión** — primero ves el plan completo y lo ajustas con calma: **cambias** lo que no encaje y
-   **reordenas** los ejercicios. Al pulsar «empezar entrenamiento» arranca un **cronómetro**. Anotas
+4. **Sesión** — primero ves el plan completo y lo ajustas con calma: **eliges de la lista** otro
+   ejercicio si alguno no encaja, **añades** los que quieras, **reordenas**, y dices **cómo lo vas a
+   hacer** (con mancuerna o polea, a un brazo o a dos). Al pulsar «empezar entrenamiento» arranca un
+   **cronómetro**. Anotas
    **serie a serie** el peso y las repeticiones reales, y al marcar una serie salta solo el
    **temporizador de descanso**, que vibra al terminar — entre series el que toque por el tipo de
    ejercicio, y **2 minutos al cambiar de ejercicio**, anunciando cuál viene. Todo lo anotado se
@@ -179,24 +181,66 @@ una que se preparó ayer y nunca se empezó no bloquea el día nuevo.
 
 `node scripts/check-midnight.mjs` lo verifica falseando el reloj del navegador por los dos caminos.
 
-## Cambiar un ejercicio que no encaja
+## Cambiar un ejercicio, o añadir otro
 
-Si un ejercicio no te sirve —no te gusta o no tienes con qué hacerlo—, un toque en **«cambiar
-ejercicio»** lo sustituye por otro del mismo grupo muscular, **priorizando que trabaje de otra
-manera**: para eso se usan los patrones de movimiento, prefiriendo siempre un patrón distinto al que
-descartas. Tocar de nuevo sigue rotando por las alternativas.
+Si un ejercicio no te sirve —no te gusta o no tienes con qué hacerlo—, **«Cambiar ejercicio» abre el
+catálogo** y eliges tú, filtrando por grupo muscular o buscando por nombre; la búsqueda ignora las
+tildes, así que «biceps» encuentra «bíceps». Hay también un botón para **añadir un ejercicio más** a
+la sesión, que recibe exactamente el mismo trato que los propuestos: sus series, su peso sugerido y
+su descanso.
 
-Los descartados **se recuerdan** y dejan de proponerse; se revisan y readmiten desde Ajustes. Con
-una salvaguarda: si descartar todos los de un grupo lo dejara sin nada, la app ignora la lista antes
-que montarte una sesión coja.
+Antes esto rotaba a ciegas por las alternativas, prefiriendo un patrón de movimiento distinto al que
+descartabas. La idea era buena y sigue ahí para ordenar la lista (`alternativesFor`), pero como
+único mecanismo fallaba: con pocas opciones en el grupo, tocar el botón iba y venía entre los dos
+mismos ejercicios, que no es cambiar sino dar vueltas. Y el motivo real del cambio —el gimnasio
+tiene la máquina ocupada, hoy te molesta un hombro— la app no lo puede adivinar.
 
-Esto destapó un fallo real de fondo: el filtro de material daba por disponible cualquier ejercicio
-que listara «peso corporal» aunque además necesitara algo, y por eso proponía **subidas al cajón a
-quien no tiene cajón**. Ahora subidas al cajón y fondos en banco exigen banco. Corregirlo dejaba
-huecos —alguien solo con su cuerpo se quedaba sin ningún ejercicio de brazo—, así que el catálogo
-creció a 60 ejercicios, con la garantía, vigilada por un test, de que **todo grupo muscular tiene al
-menos dos opciones aun entrenando solo con peso corporal**. Entre los nuevos está la extensión de
-cuádriceps en máquina.
+Para que cambiar tenga a dónde ir, el catálogo es largo: **107 ejercicios**, con un mínimo de dos
+opciones por grupo muscular aun entrenando solo con peso corporal, y con su patrón de movimiento
+—y por tanto su animación— cada uno. Dos tests lo vigilan: que ningún ejercicio se quede sin patrón,
+y que ningún grupo se quede corto.
+
+El tamaño del catálogo viene además de un fallo real que apareció por el camino: el filtro de
+material daba por disponible cualquier ejercicio que listara «peso corporal» aunque además
+necesitara algo, y por eso proponía **subidas al cajón a quien no tiene cajón**. Ahora subidas al
+cajón y fondos en banco exigen banco, y al corregirlo hubo que rellenar los huecos que dejaba.
+
+## Tus favoritos
+
+Una lista larga solo funciona si no hay que recorrerla cada día, y de eso se encargan los
+**favoritos**: la estrella de cada línea los marca, y `pickForGroup` los antepone al proponer la
+sesión. Como la regla de no repetir lo de la última sesión sigue después, lo que hace en la práctica
+es **rotar entre tus favoritos** en vez de caer siempre en el mismo. Se gestionan desde la propia
+lista o desde Ajustes, y marcar algo como favorito lo saca de los descartados.
+
+Descartar es una decisión aparte de cambiar: **«No me lo propongas más»** es un botón propio. Antes
+cambiar un ejercicio lo descartaba para siempre de callado, que no es lo mismo que «hoy no me
+apetece». Los descartados se recuperan en Ajustes, y si excluirlos dejara un grupo sin nada, se
+ignora la lista antes que dejar la sesión coja.
+
+## Con qué y de qué forma
+
+Un mismo ejercicio admite formas distintas, y no son matices: **son cargas distintas**. La extensión
+de tríceps sobre la cabeza se puede hacer con mancuerna, con polea o con banda, y a un brazo o a los
+dos a la vez. Doce kilos a un brazo en polea no se comparan con doce kilos con mancuerna a dos manos.
+
+Cuando el ejercicio lo admite, la sesión ofrece elegirlo, y la elección **se guarda con la serie**:
+
+- **Con qué** — solo aparece si tienes más de un material válido para ese ejercicio. El peso máximo
+  que se usa para estimar la carga pasa a ser el de *ese* material: el tope de la polea no tiene por
+  qué ser el de las mancuernas.
+- **A un lado o a los dos** — marcado en el catálogo (`unilateralOption`) para los ejercicios donde
+  la distinción tiene sentido.
+
+La sugerencia de peso mira entonces el historial de **esa misma forma de hacerlo**. Si nunca lo has
+hecho así, traduce la carga en vez de perderla: al pasar a un lado se estima la mitad
+(`FACTOR_UNILATERAL`), al volver a los dos se recupera, y en ninguno de los dos casos se sube nada
+encima hasta que haya una serie registrada con esa forma. Las sesiones guardadas antes de que esto
+existiera no dicen cómo se hicieron, así que **valen como comodín**: no se pierde el peso alcanzado
+por haber empezado a anotar la variante.
+
+Cambiar la forma a mitad de ejercicio **no borra lo anotado**: recalcula el peso sugerido y deja las
+series como estaban.
 
 ## Cómo se hace cada ejercicio
 
@@ -351,7 +395,7 @@ En local la app se sirve en la raíz y en Pages bajo `/app-ejercicio/`. Lo contr
 ```bash
 npm install
 npm run dev       # servidor de desarrollo
-npm test          # 198 tests: motor, catálogo, DHA, leptina, composición, tendencia, cambios, calendario y volumen
+npm test          # 220 tests: motor, catálogo, DHA, leptina, composición, tendencia, cambios, calendario, volumen y variantes
 npm run build     # build de producción (PWA)
 npm run preview   # servir la build
 ```

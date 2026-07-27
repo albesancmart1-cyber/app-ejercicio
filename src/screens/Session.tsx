@@ -1,21 +1,39 @@
 import { useEffect, useRef, useState } from 'react'
-import type { PlannedExercise, Session, SetLog } from '../domain/types'
+import {
+  EQUIPMENT_LABELS,
+  SIDE_LABELS,
+  type Equipment,
+  type Exercise,
+  type PlannedExercise,
+  type Session,
+  type SetLog,
+  type SideMode
+} from '../domain/types'
 import { initLogs, syncExercise, volumeLoad } from '../domain/setLogs'
 import { DESCANSO_ENTRE_EJERCICIOS } from '../domain/protocol'
-import { nextAlternative, swapExercise } from '../domain/swap'
+import { changeVariant, swapExercise } from '../domain/swap'
+import { prepareExercise } from '../domain/workoutBuilder'
+import { implementOptions, sideOptions, variantLabel } from '../domain/variants'
+import { exerciseById } from '../data/exercises'
 import { actions, useAppData } from '../store/store'
 import Icon from '../components/Icon'
 import RestTimer from '../components/RestTimer'
 import Chrono, { elapsedSeconds } from '../components/Chrono'
 import ExerciseAnimation from '../components/ExerciseAnimation'
+import ExercisePicker from '../components/ExercisePicker'
 import { patternOf } from '../data/patterns'
 
 function planLabel(pe: PlannedExercise): string {
   const parts = [`${pe.plan.sets} × ${pe.plan.reps}`]
   if (pe.plan.rir !== undefined && pe.primary !== 'cardio') parts.push(`RIR ${pe.plan.rir}`)
   if (pe.plan.restSeconds) parts.push(`${Math.round(pe.plan.restSeconds / 60)}′ descanso`)
+  const forma = variantLabel(pe.variant)
+  if (forma) parts.push(forma)
   return parts.join(' · ')
 }
+
+/** Qué está abierto sobre la sesión: cambiar un ejercicio, o añadir uno nuevo. */
+type Eligiendo = { modo: 'cambiar'; indice: number } | { modo: 'anadir' }
 
 /** Dónde está el descanso activo y de qué tipo. */
 interface Resting {
@@ -38,8 +56,12 @@ export default function SessionScreen({ session }: { session: Session }) {
   const [resting, setResting] = useState<Resting | null>(null)
   const [comoSeHace, setComoSeHace] = useState<number | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
+  const [eligiendo, setEligiendo] = useState<Eligiendo | null>(null)
 
   const keto = data.checkIns.find((c) => c.date === session.date)?.keto ?? false
+  // Con qué se planificó la sesión, para que un ejercicio elegido a mano reciba
+  // el mismo trato que los propuestos.
+  const contexto = { intensity: 'moderada' as const, volumeScale: 1, keto }
 
   /**
    * Lo anotado vivía solo en el estado del componente, así que cambiar de
@@ -107,29 +129,66 @@ export default function SessionScreen({ session }: { session: Session }) {
     }
   }
 
-  function cambiarEjercicio(ei: number) {
-    const actual = exercises[ei]
-    const alternativa = nextAlternative(actual, profile, { ...session, exercises })
-    if (!alternativa) {
-      setAviso(
-        `No tengo otra opción de ${actual.name.toLowerCase()} con tu material. Añade equipamiento en Ajustes y aparecerán más.`
-      )
-      return
+  /**
+   * Antes esto rotaba a ciegas por las alternativas, y con dos opciones en el
+   * grupo acababa yendo y viniendo entre las mismas dos. Ahora se abre la lista
+   * y se elige, que es lo que uno quiere cuando el motivo del cambio la app no
+   * lo puede adivinar.
+   */
+  function elegido(exercise: Exercise) {
+    if (!eligiendo) return
+    if (eligiendo.modo === 'cambiar') {
+      const actual = exercises[eligiendo.indice]
+      const sustituto = swapExercise(actual, exercise, profile, data.sessions, contexto)
+      setExercises((prev) => prev.map((e, i) => (i === eligiendo.indice ? sustituto : e)))
+      setAviso(`Cambiado: ${actual.name} → ${exercise.name}.`)
+    } else {
+      const nuevo = prepareExercise(exercise, profile, {
+        ...contexto,
+        rir: exercises[0]?.plan.rir ?? 2,
+        history: data.sessions,
+        addedByUser: true
+      })
+      setExercises((prev) => [...prev, nuevo])
+      setAviso(`Añadido: ${exercise.name}.`)
     }
-    const sustituto = swapExercise(actual, alternativa, profile, data.sessions, {
-      intensity: 'moderada',
-      volumeScale: 1,
-      keto
-    })
-    setExercises((prev) => prev.map((e, i) => (i === ei ? sustituto : e)))
-    // Se recuerda para no volver a proponerlo en futuras sesiones.
-    actions.saveProfile({
-      ...profile,
-      dislikedExercises: [...new Set([...(profile.dislikedExercises ?? []), actual.exerciseId])]
-    })
+    setEligiendo(null)
     setResting(null)
     setComoSeHace(null)
-    setAviso(null)
+  }
+
+  /** Que no se lo proponga más. Es una decisión aparte de cambiarlo hoy. */
+  function noProponerMas(ei: number) {
+    const actual = exercises[ei]
+    actions.saveProfile({
+      ...profile,
+      dislikedExercises: [...new Set([...(profile.dislikedExercises ?? []), actual.exerciseId])],
+      favoriteExercises: (profile.favoriteExercises ?? []).filter((id) => id !== actual.exerciseId)
+    })
+    setAviso(`${actual.name} ya no aparecerá en próximas sesiones. Puedes recuperarlo en Ajustes.`)
+  }
+
+  function alternarFavorito(id: string) {
+    const favoritos = profile.favoriteExercises ?? []
+    actions.saveProfile({
+      ...profile,
+      favoriteExercises: favoritos.includes(id)
+        ? favoritos.filter((f) => f !== id)
+        : [...favoritos, id],
+      // Marcar algo como favorito lo saca de los descartados: es contradictorio.
+      dislikedExercises: (profile.dislikedExercises ?? []).filter((d) => d !== id)
+    })
+  }
+
+  /** Con qué y de qué forma se ha hecho. Cambia el peso sugerido, no lo anotado. */
+  function ajustarVariante(ei: number, patch: { implement?: Equipment; side?: SideMode }) {
+    setExercises((prev) =>
+      prev.map((e, i) => {
+        if (i !== ei) return e
+        const variant = { ...e.variant, ...patch } as PlannedExercise['variant']
+        return changeVariant(e, variant!, profile, data.sessions, contexto)
+      })
+    )
   }
 
   function mover(ei: number, delta: number) {
@@ -171,6 +230,21 @@ export default function SessionScreen({ session }: { session: Session }) {
   const totalSets = exercises.reduce((acc, e) => acc + (e.logs ?? []).length, 0)
   const volumen = exercises.reduce((acc, e) => acc + volumeLoad(e), 0)
   const enMarcha = startedAt !== undefined
+
+  if (eligiendo) {
+    const actual = eligiendo.modo === 'cambiar' ? exercises[eligiendo.indice] : undefined
+    return (
+      <ExercisePicker
+        profile={profile}
+        title={actual ? `En lugar de ${actual.name.toLowerCase()}` : 'Añadir un ejercicio'}
+        initialGroup={actual?.primary}
+        inSession={exercises.map((e) => e.exerciseId)}
+        onPick={elegido}
+        onToggleFavorite={alternarFavorito}
+        onClose={() => setEligiendo(null)}
+      />
+    )
+  }
 
   return (
     <div className="fade-in">
@@ -220,10 +294,18 @@ export default function SessionScreen({ session }: { session: Session }) {
               </button>
             )}
             {e.primary !== 'cardio' && (
-              <button className="disclose" onClick={() => cambiarEjercicio(ei)}>
-                <Icon name="spark" />
-                Cambiar ejercicio
-              </button>
+              <>
+                <button
+                  className="disclose"
+                  onClick={() => setEligiendo({ modo: 'cambiar', indice: ei })}
+                >
+                  <Icon name="spark" />
+                  Cambiar ejercicio
+                </button>
+                <button className="btn-quiet btn-inline" onClick={() => noProponerMas(ei)}>
+                  No me lo propongas más
+                </button>
+              </>
             )}
           </div>
           {comoSeHace === ei && (
@@ -231,6 +313,50 @@ export default function SessionScreen({ session }: { session: Session }) {
               <ExerciseAnimation pattern={patternOf(e.exerciseId)!} />
             </div>
           )}
+
+          {(() => {
+            const ex = exerciseById(e.exerciseId)
+            if (!ex) return null
+            const materiales = implementOptions(ex, profile)
+            const lados = sideOptions(ex)
+            if (materiales.length === 0 && lados.length === 0) return null
+            return (
+              <>
+                <p className="faint" style={{ fontSize: '0.76rem', margin: '12px 0 0' }}>
+                  ¿Cómo lo haces? Se guarda con la serie, y el peso que te sugiera la próxima vez
+                  será el de esta misma forma.
+                </p>
+                {materiales.length > 0 && (
+                  <div className="variant-row">
+                    {materiales.map((eq) => (
+                      <button
+                        key={eq}
+                        className="opt"
+                        aria-pressed={e.variant?.implement === eq}
+                        onClick={() => ajustarVariante(ei, { implement: eq })}
+                      >
+                        {EQUIPMENT_LABELS[eq]}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {lados.length > 0 && (
+                  <div className="variant-row">
+                    {lados.map((s) => (
+                      <button
+                        key={s}
+                        className="opt"
+                        aria-pressed={e.variant?.side === s}
+                        onClick={() => ajustarVariante(ei, { side: s })}
+                      >
+                        {SIDE_LABELS[s]}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )
+          })()}
 
           <div style={{ height: 10 }} />
 
@@ -301,6 +427,10 @@ export default function SessionScreen({ session }: { session: Session }) {
           )}
         </div>
       ))}
+
+      <button className="btn btn-secondary" onClick={() => setEligiendo({ modo: 'anadir' })}>
+        Añadir un ejercicio de la lista
+      </button>
 
       {aviso && (
         <p className="faint" style={{ margin: '0 4px 14px' }}>

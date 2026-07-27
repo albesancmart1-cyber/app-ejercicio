@@ -106,6 +106,12 @@ export interface Profile {
   heightCm?: number
   /** Ejercicios que el usuario ha descartado y no quiere que se le propongan. */
   dislikedExercises?: string[]
+  /**
+   * Los que más le gustan. Con un catálogo grande, marcar cuatro o cinco es lo
+   * que hace que las sesiones se parezcan a lo que uno quiere entrenar sin
+   * tener que elegir cada día.
+   */
+  favoriteExercises?: string[]
 }
 
 export type StressLevel = 'bajo' | 'medio' | 'alto'
@@ -128,6 +134,31 @@ export interface Exercise {
   /** Fracción del peso máximo disponible con la que sugerir empezar (solo fuerza con carga). */
   loadFactor?: number
   bodyweightOnly?: boolean
+  /**
+   * El ejercicio se puede hacer a un lado cada vez o con los dos a la vez, y la
+   * diferencia importa: el peso de una mano no es el de las dos. Cuando es así,
+   * la app pregunta cómo se hizo y lo guarda con la serie.
+   */
+  unilateralOption?: boolean
+}
+
+export type SideMode = 'unilateral' | 'bilateral'
+
+export const SIDE_LABELS: Record<SideMode, string> = {
+  unilateral: 'A un lado cada vez',
+  bilateral: 'Con los dos a la vez'
+}
+
+/**
+ * Cómo se hizo el ejercicio, cuando admite varias formas. Un mismo ejercicio
+ * con polea a un brazo y con mancuerna a dos brazos son cargas distintas: sin
+ * anotar la variante, la progresión compararía cosas que no se parecen.
+ */
+export interface ExerciseVariant {
+  /** Con qué se hizo, si el ejercicio admite más de un material. */
+  implement?: Equipment
+  /** A un lado cada vez, o con los dos a la vez. */
+  side?: SideMode
 }
 
 export type Discomfort = 'ninguna' | 'leves' | MuscleGroup
@@ -184,6 +215,10 @@ export interface PlannedExercise {
   actualWeightKg?: number
   /** Registro serie a serie. Ausente en las sesiones guardadas antes de existir. */
   logs?: SetLog[]
+  /** Cómo se hizo, cuando el ejercicio admite varias formas. */
+  variant?: ExerciseVariant
+  /** Añadido a mano durante la sesión, no propuesto por la app. */
+  addedByUser?: boolean
 }
 
 export interface Session {

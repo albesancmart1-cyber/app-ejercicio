@@ -258,6 +258,15 @@ button {
   color: var(--text);
 }
 
+/* Dentro de una tarjeta, junto a otras acciones del ejercicio. */
+.btn-quiet.btn-inline {
+  width: auto;
+  padding: 2px 0;
+  font-size: 0.82rem;
+  color: var(--text-faint);
+  text-align: left;
+}
+
 /* ── Selectores ─────────────────────────────────────────── */
 
 .options {
@@ -900,6 +909,134 @@ input:focus {
   height: 34px;
   color: var(--accent);
   margin-bottom: calc(var(--step) * 2);
+}
+
+/* ── Elegir ejercicio del catálogo ──────────────────────── */
+
+.picker {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  padding: max(18px, env(safe-area-inset-top)) 18px 0;
+}
+
+.picker-head {
+  flex: 0 0 auto;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.picker-close {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+
+.picker-search {
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.95rem;
+  font-family: inherit;
+}
+
+.picker-search::placeholder { color: var(--text-faint); }
+
+.picker-groups {
+  margin-top: 12px;
+  gap: 6px;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+
+.picker-groups::-webkit-scrollbar { display: none; }
+.picker-groups .opt { white-space: nowrap; padding: 8px 14px; font-size: 0.82rem; }
+
+.picker-list {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.picker-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.picker-pick {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+  padding: 14px 0;
+  background: transparent;
+  border: none;
+  color: inherit;
+}
+
+.picker-pick:disabled { opacity: 0.4; cursor: default; }
+
+/* Título y detalle son <span> dentro del botón: sin esto salen pegados en una línea. */
+.picker-pick .item-title,
+.picker-pick .item-meta {
+  display: block;
+}
+
+.picker-pick .item-meta { margin-top: 2px; }
+
+.picker-star {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-faint);
+  background: transparent;
+  display: grid;
+  place-items: center;
+}
+
+.picker-star svg { width: 17px; height: 17px; }
+
+.picker-star[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 11%, transparent);
+}
+
+.picker-foot {
+  flex: 0 0 auto;
+  padding: 14px 0 max(18px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+}
+
+/* ── Variantes: con qué y de qué forma ──────────────────── */
+
+.variant-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.variant-row .opt {
+  padding: 6px 12px;
+  font-size: 0.78rem;
 }
 
 @media (prefers-reduced-motion: reduce) {

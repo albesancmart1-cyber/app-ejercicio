@@ -9,6 +9,7 @@ import {
 import { ketoAdaptationWeeksLeft, proteinTarget } from '../domain/protocol'
 import { esVerano, objetivoDhaDiario } from '../domain/dha'
 import { exerciseById } from '../data/exercises'
+import ExercisePicker from '../components/ExercisePicker'
 import { actions, todayIso, useAppData } from '../store/store'
 
 const ALL_EQUIPMENT = Object.keys(EQUIPMENT_LABELS) as Equipment[]
@@ -18,9 +19,19 @@ export default function Settings() {
   const profile = data.profile!
   const fileInput = useRef<HTMLInputElement>(null)
   const [confirmReset, setConfirmReset] = useState(false)
+  const [eligiendoFavorito, setEligiendoFavorito] = useState(false)
 
   function update(partial: Partial<typeof profile>) {
     actions.saveProfile({ ...profile, ...partial })
+  }
+
+  /** Marcar y desmarcar favoritos desde el catálogo, sin salir de Ajustes. */
+  function alternarFavorito(id: string) {
+    const favoritos = profile.favoriteExercises ?? []
+    update({
+      favoriteExercises: favoritos.includes(id) ? favoritos.filter((f) => f !== id) : [...favoritos, id],
+      dislikedExercises: (profile.dislikedExercises ?? []).filter((d) => d !== id)
+    })
   }
 
   function exportData() {
@@ -37,6 +48,19 @@ export default function Settings() {
   const protein = profile.weightKg ? proteinTarget(profile.weightKg, profile.goal) : null
   const ketoWeeks = ketoAdaptationWeeksLeft(profile.ketoSince, todayIso())
   const objetivoDha = objetivoDhaDiario(todayIso())
+
+  if (eligiendoFavorito) {
+    return (
+      <ExercisePicker
+        profile={profile}
+        title="Marca tus favoritos"
+        inSession={[]}
+        onPick={(e) => alternarFavorito(e.id)}
+        onToggleFavorite={alternarFavorito}
+        onClose={() => setEligiendoFavorito(false)}
+      />
+    )
+  }
 
   return (
     <div className="fade-in">
@@ -176,6 +200,41 @@ export default function Settings() {
           más sodio. Si el peso salta al día siguiente de una sesión fuerte, casi siempre es agua de
           la reparación muscular, no grasa.
         </p>
+      </div>
+
+      <div className="card">
+        <p className="eyebrow">Ejercicios favoritos</p>
+        <p className="dim" style={{ marginBottom: 14 }}>
+          El catálogo es largo a propósito, para que cambiar un ejercicio tenga a dónde ir. Marca los
+          que más te gusten y la app tirará de ellos al proponerte la sesión, sin que tengas que
+          elegir cada día.
+        </p>
+        {(profile.favoriteExercises ?? []).length === 0 ? (
+          <p className="faint" style={{ marginBottom: 14 }}>
+            Aún no has marcado ninguno. Sin favoritos se elige por lo que mejor equilibra la semana,
+            que también funciona.
+          </p>
+        ) : (
+          (profile.favoriteExercises ?? []).map((id) => (
+            <div className="item" key={id}>
+              <div className="item-body">
+                <div className="item-title">{exerciseById(id)?.name ?? id}</div>
+              </div>
+              <button
+                className="opt"
+                onClick={() =>
+                  update({ favoriteExercises: (profile.favoriteExercises ?? []).filter((x) => x !== id) })
+                }
+              >
+                Quitar
+              </button>
+            </div>
+          ))
+        )}
+        <div style={{ height: 14 }} />
+        <button className="btn btn-secondary" onClick={() => setEligiendoFavorito(true)}>
+          Elegir favoritos del catálogo
+        </button>
       </div>
 
       {(profile.dislikedExercises ?? []).length > 0 && (

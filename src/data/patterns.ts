@@ -136,6 +136,15 @@ export const EXERCISE_PATTERNS: Record<string, MovementPattern> = {
   sentadilla_bulgara: 'zancada',
   extension_cuadriceps: 'curl_femoral',
   zancadas: 'zancada',
+  sentadilla_frontal: 'sentadilla',
+  sentadilla_sumo: 'sentadilla',
+  sentadilla_cosaco: 'sentadilla',
+  pistol_asistida: 'sentadilla',
+  prensa_una_pierna: 'sentadilla',
+  zancada_atras: 'zancada',
+  zancada_caminando: 'zancada',
+  split_estatico: 'zancada',
+  paso_lateral_banda: 'zancada',
 
   // Cadena posterior
   puente_gluteo: 'puente',
@@ -148,6 +157,11 @@ export const EXERCISE_PATTERNS: Record<string, MovementPattern> = {
   peso_muerto_rumano: 'bisagra',
   buenos_dias: 'bisagra',
   swing_kettlebell: 'bisagra',
+  hip_thrust: 'puente',
+  extension_cadera_polea: 'puente',
+  curl_femoral_deslizante: 'curl_femoral',
+  peso_muerto_una_pierna: 'bisagra',
+  peso_muerto_deficit: 'bisagra',
 
   // Espalda
   dominadas: 'traccion_vertical',
@@ -161,6 +175,13 @@ export const EXERCISE_PATTERNS: Record<string, MovementPattern> = {
   ytw_prono: 'extension_espalda',
   remo_invertido: 'traccion_horizontal',
   pajaros: 'extension_espalda',
+  jalon_neutro: 'traccion_vertical',
+  dominadas_supinas: 'traccion_vertical',
+  dominadas_negativas: 'traccion_vertical',
+  pullover_mancuerna: 'traccion_vertical',
+  remo_polea_sentado: 'traccion_horizontal',
+  encogimientos: 'traccion_horizontal',
+  hiperextensiones: 'extension_espalda',
 
   // Pecho y hombro
   flexiones: 'empuje_horizontal',
@@ -176,6 +197,17 @@ export const EXERCISE_PATTERNS: Record<string, MovementPattern> = {
   pike_pushup: 'empuje_vertical',
   plancha_toque_hombro: 'isometrico',
   elevaciones_laterales: 'empuje_vertical',
+  press_inclinado_mancuernas: 'empuje_horizontal',
+  aperturas_polea: 'empuje_horizontal',
+  press_banda_pecho: 'empuje_horizontal',
+  flexiones_declinadas: 'empuje_horizontal',
+  flexiones_arquero: 'empuje_horizontal',
+  press_arnold: 'empuje_vertical',
+  press_hombro_multipower: 'empuje_vertical',
+  flexion_pino_pared: 'empuje_vertical',
+  elevaciones_frontales: 'empuje_vertical',
+  remo_menton: 'traccion_horizontal',
+  rotacion_externa: 'traccion_horizontal',
 
   // Brazo
   curl_biceps: 'flexion_codo',
@@ -184,6 +216,11 @@ export const EXERCISE_PATTERNS: Record<string, MovementPattern> = {
   fondos_banco: 'extension_codo',
   flexiones_diamante: 'extension_codo',
   fondos_entre_sillas: 'extension_codo',
+  curl_concentrado: 'flexion_codo',
+  curl_inverso: 'flexion_codo',
+  extension_triceps_polea_baja: 'extension_codo',
+  press_frances: 'extension_codo',
+  patada_triceps: 'extension_codo',
 
   // Core
   plancha: 'isometrico',
@@ -192,13 +229,23 @@ export const EXERCISE_PATTERNS: Record<string, MovementPattern> = {
   dead_bug: 'core_dinamico',
   bird_dog: 'core_dinamico',
   elevacion_piernas: 'core_dinamico',
+  hollow_hold: 'isometrico',
+  plancha_dinamica: 'isometrico',
+  crunch_bicicleta: 'core_dinamico',
+  russian_twist: 'core_dinamico',
+  escalador: 'core_dinamico',
+  rodillas_colgado: 'core_dinamico',
 
   // Cardio
   caminar: 'cardio',
   trote_suave: 'cardio',
   bici_suave: 'cardio',
   bici_media: 'cardio',
-  movilidad: 'cardio'
+  movilidad: 'cardio',
+  caminar_cuesta: 'cardio',
+  subir_escaleras: 'cardio',
+  comba: 'cardio',
+  remo_ergometro: 'cardio'
 }
 
 export function patternOf(exerciseId: string): MovementPattern | undefined {
