@@ -299,3 +299,60 @@ describe('nunca habla de calorías', () => {
     }
   })
 })
+
+describe('el veredicto habla del presente, no del histórico', () => {
+  /**
+   * Lo que destapó la prueba de seis meses: cuatro meses buenos seguidos de dos
+   * de estancamiento seguían leyéndose como recomposición, porque la pendiente
+   * se calculaba sobre toda la serie. El usuario recibía «no cambies nada»
+   * justo cuando ya no estaba pasando nada.
+   */
+  const dieciseisSemanasBuenas = [
+    { peso: 78, grasa: 17.2, musculo: 29.6 },
+    { peso: 78, grasa: 16.7, musculo: 30.0 },
+    { peso: 77.9, grasa: 16.2, musculo: 30.4 },
+    { peso: 77.8, grasa: 15.7, musculo: 30.8 },
+    { peso: 77.7, grasa: 15.2, musculo: 31.2 },
+    { peso: 77.6, grasa: 14.7, musculo: 31.6 },
+    { peso: 77.5, grasa: 14.2, musculo: 32.0 },
+    { peso: 77.4, grasa: 13.7, musculo: 32.4 }
+  ]
+  const diezSemanasPlanas = [
+    { peso: 77.4, grasa: 13.7, musculo: 32.4 },
+    { peso: 77.4, grasa: 13.8, musculo: 32.4 },
+    { peso: 77.5, grasa: 13.7, musculo: 32.3 },
+    { peso: 77.4, grasa: 13.7, musculo: 32.4 },
+    { peso: 77.5, grasa: 13.8, musculo: 32.4 }
+  ]
+
+  it('un estancamiento reciente no queda tapado por los meses buenos anteriores', () => {
+    const todo = serie([...dieciseisSemanasBuenas, ...diezSemanasPlanas])
+    const r = interpretTrend(todo, perfil, checkInsBuenos(), sesiones(3), HOY)
+    expect(r.state).toBe('estable')
+    expect(r.titular).not.toContain('recomponiendo')
+  })
+
+  it('y mientras la recomposición sigue viva, se sigue viendo', () => {
+    const soloBuenas = serie(dieciseisSemanasBuenas)
+    expect(interpretTrend(soloBuenas, perfil, checkInsBuenos(), sesiones(3), HOY).state)
+      .toBe('recomposicion')
+  })
+
+  it('la ventana no impide opinar a quien se pesa poco', () => {
+    // Tres mediciones repartidas en año y medio: se usan igualmente.
+    const espaciadas: BodyMeasurement[] = [
+      { date: '2025-01-10', weightKg: 82, fatPercent: 26, musclePercent: 36 },
+      { date: '2025-09-10', weightKg: 80, fatPercent: 23, musclePercent: 38 },
+      { date: '2026-07-10', weightKg: 78, fatPercent: 20, musclePercent: 40 }
+    ]
+    const r = interpretTrend(espaciadas, perfil, checkInsBuenos(), sesiones(3), HOY)
+    expect(r.state).not.toBe('pocos_datos')
+  })
+
+  it('el número de semanas que dice corresponde a lo que ha mirado', () => {
+    const todo = serie([...dieciseisSemanasBuenas, ...diezSemanasPlanas])
+    const r = interpretTrend(todo, perfil, checkInsBuenos(), sesiones(3), HOY)
+    expect(r.weeks).toBeLessThanOrEqual(12)
+    expect(r.mensaje).toContain(String(r.weeks))
+  })
+})

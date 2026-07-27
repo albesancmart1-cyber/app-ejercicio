@@ -23,6 +23,21 @@ import { MUSCLE_LABELS, MUSCLE_GROUPS, type BodyMeasurement, type CheckIn, type 
 export const MINIMO = { mediciones: 3, dias: 21 }
 
 /**
+ * Ventana de interpretación.
+ *
+ * El veredicto responde a «¿cómo voy **ahora**?», no a «¿cómo me ha ido desde
+ * que empecé?». Sin este límite, cuatro meses buenos tapan dos meses de
+ * estancamiento: la pendiente de toda la serie sigue saliendo a favor y la app
+ * te dice que no cambies nada justo cuando ya no está pasando nada. Lo detectó
+ * la prueba larga de seis meses.
+ *
+ * Doce semanas es el equilibrio: bastante para que el vaivén de la
+ * bioimpedancia se promedie, poco para que un parón real se note. La gráfica
+ * sigue dibujando el histórico completo; lo que se acota es el juicio.
+ */
+export const VENTANA_SEMANAS = 12
+
+/**
  * Por debajo de esto se considera plano. Deliberadamente conservador: más vale
  * decir «aún no se ve nada» que mandarte a cambiar hábitos por ruido de báscula.
  */
@@ -117,6 +132,20 @@ function sugerenciasReales(
   return sugerencias.slice(0, 2)
 }
 
+/**
+ * Las mediciones que entran en el juicio: las de las últimas `VENTANA_SEMANAS`
+ * contadas desde la más reciente. Si en esa ventana no hay bastantes —alguien
+ * que se pesa una vez al mes—, se estira hacia atrás hasta el mínimo necesario
+ * antes que renunciar a opinar.
+ */
+export function ventanaReciente(ordenadas: BodyMeasurement[]): BodyMeasurement[] {
+  if (ordenadas.length === 0) return ordenadas
+  const ultima = ordenadas[ordenadas.length - 1]
+  const dentro = ordenadas.filter((m) => daysBetween(m.date, ultima.date) <= VENTANA_SEMANAS * 7)
+  if (dentro.length >= MINIMO.mediciones) return dentro
+  return ordenadas.slice(-MINIMO.mediciones)
+}
+
 export function interpretTrend(
   measurements: BodyMeasurement[],
   profile: Profile | null,
@@ -124,7 +153,7 @@ export function interpretTrend(
   sessions: Session[],
   todayIso: string
 ): TrendReading {
-  const orden = [...measurements].sort((a, b) => (a.date < b.date ? -1 : 1))
+  const orden = ventanaReciente([...measurements].sort((a, b) => (a.date < b.date ? -1 : 1)))
   const primera = orden[0]
   const ultima = orden[orden.length - 1]
   const dias = primera && ultima ? daysBetween(primera.date, ultima.date) : 0
