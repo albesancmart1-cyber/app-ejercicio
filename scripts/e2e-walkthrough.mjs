@@ -168,6 +168,29 @@ if (await campos.count()) {
   await campos.nth(0).fill('12')
   await campos.nth(1).fill('10')
 }
+
+// Salir a otra pestaña a mitad de entrenamiento no puede borrar lo anotado.
+await page.locator('.tab', { hasText: 'Cuerpo' }).click()
+await page.waitForTimeout(500)
+await page.locator('.tab', { hasText: 'Hoy' }).click()
+await page.waitForTimeout(500)
+const camposTrasVolver = page.locator('.set-row').first().locator('input')
+const pesoTrasVolver = await camposTrasVolver.nth(0).inputValue()
+const repsTrasVolver = await camposTrasVolver.nth(1).inputValue()
+if (pesoTrasVolver !== '12' || repsTrasVolver !== '10') {
+  console.error(
+    'ERROR: cambiar de pestaña borró lo anotado →',
+    `peso "${pesoTrasVolver}", reps "${repsTrasVolver}"`
+  )
+  process.exit(1)
+}
+if (!(await page.locator('.chrono').count())) {
+  console.error('ERROR: al volver a la pestaña el cronómetro debería seguir en marcha')
+  process.exit(1)
+}
+console.log('  → al volver de otra pestaña se conserva lo anotado y el cronómetro')
+await shot('10b2-vuelta-de-pestana')
+
 // La referencia visual del ejercicio, para salir de dudas.
 await page.getByText('¿Cómo se hace?').first().click()
 await page.waitForTimeout(400)

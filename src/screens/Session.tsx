@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { PlannedExercise, Session, SetLog } from '../domain/types'
 import { initLogs, syncExercise, volumeLoad } from '../domain/setLogs'
 import { DESCANSO_ENTRE_EJERCICIOS } from '../domain/protocol'
@@ -40,6 +40,34 @@ export default function SessionScreen({ session }: { session: Session }) {
   const [aviso, setAviso] = useState<string | null>(null)
 
   const keto = data.checkIns.find((c) => c.date === session.date)?.keto ?? false
+
+  /**
+   * Lo anotado vivía solo en el estado del componente, así que cambiar de
+   * pestaña lo desmontaba y se perdían pesos y repeticiones. Ahora se persiste
+   * según se escribe —con un pequeño retardo para no guardar en cada tecla— y
+   * se vuelca sí o sí al salir de la pantalla.
+   */
+  const ultimo = useRef({ exercises, startedAt })
+  ultimo.current = { exercises, startedAt }
+  // Una vez terminada o descartada, no debe resucitarla el volcado de salida.
+  const cerrada = useRef(false)
+
+  useEffect(() => {
+    if (cerrada.current) return
+    const id = setTimeout(() => {
+      actions.saveSession({ ...session, exercises, startedAt })
+    }, 300)
+    return () => clearTimeout(id)
+  }, [exercises, startedAt])
+
+  useEffect(
+    () => () => {
+      if (!cerrada.current) {
+        actions.saveSession({ ...session, ...ultimo.current })
+      }
+    },
+    []
+  )
 
   function updateSet(ei: number, si: number, patch: Partial<SetLog>) {
     setExercises((prev) =>
@@ -122,7 +150,13 @@ export default function SessionScreen({ session }: { session: Session }) {
     actions.saveSession({ ...session, exercises, startedAt: ahora })
   }
 
+  function descartar() {
+    cerrada.current = true
+    actions.discardSession(session.id)
+  }
+
   function guardar() {
+    cerrada.current = true
     actions.saveSession({
       ...session,
       exercises,
@@ -279,7 +313,7 @@ export default function SessionScreen({ session }: { session: Session }) {
           <button className="btn btn-primary" onClick={empezar}>
             Empezar entrenamiento
           </button>
-          <button className="btn-quiet" onClick={() => actions.discardSession(session.id)}>
+          <button className="btn-quiet" onClick={() => descartar()}>
             Hoy no puedo — descartar sin culpa
           </button>
         </>
@@ -293,7 +327,7 @@ export default function SessionScreen({ session }: { session: Session }) {
           <button className="btn btn-primary" disabled={doneSets === 0} onClick={() => setFinishing(true)}>
             Terminar
           </button>
-          <button className="btn-quiet" onClick={() => actions.discardSession(session.id)}>
+          <button className="btn-quiet" onClick={() => descartar()}>
             Hoy no puedo — descartar sin culpa
           </button>
         </>

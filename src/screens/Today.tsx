@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { MUSCLE_GROUPS, MUSCLE_LABELS, type CheckIn, type Discomfort, type MuscleGroup } from '../domain/types'
 import { computeReadiness } from '../domain/readiness'
 import { canIntensify, recommend, withMoreIntensity } from '../domain/recommender'
+import { volumePlan } from '../domain/progression'
+import { interpretTrend } from '../domain/trend'
 import { buildSession } from '../domain/workoutBuilder'
 import { actions, useAppData } from '../store/store'
 import { useToday } from '../store/clock'
@@ -139,8 +141,19 @@ export default function Today() {
   )
 
   const readiness = checkIn ? computeReadiness(checkIn) : null
+
+  // Cuánto volumen toca hoy, según lo que el cuerpo viene demostrando y si la
+  // composición corporal está estancada.
+  const volumen = volumePlan({
+    profile,
+    sessions: data.sessions,
+    checkIns: data.checkIns,
+    trendState: interpretTrend(data.measurements, profile, data.checkIns, data.sessions, today).state,
+    todayIso: today
+  })
+
   const suggested =
-    readiness && phase === 'plan' ? recommend(profile, readiness, data.sessions, today) : null
+    readiness && phase === 'plan' ? recommend(profile, readiness, data.sessions, today, volumen) : null
   // El usuario puede pedir pesas aunque tocara paseo; los guardas siguen puestos.
   const recommendation =
     suggested && intensified && readiness
@@ -302,6 +315,40 @@ export default function Today() {
                 <button className="btn-quiet" onClick={() => setIntensified(false)}>
                   Volver a lo que me tocaba
                 </button>
+              </>
+            )}
+
+            {recommendation.volume && recommendation.kind === 'fuerza' && (
+              <>
+                <hr className="rule" />
+                <p className="eyebrow">
+                  Volumen · nivel {recommendation.volume.level} de 4
+                </p>
+                {recommendation.volume.changes.length > 0 && (
+                  <>
+                    <p className="faint" style={{ fontSize: '0.8rem', margin: '0 0 4px' }}>
+                      Qué cambia respecto al volumen base
+                    </p>
+                    <ul className="reasons" style={{ marginBottom: 12 }}>
+                      {recommendation.volume.changes.map((c, i) => (
+                        <li key={i}>{c}</li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+                <p className="dim">{recommendation.volume.reason}</p>
+                {recommendation.volume.evidence.length > 0 && (
+                  <>
+                    <p className="faint" style={{ fontSize: '0.8rem', margin: '12px 0 4px' }}>
+                      En qué me baso
+                    </p>
+                    <ul className="reasons">
+                      {recommendation.volume.evidence.map((e, i) => (
+                        <li key={i}>{e}</li>
+                      ))}
+                    </ul>
+                  </>
+                )}
               </>
             )}
 

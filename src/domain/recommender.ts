@@ -93,7 +93,20 @@ export function recommend(
   profile: Profile,
   readiness: Readiness,
   sessions: Session[],
-  todayIso: string
+  todayIso: string,
+  volume?: Recommendation['volume']
+): Recommendation {
+  // El nivel de volumen viaja con toda recomendación, también con las de cardio
+  // o descanso: si luego el usuario pide pesas, el nivel alcanzado sigue ahí.
+  return { ...decidir(profile, readiness, sessions, todayIso, volume), volume }
+}
+
+function decidir(
+  profile: Profile,
+  readiness: Readiness,
+  sessions: Session[],
+  todayIso: string,
+  volume?: Recommendation['volume']
 ): Recommendation {
   const reasons: string[] = []
   const daysSince = daysSinceLastSession(sessions, todayIso)
@@ -277,6 +290,8 @@ export function recommend(
   }
   const rir = targetRir(reentry ? { reentryStep: reentry.step, intensity } : { intensity })
   reasons.push(`Nos quedamos a ${rir} repeticiones del fallo: mismo estímulo, mucha menos fatiga.`)
+  // Si el volumen ha cambiado de nivel, se dice aquí mismo y no en letra pequeña.
+  if (volume && volume.changes.length > 0) reasons.push(...volume.changes)
 
   return {
     kind: 'fuerza',
@@ -291,7 +306,8 @@ export function recommend(
     rir,
     reasons,
     reentry: reentry ? { step: reentry.step, total: reentry.total } : undefined,
-    ketoAdapting
+    ketoAdapting,
+    volume
   }
 }
 
@@ -355,7 +371,11 @@ export function withMoreIntensity(
     reasons,
     reentry: reentry ? { step: reentry.step, total: reentry.total } : undefined,
     ketoAdapting: base.ketoAdapting,
-    userOverride: true
+    userOverride: true,
+    // El nivel de volumen alcanzado sigue siendo el mismo: pedir pesas un día
+    // que tocaba paseo no borra lo que el cuerpo lleva demostrando. La rampa y
+    // el `volumeScale` de arriba ya se encargan de contener la carga.
+    volume: base.volume
   }
 }
 

@@ -9,8 +9,8 @@ import type {
   Recommendation,
   Session
 } from './types'
-import { repPrescription, setsFor } from './protocol'
-import { initLogs, repVerdict, type RepVerdict } from './setLogs'
+import { BASE_SETS, repPrescription } from './protocol'
+import { initLogs, parseRepRange, repVerdict, type RepVerdict } from './setLogs'
 
 let idCounter = 0
 function newId(): string {
@@ -123,12 +123,17 @@ export function planFor(
   volumeScale: number,
   rir: number,
   history: Session[],
-  keto: boolean
+  keto: boolean,
+  volume?: Recommendation['volume']
 ): PlannedSet {
   const rx = repPrescription(profile.goal, intensity, keto, isCompound(exercise))
+  // El nivel de volumen manda sobre las series base, pero la rampa de vuelta
+  // tras un parón sigue teniendo la última palabra: se reduce igual.
+  const seriesBase = volume?.setsPerExercise ?? BASE_SETS
+  const sets = Math.max(2, Math.round(seriesBase * volumeScale))
   return {
-    sets: setsFor(intensity, volumeScale),
-    reps: rx.reps,
+    sets,
+    reps: volume?.repBias === 'variado' ? variarRango(rx.reps) : rx.reps,
     weightKg: suggestWeight(exercise, profile, rx.loadScale, history),
     rir,
     restSeconds: rx.restSeconds
@@ -136,6 +141,16 @@ export function planFor(
 }
 
 export const STRESS_RANK = { bajo: 0, medio: 1, alto: 2 }
+
+/**
+ * Desplaza el rango de repeticiones para variar el estímulo cuando el volumen
+ * ya está alto y hace falta cambiar algo más que la cantidad.
+ */
+export function variarRango(reps: string): string {
+  const rango = parseRepRange(reps)
+  if (!rango) return reps
+  return `${rango.min + 4}-${rango.max + 4}`
+}
 
 function pickForGroup(
   group: MuscleGroup,
@@ -202,12 +217,14 @@ export function buildSession(
 
   if (recommendation.kind === 'fuerza' || recommendation.kind === 'reacondicionamiento') {
     const groups = recommendation.focus.filter((g) => g !== 'cardio')
+    // Cuántos ejercicios de fuerza caben, según el nivel de volumen alcanzado.
+    const cuantos = recommendation.volume?.exercisesPerSession ?? 4
     // En fuerza doblamos el grupo prioritario; en la vuelta progresiva repartimos
     // el trabajo por todo el cuerpo con poco volumen en cada zona.
     const plan: MuscleGroup[] =
       recommendation.kind === 'fuerza' && groups.length > 0
-        ? [groups[0], groups[0], ...groups.slice(1, 3)]
-        : groups.slice(0, 4)
+        ? [groups[0], groups[0], ...groups.slice(1, cuantos - 1)]
+        : groups.slice(0, cuantos)
 
     for (const group of plan) {
       const ex = pickForGroup(group, profile, maxStress, used, recent)
@@ -224,13 +241,14 @@ export function buildSession(
           recommendation.volumeScale,
           recommendation.rir,
           history,
-          keto
+          keto,
+          recommendation.volume
         )
       })
     }
 
     // Un poco de core siempre que la sesión no se haya alargado.
-    if (exercises.length < 5 && !used.has('plancha')) {
+    if (exercises.length < cuantos + 1 && !used.has('plancha')) {
       const core = pickForGroup('core', profile, 'bajo', used, recent)
       if (core) {
         used.add(core.id)

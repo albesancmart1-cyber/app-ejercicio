@@ -221,6 +221,16 @@ export interface Recommendation {
   ketoAdapting?: boolean
   /** El usuario pidió subir el listón por encima de lo que tocaba. */
   userOverride?: boolean
+  /** Nivel de volumen vigente, con su explicación. */
+  volume?: {
+    level: number
+    setsPerExercise: number
+    exercisesPerSession: number
+    repBias: 'normal' | 'variado'
+    changes: string[]
+    reason: string
+    evidence: string[]
+  }
 }
 
 /** Una lectura de la báscula. Los porcentajes vienen tal cual del aparato. */

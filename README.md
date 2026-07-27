@@ -27,7 +27,9 @@ servidor.
    **reordenas** los ejercicios. Al pulsar «empezar entrenamiento» arranca un **cronómetro**. Anotas
    **serie a serie** el peso y las repeticiones reales, y al marcar una serie salta solo el
    **temporizador de descanso**, que vibra al terminar — entre series el que toque por el tipo de
-   ejercicio, y **2 minutos al cambiar de ejercicio**, anunciando cuál viene.
+   ejercicio, y **2 minutos al cambiar de ejercicio**, anunciando cuál viene. Todo lo anotado se
+   guarda solo mientras entrenas: salir a otra pestaña, cerrar la app o bloquear el móvil no borra
+   nada, y al volver sigues donde estabas con el cronómetro en marcha.
 5. **Cuerpo** — composición corporal, señal de leptina, balance muscular de 14 días, grupos
    cubiertos y calendario.
 6. **Mesa** — ideas de comida completa cetogénica para cuando no sabes qué cocinar.
@@ -228,6 +230,47 @@ debajo del mínimo, lo mantiene; en medio, progresa suave. Las repeticiones regi
 la sensación porque son dato objetivo — puedes haber acabado cómodo y aun así no haber llegado al
 rango. Si no anotas repeticiones, se guía por la sensación como hacía antes.
 
+## Progresión de volumen
+
+Subir el peso deja de bastar en algún momento: para seguir creciendo hace falta **más volumen**. Pero
+subirlo por calendario es la forma más rápida de acabar reventado, así que la app solo lo hace cuando
+el cuerpo demuestra que asimila lo que ya está haciendo. La decisión está en
+`src/domain/progression.ts` y se toma con tres preguntas, en este orden:
+
+1. **¿Asimilas?** Cuenta las **sesiones limpias**: todas las series marcadas, llegando al menos al
+   mínimo del rango de repeticiones prescrito y con sensación de 3 o más sobre 5. Hacen falta **3 de
+   las últimas 4** para considerar que el volumen actual se está asimilando.
+2. **¿Puedes?** Si la señal de leptina lleva tres días o más en «baja» —mal descanso, hambre voraz,
+   antojos—, se vuelve al volumen base aunque todo lo demás diga que sí. Con la recuperación tocada,
+   añadir series no construye músculo: solo acumula fatiga.
+3. **¿Hace falta?** Si la composición corporal va bien (`recomposicion` o `progreso`), no se toca lo
+   que funciona. Si está **estancada** y además el cuerpo asimila, se adelanta un nivel: es
+   exactamente cuando pedir más tiene sentido.
+
+Las palancas se usan en el orden que menos estrés añade por unidad de estímulo:
+
+| Nivel | Series | Ejercicios | Repeticiones | Qué añade |
+| ----- | ------ | ---------- | ------------ | --------- |
+| 1 | 3 | 4 | rango normal | Volumen base |
+| 2 | 4 | 4 | rango normal | Una serie más por ejercicio |
+| 3 | 4 | 5 | rango normal | Un ejercicio más por sesión |
+| 4 | 4 | 5 | rango desplazado (+4) | Cambio de estímulo con el mismo volumen |
+
+Cada escalón pide **6 sesiones limpias**: a dos entrenos por semana son unas tres semanas por nivel,
+tiempo de sobra para que se note si el volumen anterior se estaba asimilando de verdad. En fuerza el
+grupo prioritario se dobla, así que en el nivel 4 recibe unas 8 series por sesión, dentro de la banda
+de 10–20 semanales que maximiza la hipertrofia sin pasarse (`WEEKLY_SETS.techo`).
+
+Nada de esto pasa en silencio: la pantalla de hoy muestra un bloque **«Volumen · nivel N de 4»** con
+**qué cambia** respecto al volumen base —acumulado, no solo el último escalón— **por qué** se está en
+ese nivel y **en qué me baso** (cuántas sesiones salieron limpias, qué dice la composición, qué dice
+la leptina). Si el nivel baja, también se dice y se explica.
+
+Dos cosas siguen mandando por encima del nivel alcanzado: la **rampa de vuelta tras un parón**, que
+recorta las series igual (nivel 4 al 50 % son 2 series), y el **tope de estrés** de la sesión. Y pedir
+pesas un día que tocaba paseo conserva el nivel: lo que el cuerpo lleva demostrando no se borra por
+cambiar de plan.
+
 ## Mesa
 
 Un recetario para los días en que no sabes qué comer. **59 platos completos** de base animal —
@@ -308,7 +351,7 @@ En local la app se sirve en la raíz y en Pages bajo `/app-ejercicio/`. Lo contr
 ```bash
 npm install
 npm run dev       # servidor de desarrollo
-npm test          # 176 tests: motor, catálogo, DHA, leptina, composición, tendencia, cambios y calendario
+npm test          # 198 tests: motor, catálogo, DHA, leptina, composición, tendencia, cambios, calendario y volumen
 npm run build     # build de producción (PWA)
 npm run preview   # servir la build
 ```
@@ -320,3 +363,5 @@ npm run preview   # servir la build
   Requiere `npm run preview` en marcha; define `OUT_DIR` para el destino de las capturas.
 - `node scripts/check-midnight.mjs` — comprueba el cambio de día falseando el reloj del navegador,
   con la app abierta y recuperándola de segundo plano.
+- `node scripts/check-volumen.mjs` — siembra distintos historiales y comprueba en navegador que el
+  nivel de volumen sube al asimilar, baja con la recuperación tocada, y se explica en cada caso.
