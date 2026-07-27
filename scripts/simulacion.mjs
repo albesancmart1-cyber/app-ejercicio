@@ -169,12 +169,21 @@ async function registrarSesion() {
 }
 
 /** Un día de entreno completo, de la primera pregunta al «guardar». */
-async function entrenar(fecha, { mal = false, capturas = [] } = {}) {
+async function entrenar(fecha, { mal = false, capturas = [], nivelAnterior = null } = {}) {
   await irAlDia(fecha)
   await checkIn({ mal })
 
   const rec = await leerRecomendacion()
   for (const c of capturas.filter((c) => c.cuando === 'recomendacion')) await shot(c.nombre, c.nota)
+
+  // Un cambio de nivel de volumen hay que fotografiarlo aquí, que es donde la
+  // app lo cuenta: en la tarjeta de la recomendación, antes de preparar nada.
+  if (rec.nivel && rec.nivel !== nivelAnterior && rec.nivel >= 2) {
+    const tarjeta = page.locator('.card').filter({ hasText: 'Volumen · nivel' }).first()
+    await tarjeta.scrollIntoViewIfNeeded()
+    await shot(`sim-nivel-${rec.nivel}`,
+      `Sube a nivel ${rec.nivel} de 4: la app dice qué cambia, por qué y en qué se basa`)
+  }
 
   await byText('Preparar la sesión').click()
   await page.waitForTimeout(250)
@@ -212,7 +221,14 @@ async function medir(fecha, { pesoKg, grasaPct, musculoPct, capturas = [] }) {
   if (await v.count()) veredicto = (await v.first().textContent())?.replace(/\s+/g, ' ').trim()
 
   for (const c of capturas) {
-    if (c.scroll) await page.locator(c.scroll).first().scrollIntoViewIfNeeded()
+    if (c.scroll) {
+      // Centrar de verdad: `scrollIntoViewIfNeeded` no mueve nada si ya se ve,
+      // y entonces dos capturas distintas salían idénticas.
+      await page.locator(c.scroll).first().evaluate((el) =>
+        el.scrollIntoView({ block: 'center' })
+      )
+      await page.waitForTimeout(200)
+    }
     await shot(c.nombre, c.nota)
   }
 
@@ -266,6 +282,14 @@ const capturasPorFecha = new Map([
     [
       { cuando: 'recomendacion', nombre: 'sim-06-mala-noche', nota: 'Noche mala y hambre voraz: la app baja el listón ese día' }
     ]
+  ],
+  [
+    // Semana 24, ya con el estancamiento detectado y el volumen al máximo.
+    '2026-06-22',
+    [
+      { cuando: 'plan', nombre: 'sim-09-plan-maximo', nota: 'El plan en el nivel máximo: más ejercicios, cuatro series y cargas de 24 kg' },
+      { cuando: 'sesion', nombre: 'sim-10-sesion-maxima', nota: 'La misma sesión con todo anotado, seis meses después de empezar con peso corporal' }
+    ]
   ]
 ])
 
@@ -294,15 +318,15 @@ for (let dia = 0; dia < SEMANAS * 7; dia++) {
         scroll: '.trend-chart'
       })
     }
-    if (semana === 24) {
+    if (semana === 22) {
       capturas.push({
         nombre: 'sim-11-estancamiento',
-        nota: 'Semana 24: el músculo lleva dos meses plano y la app lo dice sin dramatizar',
+        nota: 'Semana 22: doce semanas planas, y la app lo dice sin dramatizar ni hablar de calorías',
         scroll: '.verdict'
       })
       capturas.push({
         nombre: 'sim-12-tendencia-plana',
-        nota: 'La gráfica del estancamiento: las dos series se aplanan',
+        nota: 'La gráfica del mismo momento: sube hasta la semana 12 y ahí se aplana',
         scroll: '.trend-chart'
       })
     }
@@ -315,7 +339,8 @@ for (let dia = 0; dia < SEMANAS * 7; dia++) {
 
   const rec = await entrenar(fecha, {
     mal: NOCHES_MALAS.has(clave),
-    capturas: capturasPorFecha.get(clave) ?? []
+    capturas: capturasPorFecha.get(clave) ?? [],
+    nivelAnterior: ultimoNivel
   })
 
   // Cada vez que sube de nivel de volumen, se guarda la prueba.
@@ -327,12 +352,6 @@ for (let dia = 0; dia < SEMANAS * 7; dia++) {
       motivo: rec.motivo
     })
     console.log(`  semana ${semana} · ${clave} · ${rec.titulo} → NIVEL ${rec.nivel}`)
-    if (rec.nivel >= 2 && rec.nivel <= 4) {
-      // Volver a la recomendación para fotografiar la tarjeta del cambio.
-      await irAlDia(new Date(fecha.getTime() + 3600000))
-      await page.waitForTimeout(200)
-      await shot(`sim-nivel-${rec.nivel}`, `Sube a nivel ${rec.nivel}: la app explica qué cambia y por qué`)
-    }
   } else {
     const carga = registroCarga(rec, bitacora.sesiones.at(-1))
     console.log(`  s${semana} · ${clave} · ${rec.titulo}${rec.nivel ? ` (nivel ${rec.nivel})` : ''}${carga}`)

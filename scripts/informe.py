@@ -185,7 +185,7 @@ def grafica_nivel(sesiones, ancho=ANCHO_UTIL, alto=95):
 
 # ── Capturas ──────────────────────────────────────────────
 
-def captura(carpeta, nombre, pie, alto_mm=115):
+def captura(carpeta, nombre, pie, alto_mm=108):
     ruta = carpeta / f"{nombre}.png"
     if not ruta.exists():
         return []
@@ -254,10 +254,13 @@ def construir(carpeta: Path, salida: Path):
     primera_carga = total(con_peso[0]) if con_peso else 0
     ultima_carga = total(con_peso[-1]) if con_peso else 0
 
+    # La captura de cada nivel se tomó en la última subida a ese nivel, así que
+    # el informe cita esa misma, no la primera vez que se rozó.
     niveles = {}
-    for s in sesiones:
-        if s.get("nivel") and s["nivel"] not in niveles:
-            niveles[s["nivel"]] = s
+    for h in hitos:
+        m = re.match(r"Nivel de volumen (\d) de 4", h.get("nota", ""))
+        if m:
+            niveles[int(m.group(1))] = {**h, "_semana": semana_de(h["fecha"])}
 
     m0, mf = (mediciones[0], mediciones[-1]) if mediciones else (None, None)
 
@@ -323,7 +326,7 @@ def construir(carpeta: Path, salida: Path):
             ["Esfuerzo", "Todas las series completas, siempre en el tope del rango de repeticiones"],
             ["Sensación", "4 sobre 5 al terminar: cómodo, sin llegar al fallo"],
             ["Descanso", "Tres noches malas repartidas por los seis meses, con hambre y antojos"],
-            ["Báscula", "Recomposición real las 16 primeras semanas; a partir de ahí, plana"],
+            ["Báscula", "Recomposición real las 12 primeras semanas; a partir de ahí, plana"],
         ], [26 * mm, 124 * mm], cabecera=False),
         Spacer(1, 8),
         Paragraph(
@@ -413,9 +416,7 @@ def construir(carpeta: Path, salida: Path):
         if nivel == 1:
             continue
         s = niveles[nivel]
-        S += [Paragraph(f"Nivel {nivel} de 4 &nbsp;·&nbsp; semana {s['_semana']}", H2)]
-        if s.get("motivo"):
-            S += [Paragraph(f"<i>«{limpiar(s['motivo'])[:600]}»</i>", CITA)]
+        S += [Paragraph(f"Nivel {nivel} de 4 &nbsp;·&nbsp; semana {s['_semana']} ({s['fecha']})", H2)]
         S += captura(carpeta, f"sim-nivel-{nivel}",
                      f"Lo que ve el usuario al subir a nivel {nivel}: qué cambia, por qué, y en qué se basa.",
                      alto_mm=110)
@@ -452,13 +453,13 @@ def construir(carpeta: Path, salida: Path):
     S += [Spacer(1, 6), tabla(filas, [16 * mm, 11 * mm, 16 * mm, 20 * mm, 22 * mm, 65 * mm])]
 
     S += captura(carpeta, "sim-07-tendencia-buena",
-                 "Semana 8: con datos suficientes, la app se moja y llama a las cosas por su nombre.")
+                 "Semana 10: con datos suficientes, la app se moja y llama a las cosas por su nombre.")
 
     # ── Fase 5: el estancamiento ──────────────────────────
     S += [PageBreak(), Paragraph("5. El estancamiento, que era la prueba de fuego", H1)]
     S += [
         Paragraph(
-            "A partir de la semana 16 el entrenamiento no cambia: mismas sesiones completas, mismo "
+            "A partir de la semana 12 el entrenamiento no cambia: mismas sesiones completas, mismo "
             "esfuerzo, misma sensación al terminar. Lo que cambia es que la báscula se planta. Es el "
             "momento en que una app mal hecha empezaría a hablar de calorías, de déficit, o a "
             "sugerir que te estás engañando.", CUERPO),
@@ -466,16 +467,63 @@ def construir(carpeta: Path, salida: Path):
     S += captura(carpeta, "sim-11-estancamiento",
                  "El veredicto del estancamiento. Lo dice claro, sin dramatizar y sin culpar a nadie.")
     S += captura(carpeta, "sim-12-tendencia-plana",
-                 "La gráfica del mismo momento: las dos series se aplanan y se ve de un vistazo.")
+                 "La gráfica del mismo momento: sube hasta la semana 12 y ahí se aplana.")
+
+    S += [Paragraph("Y no se queda en el comentario", H2)]
     S += [Paragraph(
-        "Y la reacción no se queda en el comentario: el estancamiento es una de las tres señales que "
-        "mira el motor de volumen. Con la composición parada y el cuerpo asimilando la carga, la app "
-        "adelanta un nivel en lugar de esperar a acumular más sesiones limpias. Pedir un poco más es "
+        "El estado de la tendencia es una de las tres señales que mira el motor de volumen. En cuanto "
+        "la composición pasa a «plana» y el cuerpo sigue asimilando la carga, la app <b>adelanta un "
+        "nivel</b> en lugar de esperar a acumular más sesiones limpias. Pedir un poco más es "
         "justamente lo que toca cuando lo de ahora ha dejado de producir cambio.", CUERPO)]
+
+    ultima_subida = niveles.get(max(niveles)) if niveles else None
+    estancamiento = next((m for m in mediciones
+                          if (m["veredicto"] or "").startswith("Todo plano")), None)
+    if ultima_subida and estancamiento:
+        S += [tabla([
+            ["Semana", "Qué pasó"],
+            [str(estancamiento["_semana"]),
+             "La báscula lleva 12 semanas plana. La app lo dice: «Todo plano de momento»."],
+            [str(ultima_subida["_semana"]),
+             f"Primera sesión después. Sube a nivel {max(niveles)} de 4, el máximo."],
+        ], [18 * mm, 132 * mm])]
+        S += [Spacer(1, 8)]
+    S += captura(carpeta, "sim-09-plan-maximo",
+                 "El plan en el nivel máximo, comparado con el de la primera semana: más ejercicios, "
+                 "cuatro series y las mancuernas a tope.")
 
     S += captura(carpeta, "sim-13-balance-final",
                  "Seis meses después: ningún grupo muscular abandonado por el camino. "
                  "El usuario no tuvo que pensar ni un solo día qué tocaba.", alto_mm=110)
+
+    # ── El fallo encontrado ───────────────────────────────
+    S += [PageBreak(), Paragraph("6. Un fallo que solo aparece a los cinco meses", H1)]
+    S += [
+        Paragraph(
+            "Esta prueba no se hizo para confirmar lo que ya se sabía, y no lo confirmó: en la primera "
+            "pasada completa <b>la app no detectó el estancamiento</b>. En la semana 20, con el músculo "
+            "parado desde la 16, seguía diciendo «estás recomponiendo, no cambies nada».", CUERPO),
+        Paragraph(
+            "El motivo, al mirar el código: la pendiente se calculaba por mínimos cuadrados sobre "
+            "<b>todas</b> las mediciones desde la primera. Cuatro meses buenos pesaban más que dos "
+            "malos, así que la recta seguía saliendo a favor. Es un fallo que ningún test corto "
+            "encuentra y que ningún usuario nota hasta que lleva medio año midiendo — momento en el "
+            "que además recibe el peor consejo posible: seguir igual, justo cuando lo que hace ha "
+            "dejado de funcionar.", CUERPO),
+        Paragraph("El arreglo", H2),
+        Paragraph(
+            "El veredicto pasa a mirar una <b>ventana de 12 semanas</b> contada desde la última "
+            "medición. Es tiempo de sobra para que el vaivén de la bioimpedancia se promedie, y poco "
+            "para que un parón real quede tapado. Si en esa ventana no hay mediciones suficientes "
+            "—alguien que se pesa una vez al mes— se estira hacia atrás hasta el mínimo antes que "
+            "renunciar a opinar. La gráfica sigue dibujando el histórico completo: lo que se acota es "
+            "el juicio, no lo que ves.", CUERPO),
+        Paragraph(
+            "El arreglo desatasca además el motor de volumen, que usa el estado de la tendencia como "
+            "señal. Con el estancamiento detectado a tiempo, sube de nivel en vez de esperar. Todo lo "
+            "que aparece en este informe está medido ya con el arreglo puesto, y quedan cuatro tests "
+            "nuevos —dos de ellos fallan sin él— para que no vuelva.", CUERPO),
+    ]
 
     # ── Cierre ────────────────────────────────────────────
     S += [PageBreak(), Paragraph("Qué se comprobó, y qué habría que vigilar", H1)]
@@ -491,6 +539,9 @@ def construir(carpeta: Path, salida: Path):
         "El estancamiento se nombra sin dramatizar, y además dispara el siguiente escalón de "
         "volumen en vez de quedarse en un comentario.",
         "En seis meses ningún grupo muscular se quedó sin trabajar.",
+        "En 78 sesiones y 13 mediciones no salió ni un solo error de consola. Y revisando los 142 "
+        "mensajes que la app escribió por el camino —36.000 caracteres— no aparece ni una vez "
+        "la palabra caloría, déficit o superávit.",
     ]:
         S += [Paragraph(f"• {punto}", CUERPO)]
 
