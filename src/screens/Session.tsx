@@ -217,7 +217,7 @@ export default function SessionScreen({ session }: { session: Session }) {
     setComoSeHace(null)
     const zonas = pesas.zonas.map((z) => MUSCLE_LABELS[z].toLowerCase()).join(', ')
     setAviso(
-      `Añadidas ${pesas.exercises.length} de fuerza (${zonas}) y el cardio queda en ${pesas.cardioMinutes} min. Las pesas van primero.`
+      `Añadidas ${pesas.exercises.length} de fuerza — ${zonas} — y el cardio queda en ${pesas.cardioMinutes} min. Las pesas van primero.`
     )
   }
 

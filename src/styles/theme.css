@@ -145,18 +145,37 @@ body::after {
   transition: background 1.2s ease;
 }
 
+/*
+ * Armazón de app, no de página web: el documento **no** se desplaza. `#root`
+ * ocupa la pantalla y quien se desplaza es el contenido por dentro.
+ *
+ * El motivo es concreto: con la barra en `position: fixed` sobre el documento,
+ * iOS deja de repintarla durante el desplazamiento por inercia y la cápsula
+ * aparece plantada a media pantalla. Con el contenido desplazándose dentro de
+ * un contenedor, la barra no se mueve nunca porque no hay nada que recolocar, y
+ * el contenido le pasa por debajo, que es justo el efecto que se busca con el
+ * cristal.
+ */
 #root {
-  position: relative;
-  z-index: 1;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
   max-width: 460px;
-  margin: 0 auto;
-  min-height: 100dvh;
+  z-index: 1;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .app-main {
-  flex: 1;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
   padding: max(24px, env(safe-area-inset-top)) 20px
     calc(var(--tabbar-height) + 46px + env(safe-area-inset-bottom));
 }
@@ -486,7 +505,7 @@ textarea:focus {
  */
 
 .tabbar {
-  position: fixed;
+  position: absolute;
   bottom: calc(18px + env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%);
@@ -1110,13 +1129,12 @@ textarea:focus {
 /* ── Elegir ejercicio del catálogo ──────────────────────── */
 
 .picker {
-  position: fixed;
+  position: absolute;
   top: 44px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  max-width: 460px;
+  left: 0;
+  right: 0;
   bottom: 0;
+  width: 100%;
   z-index: 40;
   display: flex;
   flex-direction: column;
@@ -1130,8 +1148,8 @@ textarea:focus {
 }
 
 @keyframes sheet-up {
-  from { transform: translate(-50%, 22px); opacity: 0; }
-  to { transform: translate(-50%, 0); opacity: 1; }
+  from { transform: translateY(22px); opacity: 0; }
+  to { transform: none; opacity: 1; }
 }
 
 /* El tirador de la hoja: pequeño, centrado, sin función más que decir «esto se cierra». */

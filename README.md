@@ -428,6 +428,12 @@ y mucho aire. Controles con la forma que toca: cápsulas para las opciones, cont
 las escalas de 1 a 5, botón relleno para la acción principal, y una respuesta táctil de escala al
 pulsar.
 
+La app se monta como un **armazón**, no como una página: el documento no se desplaza nunca, y quien
+lo hace es el contenido dentro de su contenedor. No es un capricho de arquitectura, es un fallo que
+apareció en el móvil: con la barra en `position: fixed` sobre el documento, iOS deja de repintarla
+durante el desplazamiento por inercia y la cápsula se queda plantada a media pantalla. Con este
+armazón la barra no se recoloca nunca, porque no hay nada que recolocar.
+
 **La barra de navegación es una cápsula flotante de cristal líquido.** No es un rectángulo
 translúcido: desenfoca y satura lo que pasa por detrás, lleva un anillo especular de un píxel que
 recoge la luz por arriba a la izquierda y la derrama por abajo a la derecha, un reflejo interior en
@@ -493,3 +499,5 @@ npm run preview   # servir la build
   cardio, lo recorta, pone la fuerza delante y se puede deshacer.
 - `node scripts/check-meter-pesas.mjs` — prepara la sesión de cardio y comprueba que desde el plan ya
   montado se pueden meter pesas elegidas por la app, con el cardio recortado.
+- `node scripts/check-barra.mjs` — mide dónde queda la barra de navegación al principio, a mitad y al
+  final del desplazamiento, en tres tamaños de móvil.
