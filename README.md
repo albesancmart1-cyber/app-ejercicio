@@ -376,6 +376,36 @@ que se deduce se marca** (un ejercicio que ya no está en el catálogo se infier
 tabla de heurísticas y queda con `needsReview` para que lo confirmes), y **es idempotente**, así que
 correrla en cada arranque es seguro.
 
+### Los dos motores en paralelo
+
+El motor de recomendación sigue decidiendo con la taxonomía vieja. El nuevo, de momento, solo mira y
+apunta (`src/domain/shadow.ts`): no se sustituye algo que lleva meses funcionando por algo que sobre
+el papel es mejor, sin medirlo antes.
+
+`node scripts/comparar-motores.mjs` genera seis meses de historial haciendo que la propia app decida
+—`recommend` → `buildSession` → registrar series— y compara las dos lecturas semana a semana. Sobre
+78 sesiones y 26 semanas:
+
+| | |
+|---|---|
+| Semanas en que los dos coincidirían | **0 de 26** |
+| Semanas con un grupo «cubierto» y algún músculo bajo su mínimo | **26 de 26** |
+| Semanas con un músculo pasado de MRV sin que el viejo lo viera | 0 |
+| Semanas con freno por techo sin que hiciera falta | 0 |
+
+Los músculos que el conteo grueso tapaba, por semanas bajo su MEV dentro de un grupo dado por
+cubierto: deltoides posterior y antebrazo (26), trapecio superior (22), deltoides lateral y bíceps
+(20), aductores (15), recto abdominal (13).
+
+El patrón es de manual y se ve en la última semana: **hombro 13 series** para el motor viejo, que
+por dentro son 12 de deltoides anterior, 2 de lateral y **0 de posterior**; **brazo 12 series**, que
+son 14 de tríceps y **2 de bíceps**. El volumen de empuje infla los dos grupos mientras los músculos
+que solo crecen con trabajo directo se quedan a cero.
+
+**Que no haya ni una sola sobrecarga invisible ni una falsa saturación es la buena noticia para la
+migración**: el motor nuevo nunca diría «te estás pasando» donde el viejo no lo decía. Toda la
+divergencia va en la dirección de «te falta trabajo», que es segura de aplicar.
+
 ## Progresión de volumen
 
 Subir el peso deja de bastar en algún momento: para seguir creciendo hace falta **más volumen**. Pero
@@ -526,7 +556,7 @@ En local la app se sirve en la raíz y en Pages bajo `/app-ejercicio/`. Lo contr
 ```bash
 npm install
 npm run dev       # servidor de desarrollo
-npm test          # 323 tests: motor, catálogo, DHA, leptina, composición, tendencia, cambios, calendario, volumen, variantes, sesión mixta, músculos y migración
+npm test          # 339 tests: motor, catálogo, DHA, leptina, composición, tendencia, cambios, calendario, volumen, variantes, sesión mixta, músculos y migración
 npm run build     # build de producción (PWA)
 npm run preview   # servir la build
 ```
@@ -550,3 +580,5 @@ npm run preview   # servir la build
   final del desplazamiento, en tres tamaños de móvil.
 - `node scripts/check-migracion.mjs` — siembra datos en el formato viejo y comprueba que al abrir la
   app se migran solos, sin perder nada, marcando lo deducido y sin volver a cambiar al reabrir.
+- `node scripts/comparar-motores.mjs` — genera seis meses de historial con las decisiones de la propia
+  app y compara semana a semana lo que ve el motor viejo con lo que ve el nuevo.
