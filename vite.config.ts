@@ -5,7 +5,12 @@ import { VitePWA } from 'vite-plugin-pwa'
 // Evita traer @types/node entero solo por leer una variable de entorno.
 declare const process: { env: Record<string, string | undefined> }
 
+// Marca de construcción: se enseña en Ajustes para poder comprobar de un
+// vistazo si el móvil ya tiene la versión nueva o sigue con la cacheada.
+const CONSTRUIDA = new Date().toISOString()
+
 export default defineConfig({
+  define: { __BUILD_TIME__: JSON.stringify(CONSTRUIDA) },
   // GitHub Pages sirve el proyecto bajo /app-ejercicio/. En local se queda en la
   // raíz, para que `npm run dev`, `npm run preview` y el recorrido e2e no cambien.
   base: process.env.BASE_PATH ?? '/',

@@ -163,6 +163,56 @@ if (!conMinutos) fallar('el plan no muestra los minutos de cardio recortados')
 console.log('  → plan:', nombres.slice(0, -1).join(', '), '+', ultimo)
 await page.screenshot({ path: `${OUT}/mix-04-plan.png`, fullPage: true })
 
+// ── El caso que fallaba: un día de descanso activo ────────
+//
+// Con la disposición por los suelos la app manda descanso activo. Se ofrecía
+// cambiarlo entero por pesas y en cambio no la versión suave, que es al revés
+// de como debería.
+// Queda una sesión preparada de la comprobación anterior: se descarta antes.
+await byText('Hoy no puedo').click()
+await page.waitForTimeout(400)
+
+await page.evaluate(() => {
+  const datos = JSON.parse(localStorage.getItem('ritmo-data-v1'))
+  // Una racha de noches horribles: sueño y energía al mínimo, hambre y antojos.
+  // Se cambian todas, no la primera: al guardar el check-in del día la app
+  // reordena la lista y el índice 0 deja de ser hoy.
+  datos.checkIns = datos.checkIns.map((c) => ({
+    ...c,
+    sleep: 1,
+    energy: 1,
+    lightHygiene: false,
+    sunrise: false,
+    sunsetYesterday: false,
+    sunExposure: false,
+    wokeHungry: true,
+    cravings: true
+  }))
+  localStorage.setItem('ritmo-data-v1', JSON.stringify(datos))
+})
+await page.reload()
+await page.waitForTimeout(400)
+await byText('Empezar').click()
+await page.waitForTimeout(250)
+await byText('Ver qué me conviene').click()
+await page.waitForTimeout(400)
+
+const flojo = (await page.locator('.eyebrow').nth(1).textContent()).trim()
+console.log('  → con mala disposición toca:', flojo, '· disposición:', await page.locator('.score').first().textContent())
+if (!(await page.getByText('Prefiero algo con pesas').count())) {
+  fallar('debería seguir ofreciendo el cambio completo')
+}
+if (!(await page.getByText('Pesas sin quitar el cardio').count())) {
+  fallar('también debe ofrecer la mixta: repartir exige menos que cambiarlo entero →', flojo)
+}
+await page.getByText('Pesas sin quitar el cardio').click()
+await page.waitForTimeout(350)
+const suave = (await page.locator('.card').filter({ hasText: 'cardio tranquilo' }).first().textContent())
+  .replace(/\s+/g, ' ')
+if (!/intensidad suave/i.test(suave)) fallar('con mala disposición no debe pasar de suave →', suave)
+console.log('  → y en un día flojo la mixta sale suave, no media-alta')
+await page.screenshot({ path: `${OUT}/mix-05-dia-flojo.png` })
+
 await browser.close()
 if (errores.length) {
   console.error('ERRORES EN CONSOLA:', errores)

@@ -468,15 +468,30 @@ export function canIntensify(rec: Recommendation): boolean {
 }
 
 /**
- * ¿Tiene sentido ofrecer «pesas sin quitar el cardio»? Solo cuando lo que
- * tocaba **era** cardio: si ya toca fuerza no hay nada que repartir, y en un
- * descanso activo lo que procede es descansar, no negociar.
+ * ¿Tiene sentido ofrecer «pesas sin quitar el cardio»?
+ *
+ * Siempre que el día traiga cardio, incluido el descanso activo. Al principio
+ * esto exigía además que fuera un día de cardio «de los grandes», y dejaba
+ * fuera dos situaciones en las que la opción es justo la que hace falta:
+ *
+ *  - **El descanso activo.** Se ofrecía cambiarlo entero por pesas y en cambio
+ *    no se ofrecía la versión suave. Al revés de como debería: repartir es
+ *    menos exigente que cambiarlo del todo, así que bloquear lo suave mientras
+ *    se permite lo fuerte no protege de nada.
+ *  - **La vuelta tras un parón.** La rampa recorta los minutos de cardio, y con
+ *    ellos el umbral dejaba de cumplirse: la opción desaparecía precisamente
+ *    los días en que uno vuelve con ganas.
+ *
+ * Lo que contiene la carga no es esconder el botón, son los guardas de
+ * `marcoParaPesas`: intensidad, repeticiones en reserva, molestias, 48 h y la
+ * propia rampa.
  */
 export function canMix(rec: Recommendation): boolean {
-  return (
-    (rec.kind === 'cardio_suave' || rec.kind === 'cardio_medio') &&
-    (rec.cardioMinutes ?? 0) >= CARDIO_MINIMO_MIXTO * 2
-  )
+  // Si ya toca fuerza no hay nada que repartir.
+  if (rec.kind === 'fuerza' || rec.kind === 'reacondicionamiento') return false
+  // Y hace falta que quede cardio que recortar: por debajo del suelo, repartir
+  // no cambiaría nada.
+  return (rec.cardioMinutes ?? 0) > CARDIO_MINIMO_MIXTO
 }
 
 /**

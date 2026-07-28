@@ -20,6 +20,30 @@ export default function Settings() {
   const fileInput = useRef<HTMLInputElement>(null)
   const [confirmReset, setConfirmReset] = useState(false)
   const [eligiendoFavorito, setEligiendoFavorito] = useState(false)
+  const [buscando, setBuscando] = useState(false)
+
+  /** Cuándo se construyó lo que hay instalado, en lenguaje de calendario. */
+  function versionInstalada(): string {
+    const d = new Date(__BUILD_TIME__)
+    return d.toLocaleString('es-ES', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
+  }
+
+  /**
+   * Fuerza la comprobación de versión nueva. Al estar instalada, la app sirve
+   * sus propios archivos desde la caché: sin esto puede pasar un rato hasta que
+   * el móvil se entera de que hay algo nuevo, y da la impresión de que un
+   * cambio no ha llegado cuando en realidad sí está publicado.
+   */
+  async function buscarActualizacion() {
+    setBuscando(true)
+    try {
+      const registros = (await navigator.serviceWorker?.getRegistrations?.()) ?? []
+      await Promise.all(registros.map((r) => r.update()))
+    } catch {
+      // Sin service worker —navegador normal— no hay nada que actualizar.
+    }
+    location.reload()
+  }
 
   function update(partial: Partial<typeof profile>) {
     actions.saveProfile({ ...profile, ...partial })
@@ -260,6 +284,17 @@ export default function Settings() {
           ))}
         </div>
       )}
+
+      <div className="card">
+        <p className="eyebrow">Versión</p>
+        <p className="dim" style={{ marginBottom: 14 }}>
+          Instalada en el móvil, la app guarda una copia para funcionar sin conexión y puede tardar
+          en enterarse de que hay algo nuevo. Esta es de <b>{versionInstalada()}</b>.
+        </p>
+        <button className="btn btn-secondary" onClick={buscarActualizacion}>
+          {buscando ? 'Buscando…' : 'Buscar actualización'}
+        </button>
+      </div>
 
       <div className="card">
         <p className="eyebrow">Tus datos</p>

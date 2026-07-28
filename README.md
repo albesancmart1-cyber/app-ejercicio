@@ -208,9 +208,11 @@ Las tres cosas que hacen que eso no sea una paliza:
 
 El resto de guardas son exactamente los mismos que en cualquier otra sesión —molestias, 48 h de
 recuperación, rampa de vuelta, nunca cerca del fallo—, porque la decisión es tuya pero el trabajo de
-la app es que esa decisión no te pase factura. La opción solo aparece cuando lo que tocaba **era**
-cardio: si ya toca fuerza no hay nada que repartir, y en un día de descanso activo lo que procede es
-descansar.
+la app es que esa decisión no te pase factura. En un día flojo la mixta sale suave y con 4
+repeticiones en reserva; en uno bueno, moderada.
+
+La opción aparece **siempre que el día traiga cardio**, incluido el descanso activo. Solo desaparece
+cuando ya toca fuerza, que es cuando no hay nada que repartir.
 
 ## Cambiar un ejercicio, o añadir otro
 
@@ -449,7 +451,7 @@ En local la app se sirve en la raíz y en Pages bajo `/app-ejercicio/`. Lo contr
 ```bash
 npm install
 npm run dev       # servidor de desarrollo
-npm test          # 233 tests: motor, catálogo, DHA, leptina, composición, tendencia, cambios, calendario, volumen, variantes y sesión mixta
+npm test          # 237 tests: motor, catálogo, DHA, leptina, composición, tendencia, cambios, calendario, volumen, variantes y sesión mixta
 npm run build     # build de producción (PWA)
 npm run preview   # servir la build
 ```

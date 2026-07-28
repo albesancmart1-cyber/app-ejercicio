@@ -638,3 +638,39 @@ describe('pesas sin quitar el cardio', () => {
     expect(texto).not.toMatch(/calor[ií]a|d[eé]ficit|culpa|fracas/)
   })
 })
+
+describe('la opción mixta aparece siempre que haya cardio que repartir', () => {
+  it('en un descanso activo también, porque repartir exige menos que cambiarlo entero', () => {
+    // Disposición por los suelos: la cascada manda descanso activo.
+    const base = recommend(profile, badDay(), establishedHistory(), TODAY)
+    expect(base.kind).toBe('descanso_activo')
+    // Se ofrecía cambiarlo del todo por pesas pero no la versión suave: al revés.
+    expect(canIntensify(base)).toBe(true)
+    expect(canMix(base)).toBe(true)
+  })
+
+  it('y en la vuelta tras un parón, que es cuando la rampa recorta los minutos', () => {
+    const parado: Session[] = [session('2026-04-01', ['sentadilla_goblet'])]
+    for (const r of [goodDay(), badDay()]) {
+      const base = recommend(profile, r, parado, TODAY)
+      if (base.kind === 'fuerza' || base.kind === 'reacondicionamiento') continue
+      expect(base.cardioMinutes!, 'la rampa recorta el cardio').toBeLessThan(35)
+      expect(canMix(base), `${base.title} con ${base.cardioMinutes} min`).toBe(true)
+    }
+  })
+
+  it('nunca cuando ya toca fuerza: no hay nada que repartir', () => {
+    expect(canMix(recommend(profile, goodDay(), establishedHistory(), TODAY))).toBe(false)
+  })
+
+  it('la mixta desde un descanso activo sigue siendo suave', () => {
+    const historia = establishedHistory()
+    const base = recommend(profile, badDay(), historia, TODAY)
+    const mixta = withSomeStrength(base, profile, badDay(), historia, TODAY)
+    expect(mixta.intensity).not.toBe('media-alta')
+    expect(mixta.rir).toBeGreaterThanOrEqual(2)
+    expect(mixta.cardioMinutes!).toBeGreaterThanOrEqual(CARDIO_MINIMO_MIXTO)
+    // Y sigue diciendo que el motivo original no ha desaparecido.
+    expect(mixta.reasons.join(' ').toLowerCase()).toContain('sigue ahí')
+  })
+})
