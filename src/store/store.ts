@@ -105,8 +105,12 @@ export const actions = {
   importData(json: string): boolean {
     try {
       const parsed = JSON.parse(json) as AppData
-      if (parsed.version !== 1) return false
-      setState(() => ({ ...emptyData, ...parsed }))
+      // Se admite cualquier versión que sepamos leer, no solo la última: una
+      // copia exportada antes de la taxonomía muscular tiene que poder volver a
+      // entrar, y la migración la pone al día igual que al arrancar.
+      if (!VERSIONES_LEGIBLES.includes(parsed.version)) return false
+      const { data } = migrar({ ...emptyData, ...parsed })
+      setState(() => data)
       return true
     } catch {
       return false

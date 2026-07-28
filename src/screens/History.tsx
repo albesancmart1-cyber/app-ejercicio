@@ -12,9 +12,9 @@ import { interpretTrend, type TrendReading } from '../domain/trend'
 import TrendChart from '../components/TrendChart'
 import Icon from '../components/Icon'
 import { formatDuration } from '../components/Chrono'
-import { computeBalance, weeklySets } from '../domain/muscleBalance'
+import { computeBalance } from '../domain/muscleBalance'
+import VolumeByMuscle from '../components/VolumeByMuscle'
 import { computeLeptinSignal } from '../domain/leptin'
-import { WEEKLY_SETS } from '../domain/protocol'
 import { useAppData } from '../store/store'
 import { useToday } from '../store/clock'
 
@@ -243,13 +243,10 @@ export default function History() {
   const data = useAppData()
   const today = useToday()
   const balance = computeBalance(data.sessions, today)
-  const week = weeklySets(data.sessions, today)
   const maxBalance = Math.max(0.1, ...MUSCLE_GROUPS.map((g) => balance[g]))
   const trained = new Set(data.sessions.filter((s) => s.completed).map((s) => s.date))
   const completed = data.sessions.filter((s) => s.completed)
 
-  const strengthGroups = MUSCLE_GROUPS.filter((g) => g !== 'cardio')
-  const covered = strengthGroups.filter((g) => week[g] >= WEEKLY_SETS.minimoEficaz).length
   const leptin = computeLeptinSignal(data.checkIns, today, data.profile?.goal)
 
   return (
@@ -257,18 +254,12 @@ export default function History() {
       <p className="eyebrow">Cómo vas</p>
       <h1>Tu cuerpo</h1>
 
-      <div className="card" style={{ marginTop: 28 }}>
-        <div className="row" style={{ alignItems: 'flex-end', marginBottom: 4 }}>
-          <span className="score">
-            {covered}
-            <small> / {strengthGroups.length}</small>
-          </span>
-          <span className="tag">grupos cubiertos</span>
-        </div>
-        <p className="faint" style={{ marginTop: 10 }}>
-          Con {WEEKLY_SETS.minimoEficaz} series semanales por grupo ya se sostiene el músculo. Lo que
-          buscamos aquí no es acumular, es que no quede ninguno olvidado.
-        </p>
+      <div style={{ marginTop: 28 }}>
+        <VolumeByMuscle
+          sessions={data.sessions}
+          todayIso={today}
+          opts={{ overrides: data.profile?.landmarkOverrides, deficit: data.profile?.deficitPhase }}
+        />
       </div>
 
       <BodyCompositionCard
@@ -330,7 +321,7 @@ export default function History() {
       </div>
 
       <div className="card">
-        <p className="eyebrow">Balance muscular</p>
+        <p className="eyebrow">Reparto por zonas</p>
         {MUSCLE_GROUPS.map((g) => {
           const pct = Math.round((balance[g] / maxBalance) * 100)
           return (
@@ -343,7 +334,9 @@ export default function History() {
           )
         })}
         <p className="faint" style={{ marginTop: 14 }}>
-          Últimos 14 días. Los más cortos son los que la app pondrá primero en tus próximos entrenos.
+          Últimos 14 días, en grueso. Sirve para ver de un vistazo si la semana ha estado repartida;
+          para saber si algo se está quedando corto, el que manda es el detalle por músculo de
+          arriba.
         </p>
       </div>
 

@@ -378,9 +378,9 @@ correrla en cada arranque es seguro.
 
 ### Los dos motores en paralelo
 
-El motor de recomendación sigue decidiendo con la taxonomía vieja. El nuevo, de momento, solo mira y
-apunta (`src/domain/shadow.ts`): no se sustituye algo que lleva meses funcionando por algo que sobre
-el papel es mejor, sin medirlo antes.
+Antes de cambiar de motor se midió la diferencia. El nuevo estuvo un tiempo solo mirando y apuntando
+(`src/domain/shadow.ts`): no se sustituye algo que lleva meses funcionando por algo que sobre el
+papel es mejor, sin medirlo antes.
 
 `node scripts/comparar-motores.mjs` genera seis meses de historial haciendo que la propia app decida
 —`recommend` → `buildSession` → registrar series— y compara las dos lecturas semana a semana. Sobre
@@ -405,6 +405,64 @@ que solo crecen con trabajo directo se quedan a cero.
 **Que no haya ni una sola sobrecarga invisible ni una falsa saturación es la buena noticia para la
 migración**: el motor nuevo nunca diría «te estás pasando» donde el viejo no lo decía. Toda la
 divergencia va en la dirección de «te falta trabajo», que es segura de aplicar.
+
+### La sesión se elige por músculo
+
+Con eso medido, la elección pasó a hacerse por músculo (`src/domain/focus.ts`). `elegirFoco` ordena
+los músculos por lo lejos que están de su volumen productivo —en proporción, que es lo que hace
+comparables a un sóleo que pide 6 series y a un deltoides anterior que pide 3— y `pickForMuscle`
+busca un ejercicio donde ese músculo sea **motor principal**, no uno que lo roce. Con todo a cero, que
+es lo normal a principio de semana, desempata el tiempo que lleva sin trabajarse.
+
+Lo que **no** cambió: la cascada que decide si hoy toca descanso, cardio o vuelta progresiva, y las
+dos guardas de siempre. Una molestia declarada deja fuera **la zona entera**, porque quien dice «me
+duele el hombro» no está distinguiendo entre deltoides; y un grupo entrenado hace menos de 48 h
+descansa entero. `avoidGroups` las hace explícitas en la recomendación, porque un buen ejercicio de
+bíceps puede ser una dominada y con la espalda dolorida esa no es la respuesta.
+
+`node scripts/check-foco.mjs` simula seis meses dos veces sobre el mismo perfil y el mismo
+calendario, cambiando **solo quién elige**:
+
+| | por zona | por músculo |
+|---|---|---|
+| Semanas de músculo bajo su mínimo (de 494) | 220 | **196** |
+| Músculos sin una sola serie en seis meses | deltoides posterior | **ninguno** |
+
+La mejora en el total es modesta y tiene una explicación aritmética: con tres sesiones semanales no
+hay series para tener a diecinueve músculos por encima de su mínimo a la vez. Lo que cambia de
+verdad es el reparto — deja de haber músculos abandonados y los que iban sobrados bajan a su parte —
+y eso es lo que el script vigila: falla si esa mejora se pierde.
+
+### El catálogo tenía un agujero
+
+Contar por músculo dejó a la vista que la app **nunca había propuesto trabajo de pantorrilla**: con
+la taxonomía vieja no había ningún grupo que nombrara al gemelo, así que el hueco era invisible. Se
+añadieron once ejercicios por los músculos que la comparación marcaba como más descuidados —siete de
+tobillo (de pie para el gastrocnemio, sentado para el sóleo, que con la rodilla doblada es el que
+queda), curl de muñeca y paseo del granjero para el antebrazo, elevación lateral inclinado y aducción
+de cadera— y un test comprueba que todo músculo con landmarks tiene al menos un ejercicio que lo
+trabaja **de forma directa**. Cubrirlo solo como sinergista no vale: harían falta el doble de series
+de otra cosa.
+
+### Cómo se ve
+
+En «Cuerpo», el volumen semanal músculo a músculo, plegado por regiones y con la primera que tenga
+carencias ya abierta. Cada barra es una escala con sus tramos —bajo el mínimo, banda que rinde, por
+encima de lo que rinde, pasado el techo— y el número lleva un decimal, porque las series de
+acompañante valen media. Tocando un músculo se ve de dónde sale: «12,0 series directas + 12,0 de
+acompañante, que cuentan la mitad = 18,0», con sus landmarks debajo.
+
+El color nunca lleva la información solo: cada músculo enseña su número y el nombre de su zona en
+texto, y los tramos están siempre en el mismo orden. Distinguir verde de ámbar y de rojo es
+exactamente lo que no puede dar por hecho una app que quiere leerse con un daltonismo común.
+
+Si una semana sale a cero porque el trabajo fue de rodaje —a 4 o 5 repeticiones del fallo—, la vista
+lo dice en vez de parecer rota.
+
+Al añadir un ejercicio a mano, la lista enseña **a qué dejaría la semana**: «bíceps 0,0 → 3,0», y en
+verde el que cruzaría el mínimo semanal. Y en Ajustes se pueden cambiar los objetivos de cada
+músculo, que se guardan en el perfil; solo se guarda lo que difiere del valor de fábrica, así que
+afinar mañana los valores por defecto sigue llegando a quien no los haya tocado.
 
 ## Progresión de volumen
 
@@ -556,7 +614,7 @@ En local la app se sirve en la raíz y en Pages bajo `/app-ejercicio/`. Lo contr
 ```bash
 npm install
 npm run dev       # servidor de desarrollo
-npm test          # 339 tests: motor, catálogo, DHA, leptina, composición, tendencia, cambios, calendario, volumen, variantes, sesión mixta, músculos y migración
+npm test          # 369 tests: motor, catálogo, DHA, leptina, composición, tendencia, cambios, calendario, volumen, variantes, sesión mixta, músculos, foco por músculo y migración
 npm run build     # build de producción (PWA)
 npm run preview   # servir la build
 ```
@@ -582,3 +640,11 @@ npm run preview   # servir la build
   app se migran solos, sin perder nada, marcando lo deducido y sin volver a cambiar al reabrir.
 - `node scripts/comparar-motores.mjs` — genera seis meses de historial con las decisiones de la propia
   app y compara semana a semana lo que ve el motor viejo con lo que ve el nuevo.
+- `node scripts/check-foco.mjs` — simula seis meses dos veces cambiando solo quién elige los
+  ejercicios (por zona o por músculo) y mide cuántas semanas pasa cada músculo bajo su mínimo. Falla
+  si elegir por músculo deja de mejorar la cobertura.
+- `node scripts/check-foco-ui.mjs` — con un historial de solo empujes, comprueba en navegador que la
+  app propone lo que quedó a cero y lo explica nombrando el músculo.
+- `node scripts/check-volumen-musculo.mjs` — comprueba la vista de volumen por músculo: las zonas, el
+  desglose de directas e indirectas, los objetivos editables que se guardan en el perfil y la vista
+  previa del impacto al añadir un ejercicio.

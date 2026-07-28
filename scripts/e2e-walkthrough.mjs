@@ -481,8 +481,38 @@ await page.locator('.trend-chart').scrollIntoViewIfNeeded()
 await shot('13a-tendencia')
 
 await shot('13-leptina')
-await page.locator('.card').filter({ hasText: 'Balance muscular' }).scrollIntoViewIfNeeded()
-await shot('13b-balance')
+
+// Volumen músculo a músculo: la vista que sustituyó al balance por grupos.
+const volumen = page.locator('.card').filter({ hasText: 'Volumen por músculo' })
+await volumen.scrollIntoViewIfNeeded()
+// Una región llega abierta sola —la primera con algo bajo mínimo—, así que solo
+// hay que abrir si no lo está ya.
+const region = volumen.locator('.region-head').first()
+if ((await region.getAttribute('aria-expanded')) !== 'true') {
+  await region.click()
+  await page.waitForTimeout(400)
+}
+if ((await volumen.locator('.zbar').count()) === 0) {
+  console.error('ERROR: la región abierta no enseña ninguna barra de volumen')
+  process.exit(1)
+}
+const musculo = volumen.locator('.mrow-head').first()
+const seriesTexto = await musculo.locator('.mrow-series').textContent()
+if (!/\d,\d/.test(seriesTexto)) {
+  console.error('ERROR: las series no se enseñan con decimal →', seriesTexto)
+  process.exit(1)
+}
+await musculo.click()
+await page.waitForTimeout(400)
+if ((await volumen.locator('.mrow-detail').count()) === 0) {
+  console.error('ERROR: el músculo no despliega su desglose')
+  process.exit(1)
+}
+console.log('  → volumen por músculo, primera barra:', seriesTexto.trim())
+await shot('13b-volumen-musculo')
+
+await page.locator('.card').filter({ hasText: 'Reparto por zonas' }).scrollIntoViewIfNeeded()
+await shot('13c-reparto')
 
 // ── Mesa: idea de comida ──────────────────────────────────
 await page.locator('.tab', { hasText: 'Mesa' }).click()

@@ -90,6 +90,39 @@ export function weeklyMuscleVolume(
   return total
 }
 
+/**
+ * Series que se han hecho pero no cuentan, por quedarse a más de
+ * `RIR_EFECTIVO` repeticiones del fallo.
+ *
+ * Hace falta para poder explicarlo: en una vuelta progresiva se trabaja a RIR 4
+ * a propósito, y entonces el volumen sale a cero en todos los músculos. Sin una
+ * frase que lo diga, la vista parece rota cuando en realidad está describiendo
+ * bien una semana de rodaje.
+ */
+export function seriesFueraDeCuenta(
+  sessions: Session[],
+  todayIso: string,
+  dias = VENTANA_DIAS
+): number {
+  let fuera = 0
+  for (const s of sessions) {
+    if (!s.completed) continue
+    const edad = daysBetween(s.date, todayIso)
+    if (edad < 0 || edad >= dias) continue
+    for (const pe of s.exercises) {
+      if (pe.plan.rir === undefined || pe.plan.rir <= RIR_EFECTIVO) continue
+      if (Object.keys(pe.muscleContributions ?? contributionsOf(pe.exerciseId)).length === 0) continue
+      const hechas = pe.logs
+        ? pe.logs.filter((l) => l.done && !l.warmup).length
+        : pe.done === true
+          ? pe.plan.sets
+          : 0
+      fuera += hechas
+    }
+  }
+  return fuera
+}
+
 /** El desglose de series directas e indirectas, para poder explicarlo. */
 export interface Desglose {
   directas: number
@@ -127,21 +160,29 @@ export function volumenPorRegion(volumen: MuscleVolume): Record<Region, number> 
   ) as Record<Region, number>
 }
 
-export type VolumeZone = 'bajo' | 'suficiente' | 'optimo' | 'excesivo'
+export type VolumeZone = 'bajo' | 'suficiente' | 'optimo' | 'alto' | 'excesivo'
 
 export const ZONE_LABELS: Record<VolumeZone, string> = {
   bajo: 'Por debajo del mínimo',
   suficiente: 'Suficiente para sostener',
   optimo: 'En la banda que más rinde',
+  alto: 'Por encima de lo que rinde, aún recuperable',
   excesivo: 'Por encima de lo que puedes recuperar'
 }
 
-/** En qué zona cae un volumen respecto a los landmarks de su músculo. */
+/**
+ * En qué zona cae un volumen respecto a los landmarks de su músculo.
+ *
+ * `alto` —entre el MAV y el MRV— existe porque el tramo tiene significado
+ * propio: son series que ya no rinden más, pero que todavía se recuperan. No es
+ * un problema como pasarse del MRV, pero tampoco es donde conviene estar, y
+ * pintarlo del mismo color que la banda buena lo escondería.
+ */
 export function zonaDe(series: number, l: VolumeLandmarks): VolumeZone {
   if (series < l.mev) return 'bajo'
   if (series < l.mavMin) return 'suficiente'
   if (series <= l.mavMax) return 'optimo'
-  return series > l.mrv ? 'excesivo' : 'optimo'
+  return series > l.mrv ? 'excesivo' : 'alto'
 }
 
 /**

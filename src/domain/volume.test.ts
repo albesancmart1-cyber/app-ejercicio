@@ -9,6 +9,7 @@ import {
   formatSeries,
   impactoDeAnadir,
   seriesEfectivas,
+  seriesFueraDeCuenta,
   volumenDe,
   volumenPorRegion,
   weeklyMuscleVolume,
@@ -101,6 +102,30 @@ describe('el catálogo entero tiene mapa muscular', () => {
     }
     const sinDirecto = ALL_MUSCLES.filter((m) => !directos.has(m))
     expect(sinDirecto, 'músculos que solo se trabajan de refilón').toEqual([])
+  })
+})
+
+describe('las series que no cuentan se pueden explicar', () => {
+  it('cuenta las que quedaron demasiado lejos del fallo', () => {
+    const s = [sesion(HOY, [hecho('curl_biceps', 4, { rir: RIR_EFECTIVO + 1 })])]
+    expect(weeklyMuscleVolume(s, HOY).biceps_braquial).toBe(0)
+    expect(seriesFueraDeCuenta(s, HOY)).toBe(4)
+  })
+
+  it('las que sí cuentan no aparecen ahí', () => {
+    const s = [sesion(HOY, [hecho('curl_biceps', 4, { rir: RIR_EFECTIVO })])]
+    expect(seriesFueraDeCuenta(s, HOY)).toBe(0)
+  })
+
+  it('el cardio no engorda la cuenta', () => {
+    const cardio: PlannedExercise = {
+      exerciseId: 'bici_suave',
+      name: 'Bici',
+      primary: 'cardio',
+      plan: { sets: 1, reps: '30 min', rir: 5 },
+      done: true
+    }
+    expect(seriesFueraDeCuenta([sesion(HOY, [cardio])], HOY)).toBe(0)
   })
 })
 
@@ -297,6 +322,8 @@ describe('landmarks de volumen', () => {
     expect(zonaDe(2, l)).toBe('bajo')
     expect(zonaDe(8, l)).toBe('suficiente')
     expect(zonaDe(15, l)).toBe('optimo')
+    // Entre el MAV y el MRV: ya no rinde más, pero aún se recupera.
+    expect(zonaDe(20, l)).toBe('alto')
     expect(zonaDe(25, l)).toBe('excesivo')
   })
 

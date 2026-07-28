@@ -701,6 +701,219 @@ textarea:focus {
   background: var(--border-strong);
 }
 
+/* ── Volumen por músculo ────────────────────────────────── */
+
+/*
+ * Los cuatro tramos. Se eligen con luminosidades bien separadas además del
+ * tono: distinguir verde de ámbar y de rojo es exactamente lo que no puede dar
+ * por hecho una app que quiere leerse con un daltonismo común, y aquí el color
+ * acompaña al número y al nombre de la zona, nunca los sustituye.
+ */
+:root {
+  --zone-bajo: rgba(120, 120, 128, 0.35);
+  --zone-suficiente: #6f9c7e;
+  --zone-optimo: #4f9d69;
+  --zone-alto: #d99441;
+  --zone-excesivo: #c2554b;
+}
+
+.regions {
+  margin-top: 6px;
+}
+
+.region + .region {
+  border-top: 0.5px solid var(--separator);
+}
+
+.region-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 13px 0;
+  background: none;
+  border: 0;
+  text-align: left;
+  color: var(--label);
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+}
+
+.region-name {
+  flex: 1 1 auto;
+  font-weight: 500;
+}
+
+.region-note {
+  font-size: 0.8125rem;
+  color: var(--label-3);
+}
+
+.region-note.short {
+  color: var(--zone-alto);
+}
+
+.chev {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid var(--label-3);
+  border-bottom: 1.5px solid var(--label-3);
+  transform: rotate(-45deg);
+  transition: transform 0.25s ease;
+}
+
+.chev.open {
+  transform: rotate(45deg);
+}
+
+.region-body {
+  padding-bottom: 8px;
+}
+
+.mrow {
+  padding: 8px 0 12px;
+}
+
+.mrow-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  background: none;
+  border: 0;
+  padding: 0 0 6px;
+  text-align: left;
+  color: var(--label-2);
+  font-size: 0.9375rem;
+  letter-spacing: -0.008em;
+}
+
+.mrow-name {
+  flex: 1 1 auto;
+}
+
+.mrow-series {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--label);
+}
+
+.mrow-series.zone-bajo {
+  color: var(--label-3);
+}
+.mrow-series.zone-alto {
+  color: var(--zone-alto);
+}
+.mrow-series.zone-excesivo {
+  color: var(--zone-excesivo);
+}
+
+.mrow-zone {
+  margin-top: 5px;
+  font-size: 0.75rem;
+  color: var(--label-3);
+}
+
+.mrow-detail {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: var(--r-small);
+  background: var(--fill-3);
+  font-size: 0.8125rem;
+  color: var(--label-2);
+}
+
+.mrow-detail p {
+  font-size: inherit;
+  line-height: 1.45;
+}
+
+.mrow-detail p + p {
+  margin-top: 4px;
+}
+
+/* La escala: tramos de fondo y una marca en el valor de esta semana. */
+.zbar {
+  position: relative;
+  height: 10px;
+}
+
+.zbar-track {
+  position: absolute;
+  inset: 2px 0;
+  border-radius: var(--r-pill);
+  overflow: hidden;
+  background: var(--fill-2);
+}
+
+.zband {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+
+.zband.bajo {
+  background: var(--zone-bajo);
+}
+.zband.suficiente {
+  background: color-mix(in srgb, var(--zone-suficiente) 55%, transparent);
+}
+.zband.optimo {
+  background: var(--zone-optimo);
+}
+.zband.alto {
+  background: color-mix(in srgb, var(--zone-alto) 70%, transparent);
+}
+.zband.excesivo {
+  background: color-mix(in srgb, var(--zone-excesivo) 70%, transparent);
+}
+
+/* Los cuatro números de un músculo, en Ajustes. */
+.landmark-fields {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px 10px;
+  margin: 6px 0 10px;
+}
+
+.landmark-fields .field span {
+  font-size: 0.75rem;
+}
+
+.landmark-fields .field input {
+  padding: 9px 12px;
+  font-size: 0.9375rem;
+}
+
+/* Vista previa del impacto, en el selector de ejercicios. */
+.item-impact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 5px;
+  font-size: 0.75rem;
+  color: var(--label-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.item-impact .crosses {
+  color: var(--zone-optimo);
+  font-weight: 500;
+}
+
+.zmark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  margin-left: -1.5px;
+  border-radius: var(--r-pill);
+  background: var(--label);
+  box-shadow: 0 0 0 1.5px var(--bg);
+  transition: left 0.7s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
 /* ── Lista de ejercicios ────────────────────────────────── */
 
 .item {

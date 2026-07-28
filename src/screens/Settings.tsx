@@ -10,6 +10,7 @@ import { ketoAdaptationWeeksLeft, proteinTarget } from '../domain/protocol'
 import { esVerano, objetivoDhaDiario } from '../domain/dha'
 import { exerciseById } from '../data/exercises'
 import ExercisePicker from '../components/ExercisePicker'
+import LandmarkSettings from '../components/LandmarkSettings'
 import { actions, todayIso, useAppData } from '../store/store'
 
 const ALL_EQUIPMENT = Object.keys(EQUIPMENT_LABELS) as Equipment[]
@@ -174,6 +175,8 @@ export default function Settings() {
           La altura solo se usa para calcular el FFMI en la pestaña Cuerpo.
         </p>
       </div>
+
+      <LandmarkSettings profile={profile} onChange={update} />
 
       <div className="card">
         <p className="eyebrow">Cetosis y descanso</p>

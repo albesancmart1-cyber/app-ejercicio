@@ -14,6 +14,10 @@ import { useMemo, useState } from 'react'
 import { MUSCLE_GROUPS, MUSCLE_LABELS, type Exercise, type MuscleGroup, type Profile } from '../domain/types'
 import { catalogFor } from '../domain/swap'
 import { patternOf, PATTERN_LABELS } from '../data/patterns'
+import { MUSCLES } from '../domain/muscles'
+import { formatSeries, impactoDeAnadir, type MuscleVolume } from '../domain/volume'
+import { allLandmarks } from '../domain/landmarks'
+import type { LandmarkOpts } from '../domain/landmarks'
 import Icon from './Icon'
 
 const GRUPOS = MUSCLE_GROUPS.filter((g) => g !== 'cardio')
@@ -23,6 +27,9 @@ export default function ExercisePicker({
   title,
   initialGroup,
   inSession,
+  volumenActual,
+  seriesPrevistas = 3,
+  landmarkOpts = {},
   onPick,
   onToggleFavorite,
   onClose
@@ -33,6 +40,15 @@ export default function ExercisePicker({
   initialGroup?: MuscleGroup
   /** Los que ya están en la sesión, para avisar en vez de dejar repetir a ciegas. */
   inSession: string[]
+  /**
+   * Volumen semanal de cada músculo. Con él, cada ejercicio enseña **a qué
+   * dejaría la semana** si se mete: elegir a ciegas entre cien nombres es justo
+   * lo que la app quiere evitar.
+   */
+  volumenActual?: MuscleVolume
+  /** Series con las que entraría, para calcular ese impacto. */
+  seriesPrevistas?: number
+  landmarkOpts?: LandmarkOpts
   onPick: (exercise: Exercise) => void
   onToggleFavorite: (id: string) => void
   onClose: () => void
@@ -43,6 +59,27 @@ export default function ExercisePicker({
 
   const favoritos = new Set(profile.favoriteExercises ?? [])
   const yaEsta = new Set(inSession)
+  const landmarks = allLandmarks(landmarkOpts)
+
+  /**
+   * Los dos músculos a los que más aportaría, con el antes y el después. Se
+   * marca el caso que de verdad decide: el que cruza el mínimo semanal.
+   */
+  function impacto(e: Exercise) {
+    if (!volumenActual) return null
+    const pe = {
+      exerciseId: e.id,
+      name: e.name,
+      primary: e.primary,
+      plan: { sets: seriesPrevistas, reps: '' }
+    }
+    return impactoDeAnadir(volumenActual, pe)
+      .slice(0, 2)
+      .map((x) => ({
+        ...x,
+        cruza: x.antes < landmarks[x.musculo].mev && x.despues >= landmarks[x.musculo].mev
+      }))
+  }
 
   const lista = useMemo(
     () =>
@@ -96,6 +133,7 @@ export default function ExercisePicker({
         )}
         {lista.map((e) => {
           const patron = patternOf(e.id)
+          const cambio = impacto(e)
           return (
             <div className="picker-item" key={e.id}>
               <button
@@ -115,6 +153,15 @@ export default function ExercisePicker({
                     .filter(Boolean)
                     .join(' · ')}
                 </span>
+                {cambio && cambio.length > 0 && (
+                  <span className="item-impact">
+                    {cambio.map((c) => (
+                      <span key={c.musculo} className={c.cruza ? 'crosses' : ''}>
+                        {MUSCLES[c.musculo].short} {formatSeries(c.antes)} → {formatSeries(c.despues)}
+                      </span>
+                    ))}
+                  </span>
+                )}
               </button>
               <button
                 className="picker-star"

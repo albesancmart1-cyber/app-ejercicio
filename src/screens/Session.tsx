@@ -18,6 +18,8 @@ import { prepareExercise } from '../domain/workoutBuilder'
 import { implementOptions, sideOptions, variantLabel } from '../domain/variants'
 import { exerciseById } from '../data/exercises'
 import { actions, useAppData } from '../store/store'
+import { useToday } from '../store/clock'
+import { weeklyMuscleVolume } from '../domain/volume'
 import Icon from '../components/Icon'
 import RestTimer from '../components/RestTimer'
 import Chrono, { elapsedSeconds } from '../components/Chrono'
@@ -48,6 +50,7 @@ interface Resting {
 
 export default function SessionScreen({ session }: { session: Session }) {
   const data = useAppData()
+  const today = useToday()
   const profile = data.profile!
   const [exercises, setExercises] = useState<PlannedExercise[]>(() =>
     session.exercises.map((e) => (e.logs ? e : { ...e, logs: initLogs(e.plan) }))
@@ -292,6 +295,9 @@ export default function SessionScreen({ session }: { session: Session }) {
         title={actual ? `En lugar de ${actual.name.toLowerCase()}` : 'Añadir un ejercicio'}
         initialGroup={actual?.primary}
         inSession={exercises.map((e) => e.exerciseId)}
+        volumenActual={weeklyMuscleVolume(data.sessions, today)}
+        seriesPrevistas={session.exercises[0]?.plan.sets ?? 3}
+        landmarkOpts={{ overrides: profile.landmarkOverrides, deficit: profile.deficitPhase }}
         onPick={elegido}
         onToggleFavorite={alternarFavorito}
         onClose={() => setEligiendo(null)}
