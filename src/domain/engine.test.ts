@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { computeReadiness } from './readiness'
-import { canIntensify, recommend, reentryState, withMoreIntensity } from './recommender'
+import { CARDIO_MINIMO_MIXTO } from './protocol'
+import {
+  canIntensify,
+  canMix,
+  recommend,
+  reentryState,
+  withMoreIntensity,
+  withSomeStrength
+} from './recommender'
 import { buildSession } from './workoutBuilder'
 import { computeBalance, neglectedGroups, recentlyWorked, weeklySets } from './muscleBalance'
 import { ketoAdaptationWeeksLeft, proteinTarget, reentrySteps, repPrescription } from './protocol'
@@ -527,3 +535,106 @@ function baseRec() {
     reasons: []
   }
 }
+
+describe('pesas sin quitar el cardio', () => {
+  /** Un día que la app manda cardio: dos sesiones de fuerza seguidas y hace poco. */
+  function historialQuePideCardio(): Session[] {
+    return [
+      session('2026-07-23', ['sentadilla_goblet']),
+      session('2026-07-25', ['remo_mancuerna'])
+    ]
+  }
+
+  it('solo se ofrece cuando lo que tocaba era cardio', () => {
+    const cardio = recommend(profile, goodDay(), historialQuePideCardio(), TODAY)
+    expect(cardio.kind).toMatch(/^cardio/)
+    expect(canMix(cardio)).toBe(true)
+
+    const fuerza = recommend(profile, goodDay(), establishedHistory(), TODAY)
+    expect(canMix(fuerza)).toBe(false)
+  })
+
+  it('conserva cardio y añade fuerza, en ese orden', () => {
+    const base = recommend(profile, goodDay(), historialQuePideCardio(), TODAY)
+    const mixta = withSomeStrength(base, profile, goodDay(), historialQuePideCardio(), TODAY)
+
+    expect(mixta.mixed).toBe(true)
+    expect(mixta.userOverride).toBe(true)
+    expect(mixta.cardioMinutes).toBeGreaterThan(0)
+
+    const s = buildSession(mixta, profile, historialQuePideCardio(), TODAY)
+    const cardios = s.exercises.filter((e) => e.primary === 'cardio')
+    const pesas = s.exercises.filter((e) => e.primary !== 'cardio')
+    expect(pesas.length).toBeGreaterThan(0)
+    expect(cardios.length).toBe(1)
+    // La fuerza va antes que el cardio: al revés se llega cansado a levantar.
+    expect(s.exercises[s.exercises.length - 1].primary).toBe('cardio')
+  })
+
+  it('el cardio se recorta pero no desaparece', () => {
+    const base = recommend(profile, goodDay(), historialQuePideCardio(), TODAY)
+    const mixta = withSomeStrength(base, profile, goodDay(), historialQuePideCardio(), TODAY)
+    expect(mixta.cardioMinutes!).toBeLessThan(base.cardioMinutes!)
+    expect(mixta.cardioMinutes!).toBeGreaterThanOrEqual(CARDIO_MINIMO_MIXTO)
+  })
+
+  it('la sesión de fuerza es más corta que si se cambiara el cardio del todo', () => {
+    const historia = historialQuePideCardio()
+    const base = recommend(profile, goodDay(), historia, TODAY)
+    const soloPesas = buildSession(
+      withMoreIntensity(base, profile, goodDay(), historia, TODAY), profile, historia, TODAY)
+    const mixta = buildSession(
+      withSomeStrength(base, profile, goodDay(), historia, TODAY), profile, historia, TODAY)
+
+    const cuenta = (s: Session) => s.exercises.filter((e) => e.primary !== 'cardio').length
+    expect(cuenta(mixta)).toBeLessThan(cuenta(soloPesas))
+  })
+
+  it('no pasa de moderada aunque la disposición sea alta', () => {
+    const historia = historialQuePideCardio()
+    const base = recommend(profile, goodDay(), historia, TODAY)
+    const mixta = withSomeStrength(base, profile, goodDay(), historia, TODAY)
+    expect(mixta.intensity).not.toBe('media-alta')
+  })
+
+  it('mantiene los guardas: nunca se acerca al fallo', () => {
+    const historia = historialQuePideCardio()
+    for (const r of [goodDay(), badDay(), computeReadiness(checkIn({ sleep: 3, energy: 3 }))]) {
+      const base = recommend(profile, r, historia, TODAY)
+      if (!canMix(base)) continue
+      const mixta = withSomeStrength(base, profile, r, historia, TODAY)
+      expect(mixta.rir).toBeGreaterThanOrEqual(2)
+    }
+  })
+
+  it('respeta las molestias igual que cualquier otra sesión', () => {
+    const historia = historialQuePideCardio()
+    const readiness = computeReadiness(checkIn({ discomfort: 'espalda' }))
+    const base = recommend(profile, readiness, historia, TODAY)
+    const mixta = withSomeStrength(base, profile, readiness, historia, TODAY)
+    expect(mixta.focus).not.toContain('espalda')
+    const s = buildSession(mixta, profile, historia, TODAY)
+    expect(s.exercises.some((e) => e.primary === 'espalda')).toBe(false)
+  })
+
+  it('la vuelta tras un parón sigue mandando sobre el volumen', () => {
+    const parado: Session[] = [session('2026-05-01', ['sentadilla_goblet'])]
+    const base = recommend(profile, goodDay(), parado, TODAY)
+    const mixta = withSomeStrength(base, profile, goodDay(), parado, TODAY)
+    expect(mixta.volumeScale).toBeLessThanOrEqual(1)
+    const s = buildSession(mixta, profile, parado, TODAY)
+    for (const e of s.exercises.filter((x) => x.primary !== 'cardio')) {
+      expect(e.plan.sets).toBeLessThanOrEqual(3)
+    }
+  })
+
+  it('explica que fue decisión tuya y qué se ha recortado', () => {
+    const historia = historialQuePideCardio()
+    const base = recommend(profile, goodDay(), historia, TODAY)
+    const mixta = withSomeStrength(base, profile, goodDay(), historia, TODAY)
+    const texto = [mixta.message, ...mixta.reasons].join(' ').toLowerCase()
+    expect(texto).toContain('has pedido')
+    expect(texto).toMatch(/primero las pesas|fuerza primero|pesas y después/)
+    expect(texto).not.toMatch(/calor[ií]a|d[eé]ficit|culpa|fracas/)
+  })
+})

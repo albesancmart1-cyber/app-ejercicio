@@ -12,6 +12,8 @@ import {
   weeklySets
 } from './muscleBalance'
 import {
+  CARDIO_EN_SESION_MIXTA,
+  CARDIO_MINIMO_MIXTO,
   LONG_BREAK_DAYS,
   MUSCLE_RECOVERY_DAYS,
   REENTRY_VOLUME_SCALE,
@@ -318,13 +320,19 @@ function decidir(
  * estamos en una vuelta progresiva. La decisión es del usuario; el trabajo de
  * la app es que esa decisión no le pase factura.
  */
-export function withMoreIntensity(
+/**
+ * Los guardas comunes a cualquier petición del usuario de meter pesas. Se
+ * calculan una sola vez y mandan igual tanto si cambia el cardio por fuerza como
+ * si pide las dos cosas: el usuario decide **qué** entrena, no con cuánto se
+ * castiga.
+ */
+function marcoParaPesas(
   base: Recommendation,
-  profile: Profile,
   readiness: Readiness,
   sessions: Session[],
-  todayIso: string
-): Recommendation {
+  todayIso: string,
+  techo: Intensity = 'media-alta'
+) {
   const balance = computeBalance(sessions, todayIso)
   const recovering = recentlyWorked(sessions, todayIso, MUSCLE_RECOVERY_DAYS)
   const reentry = reentryState(sessions, todayIso)
@@ -338,25 +346,41 @@ export function withMoreIntensity(
   else intensity = 'media-alta'
   if (base.ketoAdapting && intensity === 'media-alta') intensity = 'moderada'
   if (reentry && intensity === 'media-alta') intensity = 'moderada'
+  if (techo === 'moderada' && intensity === 'media-alta') intensity = 'moderada'
 
   const rir = Math.max(2, targetRir(reentry ? { reentryStep: reentry.step, intensity } : { intensity }))
+  const heredadas = base.reasons.filter(
+    (r) => r.includes('molestias') || r.includes('recuperación') || r.includes('48')
+  )
+  const descansando =
+    recovering.length > 0
+      ? `Seguimos dejando descansar ${recovering.map((g) => MUSCLE_LABELS[g].toLowerCase()).join(', ')}.`
+      : null
+
+  return { focus, intensity, rir, reentry, recovering, heredadas, descansando }
+}
+
+export function withMoreIntensity(
+  base: Recommendation,
+  profile: Profile,
+  readiness: Readiness,
+  sessions: Session[],
+  todayIso: string
+): Recommendation {
+  const g = marcoParaPesas(base, readiness, sessions, todayIso)
 
   const reasons = [
     'Has pedido tú subir el listón, así que lo subimos.',
     `Lo que tocaba era «${base.title.toLowerCase()}», y ese motivo sigue ahí.`,
-    `Por eso lo hacemos con pesas pero a intensidad ${intensity}, dejando ${rir} repeticiones en reserva.`,
-    ...base.reasons.filter((r) => r.includes('molestias') || r.includes('recuperación') || r.includes('48'))
+    `Por eso lo hacemos con pesas pero a intensidad ${g.intensity}, dejando ${g.rir} repeticiones en reserva.`,
+    ...g.heredadas
   ]
   if (readiness.level === 'bajo') {
     reasons.push('Con tu disposición de hoy no subo de suave: mover peso sí, machacarte no.')
   }
-  if (recovering.length > 0) {
-    reasons.push(
-      `Seguimos dejando descansar ${recovering.map((g) => MUSCLE_LABELS[g].toLowerCase()).join(', ')}.`
-    )
-  }
+  if (g.descansando) reasons.push(g.descansando)
 
-  const primary = focus[0]
+  const primary = g.focus[0]
   return {
     kind: 'fuerza',
     title: primary ? `Fuerza suave · ${MUSCLE_LABELS[primary].toLowerCase()}` : 'Fuerza suave',
@@ -364,12 +388,12 @@ export function withMoreIntensity(
       readiness.level === 'bajo'
         ? 'Vamos con pesas, pero de verdad ligeras y sin acercarnos al fallo. Si a mitad notas que no toca, dejarlo también es ganar.'
         : 'Pesas en vez de caminata, con carga contenida y lejos del fallo. Suficiente para sentir que has entrenado, sin la factura de mañana.',
-    focus: focus.length > 0 ? focus : base.focus.filter((g) => g !== 'cardio'),
-    intensity,
-    volumeScale: reentry?.scale ?? (readiness.level === 'bajo' ? 0.7 : 1),
-    rir,
+    focus: g.focus.length > 0 ? g.focus : base.focus.filter((gr) => gr !== 'cardio'),
+    intensity: g.intensity,
+    volumeScale: g.reentry?.scale ?? (readiness.level === 'bajo' ? 0.7 : 1),
+    rir: g.rir,
     reasons,
-    reentry: reentry ? { step: reentry.step, total: reentry.total } : undefined,
+    reentry: g.reentry ? { step: g.reentry.step, total: g.reentry.total } : undefined,
     ketoAdapting: base.ketoAdapting,
     userOverride: true,
     // El nivel de volumen alcanzado sigue siendo el mismo: pedir pesas un día
@@ -379,9 +403,80 @@ export function withMoreIntensity(
   }
 }
 
+/**
+ * «Hoy quiero pesas, pero sin renunciar al cardio.»
+ *
+ * A veces la app propone cardio y uno se nota con cuerpo para levantar, pero no
+ * quiere quedarse sin el trabajo cardiovascular del día. En vez de elegir, se
+ * reparte: **la fuerza primero y el cardio a la mitad**, que es el orden y la
+ * dosis con los que menos se estorban (`CARDIO_EN_SESION_MIXTA`).
+ *
+ * Como el día carga con las dos cosas, la sesión de fuerza es más corta que una
+ * normal y la intensidad no pasa de moderada. Sigue sin acercarse al fallo, y
+ * los guardas de molestias, 48 h y rampa de vuelta son exactamente los mismos.
+ */
+export function withSomeStrength(
+  base: Recommendation,
+  profile: Profile,
+  readiness: Readiness,
+  sessions: Session[],
+  todayIso: string
+): Recommendation {
+  // Techo en moderada: el día ya lleva cardio encima.
+  const g = marcoParaPesas(base, readiness, sessions, todayIso, 'moderada')
+
+  const original = base.cardioMinutes ?? 25
+  const minutos = Math.max(
+    CARDIO_MINIMO_MIXTO,
+    Math.round(original * CARDIO_EN_SESION_MIXTA)
+  )
+
+  const reasons = [
+    'Has pedido tú meter pesas sin dejar el cardio, así que hacemos las dos cosas.',
+    `Lo que tocaba era «${base.title.toLowerCase()}», y ese motivo sigue ahí: por eso el cardio no desaparece, se queda en ${minutos} min de los ${original}.`,
+    'Primero las pesas y después el cardio, que es el orden en el que menos se estorban.',
+    `Sesión de fuerza más corta de lo normal y a intensidad ${g.intensity}, dejando ${g.rir} repeticiones en reserva: el día ya lleva las dos cosas.`,
+    ...g.heredadas
+  ]
+  if (readiness.level === 'bajo') {
+    reasons.push('Con tu disposición de hoy no subo de suave: mover peso sí, machacarte no.')
+  }
+  if (g.descansando) reasons.push(g.descansando)
+
+  const primary = g.focus[0]
+  return {
+    kind: 'fuerza',
+    title: primary ? `Pesas y cardio · ${MUSCLE_LABELS[primary].toLowerCase()}` : 'Pesas y cardio',
+    message: `Unos pocos ejercicios de fuerza y luego ${minutos} min de cardio tranquilo. Te llevas las dos cosas sin que el día se convierta en una paliza: la fuerza va primero, con carga contenida, y el cardio a ritmo de poder hablar.`,
+    focus: g.focus.length > 0 ? g.focus : base.focus.filter((gr) => gr !== 'cardio'),
+    intensity: g.intensity,
+    cardioMinutes: minutos,
+    volumeScale: g.reentry?.scale ?? (readiness.level === 'bajo' ? 0.7 : 1),
+    rir: g.rir,
+    reasons,
+    reentry: g.reentry ? { step: g.reentry.step, total: g.reentry.total } : undefined,
+    ketoAdapting: base.ketoAdapting,
+    userOverride: true,
+    mixed: true,
+    volume: base.volume
+  }
+}
+
 /** ¿Tiene sentido ofrecer la opción de subir el listón? */
 export function canIntensify(rec: Recommendation): boolean {
   return rec.kind !== 'fuerza' || rec.intensity !== 'media-alta'
+}
+
+/**
+ * ¿Tiene sentido ofrecer «pesas sin quitar el cardio»? Solo cuando lo que
+ * tocaba **era** cardio: si ya toca fuerza no hay nada que repartir, y en un
+ * descanso activo lo que procede es descansar, no negociar.
+ */
+export function canMix(rec: Recommendation): boolean {
+  return (
+    (rec.kind === 'cardio_suave' || rec.kind === 'cardio_medio') &&
+    (rec.cardioMinutes ?? 0) >= CARDIO_MINIMO_MIXTO * 2
+  )
 }
 
 /**

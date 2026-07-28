@@ -87,6 +87,46 @@ console.log('  → recomienda:', recomendado)
 await byText('Por qué esto hoy').click()
 await shot('09-por-que')
 
+// Pesas sin renunciar al cardio: la opción intermedia, cuando lo que tocaba era cardio.
+const botonMixto = page.getByText('Pesas sin quitar el cardio')
+if (await botonMixto.count()) {
+  const minutosAntes = Number(
+    (await page.locator('.card').first().textContent()).match(/(\d+)\s*min/)?.[1] ?? 0
+  )
+  await botonMixto.click()
+  await page.waitForTimeout(300)
+  const mixto = await page.locator('.eyebrow').nth(1).textContent()
+  if (!/pesas y cardio/i.test(mixto)) {
+    console.error('ERROR: la opción mixta no cambió la recomendación →', mixto)
+    process.exit(1)
+  }
+  console.log('  → mixta:', mixto)
+  await shot('09c-mixta')
+  await byText('Preparar la sesión').click()
+  await page.waitForTimeout(400)
+  const nombres = await page.locator('.item-title').allTextContents()
+  const filas = await page.locator('.set-row').count()
+  const ultimo = nombres[nombres.length - 1]
+  if (!/camin|bici|trote|escalera|comba|remo en m|movilidad/i.test(ultimo)) {
+    console.error('ERROR: en la mixta el cardio debe ir el último →', nombres.join(' / '))
+    process.exit(1)
+  }
+  if (nombres.length < 3) {
+    console.error('ERROR: la mixta debería traer pesas además del cardio →', nombres.join(' / '))
+    process.exit(1)
+  }
+  console.log('  → la mixta trae', nombres.length - 1, 'de fuerza y el cardio al final:', ultimo)
+  if (minutosAntes) console.log('  → cardio recortado desde', minutosAntes, 'min')
+  await shot('09d-plan-mixto')
+  await byText('Hoy no puedo').click()
+  await page.waitForTimeout(400)
+  // Volver a la recomendación para seguir el recorrido normal.
+  await byText('Empezar').click()
+  await page.waitForTimeout(200)
+  await byText('Ver qué me conviene').click()
+  await page.waitForTimeout(300)
+}
+
 // Subir el listón: pesas en vez de lo que tocara, si la app lo permite.
 const botonPesas = page.getByText('Prefiero algo con pesas')
 if (await botonPesas.count()) {

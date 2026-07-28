@@ -122,6 +122,23 @@ export function setsFor(_intensity: Intensity, volumeScale: number): number {
  */
 export const DESCANSO_ENTRE_EJERCICIOS = 120
 
+/**
+ * Sesión mixta: cuánto cardio se conserva al meter pesas en un día que tocaba
+ * solo cardio.
+ *
+ * El efecto de interferencia entre fuerza y resistencia depende sobre todo del
+ * **volumen** de resistencia y de cuánto se separan las dos cosas, no de que
+ * coincidan en el mismo día. A volúmenes moderados es pequeño, y se reduce más
+ * poniendo la fuerza primero y dejando el cardio a intensidad conversacional.
+ * Por eso, cuando el usuario pide las dos cosas, el cardio se queda a la mitad
+ * en vez de mantenerse entero: sigue habiendo trabajo cardiovascular, pero sin
+ * la dosis que sí empieza a comerse la adaptación de fuerza.
+ */
+export const CARDIO_EN_SESION_MIXTA = 0.5
+
+/** Mínimo de minutos que merece la pena conservar: por debajo no es cardio, es un paseo hasta el coche. */
+export const CARDIO_MINIMO_MIXTO = 10
+
 /** Semanas de adaptación a la cetosis durante las que el rendimiento aún se resiente. */
 export const KETO_ADAPTATION_WEEKS = 6
 

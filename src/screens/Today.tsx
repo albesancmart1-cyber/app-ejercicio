@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { MUSCLE_GROUPS, MUSCLE_LABELS, type CheckIn, type Discomfort, type MuscleGroup } from '../domain/types'
 import { computeReadiness } from '../domain/readiness'
-import { canIntensify, recommend, withMoreIntensity } from '../domain/recommender'
+import { canIntensify, canMix, recommend, withMoreIntensity, withSomeStrength } from '../domain/recommender'
 import { volumePlan } from '../domain/progression'
 import { interpretTrend } from '../domain/trend'
 import { buildSession } from '../domain/workoutBuilder'
@@ -82,7 +82,9 @@ export default function Today() {
 
   const [phase, setPhase] = useState<'inicio' | 'checkin' | 'plan'>('inicio')
   const [showWhy, setShowWhy] = useState(false)
-  const [intensified, setIntensified] = useState(false)
+  // Qué ha pedido el usuario por encima de lo que tocaba: nada, pesas en vez
+  // del cardio, o pesas sin renunciar al cardio.
+  const [override, setOverride] = useState<'ninguno' | 'pesas' | 'mixto'>('ninguno')
   const [sleep, setSleep] = useState<Scale | null>(saved?.sleep ?? null)
   const [energy, setEnergy] = useState<Scale | null>(saved?.energy ?? null)
   const [habits, setHabits] = useState<Record<YesNoKey, boolean | null>>({
@@ -156,9 +158,11 @@ export default function Today() {
     readiness && phase === 'plan' ? recommend(profile, readiness, data.sessions, today, volumen) : null
   // El usuario puede pedir pesas aunque tocara paseo; los guardas siguen puestos.
   const recommendation =
-    suggested && intensified && readiness
+    suggested && readiness && override === 'pesas'
       ? withMoreIntensity(suggested, profile, readiness, data.sessions, today)
-      : suggested
+      : suggested && readiness && override === 'mixto'
+        ? withSomeStrength(suggested, profile, readiness, data.sessions, today)
+        : suggested
 
   function startSession() {
     if (!recommendation) return
@@ -297,10 +301,22 @@ export default function Today() {
               {recommendation.userOverride && <span className="tag accent">A petición tuya</span>}
             </div>
 
-            {canIntensify(recommendation) && !intensified && (
+            {override === 'ninguno' && canIntensify(recommendation) && (
               <>
                 <hr className="rule" />
-                <button className="btn btn-secondary" onClick={() => setIntensified(true)}>
+                {canMix(recommendation) && (
+                  <>
+                    <button className="btn btn-secondary" onClick={() => setOverride('mixto')}>
+                      Pesas sin quitar el cardio
+                    </button>
+                    <p className="faint" style={{ margin: '0 0 14px' }}>
+                      Unos ejercicios de fuerza primero y el cardio a la mitad,{' '}
+                      {Math.round((recommendation.cardioMinutes ?? 0) / 2)} min en vez de{' '}
+                      {recommendation.cardioMinutes}.
+                    </p>
+                  </>
+                )}
+                <button className="btn btn-secondary" onClick={() => setOverride('pesas')}>
                   Prefiero algo con pesas
                 </button>
                 <p className="faint" style={{ marginTop: 10 }}>
@@ -309,10 +325,10 @@ export default function Today() {
                 </p>
               </>
             )}
-            {intensified && (
+            {override !== 'ninguno' && (
               <>
                 <hr className="rule" />
-                <button className="btn-quiet" onClick={() => setIntensified(false)}>
+                <button className="btn-quiet" onClick={() => setOverride('ninguno')}>
                   Volver a lo que me tocaba
                 </button>
               </>

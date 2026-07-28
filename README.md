@@ -19,10 +19,12 @@ servidor.
    exposición solar, cetosis, molestias, y dos señales de apetito (hambre al despertar y antojos).
    De ahí salen el índice de disposición del día y la señal de leptina de la semana.
 3. **Recomendación** — reglas en cascada, de la más protectora a la más exigente. Cada
-   recomendación viene con un «por qué» desplegable en lenguaje llano. Si te toca paseo pero te
-   apetecen pesas, «Prefiero algo con pesas» te lo cambia por fuerza contenida: sube un escalón,
-   pero nunca se acerca al fallo y sigue respetando tus molestias, las 48 h de recuperación y la
-   rampa de vuelta tras un parón.
+   recomendación viene con un «por qué» desplegable en lenguaje llano. Y si lo que te toca no es lo
+   que te apetece, decides tú entre tres caminos, con los mismos guardas puestos en los tres:
+   dejarlo como está, **«pesas sin quitar el cardio»** (sesión mixta: fuerza primero y el cardio a
+   la mitad) o **«prefiero algo con pesas»** (cambio completo a fuerza contenida). Ninguno se acerca
+   al fallo, y todos siguen respetando tus molestias, las 48 h de recuperación y la rampa de vuelta
+   tras un parón.
 4. **Sesión** — primero ves el plan completo y lo ajustas con calma: **eliges de la lista** otro
    ejercicio si alguno no encaja, **añades** los que quieras, **reordenas**, y dices **cómo lo vas a
    hacer** (con mancuerna o polea, a un brazo o a dos). Al pulsar «empezar entrenamiento» arranca un
@@ -97,7 +99,9 @@ OB-R170 en el brazo dominante de tenistas profesionales).
 
 **Cardio.** El efecto de interferencia entre fuerza y resistencia es menor a volúmenes moderados y
 desaparece separando las sesiones, así que la app alterna días en vez de mezclarlos: tras dos
-sesiones de fuerza seguidas propone cardio a intensidad conversacional.
+sesiones de fuerza seguidas propone cardio a intensidad conversacional. Si el usuario pide las dos
+cosas el mismo día, se aplica lo que dice la misma evidencia: fuerza primero, cardio recortado a la
+mitad y a ritmo conversacional.
 
 Fuentes: [CSCCa/NSCA Transition Periods](https://www.nsca.com/about-us/position-statements/safe-return-to-training/) ·
 [Proximidad al fallo (meta-análisis)](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9935748/) ·
@@ -180,6 +184,33 @@ dar las doce**. Una sesión ya iniciada sigue activa unas horas aunque cambie la
 una que se preparó ayer y nunca se empezó no bloquea el día nuevo.
 
 `node scripts/check-midnight.mjs` lo verifica falseando el reloj del navegador por los dos caminos.
+
+## Pesas y cardio el mismo día
+
+La cascada decide qué le conviene hoy a tu cuerpo, pero hay días en que toca cardio y uno se nota
+con cuerpo para levantar. Antes solo se podía cambiar una cosa por la otra; ahora se puede
+**repartir**.
+
+«Pesas sin quitar el cardio» monta una sesión mixta: unos pocos ejercicios de fuerza **primero** y
+después el cardio, recortado a la mitad (`CARDIO_EN_SESION_MIXTA`, con un suelo de 10 min para que
+siga siendo cardio y no un paseo hasta el coche). El botón dice de antemano en qué se traduce —«14
+min en vez de 28»—, así que la decisión se toma con el dato delante.
+
+Las tres cosas que hacen que eso no sea una paliza:
+
+- **La fuerza va antes que el cardio.** El efecto de interferencia depende sobre todo del volumen de
+  resistencia y de cuánto se separan las dos cosas; llegar a levantar con las piernas ya cansadas es
+  justo donde se nota.
+- **La sesión de fuerza es más corta.** Dos ejercicios menos que una normal, y sin el bloque de core:
+  ese hueco lo ocupa el cardio.
+- **La intensidad no pasa de moderada**, por alta que sea tu disposición del día. El día ya carga con
+  las dos cosas.
+
+El resto de guardas son exactamente los mismos que en cualquier otra sesión —molestias, 48 h de
+recuperación, rampa de vuelta, nunca cerca del fallo—, porque la decisión es tuya pero el trabajo de
+la app es que esa decisión no te pase factura. La opción solo aparece cuando lo que tocaba **era**
+cardio: si ya toca fuerza no hay nada que repartir, y en un día de descanso activo lo que procede es
+descansar.
 
 ## Cambiar un ejercicio, o añadir otro
 
@@ -418,7 +449,7 @@ En local la app se sirve en la raíz y en Pages bajo `/app-ejercicio/`. Lo contr
 ```bash
 npm install
 npm run dev       # servidor de desarrollo
-npm test          # 220 tests: motor, catálogo, DHA, leptina, composición, tendencia, cambios, calendario, volumen y variantes
+npm test          # 233 tests: motor, catálogo, DHA, leptina, composición, tendencia, cambios, calendario, volumen, variantes y sesión mixta
 npm run build     # build de producción (PWA)
 npm run preview   # servir la build
 ```
@@ -434,3 +465,5 @@ npm run preview   # servir la build
   con la app abierta y recuperándola de segundo plano.
 - `node scripts/check-volumen.mjs` — siembra distintos historiales y comprueba en navegador que el
   nivel de volumen sube al asimilar, baja con la recuperación tocada, y se explica en cada caso.
+- `node scripts/check-mixta.mjs` — siembra un día de cardio y comprueba que la sesión mixta conserva
+  cardio, lo recorta, pone la fuerza delante y se puede deshacer.

@@ -256,6 +256,11 @@ export interface Recommendation {
   ketoAdapting?: boolean
   /** El usuario pidió subir el listón por encima de lo que tocaba. */
   userOverride?: boolean
+  /**
+   * Sesión mixta: pesas **y** cardio el mismo día, a petición del usuario. La
+   * fuerza va primero y el cardio se recorta, que es como menos se estorban.
+   */
+  mixed?: boolean
   /** Nivel de volumen vigente, con su explicación. */
   volume?: {
     level: number

@@ -304,7 +304,10 @@ export function buildSession(
   if (recommendation.kind === 'fuerza' || recommendation.kind === 'reacondicionamiento') {
     const groups = recommendation.focus.filter((g) => g !== 'cardio')
     // Cuántos ejercicios de fuerza caben, según el nivel de volumen alcanzado.
-    const cuantos = recommendation.volume?.exercisesPerSession ?? 4
+    // En una sesión mixta se recortan dos: el día también lleva cardio, y meter
+    // el volumen entero de fuerza además del cardio es justo lo que convierte
+    // «quiero las dos cosas» en una paliza.
+    const cuantos = Math.max(2, (recommendation.volume?.exercisesPerSession ?? 4) - (recommendation.mixed ? 2 : 0))
     // En fuerza doblamos el grupo prioritario; en la vuelta progresiva repartimos
     // el trabajo por todo el cuerpo con poco volumen en cada zona.
     const plan: MuscleGroup[] =
@@ -328,8 +331,9 @@ export function buildSession(
       )
     }
 
-    // Un poco de core siempre que la sesión no se haya alargado.
-    if (exercises.length < cuantos + 1 && !used.has('plancha')) {
+    // Un poco de core siempre que la sesión no se haya alargado. En la mixta no,
+    // que el hueco lo ocupa el cardio.
+    if (!recommendation.mixed && exercises.length < cuantos + 1 && !used.has('plancha')) {
       const core = pickForGroup('core', profile, 'bajo', used, recent)
       if (core) {
         used.add(core.id)
@@ -338,6 +342,21 @@ export function buildSession(
           name: core.name,
           primary: 'core',
           plan: { sets: 2, reps: '30-45 s', rir: recommendation.rir, restSeconds: 60 }
+        })
+      }
+    }
+
+    // Sesión mixta: el cardio va **al final**, después de las pesas. Hacerlo al
+    // revés deja las piernas cansadas para levantar y es donde el efecto de
+    // interferencia se nota de verdad.
+    if (recommendation.mixed && recommendation.cardioMinutes) {
+      const cardio = cardioExercise(profile, recommendation.intensity !== 'suave')
+      if (cardio) {
+        exercises.push({
+          exerciseId: cardio.id,
+          name: cardio.name,
+          primary: 'cardio',
+          plan: { sets: 1, reps: `${recommendation.cardioMinutes} min` }
         })
       }
     }
