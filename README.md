@@ -221,6 +221,13 @@ repeticiones en reserva; en uno bueno, moderada.
 La opción aparece **siempre que el día traiga cardio**, incluido el descanso activo. Solo desaparece
 cuando ya toca fuerza, que es cuando no hay nada que repartir.
 
+Y hay **dos puertas de entrada**, porque las ganas de levantar no siempre llegan en el mismo
+momento: el botón de la recomendación, antes de preparar nada, y **«Añadir pesas · te las elijo yo»**
+dentro del plan ya montado (`src/domain/mixIn.ts`). Sin la segunda, quien ya había preparado su
+sesión de cardio solo podía añadir ejercicios a mano de la lista —justo el trabajo que la app existe
+para quitarte— o descartar la sesión y empezar de cero. Las dos hacen exactamente lo mismo por
+dentro y con los mismos guardas; la segunda además nunca alarga el cardio, solo lo recorta.
+
 ## Cambiar un ejercicio, o añadir otro
 
 Si un ejercicio no te sirve —no te gusta o no tienes con qué hacerlo—, **«Cambiar ejercicio» abre el
@@ -484,3 +491,5 @@ npm run preview   # servir la build
   nivel de volumen sube al asimilar, baja con la recuperación tocada, y se explica en cada caso.
 - `node scripts/check-mixta.mjs` — siembra un día de cardio y comprueba que la sesión mixta conserva
   cardio, lo recorta, pone la fuerza delante y se puede deshacer.
+- `node scripts/check-meter-pesas.mjs` — prepara la sesión de cardio y comprueba que desde el plan ya
+  montado se pueden meter pesas elegidas por la app, con el cardio recortado.

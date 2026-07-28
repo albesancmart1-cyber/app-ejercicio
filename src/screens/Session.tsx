@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   EQUIPMENT_LABELS,
+  MUSCLE_LABELS,
   SIDE_LABELS,
   type Equipment,
   type Exercise,
@@ -12,6 +13,7 @@ import {
 import { initLogs, syncExercise, volumeLoad } from '../domain/setLogs'
 import { DESCANSO_ENTRE_EJERCICIOS } from '../domain/protocol'
 import { changeVariant, swapExercise } from '../domain/swap'
+import { meterPesas, pesasParaMeter, puedeMeterPesas } from '../domain/mixIn'
 import { prepareExercise } from '../domain/workoutBuilder'
 import { implementOptions, sideOptions, variantLabel } from '../domain/variants'
 import { exerciseById } from '../data/exercises'
@@ -157,7 +159,6 @@ export default function SessionScreen({ session }: { session: Session }) {
     setComoSeHace(null)
   }
 
-  /** Que no se lo proponga más. Es una decisión aparte de cambiarlo hoy. */
   /**
    * Quitar un ejercicio de la sesión de hoy. No se deja vaciar del todo: una
    * sesión sin nada no es una sesión, y para eso ya está descartarla sin culpa.
@@ -193,6 +194,30 @@ export default function SessionScreen({ session }: { session: Session }) {
       fuera
         ? `${actual.name} fuera de hoy y de las próximas sesiones. Puedes readmitirlo en Ajustes.`
         : `${actual.name} no aparecerá en próximas sesiones, pero hoy se queda: es el único que hay. Puedes readmitirlo en Ajustes.`
+    )
+  }
+
+  /**
+   * Meter pesas en un día de cardio sin salir del plan. Las elige la app: la
+   * alternativa era añadirlas a mano de la lista, que es justo el trabajo que
+   * esto existe para quitarte.
+   */
+  const pesas = useMemo(
+    () =>
+      puedeMeterPesas({ ...session, exercises })
+        ? pesasParaMeter(data, { ...session, exercises }, session.date)
+        : null,
+    [data, session, exercises]
+  )
+
+  function anadirPesas() {
+    if (!pesas) return
+    setExercises((prev) => meterPesas(prev, pesas))
+    setResting(null)
+    setComoSeHace(null)
+    const zonas = pesas.zonas.map((z) => MUSCLE_LABELS[z].toLowerCase()).join(', ')
+    setAviso(
+      `Añadidas ${pesas.exercises.length} de fuerza (${zonas}) y el cardio queda en ${pesas.cardioMinutes} min. Las pesas van primero.`
     )
   }
 
@@ -465,6 +490,21 @@ export default function SessionScreen({ session }: { session: Session }) {
           )}
         </div>
       ))}
+
+      {/* La puerta principal para meter pesas está en la recomendación, pero a
+          veces las ganas llegan mirando ya el plan del día. Aquí no hay que
+          elegir nada: las pone la app. */}
+      {pesas && (
+        <>
+          <button className="btn btn-primary" onClick={anadirPesas}>
+            Añadir pesas · te las elijo yo
+          </button>
+          <p className="faint" style={{ margin: '0 0 14px' }}>
+            {pesas.exercises.length} ejercicios de las zonas que llevan más sin trabajarse, y el
+            cardio baja a {pesas.cardioMinutes} min para no cargar el día de más.
+          </p>
+        </>
+      )}
 
       <button className="btn btn-secondary" onClick={() => setEligiendo({ modo: 'anadir' })}>
         Añadir un ejercicio de la lista
