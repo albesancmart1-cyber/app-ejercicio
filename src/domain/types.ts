@@ -15,6 +15,7 @@ export type MuscleGroup =
   | 'pecho'
   | 'hombro'
   | 'brazo'
+  | 'gemelo'
   | 'core'
   | 'cardio'
 
@@ -25,6 +26,7 @@ export const MUSCLE_GROUPS: MuscleGroup[] = [
   'pecho',
   'hombro',
   'brazo',
+  'gemelo',
   'core',
   'cardio'
 ]
@@ -36,6 +38,7 @@ export const MUSCLE_LABELS: Record<MuscleGroup, string> = {
   pecho: 'Pecho',
   hombro: 'Hombro',
   brazo: 'Brazo',
+  gemelo: 'Gemelo',
   core: 'Core',
   cardio: 'Corazón (cardio)'
 }

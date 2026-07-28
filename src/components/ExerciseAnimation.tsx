@@ -199,6 +199,20 @@ const FIGURAS: Record<MovementPattern, JSX.Element> = {
       <Cabeza from={[25, 79]} to={[25, 79]} />
     </>
   ),
+  // De pie, el cuerpo entero sube unos centímetros al elevar el talón.
+  extension_tobillo: (
+    <>
+      <Suelo />
+      <polyline className="limb" points="45,90 45,68 45,48 45,30 56,36">
+        <Ciclo from="45,90 45,68 45,48 45,30 56,36" to="45,90 47,62 47,42 47,24 58,30" />
+      </polyline>
+      {/* El pie: el talón despega y el peso pasa a la punta. */}
+      <polyline className="limb" points="45,90 54,90">
+        <Ciclo from="45,90 54,90" to="49,84 56,90" />
+      </polyline>
+      <Cabeza from={[45, 22]} to={[47, 16]} />
+    </>
+  ),
   cardio: (
     <>
       <Suelo />

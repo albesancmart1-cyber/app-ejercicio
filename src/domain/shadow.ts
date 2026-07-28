@@ -34,11 +34,13 @@ import { allLandmarks } from './landmarks'
 import type { LandmarkOpts } from './landmarks'
 
 /**
- * Qué músculos vive dentro de cada grupo de la taxonomía vieja.
+ * Qué músculos viven dentro de cada grupo de la taxonomía vieja.
  *
- * `gastrocnemio` y `soleo` no aparecen: el modelo viejo no tenía dónde
- * ponerlos, que es justamente por lo que la app nunca ha propuesto trabajo de
- * gemelo. Su ausencia aquí no es un olvido, es el diagnóstico.
+ * `gemelo` es el único grupo que no venía de antes: se añadió al descubrir, ya
+ * contando por músculo, que gastrocnemio y sóleo no cabían en ninguno y que por
+ * eso la app nunca había propuesto trabajo de pantorrilla. Se le dio sitio en
+ * los dos modelos —y no solo en el nuevo— para que la comparación mida
+ * diferencias de criterio y no el hueco que dejaba un mapa incompleto.
  */
 export const MUSCULOS_DEL_GRUPO: Record<Exclude<MuscleGroup, 'cardio'>, Muscle[]> = {
   pecho: ['pectoral_mayor'],
@@ -47,6 +49,7 @@ export const MUSCULOS_DEL_GRUPO: Record<Exclude<MuscleGroup, 'cardio'>, Muscle[]
   brazo: ['biceps_braquial', 'triceps_braquial', 'antebrazo'],
   cuadriceps_gluteo: ['cuadriceps', 'gluteo', 'aductores'],
   femoral: ['isquiosurales'],
+  gemelo: ['gastrocnemio', 'soleo'],
   core: ['recto_abdominal', 'oblicuos']
 }
 

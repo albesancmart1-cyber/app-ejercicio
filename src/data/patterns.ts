@@ -25,6 +25,7 @@ export type MovementPattern =
   | 'extension_codo'
   | 'isometrico'
   | 'core_dinamico'
+  | 'extension_tobillo'
   | 'cardio'
 
 export const PATTERN_LABELS: Record<MovementPattern, string> = {
@@ -42,6 +43,7 @@ export const PATTERN_LABELS: Record<MovementPattern, string> = {
   extension_codo: 'Extensión de codo',
   isometrico: 'Sostén isométrico',
   core_dinamico: 'Core dinámico',
+  extension_tobillo: 'Extensión de tobillo',
   cardio: 'Cardio'
 }
 
@@ -116,6 +118,11 @@ export const PATTERN_CUES: Record<MovementPattern, string[]> = {
     'La zona lumbar pegada al suelo durante todo el movimiento.',
     'Ve despacio: la velocidad aquí solo quita trabajo.',
     'Si la espalda se despega, reduce el recorrido.'
+  ],
+  extension_tobillo: [
+    'Sube hasta lo más alto que puedas y baja hasta notar el estiramiento: el recorrido corto es lo que hace que no sirva de nada.',
+    'Baja despacio, contando dos segundos; nada de rebotar con el tendón.',
+    'De pie trabaja el gemelo; sentado, con la rodilla doblada, el sóleo. No son el mismo ejercicio.'
   ],
   cardio: [
     'Ritmo en el que puedas mantener una conversación.',
@@ -235,6 +242,21 @@ export const EXERCISE_PATTERNS: Record<string, MovementPattern> = {
   russian_twist: 'core_dinamico',
   escalador: 'core_dinamico',
   rodillas_colgado: 'core_dinamico',
+
+  // Tobillo
+  elevacion_talones_pie: 'extension_tobillo',
+  elevacion_talones_una_pierna: 'extension_tobillo',
+  elevacion_talones_sentado: 'extension_tobillo',
+  elevacion_talones_prensa: 'extension_tobillo',
+  elevacion_talones_escalon: 'extension_tobillo',
+  elevacion_talones_multipower: 'extension_tobillo',
+  elevacion_talones_banda: 'extension_tobillo',
+
+  // Añadidos para cubrir músculos que se quedaban sin trabajo directo
+  curl_muneca: 'flexion_codo',
+  paseo_granjero: 'isometrico',
+  elevacion_lateral_inclinado: 'empuje_vertical',
+  aduccion_cadera_banda: 'zancada',
 
   // Cardio
   caminar: 'cardio',

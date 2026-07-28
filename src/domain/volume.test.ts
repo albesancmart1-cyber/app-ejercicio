@@ -80,15 +80,27 @@ describe('el catálogo entero tiene mapa muscular', () => {
     }
   })
 
-  it('todo músculo con landmarks tiene ejercicios, salvo la carencia conocida', () => {
+  it('todo músculo con landmarks tiene ejercicios', () => {
     const conEjercicios = new Set<string>()
     for (const aporte of Object.values(CONTRIBUTIONS)) {
       for (const m of Object.keys(aporte)) conEjercicios.add(m)
     }
     const sin = ALL_MUSCLES.filter((m) => !conEjercicios.has(m))
-    // Si esto falla es que se ha añadido un músculo sin ejercicios, o que ya se
-    // han añadido los de gemelo y toca actualizar la constante.
+    // Si esto falla es que se ha añadido un músculo sin ningún ejercicio: la app
+    // marcaría su volumen bajo mínimo sin ofrecer con qué subirlo.
     expect(sin.sort()).toEqual([...MUSCULOS_SIN_COBERTURA].sort())
+    expect(MUSCULOS_SIN_COBERTURA).toEqual([])
+  })
+
+  it('y al menos uno que lo trabaje de forma directa', () => {
+    // Cubrirlo solo como sinergista (0,5) no basta: para llevar un músculo de
+    // cero a su MEV harían falta el doble de series de otra cosa.
+    const directos = new Set<string>()
+    for (const aporte of Object.values(CONTRIBUTIONS)) {
+      for (const [m, c] of Object.entries(aporte)) if (c === 1) directos.add(m)
+    }
+    const sinDirecto = ALL_MUSCLES.filter((m) => !directos.has(m))
+    expect(sinDirecto, 'músculos que solo se trabajan de refilón').toEqual([])
   })
 })
 

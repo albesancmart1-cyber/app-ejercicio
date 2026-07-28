@@ -32,6 +32,7 @@ export const EXERCISES: Exercise[] = [
   { id: 'pistol_asistida', name: 'Sentadilla a una pierna asistida', primary: 'cuadriceps_gluteo', secondary: ['core'], equipment: ['peso_corporal'], stress: 'medio', bodyweightOnly: true },
   { id: 'prensa_una_pierna', name: 'Prensa a una pierna', primary: 'cuadriceps_gluteo', secondary: ['femoral'], equipment: ['maquina_prensa'], stress: 'medio', loadFactor: 0.3 },
   { id: 'paso_lateral_banda', name: 'Pasos laterales con banda', primary: 'cuadriceps_gluteo', secondary: [], equipment: ['bandas'], stress: 'bajo', bodyweightOnly: true },
+  { id: 'aduccion_cadera_banda', name: 'Aducción de cadera con banda', primary: 'cuadriceps_gluteo', secondary: [], equipment: ['bandas', 'polea'], stress: 'bajo', loadFactor: 0.15, unilateralOption: true },
 
   // ── Femoral ────────────────────────────────────────────────
   { id: 'puente_femoral', name: 'Puente de glúteo con talones elevados', primary: 'femoral', secondary: ['cuadriceps_gluteo', 'core'], equipment: ['peso_corporal', 'banco'], stress: 'bajo', bodyweightOnly: true },
@@ -48,6 +49,20 @@ export const EXERCISES: Exercise[] = [
   { id: 'buenos_dias', name: 'Buenos días con banda o barra', primary: 'femoral', secondary: ['espalda'], equipment: ['bandas', 'barra'], stress: 'medio', loadFactor: 0.25 },
   { id: 'curl_nordico_asistido', name: 'Curl nórdico asistido', primary: 'femoral', secondary: ['core'], equipment: ['peso_corporal'], stress: 'medio', bodyweightOnly: true },
   { id: 'swing_kettlebell', name: 'Swing con kettlebell', primary: 'femoral', secondary: ['cuadriceps_gluteo', 'core', 'cardio'], equipment: ['kettlebell'], stress: 'medio', loadFactor: 0.6 },
+
+  // ── Gemelo ─────────────────────────────────────────────────
+  // La pantorrilla no tenía un solo ejercicio en el catálogo. Con la taxonomía
+  // vieja no se notaba, porque no había ningún grupo que la nombrara; contando
+  // por músculo sale a cero todas las semanas. De pie trabaja sobre todo el
+  // gastrocnemio, que cruza la rodilla y necesita tenerla estirada; sentado, con
+  // la rodilla doblada, el que queda es el sóleo. Por eso hacen falta las dos.
+  { id: 'elevacion_talones_pie', name: 'Elevación de talones de pie', primary: 'gemelo', secondary: [], equipment: ['peso_corporal', 'mancuernas'], stress: 'bajo', loadFactor: 0.4 },
+  { id: 'elevacion_talones_una_pierna', name: 'Elevación de talones a una pierna', primary: 'gemelo', secondary: [], equipment: ['peso_corporal', 'mancuernas'], stress: 'bajo', loadFactor: 0.25, unilateralOption: true },
+  { id: 'elevacion_talones_sentado', name: 'Elevación de talones sentado (sóleo)', primary: 'gemelo', secondary: [], equipment: ['mancuernas', 'banco', 'barra'], stress: 'bajo', loadFactor: 0.3 },
+  { id: 'elevacion_talones_prensa', name: 'Elevación de talones en prensa', primary: 'gemelo', secondary: [], equipment: ['maquina_prensa'], stress: 'bajo', loadFactor: 0.35 },
+  { id: 'elevacion_talones_escalon', name: 'Elevación de talones en un escalón', primary: 'gemelo', secondary: [], equipment: ['peso_corporal'], stress: 'bajo', bodyweightOnly: true },
+  { id: 'elevacion_talones_multipower', name: 'Elevación de talones en multipower', primary: 'gemelo', secondary: [], equipment: ['multipower', 'barra'], stress: 'bajo', loadFactor: 0.35 },
+  { id: 'elevacion_talones_banda', name: 'Elevación de talones sentado con banda', primary: 'gemelo', secondary: [], equipment: ['bandas'], stress: 'bajo', loadFactor: 0.2 },
 
   // ── Espalda ────────────────────────────────────────────────
   { id: 'dominadas', name: 'Dominadas (o asistidas)', primary: 'espalda', secondary: ['brazo', 'core'], equipment: ['dominadas_barra'], stress: 'medio', bodyweightOnly: true },
@@ -96,6 +111,7 @@ export const EXERCISES: Exercise[] = [
   { id: 'face_pull', name: 'Face pull en polea o banda', primary: 'hombro', secondary: ['espalda'], equipment: ['polea', 'bandas'], stress: 'bajo', loadFactor: 0.25 },
   { id: 'plancha_toque_hombro', name: 'Plancha con toque de hombro', primary: 'hombro', secondary: ['core'], equipment: ['peso_corporal'], stress: 'bajo', bodyweightOnly: true },
   { id: 'pike_pushup', name: 'Flexión pica (hombro)', primary: 'hombro', secondary: ['brazo', 'core'], equipment: ['peso_corporal'], stress: 'medio', bodyweightOnly: true },
+  { id: 'elevacion_lateral_inclinado', name: 'Elevación lateral inclinado en banco', primary: 'hombro', secondary: [], equipment: ['mancuernas', 'banco', 'polea'], stress: 'bajo', loadFactor: 0.12, unilateralOption: true },
 
   // ── Brazo ──────────────────────────────────────────────────
   { id: 'curl_biceps', name: 'Curl de bíceps', primary: 'brazo', secondary: [], equipment: ['mancuernas', 'barra', 'bandas', 'polea'], stress: 'bajo', loadFactor: 0.3, unilateralOption: true },
@@ -109,6 +125,8 @@ export const EXERCISES: Exercise[] = [
   { id: 'flexiones_diamante', name: 'Flexiones diamante (tríceps)', primary: 'brazo', secondary: ['pecho', 'hombro'], equipment: ['peso_corporal'], stress: 'medio', bodyweightOnly: true },
   { id: 'fondos_entre_sillas', name: 'Fondos de tríceps entre dos sillas', primary: 'brazo', secondary: ['pecho', 'hombro'], equipment: ['peso_corporal'], stress: 'bajo', bodyweightOnly: true },
   { id: 'curl_martillo', name: 'Curl martillo', primary: 'brazo', secondary: [], equipment: ['mancuernas', 'bandas'], stress: 'bajo', loadFactor: 0.3, unilateralOption: true },
+  { id: 'curl_muneca', name: 'Curl de muñeca', primary: 'brazo', secondary: [], equipment: ['mancuernas', 'barra'], stress: 'bajo', loadFactor: 0.15, unilateralOption: true },
+  { id: 'paseo_granjero', name: 'Paseo del granjero', primary: 'brazo', secondary: ['espalda', 'core'], equipment: ['mancuernas', 'kettlebell'], stress: 'medio', loadFactor: 0.6 },
 
   // ── Core ───────────────────────────────────────────────────
   { id: 'plancha', name: 'Plancha', primary: 'core', secondary: ['hombro'], equipment: ['peso_corporal'], stress: 'bajo', bodyweightOnly: true },

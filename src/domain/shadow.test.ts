@@ -47,9 +47,11 @@ describe('el mapa entre las dos taxonomías', () => {
     }
   })
 
-  it('los huérfanos son los que el modelo viejo no sabía nombrar', () => {
-    // Gemelo y sóleo: por eso la app nunca ha propuesto trabajo de pantorrilla.
-    expect([...MUSCULOS_HUERFANOS].sort()).toEqual(['gastrocnemio', 'soleo'])
+  it('ya no queda ningún músculo sin grupo', () => {
+    // Gastrocnemio y sóleo eran los huérfanos —por eso la app nunca propuso
+    // trabajo de pantorrilla—. Al darles ejercicios se les dio también grupo en
+    // el modelo viejo, para que la comparación mida criterio y no el hueco.
+    expect(MUSCULOS_HUERFANOS).toEqual([])
   })
 })
 
@@ -148,9 +150,12 @@ describe('a quién priorizaría el motor nuevo', () => {
   })
 
   it('con la semana entera cubierta la lista se vacía', () => {
-    const todo = ALL_MUSCLES.filter((m) => m !== 'gastrocnemio' && m !== 'soleo')
     const s = [
       sesion(HOY, [
+        hecho('elevacion_talones_pie', 8),
+        hecho('elevacion_talones_sentado', 8),
+        hecho('aduccion_cadera_banda', 8),
+        hecho('curl_muneca', 8),
         hecho('curl_biceps', 8),
         hecho('extension_triceps', 8),
         hecho('curl_inverso', 8),
@@ -170,9 +175,8 @@ describe('a quién priorizaría el motor nuevo', () => {
       ])
     ]
     const pendientes = musculosDescuidados(s, HOY).map((d) => d.muscle)
-    for (const m of todo) expect(pendientes, MUSCLES[m].label).not.toContain(m)
-    // Salvo los que no tienen ejercicios en el catálogo.
-    expect(pendientes.sort()).toEqual(['gastrocnemio', 'soleo'])
+    for (const m of ALL_MUSCLES) expect(pendientes, MUSCLES[m].label).not.toContain(m)
+    expect(pendientes).toEqual([])
   })
 })
 

@@ -37,6 +37,7 @@ export const CONTRIBUTIONS: Record<string, MuscleContributions> = {
   split_estatico: { cuadriceps: 1, gluteo: 0.5, aductores: 0.5 },
   subida_cajon: { cuadriceps: 1, gluteo: 1, isquiosurales: 0.5 },
   paso_lateral_banda: { gluteo: 1, aductores: 0.5 },
+  aduccion_cadera_banda: { aductores: 1 },
 
   // ── Pierna: dominantes de cadera ──────────────────────────
   puente_gluteo: { gluteo: 1, isquiosurales: 0.5 },
@@ -54,6 +55,18 @@ export const CONTRIBUTIONS: Record<string, MuscleContributions> = {
   curl_femoral_banda: { isquiosurales: 1 },
   curl_femoral_deslizante: { isquiosurales: 1 },
   curl_nordico_asistido: { isquiosurales: 1 },
+
+  // ── Tobillo ───────────────────────────────────────────────
+  // El gastrocnemio cruza la rodilla: con la pierna estirada trabaja él y el
+  // sóleo acompaña; sentado, con la rodilla doblada, el gastrocnemio queda
+  // acortado y prácticamente todo el trabajo es del sóleo.
+  elevacion_talones_pie: { gastrocnemio: 1, soleo: 0.5 },
+  elevacion_talones_una_pierna: { gastrocnemio: 1, soleo: 0.5 },
+  elevacion_talones_prensa: { gastrocnemio: 1, soleo: 0.5 },
+  elevacion_talones_escalon: { gastrocnemio: 1, soleo: 0.5 },
+  elevacion_talones_multipower: { gastrocnemio: 1, soleo: 0.5 },
+  elevacion_talones_sentado: { soleo: 1 },
+  elevacion_talones_banda: { soleo: 1 },
 
   // ── Espalda ───────────────────────────────────────────────
   // Traccción vertical: manda el dorsal.
@@ -103,6 +116,7 @@ export const CONTRIBUTIONS: Record<string, MuscleContributions> = {
   flexion_pino_pared: { deltoides_anterior: 1, triceps_braquial: 1, deltoides_lateral: 0.5 },
   elevaciones_frontales: { deltoides_anterior: 1 },
   elevaciones_laterales: { deltoides_lateral: 1 },
+  elevacion_lateral_inclinado: { deltoides_lateral: 1 },
   remo_menton: { deltoides_lateral: 1, trapecio_superior: 1, biceps_braquial: 0.5 },
   pajaros: { deltoides_posterior: 1, espalda_alta: 0.5 },
   face_pull: { deltoides_posterior: 1, espalda_alta: 1, trapecio_superior: 0.5 },
@@ -122,6 +136,9 @@ export const CONTRIBUTIONS: Record<string, MuscleContributions> = {
   fondos_banco: { triceps_braquial: 1, pectoral_mayor: 0.5, deltoides_anterior: 0.5 },
   fondos_entre_sillas: { triceps_braquial: 1, pectoral_mayor: 0.5, deltoides_anterior: 0.5 },
   flexiones_diamante: { triceps_braquial: 1, pectoral_mayor: 0.5, deltoides_anterior: 0.5 },
+  curl_muneca: { antebrazo: 1 },
+  // Sujetar peso mientras se camina: agarre y trapecio aguantando la carga.
+  paseo_granjero: { antebrazo: 1, trapecio_superior: 1, oblicuos: 0.5 },
 
   // ── Core ──────────────────────────────────────────────────
   plancha: { recto_abdominal: 1, oblicuos: 0.5 },
@@ -141,13 +158,14 @@ export const CONTRIBUTIONS: Record<string, MuscleContributions> = {
 /**
  * Músculos con landmarks definidos pero **sin un solo ejercicio en el catálogo**.
  *
- * No es un descuido del mapa: es que la app nunca ha tenido trabajo de gemelo.
- * Con la taxonomía nueva eso deja de ser invisible —el volumen de gemelo sale a
- * cero y por debajo del MEV—, y por eso hay que añadir los ejercicios antes de
- * enseñar la vista de volumen, o la app señalaría un agujero que ella misma no
- * deja tapar. Está planificado en la fase 2b.
+ * Está vacío, y esa es la idea: contar por músculo dejó a la vista que la app
+ * nunca había tenido trabajo de pantorrilla —con la taxonomía vieja no había
+ * ningún grupo que la nombrara, así que el agujero era invisible—. Un test lo
+ * comprueba: si mañana se añade un músculo con landmarks y no se le da ningún
+ * ejercicio, la lista deja de estar vacía y el test lo dice, en vez de que la
+ * app señale un déficit que ella misma no deja tapar.
  */
-export const MUSCULOS_SIN_COBERTURA = ['gastrocnemio', 'soleo'] as const
+export const MUSCULOS_SIN_COBERTURA = [] as const
 
 export function contributionsOf(exerciseId: string): MuscleContributions {
   return CONTRIBUTIONS[exerciseId] ?? {}
