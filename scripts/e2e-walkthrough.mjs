@@ -249,6 +249,23 @@ if (metaConVariante === metaAntesVariante) {
 console.log('  → forma anotada:', metaConVariante.trim())
 await shot('10a3-variante')
 
+// Quitar un ejercicio que sobra.
+const antesDeQuitar = await page.locator('.item-title').allTextContents()
+const aQuitar = antesDeQuitar[1]
+await page.locator('.card').filter({ hasText: aQuitar }).getByText('Quitar', { exact: true }).click()
+await page.waitForTimeout(400)
+const trasQuitar = await page.locator('.item-title').allTextContents()
+if (trasQuitar.length !== antesDeQuitar.length - 1 || trasQuitar.includes(aQuitar)) {
+  console.error('ERROR: quitar no sacó el ejercicio →', antesDeQuitar.join(' / '), '→', trasQuitar.join(' / '))
+  process.exit(1)
+}
+if (!(await page.getByText(`Quitado: ${aQuitar}`).count())) {
+  console.error('ERROR: quitar debería decir qué ha quitado')
+  process.exit(1)
+}
+console.log('  → quitado de hoy:', aQuitar, '· quedan', trasQuitar.length)
+await shot('10a4-quitado')
+
 // Reordenar.
 const primeroAntes = await page.locator('.item-title').first().textContent()
 await page.locator('.reorder button', { hasText: '↓' }).first().click()

@@ -158,6 +158,29 @@ export default function SessionScreen({ session }: { session: Session }) {
   }
 
   /** Que no se lo proponga más. Es una decisión aparte de cambiarlo hoy. */
+  /**
+   * Quitar un ejercicio de la sesión de hoy. No se deja vaciar del todo: una
+   * sesión sin nada no es una sesión, y para eso ya está descartarla sin culpa.
+   */
+  function quitar(ei: number): boolean {
+    if (exercises.length <= 1) {
+      setAviso(
+        'Es el único ejercicio que queda. Si hoy no te apetece nada, descarta la sesión sin culpa: también es una decisión.'
+      )
+      return false
+    }
+    const actual = exercises[ei]
+    setExercises((prev) => prev.filter((_, i) => i !== ei))
+    setResting(null)
+    setComoSeHace(null)
+    setAviso(`Quitado: ${actual.name}. Si te arrepientes, lo tienes en la lista de añadir.`)
+    return true
+  }
+
+  /**
+   * Que no se lo proponga más. Si no lo quiere ver nunca, tampoco lo quiere
+   * hoy: se saca también de la sesión en curso.
+   */
   function noProponerMas(ei: number) {
     const actual = exercises[ei]
     actions.saveProfile({
@@ -165,7 +188,12 @@ export default function SessionScreen({ session }: { session: Session }) {
       dislikedExercises: [...new Set([...(profile.dislikedExercises ?? []), actual.exerciseId])],
       favoriteExercises: (profile.favoriteExercises ?? []).filter((id) => id !== actual.exerciseId)
     })
-    setAviso(`${actual.name} ya no aparecerá en próximas sesiones. Puedes recuperarlo en Ajustes.`)
+    const fuera = quitar(ei)
+    setAviso(
+      fuera
+        ? `${actual.name} fuera de hoy y de las próximas sesiones. Puedes readmitirlo en Ajustes.`
+        : `${actual.name} no aparecerá en próximas sesiones, pero hoy se queda: es el único que hay. Puedes readmitirlo en Ajustes.`
+    )
   }
 
   function alternarFavorito(id: string) {
@@ -294,18 +322,28 @@ export default function SessionScreen({ session }: { session: Session }) {
               </button>
             )}
             {e.primary !== 'cardio' && (
-              <>
-                <button
-                  className="disclose"
-                  onClick={() => setEligiendo({ modo: 'cambiar', indice: ei })}
-                >
-                  <Icon name="spark" />
-                  Cambiar ejercicio
-                </button>
-                <button className="btn-quiet btn-inline" onClick={() => noProponerMas(ei)}>
-                  No me lo propongas más
-                </button>
-              </>
+              <button
+                className="disclose"
+                onClick={() => setEligiendo({ modo: 'cambiar', indice: ei })}
+              >
+                <Icon name="spark" />
+                Cambiar ejercicio
+              </button>
+            )}
+            {/* Quitarlo de hoy está disponible también para el cardio: hay días
+                en que lo que sobra es justo eso. */}
+            <button
+              className="disclose"
+              onClick={() => quitar(ei)}
+              aria-label={`Quitar ${e.name} de la sesión de hoy`}
+            >
+              <Icon name="close" />
+              Quitar
+            </button>
+            {e.primary !== 'cardio' && (
+              <button className="btn-quiet btn-inline" onClick={() => noProponerMas(ei)}>
+                No me lo propongas más
+              </button>
             )}
           </div>
           {comoSeHace === ei && (

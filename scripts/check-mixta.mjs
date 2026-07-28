@@ -175,6 +175,29 @@ if (!conMinutos) fallar('el plan no muestra los minutos de cardio recortados')
 console.log('  → plan:', nombres.slice(0, -1).join(', '), '+', ultimo)
 await page.screenshot({ path: `${OUT}/mix-04-plan.png`, fullPage: true })
 
+// ── Quitar ejercicios, sin poder vaciar la sesión ─────────
+let quedan = nombres.length
+while (quedan > 1) {
+  await page.locator('.card').filter({ has: page.locator('.item-title') })
+    .first().getByText('Quitar', { exact: true }).click()
+  await page.waitForTimeout(250)
+  const ahora = (await page.locator('.item-title').allTextContents()).length
+  if (ahora !== quedan - 1) fallar('quitar no redujo la lista →', quedan, '→', ahora)
+  quedan = ahora
+}
+// Con uno solo debe negarse y proponer descartar la sesión entera.
+await page.locator('.card').filter({ has: page.locator('.item-title') })
+  .first().getByText('Quitar', { exact: true }).click()
+await page.waitForTimeout(250)
+if ((await page.locator('.item-title').allTextContents()).length !== 1) {
+  fallar('no debería poder quedarse sin ningún ejercicio')
+}
+if (!(await page.getByText('descarta la sesión sin culpa').count())) {
+  fallar('al quedarse con uno debería proponer descartar en vez de vaciar')
+}
+console.log('  → se pueden quitar uno a uno, y con el último se niega y propone descartar')
+await page.screenshot({ path: `${OUT}/mix-06-ultimo.png` })
+
 // ── El caso que fallaba: un día de descanso activo ────────
 //
 // Con la disposición por los suelos la app manda descanso activo. Se ofrecía

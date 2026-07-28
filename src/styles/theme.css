@@ -1282,3 +1282,8 @@ textarea:focus {
 .picker-head {
   padding-top: 4px;
 }
+
+/* El icono de «quitar» es una cruz: no debe girar como el chevron desplegable. */
+.exercise-actions .disclose svg {
+  transition: none;
+}

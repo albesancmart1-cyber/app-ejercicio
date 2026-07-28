@@ -26,8 +26,8 @@ servidor.
    al fallo, y todos siguen respetando tus molestias, las 48 h de recuperación y la rampa de vuelta
    tras un parón.
 4. **Sesión** — primero ves el plan completo y lo ajustas con calma: **eliges de la lista** otro
-   ejercicio si alguno no encaja, **añades** los que quieras, **reordenas**, y dices **cómo lo vas a
-   hacer** (con mancuerna o polea, a un brazo o a dos). Al pulsar «empezar entrenamiento» arranca un
+   ejercicio si alguno no encaja, **quitas** el que sobre, **añades** los que quieras, **reordenas**,
+   y dices **cómo lo vas a hacer** (con mancuerna o polea, a un brazo o a dos). Al pulsar «empezar entrenamiento» arranca un
    **cronómetro**. Anotas
    **serie a serie** el peso y las repeticiones reales, y al marcar una serie salta solo el
    **temporizador de descanso**, que vibra al terminar — entre series el que toque por el tipo de
@@ -253,10 +253,18 @@ sesión. Como la regla de no repetir lo de la última sesión sigue después, lo
 es **rotar entre tus favoritos** en vez de caer siempre en el mismo. Se gestionan desde la propia
 lista o desde Ajustes, y marcar algo como favorito lo saca de los descartados.
 
-Descartar es una decisión aparte de cambiar: **«No me lo propongas más»** es un botón propio. Antes
-cambiar un ejercicio lo descartaba para siempre de callado, que no es lo mismo que «hoy no me
-apetece». Los descartados se recuperan en Ajustes, y si excluirlos dejara un grupo sin nada, se
-ignora la lista antes que dejar la sesión coja.
+Cada ejercicio de la sesión tiene tres salidas distintas, porque son tres cosas distintas:
+
+- **Cambiar ejercicio** — otro para hoy, elegido por ti de la lista.
+- **Quitar** — fuera de la sesión de hoy y nada más. Disponible también para el cardio, que hay días
+  en que lo que sobra es justo eso. No se deja vaciar la sesión del todo: con el último la app se
+  niega y propone descartarla sin culpa, que para eso está el botón.
+- **No me lo propongas más** — fuera de hoy **y** de las próximas. Antes solo hacía lo segundo y el
+  ejercicio se quedaba en la sesión, lo cual no se entendía: si no lo quieres ver nunca, tampoco lo
+  quieres hoy.
+
+Los descartados se recuperan en Ajustes, y si excluirlos dejara un grupo sin nada, se ignora la
+lista antes que dejar la sesión coja.
 
 ## Con qué y de qué forma
 
