@@ -1,46 +1,59 @@
-/** Iconografía de línea, 1,5 px, sin relleno. */
+/**
+ * Iconografía de línea al modo de los símbolos del sistema: rejilla de 24,
+ * trazo de 1,8, remates redondos y construcción geométrica —círculos y arcos
+ * completos, no siluetas dibujadas a mano—. A tamaño de barra de navegación es
+ * lo que hace que se lean de un vistazo.
+ */
 const paths: Record<string, JSX.Element> = {
   sun: (
     <>
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4" />
+      <circle cx="12" cy="12" r="4.2" />
+      <path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6" />
     </>
   ),
+  /* Sol sobre el horizonte: la pestaña de hoy. */
   horizon: (
     <>
-      <path d="M3 18h18" />
-      <path d="M7 18a5 5 0 0 1 10 0" />
-      <path d="M12 4v3M5.6 7.6l1.5 1.5M18.4 7.6l-1.5 1.5" />
+      <path d="M2.8 18.5h18.4" />
+      <path d="M7.2 18.5a4.8 4.8 0 0 1 9.6 0" />
+      <path d="M12 4.2v2.4M5.6 7.4l1.7 1.7M18.4 7.4l-1.7 1.7M2.9 13.6h2.4M18.7 13.6h2.4" />
     </>
   ),
+  /* Figura de pie: la pestaña del cuerpo. */
   body: (
     <>
-      <circle cx="12" cy="5" r="2.4" />
-      <path d="M12 8v7M12 15l-3 6M12 15l3 6M6.5 10.5L12 9l5.5 1.5" />
+      <circle cx="12" cy="4.6" r="2.1" />
+      <path d="M12 8.1v6.4" />
+      <path d="M12 14.5l-2.9 5.9M12 14.5l2.9 5.9" />
+      <path d="M7.2 10.4L12 9.1l4.8 1.3" />
     </>
   ),
+  /* Hoja: la pestaña de ajustes, que va de hábitos. */
   leaf: (
     <>
-      <path d="M4 20c0-8 5-13 16-14 0 10-5 15-13 15H4z" />
-      <path d="M9 15c2-3 5-5 8-6" />
+      <path d="M4.4 19.6c-.6-8 4.6-13.4 15.2-14.4.9 10.3-4.4 15.4-12.4 15.4H4.4z" />
+      <path d="M8.6 15.4c2.1-3.1 5.1-5.3 8.4-6.4" />
     </>
   ),
+  /* Plato y cubierto: la pestaña de la mesa. */
   plate: (
     <>
-      <circle cx="11" cy="13" r="7.5" />
-      <circle cx="11" cy="13" r="3.5" />
-      <path d="M20.5 4v16" />
+      <circle cx="10.2" cy="12.6" r="7.2" />
+      <circle cx="10.2" cy="12.6" r="3.2" />
+      <path d="M20.6 4.2v16.2" />
     </>
   ),
   spark: (
     <>
-      <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" />
-      <path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z" />
+      <path d="M12 3.2l1.85 4.95L18.8 10l-4.95 1.85L12 16.8l-1.85-4.95L5.2 10l4.95-1.85z" />
+      <path d="M18.4 15.6l.62 1.68 1.68.62-1.68.62-.62 1.68-.62-1.68-1.68-.62 1.68-.62z" />
     </>
   ),
-  check: <path d="M4 12.5l5 5L20 6.5" />,
-  chevron: <path d="M9 5l7 7-7 7" />,
-  moon: <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z" />
+  check: <path d="M4.5 12.6l4.9 4.9L19.6 7.2" />,
+  chevron: <path d="M9.2 5.4l6.6 6.6-6.6 6.6" />,
+  moon: <path d="M20.2 14.6A8.4 8.4 0 1 1 9.6 4.1a6.9 6.9 0 0 0 10.6 10.5z" />,
+  /* Cerrar: para la hoja del catálogo de ejercicios. */
+  close: <path d="M6.4 6.4l11.2 11.2M17.6 6.4L6.4 17.6" />
 }
 
 export default function Icon({ name, className }: { name: keyof typeof paths; className?: string }) {
@@ -50,7 +63,7 @@ export default function Icon({ name, className }: { name: keyof typeof paths; cl
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.5"
+      strokeWidth="1.8"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"

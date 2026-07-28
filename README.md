@@ -367,9 +367,32 @@ discusión; que el cuerpo *necesite* más en verano no es algo que la literatura
 
 ## Diseño
 
-Superficies planas, una sola línea de acento, mucho aire. El color sigue la hora del día —
-amanecer, día, atardecer, noche — y **por la noche la interfaz pasa a ámbar y baja el brillo**: la
-app no debería ser la que te rompa la higiene lumínica que te está pidiendo respetar.
+Lenguaje visual de Apple: tipografía del sistema con la jerarquía completa —título grande de 34 px,
+titulares de 21, cuerpo de 17—, listas agrupadas sobre superficies translúcidas, esquinas continuas
+y mucho aire. Controles con la forma que toca: cápsulas para las opciones, control segmentado para
+las escalas de 1 a 5, botón relleno para la acción principal, y una respuesta táctil de escala al
+pulsar.
+
+**La barra de navegación es una cápsula flotante de cristal líquido.** No es un rectángulo
+translúcido: desenfoca y satura lo que pasa por detrás, lleva un anillo especular de un píxel que
+recoge la luz por arriba a la izquierda y la derrama por abajo a la derecha, un reflejo interior en
+la cara superior y su propia sombra proyectada. El indicador de la pestaña activa es una pastilla
+que **se desliza** de una a otra, de modo que la barra se lee como una pieza física apoyada sobre la
+app y no como cuatro botones sueltos. El material de verdad se reserva para donde algo pasa por
+debajo —la barra y la hoja del catálogo—: las tarjetas no llevan desenfoque, porque desenfocar ocho
+veces un fondo liso cuesta fluidez en el móvil sin ganar nada.
+
+El icono lo genera `scripts/logo.mjs`. La silueta no es un rectángulo redondeado sino una
+**superelipse**, la misma curva continua que usan los iconos del sistema; la diferencia se nota
+justo en el arranque de la esquina, que es donde un icono se ve casero o no. Dentro, un solo
+símbolo con mucho aire alrededor y sin una letra: el sol saliendo sobre tres líneas que se acortan
+—el amanecer que gobierna toda la app y la cadencia, el ritmo, en la misma figura—. El mismo dibujo,
+sin fondo y en `currentColor`, es la marca de dentro de la app (`src/components/Mark.tsx`), así que
+hereda el acento de la hora del día.
+
+Y lo que no se toca, porque es salud y no estética: el acento sigue la hora del día —amanecer, día,
+atardecer, noche— y **por la noche la interfaz pasa a ámbar y baja el brillo**. La app no debería
+ser la que te rompa la higiene lumínica que te está pidiendo respetar.
 
 El lenguaje acompaña y nunca presiona. No hay rachas que romper ni notificaciones de culpa; hasta
 el botón de cancelar dice «Hoy no puedo — descartar sin culpa».
@@ -402,6 +425,8 @@ npm run preview   # servir la build
 
 ### Scripts auxiliares
 
+- `node scripts/logo.mjs` — genera `public/icon.svg` y `public/marca.svg` (silueta de superelipse
+  y símbolo).
 - `node scripts/icons.mjs` — regenera los iconos PNG desde `public/icon.svg`.
 - `node scripts/e2e-walkthrough.mjs` — recorrido completo automatizado con capturas.
   Requiere `npm run preview` en marcha; define `OUT_DIR` para el destino de las capturas.

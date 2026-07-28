@@ -55,14 +55,15 @@ export default function ExercisePicker({
   )
 
   return (
-    <div className="picker fade-in">
+    <div className="picker">
+      <span className="sheet-grabber" aria-hidden="true" />
       <div className="picker-head">
         <div className="row">
           <p className="eyebrow" style={{ margin: 0 }}>
             {title}
           </p>
           <button className="picker-close" onClick={onClose} aria-label="Cerrar la lista">
-            ✕
+            <Icon name="close" />
           </button>
         </div>
 

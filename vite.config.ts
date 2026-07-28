@@ -23,8 +23,8 @@ export default defineConfig({
         display: 'standalone',
         // Deben coincidir con --bg del tema, o la barra de estado y la pantalla
         // de carga del móvil desentonan con la app.
-        background_color: '#0e0d12',
-        theme_color: '#0e0d12',
+        background_color: '#000000',
+        theme_color: '#000000',
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },

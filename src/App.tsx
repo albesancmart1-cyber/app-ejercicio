@@ -21,6 +21,7 @@ export default function App() {
   const data = useAppData()
   const today = useToday()
   const [tab, setTab] = useState<Tab>('hoy')
+  const indice = TABS.findIndex((t) => t.id === tab)
 
   if (!data.profile) {
     return (
@@ -41,16 +42,27 @@ export default function App() {
         {tab === 'mesa' && <Meals key={today} />}
         {tab === 'ajustes' && <Settings />}
       </main>
-      <nav className="tabbar">
+      {/*
+        Cápsula de cristal líquido. El indicador va aparte y por debajo de los
+        botones: así se desliza de una pestaña a otra en vez de aparecer y
+        desaparecer, que es lo que hace que el cristal se lea como una pieza
+        física y no como cuatro botones sueltos.
+      */}
+      <nav
+        className="tabbar"
+        style={{ '--tab-count': TABS.length, '--tab-index': indice } as React.CSSProperties}
+      >
+        <span className="tab-indicator" aria-hidden="true" />
         {TABS.map((t) => (
           <button
             key={t.id}
             className="tab"
             aria-current={tab === t.id ? 'page' : undefined}
+            aria-label={t.label}
             onClick={() => setTab(t.id)}
           >
             <Icon name={t.icon} />
-            {t.label}
+            <span>{t.label}</span>
           </button>
         ))}
       </nav>

@@ -9,6 +9,7 @@ import {
 } from '../domain/types'
 import { actions } from '../store/store'
 import Icon from '../components/Icon'
+import Mark from '../components/Mark'
 
 const ALL_EQUIPMENT = Object.keys(EQUIPMENT_LABELS) as Equipment[]
 
@@ -59,7 +60,7 @@ export default function Onboarding() {
 
       {step === 0 && (
         <>
-          <Icon name="sun" className="sun-mark" />
+          <Mark className="app-mark" />
           <h1>Ritmo</h1>
           <p className="lede">
             El ejercicio como acompañante de tus hábitos, no como una obligación más. La app mira
