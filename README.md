@@ -329,6 +329,53 @@ debajo del mínimo, lo mantiene; en medio, progresa suave. Las repeticiones regi
 la sensación porque son dato objetivo — puedes haber acabado cómodo y aun así no haber llegado al
 rango. Si no anotas repeticiones, se guía por la sensación como hacía antes.
 
+## Taxonomía muscular y conteo fraccional
+
+El conteo por grupos gruesos mentía por omisión: una serie de tríceps y una de
+bíceps sumaban las dos a «brazo», así que el balance podía dar el brazo por cubierto con el tríceps
+machacado y el bíceps a cero. La taxonomía nueva (`src/domain/muscles.ts`) tiene **dos niveles**:
+
+- **Región** — pecho, espalda, hombro, brazo, pierna, core. Solo para navegar y plegar. **No se
+  cuenta volumen sobre ella.**
+- **Músculo** — 19 en total, y es la unidad real. Ahí viven los landmarks y ahí se decide si falta o
+  sobra trabajo.
+
+**El conteo es fraccional.** Cada ejercicio declara qué mueve y cuánto (`src/data/contributions.ts`):
+`1` si es motor primario, `0,5` si es sinergista con implicación significativa. Los estabilizadores
+no se listan — que un ejercicio te haga apretar el abdomen para no caerte no es volumen de abdominal.
+Cuatro series de press de banca son 4 al pectoral, 2 al tríceps y 2 al deltoides anterior. Contar las
+indirectas como media serie es lo que mejor predijo hipertrofia y fuerza frente a contarlas enteras o
+no contarlas ([Pelland et al., Sports Medicine 2025](https://pubmed.ncbi.nlm.nih.gov/40410597/)).
+
+**Qué serie cuenta** (`src/domain/volume.ts`): las hechas, no las planificadas; las de trabajo, no
+los calentamientos; y las que van a 3 repeticiones del fallo o menos. Las de la rampa de vuelta tras
+un parón, que van a 4 y 5, quedan fuera a propósito: son de rodaje.
+
+El mapa se **congela con la sesión** al registrarla, así que afinar el catálogo mañana no reescribe
+el volumen de lo que ya entrenaste.
+
+### Landmarks por músculo
+
+Cada músculo trae sus referencias en series fraccionales por semana: `mev` (mínimo con el que ya se
+ve adaptación), la banda `mavMin`–`mavMax` donde el volumen rinde de verdad, y `mrv` (a partir de ahí
+se acumula más fatiga que estímulo). Son valores de partida **editables por perfil**: la respuesta al
+volumen varía mucho de una persona a otra.
+
+**En fase de déficit** el objetivo se recorta a 12 series por músculo. No es conformarse: en déficit
+controlado, 20 series semanales de cuádriceps no preservaron más masa magra que 12
+([Roth et al. 2023](https://pubmed.ncbi.nlm.nih.gov/38028130/)), y para conservar lo ganado basta
+alrededor de un tercio del volumen de acumulación ([Bickel et al. 2011](https://pubmed.ncbi.nlm.nih.gov/21131862/)).
+El recorte se aplica **al final**, así que también limita lo que el usuario haya subido a mano: es una
+salvaguarda, no una preferencia.
+
+### Migración
+
+`src/store/migrate.ts` lleva el histórico de la taxonomía vieja a la nueva con tres reglas:
+**no se pierde nada** (los campos viejos se quedan donde estaban, así que se puede revertir), **lo
+que se deduce se marca** (un ejercicio que ya no está en el catálogo se infiere del nombre con una
+tabla de heurísticas y queda con `needsReview` para que lo confirmes), y **es idempotente**, así que
+correrla en cada arranque es seguro.
+
 ## Progresión de volumen
 
 Subir el peso deja de bastar en algún momento: para seguir creciendo hace falta **más volumen**. Pero
@@ -479,7 +526,7 @@ En local la app se sirve en la raíz y en Pages bajo `/app-ejercicio/`. Lo contr
 ```bash
 npm install
 npm run dev       # servidor de desarrollo
-npm test          # 242 tests: motor, catálogo, DHA, leptina, composición, tendencia, cambios, calendario, volumen, variantes y sesión mixta
+npm test          # 323 tests: motor, catálogo, DHA, leptina, composición, tendencia, cambios, calendario, volumen, variantes, sesión mixta, músculos y migración
 npm run build     # build de producción (PWA)
 npm run preview   # servir la build
 ```
@@ -501,3 +548,5 @@ npm run preview   # servir la build
   montado se pueden meter pesas elegidas por la app, con el cardio recortado.
 - `node scripts/check-barra.mjs` — mide dónde queda la barra de navegación al principio, a mitad y al
   final del desplazamiento, en tres tamaños de móvil.
+- `node scripts/check-migracion.mjs` — siembra datos en el formato viejo y comprueba que al abrir la
+  app se migran solos, sin perder nada, marcando lo deducido y sin volver a cambiar al reabrir.

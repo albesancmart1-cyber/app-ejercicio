@@ -1,20 +1,39 @@
 import { useSyncExternalStore } from 'react'
 import { todayIsoAt } from './clock'
+import { VERSION_ACTUAL, migrar } from './migrate'
 import type { AppData, BodyMeasurement, CheckIn, Profile, Session } from '../domain/types'
 
 const STORAGE_KEY = 'ritmo-data-v1'
 
 // Los datos guardados antes de existir `measurements` cargan igual: `load()`
 // fusiona sobre esta base, así que la clave que falte queda con su valor vacío.
-const emptyData: AppData = { version: 1, profile: null, checkIns: [], sessions: [], measurements: [] }
+const emptyData: AppData = { version: VERSION_ACTUAL, profile: null, checkIns: [], sessions: [], measurements: [] }
+
+/** Versiones que sabemos leer. Las anteriores se migran al cargar. */
+const VERSIONES_LEGIBLES = [1, 2]
 
 function load(): AppData {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return emptyData
     const parsed = JSON.parse(raw) as AppData
-    if (parsed.version !== 1) return emptyData
-    return { ...emptyData, ...parsed }
+    if (!VERSIONES_LEGIBLES.includes(parsed.version)) return emptyData
+    const fusionado = { ...emptyData, ...parsed }
+    // La migración es idempotente, así que pasarla en cada arranque es seguro y
+    // recoge también lo que se hubiera quedado a medias.
+    const { data, migrados, paraRevisar } = migrar(fusionado)
+    if (migrados > 0 || parsed.version !== VERSION_ACTUAL) {
+      // Se persiste aquí mismo. Migrar solo en memoria dejaría el disco en el
+      // formato viejo y volvería a deducir lo mismo en cada arranque, con lo que
+      // las marcas de «revisar esto» que el usuario fuera resolviendo
+      // reaparecerían la próxima vez.
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+      console.info(
+        `Ritmo: migrados ${migrados} ejercicios a la taxonomía muscular` +
+          (paraRevisar > 0 ? `, ${paraRevisar} para revisar` : '')
+      )
+    }
+    return data
   } catch {
     return emptyData
   }

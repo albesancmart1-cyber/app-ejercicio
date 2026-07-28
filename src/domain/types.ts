@@ -1,4 +1,13 @@
-// Grupos musculares que la app equilibra como un todo.
+import type { LandmarkOverrides } from './landmarks'
+import type { MuscleContributions } from './muscles'
+
+/**
+ * @deprecated Taxonomía gruesa de grupos musculares.
+ *
+ * Se mantiene una versión entera para poder revertir y para que el motor de
+ * recomendación siga funcionando mientras se migra. La unidad real de conteo
+ * de volumen es ahora el músculo (`src/domain/muscles.ts`).
+ */
 export type MuscleGroup =
   | 'cuadriceps_gluteo'
   | 'femoral'
@@ -107,6 +116,17 @@ export interface Profile {
   /** Ejercicios que el usuario ha descartado y no quiere que se le propongan. */
   dislikedExercises?: string[]
   /**
+   * Landmarks de volumen ajustados a mano. Solo se guardan los que difieren de
+   * los de fábrica, así que afinar los valores por defecto sigue llegando a
+   * quien no los haya tocado.
+   */
+  landmarkOverrides?: LandmarkOverrides
+  /**
+   * Fase de déficit declarada por el usuario. Recorta el objetivo de volumen:
+   * con poca energía disponible, pasar de doce series no conserva más músculo.
+   */
+  deficitPhase?: boolean
+  /**
    * Los que más le gustan. Con un catálogo grande, marcar cuatro o cinco es lo
    * que hace que las sesiones se parezcan a lo que uno quiere entrenar sin
    * tener que elegir cada día.
@@ -127,7 +147,9 @@ export interface SessionTiming {
 export interface Exercise {
   id: string
   name: string
+  /** @deprecated Taxonomía de grupos gruesos. La sustituye `muscleContributions`. */
   primary: MuscleGroup
+  /** @deprecated Igual que `primary`: se conserva una versión para poder revertir. */
   secondary: MuscleGroup[]
   equipment: Equipment[] // requiere al menos uno de estos
   stress: StressLevel
@@ -200,6 +222,8 @@ export interface SetLog {
   /** Repeticiones realmente completadas. */
   reps?: number
   done: boolean
+  /** Serie de aproximación: no cuenta para el volumen semanal. */
+  warmup?: boolean
 }
 
 export interface PlannedExercise {
@@ -219,6 +243,17 @@ export interface PlannedExercise {
   variant?: ExerciseVariant
   /** Añadido a mano durante la sesión, no propuesto por la app. */
   addedByUser?: boolean
+  /**
+   * Qué músculos mueve y cuánto, congelado en el momento de registrar. Se
+   * guarda con la sesión —en vez de mirarlo siempre en el catálogo— para que
+   * afinar el mapa mañana no reescriba el volumen de lo que ya entrenaste.
+   */
+  muscleContributions?: MuscleContributions
+  /**
+   * El mapa se dedujo del nombre al migrar y conviene que el usuario lo
+   * confirme. Solo lo llevan los registros anteriores a la taxonomía nueva.
+   */
+  needsReview?: boolean
 }
 
 export interface Session {
@@ -282,7 +317,8 @@ export interface BodyMeasurement {
 }
 
 export interface AppData {
-  version: 1
+  /** 1 = taxonomía de grupos gruesos. 2 = taxonomía muscular con conteo fraccional. */
+  version: 1 | 2
   profile: Profile | null
   checkIns: CheckIn[]
   sessions: Session[]
