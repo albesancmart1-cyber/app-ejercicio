@@ -361,12 +361,18 @@ ve adaptación), la banda `mavMin`–`mavMax` donde el volumen rinde de verdad, 
 se acumula más fatiga que estímulo). Son valores de partida **editables por perfil**: la respuesta al
 volumen varía mucho de una persona a otra.
 
-**En fase de déficit** el objetivo se recorta a 12 series por músculo. No es conformarse: en déficit
-controlado, 20 series semanales de cuádriceps no preservaron más masa magra que 12
-([Roth et al. 2023](https://pubmed.ncbi.nlm.nih.gov/38028130/)), y para conservar lo ganado basta
+**Mientras se pierde grasa** el objetivo se recorta a 12 series por músculo. No es conformarse:
+cuando el cuerpo tira de sus reservas la leptina baja y con ella la capacidad de recuperación, y ahí
+20 series semanales de cuádriceps no preservaron más masa magra que 12
+([Roth et al. 2023](https://pubmed.ncbi.nlm.nih.gov/38028130/)); para conservar lo ganado basta
 alrededor de un tercio del volumen de acumulación ([Bickel et al. 2011](https://pubmed.ncbi.nlm.nih.gov/21131862/)).
 El recorte se aplica **al final**, así que también limita lo que el usuario haya subido a mano: es una
 salvaguarda, no una preferencia.
+
+Aquel estudio impuso la fase con una restricción calórica medida, porque es como se controla un
+experimento. La app no hereda de ahí el instrumento: lo que se declara en Ajustes es **«estoy
+perdiendo grasa»**, y si hay dudas, quien lo dice antes que la báscula es la señal de leptina. El
+estado del cuerpo es el mismo; cambia con qué se detecta.
 
 ### Migración
 
@@ -614,7 +620,7 @@ En local la app se sirve en la raíz y en Pages bajo `/app-ejercicio/`. Lo contr
 ```bash
 npm install
 npm run dev       # servidor de desarrollo
-npm test          # 369 tests: motor, catálogo, DHA, leptina, composición, tendencia, cambios, calendario, volumen, variantes, sesión mixta, músculos, foco por músculo y migración
+npm test          # 386 tests: motor, catálogo, DHA, leptina, composición, tendencia, cambios, calendario, volumen, variantes, sesión mixta, músculos, foco por músculo y migración
 npm run build     # build de producción (PWA)
 npm run preview   # servir la build
 ```

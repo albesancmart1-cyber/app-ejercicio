@@ -125,8 +125,10 @@ export interface Profile {
    */
   landmarkOverrides?: LandmarkOverrides
   /**
-   * Fase de déficit declarada por el usuario. Recorta el objetivo de volumen:
-   * con poca energía disponible, pasar de doce series no conserva más músculo.
+   * El usuario ha declarado que está perdiendo grasa. Recorta el objetivo de
+   * volumen: con la leptina baja se recupera peor y pasar de doce series por
+   * músculo no conserva más. El nombre del campo se queda por compatibilidad
+   * con lo ya guardado; de cara al usuario nunca se habla de déficit calórico.
    */
   deficitPhase?: boolean
   /**

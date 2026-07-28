@@ -80,10 +80,12 @@ export default function LandmarkSettings({
           aria-pressed={profile.deficitPhase === true}
           onClick={() => onChange({ deficitPhase: profile.deficitPhase ? undefined : true })}
         >
-          Estoy en déficit de calorías
+          Estoy perdiendo grasa
           <span className="opt-desc">
-            Con poca energía disponible, pasar de {MAV_TOPE_DEFICIT} series no conserva más músculo:
-            la app recorta el objetivo y sube el suelo de mantenimiento.
+            Cuando el cuerpo tira de sus reservas, la leptina baja y con ella lo que puedes
+            recuperar. Ahí, pasar de {MAV_TOPE_DEFICIT} series por músculo no conserva más músculo:
+            solo suma fatiga. Si no lo tienes claro, la señal de leptina de «Cuerpo» lo dice antes
+            que la báscula.
           </span>
         </button>
       </div>
