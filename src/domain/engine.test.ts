@@ -674,3 +674,62 @@ describe('la opción mixta aparece siempre que haya cardio que repartir', () => 
     expect(mixta.reasons.join(' ').toLowerCase()).toContain('sigue ahí')
   })
 })
+
+describe('la mixta recomienda los ejercicios, no te hace elegirlos', () => {
+  const diaDeCardio = (): Session[] => [
+    session('2026-07-23', ['sentadilla_goblet']),
+    session('2026-07-25', ['remo_mancuerna'])
+  ]
+
+  /** El propósito de la app es no tener que pensar qué hacer. */
+  it('trae tres o cuatro ejercicios de fuerza ya elegidos', () => {
+    const historia = diaDeCardio()
+    const base = recommend(profile, goodDay(), historia, TODAY)
+    const s = buildSession(withSomeStrength(base, profile, goodDay(), historia, TODAY), profile, historia, TODAY)
+    const pesas = s.exercises.filter((e) => e.primary !== 'cardio')
+    expect(pesas.length).toBeGreaterThanOrEqual(3)
+    expect(pesas.length).toBeLessThanOrEqual(4)
+  })
+
+  it('reparte por zonas distintas en vez de doblar la misma', () => {
+    const historia = diaDeCardio()
+    const base = recommend(profile, goodDay(), historia, TODAY)
+    const s = buildSession(withSomeStrength(base, profile, goodDay(), historia, TODAY), profile, historia, TODAY)
+    const zonas = s.exercises.filter((e) => e.primary !== 'cardio').map((e) => e.primary)
+    expect(new Set(zonas).size).toBe(zonas.length)
+  })
+
+  it('las zonas elegidas son las que llevan más sin trabajarse', () => {
+    // Pecho y espalda entrenados hace nada: no deberían abrir la sesión.
+    const historia: Session[] = [
+      session('2026-07-25', ['press_banca_mancuernas']),
+      session('2026-07-25', ['remo_mancuerna'])
+    ]
+    const base = recommend(profile, goodDay(), historia, TODAY)
+    const mixta = withSomeStrength(base, profile, goodDay(), historia, TODAY)
+    const s = buildSession(mixta, profile, historia, TODAY)
+    const zonas = s.exercises.filter((e) => e.primary !== 'cardio').map((e) => e.primary)
+    expect(zonas).not.toContain('pecho')
+  })
+
+  it('dice qué zonas ha elegido y por qué, para no tener que pensarlo', () => {
+    const historia = diaDeCardio()
+    const base = recommend(profile, goodDay(), historia, TODAY)
+    const mixta = withSomeStrength(base, profile, goodDay(), historia, TODAY)
+    const texto = mixta.reasons.join(' ')
+    expect(texto).toMatch(/He elegido .+ zonas que llevan más tiempo sin trabajarse/)
+    expect(texto).toContain('tú no tienes que decidir nada')
+  })
+
+  it('sigue siendo más corta que una sesión de fuerza entera', () => {
+    const historia = diaDeCardio()
+    const base = recommend(profile, goodDay(), historia, TODAY)
+    const entera = buildSession(
+      withMoreIntensity(base, profile, goodDay(), historia, TODAY), profile, historia, TODAY)
+    const mixta = buildSession(
+      withSomeStrength(base, profile, goodDay(), historia, TODAY), profile, historia, TODAY)
+    const series = (s: Session) =>
+      s.exercises.filter((e) => e.primary !== 'cardio').reduce((a, e) => a + e.plan.sets, 0)
+    expect(series(mixta)).toBeLessThan(series(entera))
+  })
+})

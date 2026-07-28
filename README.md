@@ -191,10 +191,17 @@ La cascada decide qué le conviene hoy a tu cuerpo, pero hay días en que toca c
 con cuerpo para levantar. Antes solo se podía cambiar una cosa por la otra; ahora se puede
 **repartir**.
 
-«Pesas sin quitar el cardio» monta una sesión mixta: unos pocos ejercicios de fuerza **primero** y
-después el cardio, recortado a la mitad (`CARDIO_EN_SESION_MIXTA`, con un suelo de 10 min para que
-siga siendo cardio y no un paseo hasta el coche). El botón dice de antemano en qué se traduce —«14
-min en vez de 28»—, así que la decisión se toma con el dato delante.
+«Pesas sin quitar el cardio» monta una sesión mixta: **tres o cuatro ejercicios de fuerza que elige
+la app**, y después el cardio recortado a la mitad (`CARDIO_EN_SESION_MIXTA`, con un suelo de 10 min
+para que siga siendo cardio y no un paseo hasta el coche). El botón dice de antemano en qué se
+traduce —«14 min en vez de 28»—, así que la decisión se toma con el dato delante.
+
+Los ejercicios **no hay que añadirlos a mano**: eso sería devolverte justo el problema que la app
+existe para quitarte. Se eligen solos, uno por zona, entre las que llevan más tiempo sin trabajarse
+y respetando las 48 h de recuperación, y el «por qué» te dice cuáles ha cogido y con qué criterio.
+A diferencia de una sesión de fuerza normal, la mixta **no dobla el grupo prioritario**: es una
+sesión corta, y lo que interesa es tocar varias zonas descansadas en vez de cargar dos veces la
+misma.
 
 Las tres cosas que hacen que eso no sea una paliza:
 
@@ -451,7 +458,7 @@ En local la app se sirve en la raíz y en Pages bajo `/app-ejercicio/`. Lo contr
 ```bash
 npm install
 npm run dev       # servidor de desarrollo
-npm test          # 237 tests: motor, catálogo, DHA, leptina, composición, tendencia, cambios, calendario, volumen, variantes y sesión mixta
+npm test          # 242 tests: motor, catálogo, DHA, leptina, composición, tendencia, cambios, calendario, volumen, variantes y sesión mixta
 npm run build     # build de producción (PWA)
 npm run preview   # servir la build
 ```

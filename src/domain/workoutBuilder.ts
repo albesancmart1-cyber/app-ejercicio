@@ -304,14 +304,15 @@ export function buildSession(
   if (recommendation.kind === 'fuerza' || recommendation.kind === 'reacondicionamiento') {
     const groups = recommendation.focus.filter((g) => g !== 'cardio')
     // Cuántos ejercicios de fuerza caben, según el nivel de volumen alcanzado.
-    // En una sesión mixta se recortan dos: el día también lleva cardio, y meter
-    // el volumen entero de fuerza además del cardio es justo lo que convierte
-    // «quiero las dos cosas» en una paliza.
-    const cuantos = Math.max(2, (recommendation.volume?.exercisesPerSession ?? 4) - (recommendation.mixed ? 2 : 0))
-    // En fuerza doblamos el grupo prioritario; en la vuelta progresiva repartimos
-    // el trabajo por todo el cuerpo con poco volumen en cada zona.
+    // En la mixta se recorta uno —el día también lleva cardio—, con un suelo de
+    // tres: con dos la sesión se queda en nada y deja de merecer la pena.
+    const base = recommendation.volume?.exercisesPerSession ?? 4
+    const cuantos = recommendation.mixed ? Math.max(3, base - 1) : base
+    // En fuerza doblamos el grupo prioritario para darle dosis de verdad. En la
+    // vuelta progresiva y en la mixta no: son sesiones cortas y lo que interesa
+    // es tocar varias zonas descansadas, no cargar dos veces la misma.
     const plan: MuscleGroup[] =
-      recommendation.kind === 'fuerza' && groups.length > 0
+      recommendation.kind === 'fuerza' && !recommendation.mixed && groups.length > 0
         ? [groups[0], groups[0], ...groups.slice(1, cuantos - 1)]
         : groups.slice(0, cuantos)
 

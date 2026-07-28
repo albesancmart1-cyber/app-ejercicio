@@ -131,6 +131,9 @@ await page.waitForTimeout(250)
 const porQue = (await page.locator('.reasons').allTextContents()).join(' ').replace(/\s+/g, ' ')
 if (!/has pedido/i.test(porQue)) fallar('el «por qué» debe decir que fue decisión tuya →', porQue)
 if (!/primero las pesas/i.test(porQue)) fallar('el «por qué» debe explicar el orden →', porQue)
+if (!/he elegido .* zonas que llevan más tiempo sin trabajarse/i.test(porQue)) {
+  fallar('debe decir qué zonas ha elegido y por qué →', porQue)
+}
 const recorte = porQue.match(/se queda en (\d+) min de los (\d+)/)
 if (!recorte) fallar('el «por qué» debe decir de cuánto a cuánto se recorta el cardio →', porQue)
 if (!(Number(recorte[1]) < Number(recorte[2]))) {
@@ -153,7 +156,16 @@ await page.waitForTimeout(300)
 await byText('Preparar la sesión').click()
 await page.waitForTimeout(450)
 const nombres = await page.locator('.item-title').allTextContents()
-if (nombres.length < 3) fallar('la mixta debería traer pesas además del cardio →', nombres.join(' / '))
+const pesas = nombres.slice(0, -1)
+// El propósito de la app es no tener que pensar qué hacer: la mixta tiene que
+// traer los ejercicios ya elegidos, tres o cuatro, no un hueco para añadirlos.
+if (pesas.length < 3) {
+  fallar('la mixta debe recomendar 3 o 4 ejercicios de fuerza, no', pesas.length, '→', nombres.join(' / '))
+}
+if (pesas.length > 4) fallar('la mixta no debería pasar de 4 ejercicios de fuerza →', pesas.join(' / '))
+if (new Set(pesas).size !== pesas.length) {
+  fallar('en una sesión corta conviene repartir por zonas, no repetir →', pesas.join(' / '))
+}
 const ultimo = nombres[nombres.length - 1]
 if (!/camin|bici|trote|escalera|comba|remo en m|movilidad/i.test(ultimo)) {
   fallar('el cardio debe ir el último, después de las pesas →', nombres.join(' / '))

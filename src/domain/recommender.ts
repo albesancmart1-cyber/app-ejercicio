@@ -431,10 +431,19 @@ export function withSomeStrength(
     Math.round(original * CARDIO_EN_SESION_MIXTA)
   )
 
+  // Qué zonas ha elegido la app y por qué: el usuario no tiene que decidirlo,
+  // pero sí tiene derecho a saberlo.
+  const zonas = g.focus.map((gr) => MUSCLE_LABELS[gr].toLowerCase())
+  const listaZonas =
+    zonas.length > 1 ? `${zonas.slice(0, -1).join(', ')} y ${zonas[zonas.length - 1]}` : zonas[0]
+
   const reasons = [
     'Has pedido tú meter pesas sin dejar el cardio, así que hacemos las dos cosas.',
     `Lo que tocaba era «${base.title.toLowerCase()}», y ese motivo sigue ahí: por eso el cardio no desaparece, se queda en ${minutos} min de los ${original}.`,
     'Primero las pesas y después el cardio, que es el orden en el que menos se estorban.',
+    listaZonas
+      ? `He elegido ${listaZonas}: son las zonas que llevan más tiempo sin trabajarse, así que tú no tienes que decidir nada.`
+      : 'Elijo yo los ejercicios según lo que lleve más tiempo sin trabajarse.',
     `Sesión de fuerza más corta de lo normal y a intensidad ${g.intensity}, dejando ${g.rir} repeticiones en reserva: el día ya lleva las dos cosas.`,
     ...g.heredadas
   ]
@@ -503,11 +512,14 @@ function pickFocus(
   exclude: MuscleGroup[],
   avoid: MuscleGroup[]
 ): MuscleGroup[] {
+  // Cuatro y no tres: en el nivel de volumen alto una sesión pide cinco
+  // ejercicios, y con solo tres grupos disponibles se quedaba corta. La mixta
+  // también reparte por zonas distintas, así que necesita margen.
   const available = neglectedGroups(balance, exclude)
-  if (available.length >= 2) return available.slice(0, 3)
+  if (available.length >= 2) return available.slice(0, 4)
   // Solo las molestias son innegociables.
   const relaxed = neglectedGroups(balance, avoid)
-  return relaxed.slice(0, 3)
+  return relaxed.slice(0, 4)
 }
 
 function cap(s: string): string {
