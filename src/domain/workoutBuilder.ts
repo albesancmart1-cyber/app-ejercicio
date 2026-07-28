@@ -1,4 +1,5 @@
 import { EXERCISES } from '../data/exercises'
+import { contributionsOf } from '../data/contributions'
 import type {
   Equipment,
   Exercise,
@@ -10,6 +11,7 @@ import type {
   Recommendation,
   Session
 } from './types'
+import type { Muscle } from './muscles'
 import { BASE_SETS, repPrescription } from './protocol'
 import { initLogs, parseRepRange, repVerdict, type RepVerdict } from './setLogs'
 import { FACTOR_UNILATERAL, defaultVariant, sameVariant, scaleForSide } from './variants'
@@ -271,6 +273,68 @@ function pickForGroup(
   return candidates[0]
 }
 
+/**
+ * Un ejercicio que trabaje **este músculo concreto**, no su zona.
+ *
+ * Es la diferencia que motivó el refactor: pedir «algo de brazo» podía devolver
+ * otro tríceps cuando lo que estaba a cero era el bíceps. Aquí solo entran los
+ * ejercicios en los que el músculo es motor principal (aporte 1). Si con el
+ * material disponible no hay ninguno se admite el trabajo como sinergista, que
+ * rinde la mitad pero es mejor que dejar el músculo sin nada.
+ *
+ * A igualdad de lo demás gana el que además toque **otros músculos del foco de
+ * hoy**: cubrir cuatro zonas con cuatro ejercicios sale mejor que con seis.
+ */
+export function pickForMuscle(
+  muscle: Muscle,
+  profile: Profile,
+  maxStress: 'bajo' | 'medio' | 'alto',
+  exclude: Set<string>,
+  recent: Set<string>,
+  tambien: Muscle[] = [],
+  zonasVetadas: MuscleGroup[] = []
+): Exercise | undefined {
+  const stressRank = STRESS_RANK
+  const disponible = (e: Exercise) =>
+    e.primary !== 'cardio' &&
+    // Un buen ejercicio de bíceps puede ser una dominada, y con la espalda
+    // dolorida esa no es la respuesta: la zona vetada lo sigue estando aunque
+    // el músculo que buscamos esté fuera de ella.
+    !zonasVetadas.includes(e.primary) &&
+    !exclude.has(e.id) &&
+    hasEquipment(e, profile.equipment) &&
+    stressRank[e.stress] <= stressRank[maxStress]
+
+  const aporte = (e: Exercise) => contributionsOf(e.id)[muscle] ?? 0
+  const descartados = new Set(profile.dislikedExercises ?? [])
+
+  // Primero los que lo trabajan de verdad; solo si no hay, los que lo acompañan.
+  const porAporte = (minimo: number) => EXERCISES.filter((e) => disponible(e) && aporte(e) >= minimo)
+  let candidates = porAporte(1).filter((e) => !descartados.has(e.id))
+  if (candidates.length === 0) candidates = porAporte(1)
+  if (candidates.length === 0) candidates = porAporte(0.5).filter((e) => !descartados.has(e.id))
+  if (candidates.length === 0) candidates = porAporte(0.5)
+  if (candidates.length === 0) return undefined
+
+  const favoritos = new Set(profile.favoriteExercises ?? [])
+  const otros = tambien.filter((m) => m !== muscle)
+  const cubre = (e: Exercise) => {
+    const c = contributionsOf(e.id)
+    return otros.reduce((a, m) => a + (c[m] ?? 0), 0)
+  }
+  candidates.sort((a, b) => {
+    const favA = favoritos.has(a.id) ? 0 : 1
+    const favB = favoritos.has(b.id) ? 0 : 1
+    if (favA !== favB) return favA - favB
+    const repeatA = recent.has(a.id) ? 1 : 0
+    const repeatB = recent.has(b.id) ? 1 : 0
+    if (repeatA !== repeatB) return repeatA - repeatB
+    if (cubre(b) !== cubre(a)) return cubre(b) - cubre(a)
+    return stressRank[b.stress] - stressRank[a.stress]
+  })
+  return candidates[0]
+}
+
 function cardioExercise(profile: Profile, medium: boolean): Exercise | undefined {
   const prefer = medium
     ? ['bici_media', 'trote_suave', 'bici_suave', 'caminar']
@@ -308,18 +372,43 @@ export function buildSession(
     // tres: con dos la sesión se queda en nada y deja de merecer la pena.
     const base = recommendation.volume?.exercisesPerSession ?? 4
     const cuantos = recommendation.mixed ? Math.max(3, base - 1) : base
-    // En fuerza doblamos el grupo prioritario para darle dosis de verdad. En la
-    // vuelta progresiva y en la mixta no: son sesiones cortas y lo que interesa
-    // es tocar varias zonas descansadas, no cargar dos veces la misma.
-    const plan: MuscleGroup[] =
-      recommendation.kind === 'fuerza' && !recommendation.mixed && groups.length > 0
-        ? [groups[0], groups[0], ...groups.slice(1, cuantos - 1)]
-        : groups.slice(0, cuantos)
+    // Se dobla la primera zona para darle dosis de verdad. En la vuelta
+    // progresiva y en la mixta no: son sesiones cortas y lo que interesa es
+    // tocar varios sitios descansados, no cargar dos veces el mismo.
+    const dobla = recommendation.kind === 'fuerza' && !recommendation.mixed
+    const repartir = <T,>(xs: T[]): T[] =>
+      dobla && xs.length > 0 ? [xs[0], xs[0], ...xs.slice(1, cuantos - 1)] : xs.slice(0, cuantos)
 
-    for (const group of plan) {
-      const ex = pickForGroup(group, profile, maxStress, used, recent)
-      if (!ex) continue
-      used.add(ex.id)
+    // La elección es por músculo cuando la recomendación dice cuáles. Una
+    // recomendación construida a mano —o guardada antes de que existiera el
+    // campo— sigue funcionando por grupos.
+    const musculos = recommendation.focusMuscles ?? []
+    const elegidos: Exercise[] = []
+    if (musculos.length > 0) {
+      for (const muscle of repartir(musculos)) {
+        const ex = pickForMuscle(
+          muscle,
+          profile,
+          maxStress,
+          used,
+          recent,
+          musculos,
+          recommendation.avoidGroups ?? []
+        )
+        if (!ex) continue
+        used.add(ex.id)
+        elegidos.push(ex)
+      }
+    } else {
+      for (const group of repartir(groups)) {
+        const ex = pickForGroup(group, profile, maxStress, used, recent)
+        if (!ex) continue
+        used.add(ex.id)
+        elegidos.push(ex)
+      }
+    }
+
+    for (const ex of elegidos) {
       exercises.push(
         prepareExercise(ex, profile, {
           intensity: recommendation.intensity,

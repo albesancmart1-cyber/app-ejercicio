@@ -23,6 +23,8 @@ import {
   targetRir,
   type Intensity
 } from './protocol'
+import { elegirFoco, explicarFoco } from './focus'
+import type { Foco } from './focus'
 
 /** Sesiones de rodaje para quien empieza de cero. */
 const BEGINNER_RAMP = 3
@@ -204,7 +206,7 @@ function decidir(
       }
     }
 
-    const focus = pickFocus(balance, exclude, readiness.avoid)
+    const foco = pickFocus(sessions, todayIso, profile, exclude, readiness.avoid)
     return {
       kind: 'reacondicionamiento',
       title: 'Vuelta progresiva',
@@ -212,7 +214,9 @@ function decidir(
         reentry.breakDays > 0
           ? `Volvemos poco a poco: hoy trabajamos todo el cuerpo con un volumen reducido, dejando ${targetRir({ reentryStep: reentry.step, intensity: 'suave' })} repeticiones en reserva. Vas a acabar con sensación de "podría haber hecho más", y eso es exactamente lo que buscamos.`
           : 'Sesión de rodaje: movimientos sencillos, poco volumen y lejos del fallo, para que el cuerpo coja el hábito sin castigo.',
-      focus,
+      focus: foco.grupos,
+      focusMuscles: foco.musculos,
+      avoidGroups: exclude,
       intensity: 'suave',
       volumeScale: reentry.scale,
       rir: targetRir({ reentryStep: reentry.step, intensity: 'suave' }),
@@ -256,7 +260,8 @@ function decidir(
   }
 
   // ── 5. Fuerza según lo que más lo necesita ──────────────────
-  const focus = pickFocus(balance, exclude, readiness.avoid)
+  const foco = pickFocus(sessions, todayIso, profile, exclude, readiness.avoid)
+  const focus = foco.grupos
 
   if (focus.length === 0) {
     reasons.push('Todos tus grupos musculares están o bien trabajados o aún recuperándose.')
@@ -281,7 +286,11 @@ function decidir(
 
   const primaryLabel = MUSCLE_LABELS[focus[0]].toLowerCase()
   reasons.push(`Disposición ${readiness.score}/100: tu cuerpo admite trabajo de fuerza.`)
-  reasons.push(`${cap(primaryLabel)} es lo que menos has trabajado estas dos semanas, así que abre la sesión.`)
+  // Se nombra el músculo, no solo la zona: es la diferencia entre «toca brazo»
+  // —que puede acabar en otro tríceps— y «el bíceps lleva dos series».
+  const porQueEsteFoco = explicarFoco(foco)
+  if (porQueEsteFoco) reasons.push(porQueEsteFoco)
+  reasons.push(`Por eso abrimos por ${primaryLabel}.`)
   if (recovering.length > 0) {
     reasons.push(
       `Dejamos descansar ${recovering.map((g) => MUSCLE_LABELS[g].toLowerCase()).join(', ')}: entrenaste esa zona hace menos de 48 h.`
@@ -303,6 +312,8 @@ function decidir(
         ? `Tu cuerpo está receptivo. Empezamos por ${primaryLabel}, que es lo que más lo necesita, y completamos con lo que mejor equilibra la semana.`
         : `Sesión de fuerza tranquila abriendo por ${primaryLabel}. Sin buscar el fallo: lo justo para estimular sin que mañana lo notes de más.`,
     focus,
+    focusMuscles: foco.musculos,
+    avoidGroups: exclude,
     intensity,
     volumeScale,
     rir,
@@ -328,6 +339,7 @@ function decidir(
  */
 function marcoParaPesas(
   base: Recommendation,
+  profile: Profile,
   readiness: Readiness,
   sessions: Session[],
   todayIso: string,
@@ -336,7 +348,7 @@ function marcoParaPesas(
   const balance = computeBalance(sessions, todayIso)
   const recovering = recentlyWorked(sessions, todayIso, MUSCLE_RECOVERY_DAYS)
   const reentry = reentryState(sessions, todayIso)
-  const focus = pickFocus(balance, [...readiness.avoid, ...recovering], readiness.avoid)
+  const foco = pickFocus(sessions, todayIso, profile, [...readiness.avoid, ...recovering], readiness.avoid)
 
   // Un escalón por encima de lo que tocaba, con techo según el estado real.
   let intensity: Intensity
@@ -357,7 +369,17 @@ function marcoParaPesas(
       ? `Seguimos dejando descansar ${recovering.map((g) => MUSCLE_LABELS[g].toLowerCase()).join(', ')}.`
       : null
 
-  return { focus, intensity, rir, reentry, recovering, heredadas, descansando }
+  return {
+    foco,
+    focus: foco.grupos,
+    evitar: [...new Set([...readiness.avoid, ...recovering])],
+    intensity,
+    rir,
+    reentry,
+    recovering,
+    heredadas,
+    descansando
+  }
 }
 
 export function withMoreIntensity(
@@ -367,12 +389,16 @@ export function withMoreIntensity(
   sessions: Session[],
   todayIso: string
 ): Recommendation {
-  const g = marcoParaPesas(base, readiness, sessions, todayIso)
+  const g = marcoParaPesas(base, profile, readiness, sessions, todayIso)
 
+  const porQueEsteFoco = explicarFoco(g.foco)
   const reasons = [
     'Has pedido tú subir el listón, así que lo subimos.',
     `Lo que tocaba era «${base.title.toLowerCase()}», y ese motivo sigue ahí.`,
     `Por eso lo hacemos con pesas pero a intensidad ${g.intensity}, dejando ${g.rir} repeticiones en reserva.`,
+    // Qué se ha elegido y por qué: pedir pesas no convierte la sesión en una
+    // lista opaca de ejercicios.
+    ...(porQueEsteFoco ? [porQueEsteFoco] : []),
     ...g.heredadas
   ]
   if (readiness.level === 'bajo') {
@@ -389,6 +415,8 @@ export function withMoreIntensity(
         ? 'Vamos con pesas, pero de verdad ligeras y sin acercarnos al fallo. Si a mitad notas que no toca, dejarlo también es ganar.'
         : 'Pesas en vez de caminata, con carga contenida y lejos del fallo. Suficiente para sentir que has entrenado, sin la factura de mañana.',
     focus: g.focus.length > 0 ? g.focus : base.focus.filter((gr) => gr !== 'cardio'),
+    focusMuscles: g.foco.musculos,
+    avoidGroups: g.evitar,
     intensity: g.intensity,
     volumeScale: g.reentry?.scale ?? (readiness.level === 'bajo' ? 0.7 : 1),
     rir: g.rir,
@@ -423,7 +451,7 @@ export function withSomeStrength(
   todayIso: string
 ): Recommendation {
   // Techo en moderada: el día ya lleva cardio encima.
-  const g = marcoParaPesas(base, readiness, sessions, todayIso, 'moderada')
+  const g = marcoParaPesas(base, profile, readiness, sessions, todayIso, 'moderada')
 
   const original = base.cardioMinutes ?? 25
   const minutos = Math.max(
@@ -431,9 +459,10 @@ export function withSomeStrength(
     Math.round(original * CARDIO_EN_SESION_MIXTA)
   )
 
-  // Qué zonas ha elegido la app y por qué: el usuario no tiene que decidirlo,
-  // pero sí tiene derecho a saberlo.
-  const zonas = g.focus.map((gr) => MUSCLE_LABELS[gr].toLowerCase())
+  // Qué ha elegido la app y por qué: el usuario no tiene que decidirlo, pero sí
+  // tiene derecho a saberlo, y con el nombre del músculo se entiende mejor por
+  // qué hoy toca eso y no «hombro» otra vez.
+  const zonas = g.foco.detalle.map((d) => d.label.toLowerCase())
   const listaZonas =
     zonas.length > 1 ? `${zonas.slice(0, -1).join(', ')} y ${zonas[zonas.length - 1]}` : zonas[0]
 
@@ -458,6 +487,8 @@ export function withSomeStrength(
     title: primary ? `Pesas y cardio · ${MUSCLE_LABELS[primary].toLowerCase()}` : 'Pesas y cardio',
     message: `Unos pocos ejercicios de fuerza y luego ${minutos} min de cardio tranquilo. Te llevas las dos cosas sin que el día se convierta en una paliza: la fuerza va primero, con carga contenida, y el cardio a ritmo de poder hablar.`,
     focus: g.focus.length > 0 ? g.focus : base.focus.filter((gr) => gr !== 'cardio'),
+    focusMuscles: g.foco.musculos,
+    avoidGroups: g.evitar,
     intensity: g.intensity,
     cardioMinutes: minutos,
     volumeScale: g.reentry?.scale ?? (readiness.level === 'bajo' ? 0.7 : 1),
@@ -507,19 +538,27 @@ export function canMix(rec: Recommendation): boolean {
  * Elige los grupos de la sesión: primero los descompensados que estén disponibles;
  * si la recuperación deja fuera a todos, se relaja el filtro antes que no entrenar.
  */
+/**
+ * Qué se trabaja hoy. La elección es por músculo —quien lo decide es
+ * `elegirFoco`— y los grupos salen de ahí, no al revés: siguen haciendo falta
+ * para el título de la sesión y para lo que aún razona por zonas.
+ *
+ * Cuatro músculos y no tres: en el nivel de volumen alto una sesión pide cinco
+ * ejercicios, y la mixta reparte por zonas distintas, así que necesita margen.
+ */
 function pickFocus(
-  balance: ReturnType<typeof computeBalance>,
+  sessions: Session[],
+  todayIso: string,
+  profile: Profile,
   exclude: MuscleGroup[],
   avoid: MuscleGroup[]
-): MuscleGroup[] {
-  // Cuatro y no tres: en el nivel de volumen alto una sesión pide cinco
-  // ejercicios, y con solo tres grupos disponibles se quedaba corta. La mixta
-  // también reparte por zonas distintas, así que necesita margen.
-  const available = neglectedGroups(balance, exclude)
-  if (available.length >= 2) return available.slice(0, 4)
-  // Solo las molestias son innegociables.
-  const relaxed = neglectedGroups(balance, avoid)
-  return relaxed.slice(0, 4)
+): Foco {
+  return elegirFoco(sessions, todayIso, {
+    excluir: exclude,
+    evitar: avoid,
+    overrides: profile.landmarkOverrides,
+    deficit: profile.deficitPhase
+  })
 }
 
 function cap(s: string): string {

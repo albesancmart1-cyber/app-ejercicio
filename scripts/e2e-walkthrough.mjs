@@ -208,8 +208,18 @@ if (resultados === 0) {
   console.error('ERROR: la búsqueda sin tilde no encuentra «bíceps»')
   process.exit(1)
 }
-const anadido = await page.locator('.picker-pick .item-title').first().textContent()
-await page.locator('.picker-pick').first().click()
+// Para añadir hace falta uno que no esté ya en la sesión: los que están salen
+// deshabilitados, y desde que la app elige por músculo el curl de bíceps es de
+// los primeros que propone sola. Se vacía la búsqueda y se coge el primero libre.
+await page.getByPlaceholder('Buscar por nombre').fill('')
+await page.waitForTimeout(300)
+const libres = page.locator('.picker-pick:not([disabled])')
+if ((await libres.count()) === 0) {
+  console.error('ERROR: no hay ningún ejercicio disponible para añadir')
+  process.exit(1)
+}
+const anadido = await libres.locator('.item-title').first().textContent()
+await libres.first().click()
 await page.waitForTimeout(400)
 if (!(await page.getByText(anadido, { exact: false }).count())) {
   console.error('ERROR: el ejercicio añadido no aparece en la sesión →', anadido)

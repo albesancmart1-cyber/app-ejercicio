@@ -1,5 +1,5 @@
 import type { LandmarkOverrides } from './landmarks'
-import type { MuscleContributions } from './muscles'
+import type { Muscle, MuscleContributions } from './muscles'
 
 /**
  * @deprecated Taxonomía gruesa de grupos musculares.
@@ -279,7 +279,25 @@ export interface Recommendation {
   kind: SessionKind
   title: string
   message: string
+  /**
+   * @deprecated Se deriva de `focusMuscles`. Sigue aquí porque el título de la
+   * sesión y las pantallas que aún razonan por zonas lo leen.
+   */
   focus: MuscleGroup[]
+  /**
+   * Los músculos concretos que abren la sesión, en orden de necesidad. Es lo que
+   * de verdad decide qué ejercicios se proponen; `focus` es su resumen por zonas.
+   * Opcional: una recomendación construida a mano (o guardada antes de existir
+   * este campo) sigue siendo válida y cae en la elección por grupo.
+   */
+  focusMuscles?: Muscle[]
+  /**
+   * Zonas que hoy no se tocan: molestias declaradas, grupos aún en recuperación
+   * y grupos saturados. Al elegir por músculo hace falta decirlo explícitamente,
+   * porque un ejercicio bueno para el bíceps puede ser una dominada, y con la
+   * espalda dolorida esa no es la respuesta.
+   */
+  avoidGroups?: MuscleGroup[]
   intensity: 'suave' | 'moderada' | 'media-alta'
   cardioMinutes?: number
   /** Multiplicador de volumen (vuelta progresiva tras un parón). */
