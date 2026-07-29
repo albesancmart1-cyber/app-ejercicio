@@ -646,6 +646,9 @@ npm run preview   # servir la build
   app se migran solos, sin perder nada, marcando lo deducido y sin volver a cambiar al reabrir.
 - `node scripts/comparar-motores.mjs` — genera seis meses de historial con las decisiones de la propia
   app y compara semana a semana lo que ve el motor viejo con lo que ve el nuevo.
+- `node scripts/medir-rampas.mjs` — mide las dos rampas tal y como están: cuánto sube la carga en
+  porcentaje para distintos pesos, cuánto volumen semanal por músculo deja cada nivel y en cuántas
+  sesiones se completa la vuelta tras un parón. Solo mide, no cambia nada.
 - `node scripts/check-foco.mjs` — simula seis meses dos veces cambiando solo quién elige los
   ejercicios (por zona o por músculo) y mide cuántas semanas pasa cada músculo bajo su mínimo. Falla
   si elegir por músculo deja de mejorar la cobertura.
