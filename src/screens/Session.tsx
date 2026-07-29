@@ -326,6 +326,7 @@ export default function SessionScreen({ session }: { session: Session }) {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="item-title">{e.name}</div>
               <div className="item-meta">{planLabel(e)}</div>
+              {e.progressNote && <div className="progress-note">{e.progressNote}</div>}
             </div>
             <div className="reorder">
               <button onClick={() => mover(ei, -1)} disabled={ei === 0} aria-label={`Subir ${e.name}`}>

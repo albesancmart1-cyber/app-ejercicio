@@ -24,10 +24,15 @@ const checkIn = (date) => ({ date, sleep: 4, lightHygiene: true, sunrise: true, 
 
 /** Simula 8 semanas con el nivel de volumen fijado a mano. */
 function conNivel(nivel, diasPorSemana) {
+  const NIVELES = { 1: [3, 4, 4], 2: [4, 4, 4], 3: [4, 5, 5], 4: [5, 5, 5] }
+  const [sets, ejercicios, foco] = NIVELES[nivel]
+  return { ...conNivelLibre(sets, ejercicios, foco, diasPorSemana), nivel }
+}
+
+function conNivelLibre(sets, ejercicios, foco, diasPorSemana) {
   const dows = diasPorSemana === 3 ? [1, 3, 5] : [1, 4]
-  const NIVELES = { 1: [3, 4], 2: [4, 4], 3: [4, 5], 4: [4, 5] }
-  const [sets, ejercicios] = NIVELES[nivel]
-  const volumen = { level: nivel, setsPerExercise: sets, exercisesPerSession: ejercicios, repBias: nivel === 4 ? 'variado' : 'normal', changes: [], reason: '', evidence: [] }
+  const nivel = 4
+  const volumen = { level: nivel, setsPerExercise: sets, exercisesPerSession: ejercicios, focusMuscles: foco, repBias: nivel === 4 ? 'variado' : 'normal', changes: [], reason: '', evidence: [] }
   const sessions = []
   for (let dia = 0; dia < 56; dia++) {
     const fecha = new Date(INICIO.getTime() + dia * 86400000)
@@ -52,7 +57,7 @@ function conNivel(nivel, diasPorSemana) {
   for (const m of ALL_MUSCLES) medio[m] = semanas.reduce((a, s) => a + s[m], 0) / semanas.length
   const totalSemana = Object.values(medio).reduce((a, b) => a + b, 0)
   return {
-    nivel, diasPorSemana, sets, ejercicios,
+    diasPorSemana, sets, ejercicios, foco,
     seriesSesion: sets * ejercicios,
     totalSemana: Math.round(totalSemana * 10) / 10,
     alcanzanMev: ALL_MUSCLES.filter((m) => medio[m] >= l[m].mev).length,
@@ -64,18 +69,27 @@ function conNivel(nivel, diasPorSemana) {
 it('medición', () => {
   const niveles = []
   for (const d of [2, 3]) for (const n of [1, 2, 3, 4]) niveles.push(conNivel(n, d))
+  if (process.env.MATRIZ) {
+    for (const foco of [4, 5]) for (const [sets, ej] of [[4, 5], [5, 5]]) {
+      niveles.push({ ...conNivelLibre(sets, ej, foco, 3), etiqueta: sets + 'x' + ej + ' foco ' + foco })
+    }
+  }
 
   // Incremento de carga: qué % sube en cada caso.
   const cargas = []
   for (const [id, peso] of [['curl_biceps', 8], ['press_militar_mancuernas', 12], ['sentadilla_goblet', 20], ['peso_muerto_mancuernas', 24]]) {
     const ex = exerciseById(id)
-    const historia = [{
-      id: 'h', date: '2026-01-05', kind: 'fuerza', title: 't', completed: true, rpe: 3,
+    const sesion = (fecha, reps) => ({
+      id: 'h' + fecha, date: fecha, kind: 'fuerza', title: 't', completed: true, rpe: 3,
       exercises: [{ exerciseId: id, name: id, primary: ex.primary, plan: { sets: 3, reps: '8-12' }, done: true, actualWeightKg: peso, variant: { side: 'bilateral' },
-        logs: Array.from({ length: 3 }, () => ({ done: true, weightKg: peso, reps: 12 })) }]
-    }]
-    const nuevo = suggestWeight(ex, perfil, 1, historia, { side: 'bilateral' })
-    cargas.push({ id, peso, nuevo, pct: Math.round(((nuevo - peso) / peso) * 1000) / 10 })
+        logs: Array.from({ length: 3 }, () => ({ done: true, weightKg: peso, reps })) }]
+    })
+    const una = [sesion('2026-01-05', 12)]
+    const dos = [sesion('2026-01-05', 12), sesion('2026-01-02', 12)]
+    const medio = [sesion('2026-01-05', 10), sesion('2026-01-02', 10)]
+    const p = (h) => suggestWeight(ex, perfil, 1, h, { side: 'bilateral' })
+    const nuevo = p(dos)
+    cargas.push({ id, peso, unaSesion: p(una), medioRango: p(medio), nuevo, pct: Math.round(((nuevo - peso) / peso) * 1000) / 10 })
   }
 
   // Cuántos días tarda la rampa de vuelta en completarse.
@@ -99,14 +113,17 @@ const r = JSON.parse(linea.slice(linea.indexOf('___INFORME___') + 13))
 console.log('\nVOLUMEN SEMANAL SEGÚN NIVEL (media de 4 semanas, perfil con mancuernas)')
 console.log('  días/sem  nivel  series/sesión  series efectivas/semana  músculos ≥ MEV  ≥ MAV')
 for (const n of r.niveles) {
-  console.log(`      ${n.diasPorSemana}        ${n.nivel}         ${String(n.seriesSesion).padStart(2)}              ${String(n.totalSemana).padStart(6)}                 ${String(n.alcanzanMev).padStart(2)}/19        ${String(n.alcanzanMav).padStart(2)}/19`)
+  const etiq = n.etiqueta ?? String(n.nivel)
+  console.log(`      ${n.diasPorSemana}    ${etiq.padEnd(13)} ${String(n.seriesSesion).padStart(2)}              ${String(n.totalSemana).padStart(6)}                 ${String(n.alcanzanMev).padStart(2)}/19        ${String(n.alcanzanMav).padStart(2)}/19`)
 }
 console.log(`\n  (la suma de los MEV de los 19 músculos son ${r.niveles[0].sumaMev} series semanales)`)
 
 console.log('\nSUBIDA DE CARGA AL COMPLETAR EL RANGO')
-console.log('  ejercicio                        peso    nuevo    subida')
-for (const c of r.cargas) console.log(`  ${c.id.padEnd(30)} ${String(c.peso).padStart(4)} kg ${String(c.nuevo).padStart(6)} kg   ${String(c.pct).padStart(5)} %`)
+console.log('  ejercicio                        peso   1 sesión  medio rango  2 sesiones  subida')
+for (const c of r.cargas) {
+  console.log(`  ${c.id.padEnd(30)} ${String(c.peso).padStart(4)} kg ${String(c.unaSesion).padStart(7)}   ${String(c.medioRango).padStart(8)}   ${String(c.nuevo).padStart(8)}  ${String(c.pct).padStart(5)} %`)
+}
 
 console.log('\nRAMPA DE VUELTA TRAS UN PARÓN')
-for (const x of r.rampa) console.log(`  ${String(x.diasParado).padStart(3)} días parado → ${x.pasos} pasos, escala ${x.escala.join(' → ')}  (se completa en ${x.pasos} SESIONES)`)
+for (const x of r.rampa) console.log(`  ${String(x.diasParado).padStart(3)} días parado → ${x.pasos} pasos, escala ${x.escala.join(' → ')}  (se completa en ${x.pasos} SEMANAS)`)
 console.log()

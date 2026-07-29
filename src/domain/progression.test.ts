@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { esSesionLimpia, volumePlan } from './progression'
+import { esSesionLimpia, seriesPorSesion, volumePlan } from './progression'
 import { computeReadiness } from './readiness'
 import { recommend, withMoreIntensity } from './recommender'
 import { buildSession, variarRango } from './workoutBuilder'
@@ -178,7 +178,8 @@ describe('el volumen no sube porque sí', () => {
     })
     expect(p.level).toBeLessThanOrEqual(4)
     expect(p.exercisesPerSession).toBeLessThanOrEqual(5)
-    expect(p.setsPerExercise).toBeLessThanOrEqual(4)
+    expect(p.setsPerExercise).toBeLessThanOrEqual(5)
+    expect(p.focusMuscles).toBeLessThanOrEqual(5)
   })
 })
 
@@ -270,7 +271,16 @@ describe('la sesión refleja el nivel de volumen', () => {
     const s = buildSession(rec(alto), perfil, [], HOY)
     const fuerza = s.exercises.filter((e) => e.primary !== 'core')
     expect(fuerza.length).toBe(5)
-    expect(fuerza[0].plan.sets).toBe(4)
+    expect(fuerza[0].plan.sets).toBe(5)
+  })
+
+  it('cada escalón sube el volumen de verdad, ninguno se repite', () => {
+    // El nivel 4 era idéntico al 3 salvo el rango de repeticiones: el último
+    // escalón de la rampa no subía nada.
+    const series = ([1, 2, 3, 4] as const).map((n) => seriesPorSesion(n))
+    for (let i = 1; i < series.length; i++) {
+      expect(series[i], `nivel ${i + 1}`).toBeGreaterThan(series[i - 1])
+    }
   })
 
   it('pedir pesas un día de paseo conserva el nivel alcanzado', () => {
@@ -311,6 +321,8 @@ describe('la sesión refleja el nivel de volumen', () => {
     })
     // Aunque el nivel sea 4, con la rampa al 50 % las series se recortan.
     const s = buildSession({ ...rec(alto), volumeScale: 0.5 }, perfil, [], HOY)
-    for (const pe of s.exercises) expect(pe.plan.sets).toBeLessThanOrEqual(2)
+    const sinRampa = buildSession(rec(alto), perfil, [], HOY)
+    for (const pe of s.exercises) expect(pe.plan.sets).toBeLessThanOrEqual(3)
+    expect(s.exercises[0].plan.sets).toBeLessThan(sinRampa.exercises[0].plan.sets)
   })
 })

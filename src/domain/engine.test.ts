@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { computeReadiness } from './readiness'
 import { CARDIO_MINIMO_MIXTO } from './protocol'
+import { RIR_EFECTIVO } from './volume'
 import {
   canIntensify,
   canMix,
@@ -11,7 +12,14 @@ import {
 } from './recommender'
 import { buildSession } from './workoutBuilder'
 import { computeBalance, neglectedGroups, recentlyWorked, weeklySets } from './muscleBalance'
-import { ketoAdaptationWeeksLeft, proteinTarget, reentrySteps, repPrescription } from './protocol'
+import {
+  RIR_VUELTA,
+  ketoAdaptationWeeksLeft,
+  proteinTarget,
+  reentrySteps,
+  repPrescription,
+  targetRir
+} from './protocol'
 import { MUSCLE_GROUPS, type CheckIn, type MuscleGroup, type Profile, type Session, type SessionKind } from './types'
 
 const TODAY = '2026-07-25'
@@ -128,17 +136,40 @@ describe('vuelta progresiva tras un parón (regla 50/30/20/10)', () => {
     expect(rec.reentry?.total).toBe(4)
   })
 
-  it('la rampa sube de volumen sesión a sesión', () => {
-    const base = [session('2026-06-01', ['flexiones'])] // parón largo hasta el 20 de julio
-    const paso1 = reentryState([...base, ], '2026-07-20')
-    expect(paso1?.scale).toBe(0.5)
-    const paso2 = reentryState([...base, session('2026-07-20', ['flexiones'])], '2026-07-22')
-    expect(paso2?.scale).toBe(0.7)
-    const paso3 = reentryState(
-      [...base, session('2026-07-20', ['flexiones']), session('2026-07-22', ['sentadilla_goblet'])],
-      '2026-07-24'
+  /** Parón largo y vuelta entrenando tres días por semana desde el 20 de julio. */
+  function volviendo(hasta: string): Session[] {
+    const dias = ['2026-07-20', '2026-07-22', '2026-07-24', '2026-07-27', '2026-07-29', '2026-07-31',
+      '2026-08-03', '2026-08-05']
+    return [
+      session('2026-06-01', ['flexiones']),
+      ...dias.filter((d) => d <= hasta).map((d) => session(d, ['flexiones']))
+    ]
+  }
+
+  it('la rampa sube de volumen semana a semana', () => {
+    // Tres sesiones en la primera semana no adelantan la rampa: sigue en el paso 1.
+    expect(reentryState(volviendo('2026-07-20'), '2026-07-20')?.scale).toBe(0.5)
+    expect(reentryState(volviendo('2026-07-24'), '2026-07-24')?.scale).toBe(0.5)
+    // A los siete días de la vuelta, segundo paso; a los catorce, tercero.
+    expect(reentryState(volviendo('2026-07-27'), '2026-07-27')?.scale).toBe(0.7)
+    expect(reentryState(volviendo('2026-08-03'), '2026-08-03')?.scale).toBe(0.8)
+  })
+
+  it('entrenar más veces no acelera la vuelta', () => {
+    // Es la razón de contar por semanas: lo que se readapta despacio tras un
+    // parón es el tejido, y eso no depende de cuántos días vayas al gimnasio.
+    const pocas = [session('2026-06-01', ['flexiones']), session('2026-07-20', ['flexiones'])]
+    expect(reentryState(volviendo('2026-07-24'), '2026-07-24')?.step).toBe(
+      reentryState(pocas, '2026-07-24')?.step
     )
-    expect(paso3?.scale).toBe(0.8)
+  })
+
+  it('la intensidad se acerca a la normal según avanza la rampa', () => {
+    // Con RIR 4 en toda la vuelta nada contaba como volumen efectivo: la vista
+    // por músculo enseñaba ceros después de semanas entrenando.
+    expect(targetRir({ reentryStep: 1, intensity: 'suave' })).toBe(4)
+    expect(targetRir({ reentryStep: 4, intensity: 'suave' })).toBeLessThan(4)
+    expect(RIR_VUELTA[RIR_VUELTA.length - 1]).toBeLessThanOrEqual(RIR_EFECTIVO)
   })
 
   it('un historial establecido ya no está en rampa', () => {
@@ -393,22 +424,24 @@ describe('construcción de la sesión', () => {
   })
 
   /** Historial donde el press se hizo a 14 kg, y después otra sesión distinta. */
-  function pressHistory(rpe: 1 | 5): Session[] {
+  /** `veces` sesiones de press con esa sensación, sin repeticiones anotadas. */
+  function pressHistory(rpe: 1 | 5, veces = 1): Session[] {
+    const fechas = ['2026-07-18', '2026-07-15', '2026-07-12'].slice(0, veces)
     return [
-      {
-        ...session('2026-07-18', ['press_banca_mancuernas']),
+      ...fechas.map((fecha) => ({
+        ...session(fecha, ['press_banca_mancuernas']),
         rpe,
         exercises: [
           {
             exerciseId: 'press_banca_mancuernas',
             name: 'Press banca',
-            primary: 'pecho',
+            primary: 'pecho' as const,
             plan: { sets: 3, reps: '8-12' },
             done: true,
             actualWeightKg: 14
           }
         ]
-      },
+      })),
       session('2026-07-21', ['sentadilla_goblet'])
     ]
   }
@@ -419,10 +452,24 @@ describe('construcción de la sesión', () => {
     expect(press?.plan.weightKg).toBe(14)
   })
 
-  it('si la última sesión fue cómoda, progresa', () => {
+  it('una sola sesión cómoda no basta para subir', () => {
+    // Regla 2-por-2: una sesión fácil puede serlo por haber dormido bien.
     const s = buildSession({ ...baseRec(), focus: ['pecho'] }, profile, pressHistory(5), TODAY)
     const press = s.exercises.find((e) => e.exerciseId === 'press_banca_mancuernas')
+    expect(press?.plan.weightKg).toBe(14)
+  })
+
+  it('dos sesiones cómodas seguidas sí progresan', () => {
+    const s = buildSession({ ...baseRec(), focus: ['pecho'] }, profile, pressHistory(5, 2), TODAY)
+    const press = s.exercises.find((e) => e.exerciseId === 'press_banca_mancuernas')
     expect(press?.plan.weightKg).toBeGreaterThan(14)
+  })
+
+  it('y la subida es proporcional, no un kilo a lo bruto', () => {
+    // 14 kg de press de banca: 2,5 % son 0,35 kg, que redondea a medio kilo.
+    const s = buildSession({ ...baseRec(), focus: ['pecho'] }, profile, pressHistory(5, 2), TODAY)
+    const press = s.exercises.find((e) => e.exerciseId === 'press_banca_mancuernas')
+    expect(press?.plan.weightKg).toBeLessThanOrEqual(14.5)
   })
 
   it('las repeticiones registradas mandan sobre la sensación', () => {
@@ -453,31 +500,55 @@ describe('construcción de la sesión', () => {
     expect(s.exercises.find((e) => e.exerciseId === 'press_banca_mancuernas')?.plan.weightKg).toBe(14)
   })
 
-  it('llegar al tope del rango sube el peso aunque costara', () => {
-    const history: Session[] = [
-      {
-        ...session('2026-07-18', ['press_banca_mancuernas']),
-        rpe: 2,
-        exercises: [
-          {
-            exerciseId: 'press_banca_mancuernas',
-            name: 'Press banca',
-            primary: 'pecho',
-            plan: { sets: 2, reps: '8-12' },
-            done: true,
-            actualWeightKg: 14,
-            logs: [
-              { weightKg: 14, reps: 12, done: true },
-              { weightKg: 14, reps: 12, done: true }
-            ]
-          }
-        ]
-      },
-      session('2026-07-21', ['sentadilla_goblet'])
-    ]
+  /** Sesiones de press completando el tope del rango, de más nueva a más vieja. */
+  function alTope(fechas: string[], reps = 12): Session[] {
+    // La sesión de sentadilla del final es la más reciente: sin ella, el press
+    // sería «lo de la última vez» y el constructor lo dejaría para el final.
+    return [...fechas.map((fecha) => ({
+      ...session(fecha, ['press_banca_mancuernas']),
+      rpe: 2 as const,
+      exercises: [
+        {
+          exerciseId: 'press_banca_mancuernas',
+          name: 'Press banca',
+          primary: 'pecho' as const,
+          plan: { sets: 2, reps: '8-12' },
+          done: true,
+          actualWeightKg: 14,
+          logs: [
+            { weightKg: 14, reps, done: true },
+            { weightKg: 14, reps, done: true }
+          ]
+        }
+      ]
+    })), session('2026-07-21', ['sentadilla_goblet'])]
+  }
+
+  it('una sesión al tope del rango todavía no sube el peso', () => {
+    const s = buildSession({ ...baseRec(), focus: ['pecho'] }, profile, alTope(['2026-07-18']), TODAY)
+    const press = s.exercises.find((e) => e.exerciseId === 'press_banca_mancuernas')
+    expect(press?.plan.weightKg).toBe(14)
+  })
+
+  it('dos seguidas al tope del rango suben el peso aunque costaran', () => {
+    const history = alTope(['2026-07-18', '2026-07-15'])
     const s = buildSession({ ...baseRec(), focus: ['pecho'] }, profile, history, TODAY)
     const press = s.exercises.find((e) => e.exerciseId === 'press_banca_mancuernas')
     expect(press?.plan.weightKg).toBeGreaterThan(14)
+  })
+
+  it('a media tabla se ganan repeticiones, no kilos', () => {
+    // Doble progresión: 10 de un rango 8-12 no es haberlo ganado.
+    const history = alTope(['2026-07-18', '2026-07-15'], 10)
+    const s = buildSession({ ...baseRec(), focus: ['pecho'] }, profile, history, TODAY)
+    const press = s.exercises.find((e) => e.exerciseId === 'press_banca_mancuernas')
+    expect(press?.plan.weightKg).toBe(14)
+  })
+
+  it('avisa de que falta una sesión para subir', () => {
+    const s = buildSession({ ...baseRec(), focus: ['pecho'] }, profile, alTope(['2026-07-18']), TODAY)
+    const press = s.exercises.find((e) => e.exerciseId === 'press_banca_mancuernas')
+    expect(press?.progressNote).toMatch(/dos veces seguidas|próximo día/i)
   })
 
   it('las sesiones nuevas nacen con sus series listas para rellenar', () => {

@@ -47,10 +47,11 @@ function hecha(opts: {
   weightKg: number
   reps: number
   variant?: Session['exercises'][number]['variant']
+  date?: string
 }): Session {
   return {
-    id: `s-${opts.exerciseId}`,
-    date: '2026-07-24',
+    id: `s-${opts.exerciseId}-${opts.date ?? '2026-07-24'}`,
+    date: opts.date ?? '2026-07-24',
     kind: 'fuerza',
     title: 'test',
     completed: true,
@@ -181,9 +182,10 @@ describe('con qué y de qué forma se hace', () => {
 
 describe('la progresión no mezcla formas distintas', () => {
   it('el historial de una forma no arrastra la carga de la otra', () => {
-    const historial = [
-      hecha({ exerciseId: 'extension_triceps', weightKg: 12, reps: 12, variant: { implement: 'mancuernas', side: 'bilateral' } })
-    ]
+    // Dos sesiones al tope: hace falta la segunda para que la carga suba.
+    const historial = ['2026-07-24', '2026-07-21'].map((date) =>
+      hecha({ exerciseId: 'extension_triceps', weightKg: 12, reps: 12, date, variant: { implement: 'mancuernas', side: 'bilateral' } })
+    )
     const triceps = exerciseById('extension_triceps')!
 
     // Misma forma: progresa desde los 12 kg.

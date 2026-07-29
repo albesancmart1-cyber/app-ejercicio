@@ -14,6 +14,7 @@ import {
 import {
   CARDIO_EN_SESION_MIXTA,
   CARDIO_MINIMO_MIXTO,
+  DIAS_POR_PASO_VUELTA,
   LONG_BREAK_DAYS,
   MUSCLE_RECOVERY_DAYS,
   REENTRY_VOLUME_SCALE,
@@ -59,20 +60,30 @@ export function reentryState(sessions: Session[], todayIso: string): ReentryStat
     return { step: 1, total: reentrySteps(daysSince), scale: REENTRY_VOLUME_SCALE[0], breakDays: daysSince }
   }
 
-  // Vuelta ya iniciada: ¿cuántas sesiones llevamos desde el último parón largo?
+  // Vuelta ya iniciada: cada paso dura una semana desde que se volvió, no una
+  // sesión. Contarlo por sesiones despachaba una rampa de cuatro pasos en once
+  // días, y la guía de la CSCCa/NSCA está escrita en semanas justamente porque
+  // lo que se readapta despacio es el tejido, no la voluntad.
   for (let i = dates.length - 1; i > 0; i--) {
     const gap = daysBetween(dates[i - 1], dates[i])
     if (gap > LONG_BREAK_DAYS) {
-      const done = dates.length - i // sesiones completadas desde que volvió
+      const semanas = Math.floor(daysBetween(dates[i], todayIso) / DIAS_POR_PASO_VUELTA)
       const total = reentrySteps(gap)
-      if (done < total) {
-        return { step: done + 1, total, scale: REENTRY_VOLUME_SCALE[done] ?? 1, breakDays: gap }
+      if (semanas < total) {
+        return {
+          step: semanas + 1,
+          total,
+          scale: REENTRY_VOLUME_SCALE[semanas] ?? 1,
+          breakDays: gap
+        }
       }
       return null
     }
   }
 
   // Sin parones en el historial, pero aún con pocas sesiones: seguimos rodando.
+  // Aquí sí manda el número de sesiones y no el calendario, porque lo que hay
+  // que rodar es el hábito de alguien que empieza de cero.
   if (dates.length < BEGINNER_RAMP) {
     return {
       step: dates.length + 1,
@@ -206,7 +217,7 @@ function decidir(
       }
     }
 
-    const foco = pickFocus(sessions, todayIso, profile, exclude, readiness.avoid)
+    const foco = pickFocus(sessions, todayIso, profile, exclude, readiness.avoid, volume)
     return {
       kind: 'reacondicionamiento',
       title: 'Vuelta progresiva',
@@ -260,7 +271,7 @@ function decidir(
   }
 
   // ── 5. Fuerza según lo que más lo necesita ──────────────────
-  const foco = pickFocus(sessions, todayIso, profile, exclude, readiness.avoid)
+  const foco = pickFocus(sessions, todayIso, profile, exclude, readiness.avoid, volume)
   const focus = foco.grupos
 
   if (focus.length === 0) {
@@ -348,7 +359,14 @@ function marcoParaPesas(
   const balance = computeBalance(sessions, todayIso)
   const recovering = recentlyWorked(sessions, todayIso, MUSCLE_RECOVERY_DAYS)
   const reentry = reentryState(sessions, todayIso)
-  const foco = pickFocus(sessions, todayIso, profile, [...readiness.avoid, ...recovering], readiness.avoid)
+  const foco = pickFocus(
+    sessions,
+    todayIso,
+    profile,
+    [...readiness.avoid, ...recovering],
+    readiness.avoid,
+    base.volume
+  )
 
   // Un escalón por encima de lo que tocaba, con techo según el estado real.
   let intensity: Intensity
@@ -551,13 +569,17 @@ function pickFocus(
   todayIso: string,
   profile: Profile,
   exclude: MuscleGroup[],
-  avoid: MuscleGroup[]
+  avoid: MuscleGroup[],
+  volume?: Recommendation['volume']
 ): Foco {
   return elegirFoco(sessions, todayIso, {
     excluir: exclude,
     evitar: avoid,
     overrides: profile.landmarkOverrides,
-    deficit: profile.deficitPhase
+    deficit: profile.deficitPhase,
+    // El nivel de volumen decide cuántos músculos abre la sesión: concentrar en
+    // menos es lo que mete a alguno en su banda productiva.
+    limite: volume?.focusMuscles
   })
 }
 

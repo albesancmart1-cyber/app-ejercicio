@@ -3,8 +3,11 @@
  *
  * Fuentes principales:
  * - CSCCa/NSCA Joint Consensus Guidelines for Transition Periods (Strength Cond J, 2019):
- *   regla 50/30/20/10 — reducción progresiva del volumen durante las primeras 2–4 semanas
+ *   regla 50/30/20/10 — reducción progresiva del volumen durante las primeras 2–4 **semanas**
  *   tras un periodo de inactividad.
+ * - NSCA, Essentials of Strength Training and Conditioning (Baechle y Earle): regla 2-por-2
+ *   para subir la carga —dos sesiones seguidas superando el objetivo de repeticiones— con
+ *   incrementos del 2,5–5 % en tren superior y del 5–10 % en tren inferior.
  * - Refalo et al. (2023) y Grgic et al. (2018), meta-análisis de proximidad al fallo:
  *   parar a 1–3 repeticiones en reserva produce prácticamente la misma hipertrofia que
  *   llegar al fallo, con bastante menos fatiga.
@@ -32,9 +35,20 @@ export const WEEKLY_SETS = { minimoEficaz: 4, objetivo: 10, techo: 20 }
 
 /**
  * Escalado de volumen tras un parón (regla 50/30/20/10: se reduce el volumen
- * un 50 % la primera sesión, 30 % la segunda, 20 % la tercera y 10 % la cuarta).
+ * un 50 % la primera semana, 30 % la segunda, 20 % la tercera y 10 % la cuarta).
  */
 export const REENTRY_VOLUME_SCALE = [0.5, 0.7, 0.8, 0.9]
+
+/**
+ * Cada paso de la vuelta dura una **semana**, no una sesión.
+ *
+ * La guía de la CSCCa/NSCA está escrita en semanas, y la diferencia no es
+ * cosmética: a tres entrenos por semana, contar por sesiones despachaba una
+ * rampa de cuatro pasos en once días. El tejido conectivo y la tolerancia al
+ * daño muscular no se readaptan a ese ritmo, y es justo el periodo en el que la
+ * guía existe para evitar lesiones.
+ */
+export const DIAS_POR_PASO_VUELTA = 7
 
 /** Cuántos pasos de vuelta progresiva corresponden a un parón de N días. */
 export function reentrySteps(daysOff: number): number {
@@ -45,14 +59,66 @@ export function reentrySteps(daysOff: number): number {
 }
 
 /**
+ * Repeticiones en reserva durante la vuelta progresiva, paso a paso.
+ *
+ * Antes era 4 fijo durante toda la rampa, y eso tenía una consecuencia que no se
+ * había visto: `RIR_EFECTIVO` deja fuera del cómputo lo que se hace a más de 3
+ * repeticiones del fallo, así que la vuelta entera aparecía con **cero volumen**
+ * en la vista por músculo. Acercarse progresivamente al trabajo normal es además
+ * lo que hace la rampa: no tiene sentido reducir el volumen a la mitad y encima
+ * mantener la intensidad de rodaje hasta el último día.
+ */
+export const RIR_VUELTA = [4, 3, 3, 2]
+
+/**
  * Repeticiones en reserva objetivo. Cuanto más lejos del fallo, menos fatiga
  * y menos daño muscular para un estímulo casi idéntico.
  */
 export function targetRir(opts: { reentryStep?: number; intensity: Intensity }): number {
-  if (opts.reentryStep !== undefined) return 4 // vuelta: siempre lejos del fallo
+  if (opts.reentryStep !== undefined) {
+    return RIR_VUELTA[Math.min(opts.reentryStep, RIR_VUELTA.length) - 1] ?? 4
+  }
   if (opts.intensity === 'suave') return 4
   if (opts.intensity === 'moderada') return 3
   return 2
+}
+
+// ── Progresión de carga ─────────────────────────────────────
+
+/**
+ * Sesiones seguidas completando el rango que hacen falta para subir la carga.
+ *
+ * Es la regla 2-por-2 de la NSCA. Una sesión buena puede serlo por haber dormido
+ * bien o por haber cenado antes; dos seguidas ya es adaptación. Subir a la
+ * primera es la forma más común de encadenar semanas de estancamiento, porque la
+ * carga se adelanta a la capacidad y a partir de ahí ninguna sesión sale limpia.
+ */
+export const SESIONES_PARA_SUBIR = 2
+
+/**
+ * Cuánto sube la carga, en tanto por uno, cuando toca subir.
+ *
+ * La NSCA recomienda 2,5–5 % en tren superior y 5–10 % en tren inferior. Aquí se
+ * usa el extremo conservador de cada banda, coherente con el resto de la app.
+ * Lo que había antes era un salto fijo del 5 % **o de un kilo, el que fuera
+ * mayor**, y ese suelo era el problema real: en un curl de 8 kg, un kilo es un
+ * 12,5 %, casi el triple de lo que aguanta un bíceps de una semana a otra.
+ */
+export const INCREMENTO_CARGA = { general: 0.025, basicoInferior: 0.05 }
+
+/** El disco o salto de mancuerna más pequeño con el que se puede contar. */
+export const PASO_MINIMO_CARGA = 0.5
+
+const GRUPOS_INFERIORES = ['cuadriceps_gluteo', 'femoral', 'gemelo']
+
+/**
+ * Qué porcentaje le toca a un ejercicio. Manda la masa muscular implicada: una
+ * sentadilla admite saltos que una elevación lateral no.
+ */
+export function incrementoDeCarga(opts: { primary: string; compound: boolean }): number {
+  return opts.compound && GRUPOS_INFERIORES.includes(opts.primary)
+    ? INCREMENTO_CARGA.basicoInferior
+    : INCREMENTO_CARGA.general
 }
 
 export type Intensity = 'suave' | 'moderada' | 'media-alta'

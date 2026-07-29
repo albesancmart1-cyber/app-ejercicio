@@ -35,6 +35,12 @@ export interface VolumePlan {
   setsPerExercise: number
   /** Ejercicios de fuerza, sin contar el de core. */
   exercisesPerSession: number
+  /**
+   * Cuántos músculos distintos abre la sesión. Con menos músculos y los mismos
+   * ejercicios, a cada uno le tocan más series: es la palanca que mete un músculo
+   * en su banda productiva en vez de dejarlo rozando el mínimo.
+   */
+  focusMuscles: number
   /** Variación del rango de repeticiones para cambiar el estímulo. */
   repBias: 'normal' | 'variado'
   /** Qué ha cambiado respecto al nivel anterior, en lenguaje llano. */
@@ -45,19 +51,35 @@ export interface VolumePlan {
   evidence: string[]
 }
 
-/** Cada nivel, con la palanca que añade respecto al anterior. */
+/**
+ * Cada nivel, con la palanca que añade respecto al anterior.
+ *
+ * `focusMuscles` —cuántos músculos distintos abre la sesión— entra aquí porque
+ * medido por músculo es la palanca que más manda, y no la que parecía. La
+ * intuición decía concentrar: menos músculos, más series a cada uno, para meter
+ * alguno en la banda de 10 a 20 series semanales donde el volumen rinde
+ * (Schoenfeld). Simulando seis meses con `scripts/medir-rampas.mjs` sale lo
+ * contrario: con las mismas 25 series de sesión, abrir cinco músculos deja 16 de
+ * 19 por encima de su mínimo y 5 en su banda productiva, y abrir solo tres deja
+ * 14 y 3. Concentrar reparte peor sin dar más profundidad, porque el que se
+ * queda fuera hoy tampoco entra mañana.
+ *
+ * Así que la rampa ensancha en vez de estrechar. Y cada escalón sube volumen de
+ * verdad: antes el nivel 4 era idéntico al 3 salvo el rango de repeticiones, con
+ * lo que el último escalón no subía nada.
+ */
 const NIVELES: Record<VolumeLevel, Omit<VolumePlan, 'changes' | 'reason' | 'evidence' | 'level'>> = {
-  1: { setsPerExercise: BASE_SETS, exercisesPerSession: 4, repBias: 'normal' },
-  2: { setsPerExercise: BASE_SETS + 1, exercisesPerSession: 4, repBias: 'normal' },
-  3: { setsPerExercise: BASE_SETS + 1, exercisesPerSession: 5, repBias: 'normal' },
-  4: { setsPerExercise: BASE_SETS + 1, exercisesPerSession: 5, repBias: 'variado' }
+  1: { setsPerExercise: BASE_SETS, exercisesPerSession: 4, focusMuscles: 4, repBias: 'normal' },
+  2: { setsPerExercise: BASE_SETS + 1, exercisesPerSession: 4, focusMuscles: 4, repBias: 'normal' },
+  3: { setsPerExercise: BASE_SETS + 1, exercisesPerSession: 5, focusMuscles: 5, repBias: 'normal' },
+  4: { setsPerExercise: BASE_SETS + 2, exercisesPerSession: 5, focusMuscles: 5, repBias: 'variado' }
 }
 
 const CAMBIO_AL_SUBIR: Record<VolumeLevel, string[]> = {
   1: [],
   2: [`Una serie más por ejercicio: de ${BASE_SETS} a ${BASE_SETS + 1}.`],
-  3: ['Un ejercicio más por sesión: de 4 a 5.'],
-  4: ['Cambio del rango de repeticiones, para variar el estímulo con el mismo volumen.']
+  3: ['Un ejercicio más por sesión: de 4 a 5, y una zona más que atender, para que no se quede nada sin tocar.'],
+  4: [`Otra serie más por ejercicio: de ${BASE_SETS + 1} a ${BASE_SETS + 2}, y rango de repeticiones variado.`]
 }
 
 /**
@@ -72,10 +94,16 @@ function cambiosAcumulados(nivel: VolumeLevel): string[] {
 
 /**
  * Sesiones limpias que hacen falta por escalón. Deliberadamente lento: a dos
- * entrenos por semana son unas tres semanas por nivel, que es tiempo de sobra
- * para que se note si el volumen anterior se estaba asimilando de verdad.
+ * entrenos por semana son tres semanas por nivel, que es tiempo de sobra para
+ * que se note si el volumen anterior se estaba asimilando de verdad.
  */
 const SESIONES_POR_NIVEL = 6
+
+/** Series de trabajo que suma una sesión completa en este nivel. */
+export function seriesPorSesion(nivel: VolumeLevel): number {
+  const n = NIVELES[nivel]
+  return n.setsPerExercise * n.exercisesPerSession
+}
 
 /** Sesiones de fuerza completadas en las últimas semanas, de la más reciente hacia atrás. */
 function sesionesRecientes(sessions: Session[], todayIso: string, semanas: number): Session[] {
@@ -166,8 +194,9 @@ export function volumePlan({
   }
 
   // ── ¿Hace falta? ──────────────────────────────────────────
-  // Un nivel por cada cuatro sesiones limpias acumuladas, y el estancamiento
-  // de la composición adelanta un nivel: es justo cuando pedir más tiene sentido.
+  // Un nivel por cada `SESIONES_POR_NIVEL` sesiones limpias acumuladas, y el
+  // estancamiento de la composición adelanta uno: es justo cuando pedir más
+  // tiene sentido.
   let nivel = Math.min(4, 1 + Math.floor(limpias.length / SESIONES_POR_NIVEL)) as VolumeLevel
 
   if (trendState === 'recomposicion' || trendState === 'progreso') {
@@ -179,21 +208,26 @@ export function volumePlan({
     evidence.push('Llevas semanas estancado y el cuerpo asimila lo que haces: es el momento de pedirle un poco más.')
   }
 
-  if (!asimila) nivel = Math.min(nivel, 1) as VolumeLevel
+  // Si las sesiones dejan de salir se baja **un escalón**, no hasta el suelo.
+  // Tirar de golpe toda la adaptación acumulada por cuatro sesiones flojas no lo
+  // sostiene nada, y además se recupera solo: como el nivel sale de las sesiones
+  // limpias de las últimas ocho semanas, si la cosa no mejora seguirá bajando.
+  if (!asimila) nivel = Math.max(1, nivel - 1) as VolumeLevel
 
   const cambios = cambiosAcumulados(nivel)
-  const seriesGrupo = NIVELES[nivel].setsPerExercise * 2
+  const n = NIVELES[nivel]
+  const total = seriesPorSesion(nivel)
 
   let reason: string
   if (nivel === 1) {
     reason = asimila
-      ? 'Volumen base: cuatro ejercicios y tres series. Es la dosis mínima que sostiene el músculo, y de momento no hay motivo para pedir más.'
+      ? `Volumen base: ${n.exercisesPerSession} ejercicios y ${n.setsPerExercise} series, ${total} series de trabajo repartidas entre ${n.focusMuscles} zonas. Es la dosis mínima que sostiene el músculo, y de momento no hay motivo para pedir más.`
       : 'Volumen base mientras el cuerpo coge el hábito. Cuando encadenes sesiones completas y sin sufrir, empezaré a subirlo.'
   } else if (nivel === 4) {
-    reason = `Nivel máximo de la app: ${NIVELES[nivel].exercisesPerSession} ejercicios, ${NIVELES[nivel].setsPerExercise} series y el rango de repeticiones variado. Tu grupo prioritario recibe unas ${seriesGrupo} series por sesión, dentro de la banda que maximiza la hipertrofia sin pasarse.`
+    reason = `Nivel máximo de la app: ${n.exercisesPerSession} ejercicios y ${n.setsPerExercise} series —${total} series de trabajo entre ${n.focusMuscles} zonas— con el rango de repeticiones variado. Es el volumen con el que más músculos llegan a su banda productiva sin que la sesión se haga interminable.`
   } else {
-    reason = `He subido el volumen porque lo estás asimilando: ${NIVELES[nivel].exercisesPerSession} ejercicios y ${NIVELES[nivel].setsPerExercise} series, unas ${seriesGrupo} series para el grupo prioritario. Si en algún momento las sesiones dejan de salir completas, bajo solo.`
+    reason = `He subido el volumen porque lo estás asimilando: ${n.exercisesPerSession} ejercicios y ${n.setsPerExercise} series, ${total} series de trabajo entre ${n.focusMuscles} zonas. Si en algún momento las sesiones dejan de salir completas, bajo un escalón solo.`
   }
 
-  return { level: nivel, ...NIVELES[nivel], changes: cambios, reason, evidence }
+  return { level: nivel, ...n, changes: cambios, reason, evidence }
 }

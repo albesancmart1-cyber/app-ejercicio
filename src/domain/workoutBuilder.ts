@@ -12,7 +12,13 @@ import type {
   Session
 } from './types'
 import type { Muscle } from './muscles'
-import { BASE_SETS, repPrescription } from './protocol'
+import {
+  BASE_SETS,
+  PASO_MINIMO_CARGA,
+  SESIONES_PARA_SUBIR,
+  incrementoDeCarga,
+  repPrescription
+} from './protocol'
 import { initLogs, parseRepRange, repVerdict, type RepVerdict } from './setLogs'
 import { FACTOR_UNILATERAL, defaultVariant, sameVariant, scaleForSide } from './variants'
 
@@ -69,18 +75,23 @@ interface LastPerformance {
 }
 
 /**
- * La última vez que se hizo este ejercicio **de esta misma forma**. Si nunca se
- * ha hecho así, se admite el registro más reciente sea cual sea la variante:
- * mejor una referencia aproximada, que luego se corrige por el lado, que
- * empezar de cero cada vez que se cambia de agarre.
+ * Las últimas veces que se hizo este ejercicio, de la más reciente hacia atrás.
+ *
+ * Se devuelven varias porque para subir la carga hace falta mirar **dos**
+ * sesiones seguidas (regla 2-por-2 de la NSCA), no solo la última. Se prefieren
+ * las que se hicieron de esta misma forma; si nunca se ha hecho así, se admiten
+ * las demás: mejor una referencia aproximada, que luego se corrige por el lado,
+ * que empezar de cero cada vez que se cambia de agarre.
  */
-function lastPerformance(
+function lastPerformances(
   exerciseId: string,
   history: Session[],
-  variant?: ExerciseVariant
-): LastPerformance | undefined {
+  variant: ExerciseVariant | undefined,
+  cuantas: number
+): LastPerformance[] {
   const sorted = [...history].filter((s) => s.completed).sort((a, b) => (a.date < b.date ? 1 : -1))
-  let cualquiera: LastPerformance | undefined
+  const mismaForma: LastPerformance[] = []
+  const cualquiera: LastPerformance[] = []
   for (const s of sorted) {
     const pe = s.exercises.find((p) => p.exerciseId === exerciseId && p.done === true)
     if (!pe) continue
@@ -90,16 +101,112 @@ function lastPerformance(
       verdict: repVerdict(pe),
       variant: pe.variant
     }
-    if (sameVariant(variant, pe.variant)) return registro
-    if (!cualquiera) cualquiera = registro
+    if (sameVariant(variant, pe.variant)) mismaForma.push(registro)
+    else cualquiera.push(registro)
+    if (mismaForma.length >= cuantas) break
   }
-  return cualquiera
+  return mismaForma.length > 0 ? mismaForma.slice(0, cuantas) : cualquiera.slice(0, 1)
+}
+
+/** Qué decide la progresión de carga, y por qué. Se enseña al usuario. */
+export type DecisionCarga = 'primera_vez' | 'sube' | 'mantiene' | 'esperando_segunda' | 'topado'
+
+export interface ProgresoCarga {
+  weightKg?: number
+  decision: DecisionCarga
+  /** Solo cuando la carga está topada: qué palanca queda. */
+  palanca?: 'reps' | 'unilateral'
 }
 
 /**
- * Peso sugerido. Si ya hay registros, progresa desde el último teniendo en cuenta
- * cómo se sintió esa sesión: si costó mucho, se mantiene la carga.
+ * Cuánto peso toca hoy, y por qué.
+ *
+ * Tres reglas, todas de la NSCA:
+ *
+ * 1. **Doble progresión.** La carga solo sube cuando el rango de repeticiones
+ *    está ganado del todo. A media tabla se gana repeticiones, no kilos. Antes la
+ *    app subía el peso también a medio rango, que es la forma más silenciosa de
+ *    romper la doble progresión: nunca llegabas al tope porque el peso se te
+ *    adelantaba.
+ * 2. **Dos por dos.** Hacen falta `SESIONES_PARA_SUBIR` sesiones seguidas al tope
+ *    del rango. Una puede serlo por haber dormido bien; dos ya es adaptación.
+ * 3. **Incremento proporcional.** `incrementoDeCarga` da el porcentaje según la
+ *    masa implicada, con un suelo de `PASO_MINIMO_CARGA`. El suelo de un kilo que
+ *    había antes convertía un curl de 8 kg en un salto del 12,5 %.
+ *
+ * Y una cuarta que no es de la NSCA sino de la realidad de entrenar en casa: si
+ * la carga ya está en el tope del material disponible, decirlo y pasar a otra
+ * palanca. Con unas mancuernas de 24 kg, quedarse callado es condenar el
+ * ejercicio a no progresar nunca más.
  */
+export function progresoDeCarga(
+  exercise: Exercise,
+  profile: Profile,
+  loadScale: number,
+  history: Session[],
+  variant?: ExerciseVariant
+): ProgresoCarga {
+  const max = availableMax(exercise, profile, variant)
+  if (max === undefined || !exercise.loadFactor) return { decision: 'primera_vez' }
+
+  const previas = lastPerformances(exercise.id, history, variant, SESIONES_PARA_SUBIR)
+  const last = previas[0]
+
+  if (!last?.weightKg) {
+    const estimado = roundWeight(max * exercise.loadFactor * loadScale)
+    // A un lado cada vez se mueve alrededor de la mitad del peso total.
+    const porLado = variant?.side === 'unilateral' ? roundStep(estimado * FACTOR_UNILATERAL) : estimado
+    return { weightKg: Math.min(porLado, max), decision: 'primera_vez' }
+  }
+
+  // Si el referente es de otra forma de hacerlo, se traduce la carga antes de
+  // progresar: la mitad al pasar a un lado, el doble al volver a los dos.
+  const base = roundStep(last.weightKg * scaleForSide(variant?.side, last.variant?.side))
+  const mantener = (decision: DecisionCarga = 'mantiene'): ProgresoCarga => ({
+    weightKg: Math.min(base, max),
+    decision
+  })
+
+  // Cambiar de material o de lado invalida el veredicto: es otro ejercicio a
+  // efectos de carga, así que se parte de la traducción sin subir nada.
+  if (!sameVariant(variant, last.variant)) return mantener()
+
+  const subir = (): ProgresoCarga => {
+    // Al tope del material no hay kilos que añadir: la progresión cambia de
+    // palanca. A un lado cada vez se mueve más peso relativo que a dos, así que
+    // es el siguiente escalón natural antes de estirar el rango.
+    if (base >= max) {
+      return {
+        weightKg: max,
+        decision: 'topado',
+        palanca: exercise.unilateralOption && variant?.side !== 'unilateral' ? 'unilateral' : 'reps'
+      }
+    }
+    const pct = incrementoDeCarga({ primary: exercise.primary, compound: isCompound(exercise) })
+    const next = Math.max(base + PASO_MINIMO_CARGA, base * (1 + pct))
+    return { weightKg: Math.min(roundStep(next), max), decision: 'sube' }
+  }
+
+  // Las repeticiones registradas son dato objetivo: mandan sobre la sensación.
+  if (last.verdict === 'sube') {
+    const anteriores = previas.slice(1, SESIONES_PARA_SUBIR)
+    const todasAlTope =
+      anteriores.length >= SESIONES_PARA_SUBIR - 1 && anteriores.every((p) => p.verdict === 'sube')
+    return todasAlTope ? subir() : mantener('esperando_segunda')
+  }
+  // 'mantiene' y 'progresa_suave': el rango aún no está ganado.
+  if (last.verdict !== undefined) return mantener()
+
+  // Sin repeticiones anotadas solo queda la sensación, y con eso no se sube a la
+  // primera: hacen falta dos sesiones seguidas de sobra.
+  const facil = (p: LastPerformance) => p.rpe !== undefined && p.rpe >= 4
+  const dosFaciles =
+    previas.length >= SESIONES_PARA_SUBIR && previas.slice(0, SESIONES_PARA_SUBIR).every(facil)
+  if (!dosFaciles) return mantener(facil(last) ? 'esperando_segunda' : 'mantiene')
+  return subir()
+}
+
+/** Solo el peso, para quien no necesita saber por qué. */
 export function suggestWeight(
   exercise: Exercise,
   profile: Profile,
@@ -107,38 +214,7 @@ export function suggestWeight(
   history: Session[],
   variant?: ExerciseVariant
 ): number | undefined {
-  const max = availableMax(exercise, profile, variant)
-  if (max === undefined || !exercise.loadFactor) return undefined
-
-  const last = lastPerformance(exercise.id, history, variant)
-  if (last?.weightKg) {
-    // Si el referente es de otra forma de hacerlo, se traduce la carga antes de
-    // progresar: la mitad al pasar a un lado, el doble al volver a los dos.
-    const base = roundStep(last.weightKg * scaleForSide(variant?.side, last.variant?.side))
-    // Cambiar de material o de lado invalida el veredicto: es otro ejercicio a
-    // efectos de carga, así que se parte de la traducción sin subir nada.
-    if (!sameVariant(variant, last.variant)) return Math.min(base, max)
-
-    // Las repeticiones registradas son dato objetivo: mandan sobre la sensación.
-    if (last.verdict === 'mantiene') return Math.min(base, max)
-    if (last.verdict === 'sube') {
-      const next = Math.max(base + 1, base * 1.05)
-      return Math.min(roundStep(next), max)
-    }
-
-    // Sin repeticiones registradas, seguimos guiándonos por la sensación.
-    const hard = last.rpe !== undefined && last.rpe <= 2
-    const easy = last.rpe !== undefined && last.rpe >= 4
-    if (hard) return Math.min(base, max)
-    const factor = easy ? 1.05 : 1.025
-    // Al menos medio kilo, para que la progresión no se quede en nada.
-    const next = Math.max(base + 0.5, base * factor)
-    return Math.min(roundStep(next), max)
-  }
-  const estimado = roundWeight(max * exercise.loadFactor * loadScale)
-  // A un lado cada vez se mueve alrededor de la mitad del peso total.
-  const porLado = variant?.side === 'unilateral' ? roundStep(estimado * FACTOR_UNILATERAL) : estimado
-  return Math.min(porLado, max)
+  return progresoDeCarga(exercise, profile, loadScale, history, variant).weightKg
 }
 
 /** Ejercicios usados en la última sesión, para no repetir siempre lo mismo. */
@@ -170,13 +246,34 @@ export function planFor(
   // tras un parón sigue teniendo la última palabra: se reduce igual.
   const seriesBase = volume?.setsPerExercise ?? BASE_SETS
   const sets = Math.max(2, Math.round(seriesBase * volumeScale))
+  const progreso = progresoDeCarga(exercise, profile, rx.loadScale, history, variant)
+
+  let reps = volume?.repBias === 'variado' ? variarRango(rx.reps) : rx.reps
+  // Carga topada por el material: si no se pueden añadir kilos, se añaden
+  // repeticiones. A carga fija el estímulo sigue viniendo de llevar la serie
+  // cerca del fallo, y eso se consigue estirando el rango.
+  if (progreso.decision === 'topado' && progreso.palanca === 'reps') reps = variarRango(reps)
+
   return {
     sets,
-    reps: volume?.repBias === 'variado' ? variarRango(rx.reps) : rx.reps,
-    weightKg: suggestWeight(exercise, profile, rx.loadScale, history, variant),
+    reps,
+    weightKg: progreso.weightKg,
     rir,
     restSeconds: rx.restSeconds
   }
+}
+
+/** Qué contarle al usuario sobre la carga de hoy, si hay algo que contar. */
+export function notaDeProgreso(progreso: ProgresoCarga): string | undefined {
+  if (progreso.decision === 'esperando_segunda') {
+    return 'La sesión pasada completaste el rango entero. Repítelo hoy y el próximo día subimos el peso: dos veces seguidas es adaptación, una puede ser un buen día.'
+  }
+  if (progreso.decision === 'topado') {
+    return progreso.palanca === 'unilateral'
+      ? 'Estás en el tope de tu material. Prueba a hacerlo a un lado cada vez: con el mismo peso, cada brazo mueve el doble de lo que le tocaba.'
+      : 'Estás en el tope de tu material, así que hoy la progresión va por repeticiones: mismo peso, rango más largo.'
+  }
+  return undefined
 }
 
 /**
@@ -211,6 +308,10 @@ export function prepareExercise(
     opts.volume,
     variant
   )
+  const rx = repPrescription(profile.goal, opts.intensity, opts.keto, isCompound(exercise))
+  const nota = notaDeProgreso(
+    progresoDeCarga(exercise, profile, rx.loadScale, opts.history, variant)
+  )
   return {
     exerciseId: exercise.id,
     name: exercise.name,
@@ -218,6 +319,7 @@ export function prepareExercise(
     plan,
     variant,
     logs: initLogs(plan),
+    ...(nota ? { progressNote: nota } : {}),
     ...(opts.addedByUser ? { addedByUser: true } : {})
   }
 }
@@ -372,12 +474,22 @@ export function buildSession(
     // tres: con dos la sesión se queda en nada y deja de merecer la pena.
     const base = recommendation.volume?.exercisesPerSession ?? 4
     const cuantos = recommendation.mixed ? Math.max(3, base - 1) : base
-    // Se dobla la primera zona para darle dosis de verdad. En la vuelta
-    // progresiva y en la mixta no: son sesiones cortas y lo que interesa es
-    // tocar varios sitios descansados, no cargar dos veces el mismo.
-    const dobla = recommendation.kind === 'fuerza' && !recommendation.mixed
-    const repartir = <T,>(xs: T[]): T[] =>
-      dobla && xs.length > 0 ? [xs[0], xs[0], ...xs.slice(1, cuantos - 1)] : xs.slice(0, cuantos)
+    // Cómo se reparten los ejercicios entre lo que abre la sesión.
+    //
+    // Cuando hay más ejercicios que músculos, sobra trabajo que colocar y se da
+    // por orden de necesidad: primero uno a cada uno, y las vueltas siguientes
+    // vuelven a empezar por el que más falta le hace. Es lo que convierte «cinco
+    // ejercicios entre tres músculos» en dosis de verdad para los dos primeros,
+    // en vez de doblar siempre el mismo y dejar el tercero suelto.
+    //
+    // En la vuelta progresiva y en la mixta no se reparte de más: son sesiones
+    // cortas y lo que interesa es tocar varios sitios descansados.
+    const concentra = recommendation.kind === 'fuerza' && !recommendation.mixed
+    const repartir = <T,>(xs: T[]): T[] => {
+      if (xs.length === 0) return []
+      if (!concentra) return xs.slice(0, cuantos)
+      return Array.from({ length: cuantos }, (_, i) => xs[i % xs.length])
+    }
 
     // La elección es por músculo cuando la recomendación dice cuáles. Una
     // recomendación construida a mano —o guardada antes de que existiera el

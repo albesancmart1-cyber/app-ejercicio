@@ -259,6 +259,12 @@ export interface PlannedExercise {
    * confirme. Solo lo llevan los registros anteriores a la taxonomía nueva.
    */
   needsReview?: boolean
+  /**
+   * Qué está haciendo hoy la progresión de carga con este ejercicio, cuando hay
+   * algo que explicar: que falta una sesión para subir, o que se ha llegado al
+   * tope del material y toca cambiar de palanca.
+   */
+  progressNote?: string
 }
 
 export interface Session {
@@ -324,6 +330,8 @@ export interface Recommendation {
     level: number
     setsPerExercise: number
     exercisesPerSession: number
+    /** Cuántos músculos distintos abre la sesión en este nivel. */
+    focusMuscles: number
     repBias: 'normal' | 'variado'
     changes: string[]
     reason: string

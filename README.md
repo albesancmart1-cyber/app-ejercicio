@@ -323,11 +323,32 @@ Las lecturas imposibles se rechazan: porcentajes fuera de rango, o grasa y músc
 
 ## Progresión de cargas
 
-Al registrar las repeticiones reales, la app aplica **doble progresión**, que es el método estándar:
-si completas todas las series en el tope del rango prescrito, sube el peso; si alguna se queda por
-debajo del mínimo, lo mantiene; en medio, progresa suave. Las repeticiones registradas mandan sobre
-la sensación porque son dato objetivo — puedes haber acabado cómodo y aun así no haber llegado al
-rango. Si no anotas repeticiones, se guía por la sensación como hacía antes.
+Al registrar las repeticiones reales, la app aplica **doble progresión**: mientras el rango no esté
+ganado del todo se ganan repeticiones, y solo cuando lo está sube el peso. Las repeticiones mandan
+sobre la sensación porque son dato objetivo — puedes acabar cómodo y no haber llegado al rango.
+
+Tres reglas, todas de la NSCA ([Baechle y Earle](https://www.nsca.com/education/nsca-essentials-of-strength-training-and-conditioning/)):
+
+- **Dos por dos.** Hacen falta **dos sesiones seguidas** completando el rango. Una puede serlo por
+  haber dormido bien; dos ya es adaptación. Antes bastaba una, y esa es la forma más silenciosa de
+  encadenar semanas de estancamiento: la carga se adelanta a la capacidad y a partir de ahí ninguna
+  sesión sale limpia. Cuando falta la segunda, la app lo dice en la tarjeta del ejercicio.
+- **Incremento proporcional.** 2,5 % de base y 5 % en los básicos de tren inferior, que es el
+  extremo conservador de las bandas de la NSCA (2,5–5 % arriba, 5–10 % abajo). Antes era un salto
+  fijo del 5 % **o de un kilo, el mayor de los dos**, y ese suelo era el problema: en un curl de 8 kg,
+  un kilo es un 12,5 %.
+- **Suelo realista.** El salto mínimo es 0,5 kg, porque el disco de 0,2 kg no existe. En cargas
+  pequeñas manda el suelo, y eso hay que decirlo: subir 8 kg a 8,5 sigue siendo un 6,3 %.
+
+Y una cuarta que no viene de la literatura sino de entrenar en casa: **cuando la carga llega al tope
+del material, la progresión cambia de palanca** en vez de estancarse en silencio. Si el ejercicio
+admite hacerse a un lado cada vez, esa es la siguiente; si no, se estira el rango de repeticiones.
+A carga fija el estímulo sigue viniendo de llevar la serie cerca del fallo
+([Schoenfeld et al. 2017](https://pubmed.ncbi.nlm.nih.gov/28834797/), [Lasevicius et al. 2018](https://pubmed.ncbi.nlm.nih.gov/29564973/)),
+así que hay progresión después del último kilo. Con unas mancuernas de 24 kg esto no es un detalle.
+
+`node scripts/check-carga.mjs` lo comprueba en navegador, y `node scripts/medir-rampas.mjs` mide los
+porcentajes reales para distintos pesos.
 
 ## Taxonomía muscular y conteo fraccional
 
@@ -487,19 +508,33 @@ el cuerpo demuestra que asimila lo que ya está haciendo. La decisión está en
    que funciona. Si está **estancada** y además el cuerpo asimila, se adelanta un nivel: es
    exactamente cuando pedir más tiene sentido.
 
-Las palancas se usan en el orden que menos estrés añade por unidad de estímulo:
+Las palancas se usan en el orden que menos estrés añade por unidad de estímulo. Las cifras de las dos
+últimas columnas están medidas con `node scripts/medir-rampas.mjs`: simula ocho semanas a tres
+entrenos por semana con el nivel fijado y cuenta cuántos de los 19 músculos acaban por encima de su
+mínimo y cuántos dentro de la banda que rinde.
 
-| Nivel | Series | Ejercicios | Repeticiones | Qué añade |
-| ----- | ------ | ---------- | ------------ | --------- |
-| 1 | 3 | 4 | rango normal | Volumen base |
-| 2 | 4 | 4 | rango normal | Una serie más por ejercicio |
-| 3 | 4 | 5 | rango normal | Un ejercicio más por sesión |
-| 4 | 4 | 5 | rango desplazado (+4) | Cambio de estímulo con el mismo volumen |
+| Nivel | Series | Ejercicios | Zonas | Repeticiones | Series/semana | ≥ MEV | en su banda |
+| ----- | ------ | ---------- | ----- | ------------ | ------------- | ----- | ----------- |
+| 1 | 3 | 4 | 4 | rango normal | 58,5 | 5/19 | 0/19 |
+| 2 | 4 | 4 | 4 | rango normal | 76 | 10/19 | 1/19 |
+| 3 | 4 | 5 | 5 | rango normal | 99,5 | 16/19 | 2/19 |
+| 4 | 5 | 5 | 5 | rango desplazado (+4) | 122,9 | 16/19 | 5/19 |
 
-Cada escalón pide **6 sesiones limpias**: a dos entrenos por semana son unas tres semanas por nivel,
-tiempo de sobra para que se note si el volumen anterior se estaba asimilando de verdad. En fuerza el
-grupo prioritario se dobla, así que en el nivel 4 recibe unas 8 series por sesión, dentro de la banda
-de 10–20 semanales que maximiza la hipertrofia sin pasarse (`WEEKLY_SETS.techo`).
+**Cada escalón sube el volumen de verdad.** Antes el nivel 4 era idéntico al 3 salvo el rango de
+repeticiones, con lo que el último escalón de la rampa no subía nada: la app llegaba a su techo con
+2 de 19 músculos en su banda productiva.
+
+**Y la rampa ensancha, no estrecha.** La intuición decía lo contrario —concentrar en menos músculos
+para darle a cada uno más series y meterlo en la banda de 10–20 semanales de Schoenfeld—, pero
+medido sale al revés: con las mismas 25 series de sesión, abrir cinco zonas deja 16 músculos sobre su
+mínimo y 5 en su banda, y abrir solo tres deja 14 y 3. Concentrar reparte peor sin dar más
+profundidad, porque el que se queda fuera hoy tampoco entra mañana.
+
+Cada escalón pide **6 sesiones limpias**: a dos entrenos por semana son tres semanas por nivel,
+tiempo de sobra para que se note si el volumen anterior se estaba asimilando de verdad. Y si las
+sesiones dejan de salir, se baja **un escalón**, no hasta el suelo: tirar de golpe toda la adaptación
+acumulada por cuatro sesiones flojas no lo sostiene nada, y además se corrige solo, porque el nivel
+sale de las sesiones limpias de las últimas ocho semanas.
 
 Nada de esto pasa en silencio: la pantalla de hoy muestra un bloque **«Volumen · nivel N de 4»** con
 **qué cambia** respecto al volumen base —acumulado, no solo el último escalón— **por qué** se está en
@@ -507,9 +542,21 @@ ese nivel y **en qué me baso** (cuántas sesiones salieron limpias, qué dice l
 la leptina). Si el nivel baja, también se dice y se explica.
 
 Dos cosas siguen mandando por encima del nivel alcanzado: la **rampa de vuelta tras un parón**, que
-recorta las series igual (nivel 4 al 50 % son 2 series), y el **tope de estrés** de la sesión. Y pedir
-pesas un día que tocaba paseo conserva el nivel: lo que el cuerpo lleva demostrando no se borra por
-cambiar de plan.
+recorta las series igual, y el **tope de estrés** de la sesión. Y pedir pesas un día que tocaba paseo
+conserva el nivel: lo que el cuerpo lleva demostrando no se borra por cambiar de plan.
+
+### Volver después de un parón
+
+La regla 50/30/20/10 de la CSCCa/NSCA reduce el volumen a la mitad al volver y lo devuelve poco a
+poco. La guía está escrita **en semanas**, y la app lo contaba en sesiones: a tres entrenos por
+semana, una rampa de cuatro pasos se despachaba en once días. Ahora cada paso dura siete días, y
+entrenar más veces no la acelera — lo que se readapta despacio tras un parón es el tejido, y eso no
+depende de cuántos días vayas.
+
+Las repeticiones en reserva también se acercan a lo normal según avanza la rampa (4 → 3 → 3 → 2) en
+vez de quedarse en 4 hasta el último día. Tenía una consecuencia que no se había visto: el conteo de
+volumen deja fuera lo que se hace a más de 3 repeticiones del fallo, así que la vuelta entera
+aparecía con **cero volumen** en la vista por músculo.
 
 ## Mesa
 
@@ -620,7 +667,7 @@ En local la app se sirve en la raíz y en Pages bajo `/app-ejercicio/`. Lo contr
 ```bash
 npm install
 npm run dev       # servidor de desarrollo
-npm test          # 386 tests: motor, catálogo, DHA, leptina, composición, tendencia, cambios, calendario, volumen, variantes, sesión mixta, músculos, foco por músculo y migración
+npm test          # 412 tests: motor, catálogo, DHA, leptina, composición, tendencia, cambios, calendario, volumen, variantes, sesión mixta, músculos, foco por músculo, progresión de carga y migración
 npm run build     # build de producción (PWA)
 npm run preview   # servir la build
 ```
@@ -646,9 +693,14 @@ npm run preview   # servir la build
   app se migran solos, sin perder nada, marcando lo deducido y sin volver a cambiar al reabrir.
 - `node scripts/comparar-motores.mjs` — genera seis meses de historial con las decisiones de la propia
   app y compara semana a semana lo que ve el motor viejo con lo que ve el nuevo.
+- `node scripts/check-carga.mjs` — comprueba en navegador que una sesión al tope del rango no sube el
+  peso y la app lo dice, que dos seguidas sí y de forma proporcional, y que al llegar al tope del
+  material la progresión cambia de palanca.
 - `node scripts/medir-rampas.mjs` — mide las dos rampas tal y como están: cuánto sube la carga en
   porcentaje para distintos pesos, cuánto volumen semanal por músculo deja cada nivel y en cuántas
-  sesiones se completa la vuelta tras un parón. Solo mide, no cambia nada.
+  semanas se completa la vuelta tras un parón. Con `MATRIZ=1` prueba además combinaciones de series,
+  ejercicios y zonas, que es como se decidió que la rampa debía ensanchar en vez de concentrar. Solo
+  mide, no cambia nada.
 - `node scripts/check-foco.mjs` — simula seis meses dos veces cambiando solo quién elige los
   ejercicios (por zona o por músculo) y mide cuántas semanas pasa cada músculo bajo su mínimo. Falla
   si elegir por músculo deja de mejorar la cobertura.
