@@ -90,7 +90,7 @@ export default function Meals() {
   }
 
   return (
-    <div className="fade-in">
+    <div className="fade-in cards-grid">
       <p className="eyebrow">Cuando no sabes qué comer</p>
       <h1>Mesa</h1>
       <p className="lede">

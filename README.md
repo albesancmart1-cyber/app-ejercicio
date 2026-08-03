@@ -673,6 +673,23 @@ ser la que te rompa la higiene lumínica que te está pidiendo respetar.
 El lenguaje acompaña y nunca presiona. No hay rachas que romper ni notificaciones de culpa; hasta
 el botón de cancelar dice «Hoy no puedo — descartar sin culpa».
 
+## Se comporta como una app, no como una web
+
+**En el móvil**, la escala está fijada: no se amplía con dos dedos ni con dos toques.
+`touch-action: manipulation` quita además los 300 ms que el navegador dejaba para distinguir el doble
+toque, así que los botones responden al instante. No hay rebote elástico al llegar al final ni
+«tirar para recargar», el texto no se selecciona al mantener pulsado —salvo donde se escribe— y no
+aparece el destello gris del navegador al tocar. El documento no se desplaza: quien lo hace es el
+contenido por dentro del armazón.
+
+**En el ordenador**, a partir de 900 px el armazón gira noventa grados: la cápsula de cristal se
+convierte en **barra lateral** —que es lo que hacen las apps de Apple en pantalla ancha— y el
+contenido ocupa el resto. A partir de 1180 px, las tarjetas se reparten en **dos columnas** en las
+pantallas donde son independientes entre sí (Cuerpo, Mesa, Ajustes). En «Hoy» y en la sesión no: son
+un hilo con un orden —cómo estás, qué toca, empezar— y partirlo en dos obligaría a leer en zigzag.
+
+`node scripts/check-pantalla.mjs` comprueba las dos cosas.
+
 ## Instalarla en el móvil
 
 Cada subida a la rama principal despliega la app sola en GitHub Pages
@@ -720,6 +737,9 @@ npm run preview   # servir la build
   app se migran solos, sin perder nada, marcando lo deducido y sin volver a cambiar al reabrir.
 - `node scripts/comparar-motores.mjs` — genera seis meses de historial con las decisiones de la propia
   app y compara semana a semana lo que ve el motor viejo con lo que ve el nuevo.
+- `node scripts/check-pantalla.mjs` — comprueba que en el móvil la escala está fijada, no hay rebote
+  ni selección de texto y el documento no se desplaza; y que en el ordenador la barra pasa a ser
+  lateral, el contenido aprovecha el ancho y las tarjetas independientes van en dos columnas.
 - `node scripts/check-nivel.mjs` — comprueba que se puede saltar de nivel de volumen a mano, que la
   elección se guarda en el perfil y manda sobre lo calculado, que se puede deshacer y que la sesión
   que se construye trae de verdad ese volumen.

@@ -11,6 +11,9 @@ import { esVerano, objetivoDhaDiario } from '../domain/dha'
 import { exerciseById } from '../data/exercises'
 import ExercisePicker from '../components/ExercisePicker'
 import LandmarkSettings from '../components/LandmarkSettings'
+import VolumeLevelChooser from '../components/VolumeLevelChooser'
+import { NIVEL_MAXIMO, volumePlan } from '../domain/progression'
+import { interpretTrend } from '../domain/trend'
 import { actions, todayIso, useAppData } from '../store/store'
 
 const ALL_EQUIPMENT = Object.keys(EQUIPMENT_LABELS) as Equipment[]
@@ -69,6 +72,18 @@ export default function Settings() {
     URL.revokeObjectURL(url)
   }
 
+  // El nivel de volumen también se cambia desde aquí, y no solo desde la
+  // tarjeta de «Hoy»: esa solo aparece los días de fuerza, y querer subir de
+  // nivel no tiene por qué coincidir con que hoy toquen pesas.
+  const hoy = todayIso()
+  const plan = volumePlan({
+    profile,
+    sessions: data.sessions,
+    checkIns: data.checkIns,
+    trendState: interpretTrend(data.measurements, profile, data.checkIns, data.sessions, hoy).state,
+    todayIso: hoy
+  })
+
   const ownedWeighted = WEIGHTED_EQUIPMENT.filter((eq) => profile.equipment.includes(eq))
   const protein = profile.weightKg ? proteinTarget(profile.weightKg, profile.goal) : null
   const ketoWeeks = ketoAdaptationWeeksLeft(profile.ketoSince, todayIso())
@@ -88,7 +103,7 @@ export default function Settings() {
   }
 
   return (
-    <div className="fade-in">
+    <div className="fade-in cards-grid">
       <p className="eyebrow">Tu configuración</p>
       <h1>Ajustes</h1>
 
@@ -174,6 +189,24 @@ export default function Settings() {
         <p className="faint" style={{ marginTop: 10 }}>
           La altura solo se usa para calcular el FFMI en la pestaña Cuerpo.
         </p>
+      </div>
+
+      <div className="card">
+        <p className="eyebrow">
+          Nivel de volumen · {plan.level} de {NIVEL_MAXIMO}
+          {plan.chosenByUser ? ' · elegido por ti' : ''}
+        </p>
+        <p className="dim">{plan.reason}</p>
+        <VolumeLevelChooser
+          actual={plan.level}
+          automatico={plan.autoLevel}
+          elegidoPorTi={plan.chosenByUser}
+          onElegir={(n) => update({ volumeLevelOverride: n })}
+          onAutomatico={() => {
+            const { volumeLevelOverride: _fuera, ...resto } = profile
+            actions.saveProfile(resto)
+          }}
+        />
       </div>
 
       <LandmarkSettings profile={profile} onChange={update} />

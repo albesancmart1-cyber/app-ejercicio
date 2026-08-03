@@ -114,6 +114,35 @@ body[data-daytime='night'] {
 
 html {
   -webkit-text-size-adjust: 100%;
+  /* Ni rebote elástico al llegar al final ni «tirar para recargar»: eso es de
+     una página web, y aquí el documento no se desplaza. */
+  overscroll-behavior: none;
+  height: 100%;
+}
+
+/*
+ * Comportamiento de app, no de página.
+ *
+ * `touch-action: manipulation` quita el zoom por doble toque y, de paso, los
+ * 300 ms de espera que el navegador dejaba para distinguirlo de un toque
+ * normal: los botones responden al instante. El texto no se selecciona al
+ * mantener pulsado —en una app nativa tampoco—, salvo donde escribes.
+ * Y sin el destello gris del navegador al tocar, que delata que esto es web.
+ */
+body {
+  touch-action: manipulation;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+input,
+textarea,
+[contenteditable] {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 body {
@@ -699,6 +728,115 @@ textarea:focus {
 
 .bar-fill.low {
   background: var(--border-strong);
+}
+
+/* ── Pantalla grande: la misma app, extendida ───────────── */
+
+/*
+ * En un ordenador, una columna de 460 px centrada en mitad de un monitor no es
+ * una app: es una web de móvil ampliada. Aquí el armazón gira noventa grados —la
+ * cápsula de cristal pasa a ser una barra lateral, que es lo que hacen las apps
+ * de Apple en pantalla ancha— y el contenido ocupa el resto.
+ *
+ * A partir de 1100 px las tarjetas se reparten en dos columnas. Los títulos y
+ * los botones de acción siguen ocupando el ancho entero: son el hilo de la
+ * pantalla y partirlos en dos rompería el orden de lectura.
+ */
+@media (min-width: 900px) {
+  #root {
+    left: 0;
+    transform: none;
+    width: 100%;
+    max-width: none;
+    flex-direction: row;
+  }
+
+  .app-main {
+    padding: 40px 40px 56px;
+  }
+
+  /* Medida de lectura cómoda, centrada en lo que queda tras la barra lateral. */
+  .app-main > * {
+    max-width: 860px;
+    margin-inline: auto;
+  }
+
+  .tabbar {
+    position: relative;
+    order: -1;
+    flex: 0 0 232px;
+    height: auto;
+    /* Se ajusta a lo que ocupan las pestañas en vez de estirarse hasta abajo:
+       una cápsula de cristal flotando, no una columna vacía de setecientos
+       píxeles. */
+    align-self: flex-start;
+    margin: 18px 0 18px 18px;
+    width: auto;
+    max-width: none;
+    left: auto;
+    bottom: auto;
+    transform: none;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 4px;
+    padding: 14px;
+    border-radius: 26px;
+  }
+
+  .tab {
+    flex: 0 0 auto;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 12px;
+    height: 46px;
+    padding: 0 14px;
+    border-radius: 14px;
+  }
+
+  .tab span {
+    font-size: 0.9375rem;
+    letter-spacing: -0.01em;
+  }
+
+  /* El indicador se desliza en vertical, no en horizontal. */
+  .tab-indicator {
+    top: 14px;
+    bottom: auto;
+    left: 14px;
+    right: 14px;
+    width: auto;
+    height: 46px;
+    border-radius: 14px;
+    transform: translateY(calc(var(--tab-index, 0) * 50px));
+    transition: transform 0.42s var(--ease);
+  }
+}
+
+/*
+ * Dos columnas solo donde las tarjetas son independientes entre sí —Cuerpo,
+ * Mesa, Ajustes—, que lo pide la pantalla con la clase `cards-grid`. En «Hoy» y
+ * en la sesión no: son un hilo con un orden —cómo estás, qué toca, empezar— y
+ * partirlo en dos columnas obligaría a leer en zigzag.
+ */
+@media (min-width: 1180px) {
+  .app-main > .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 20px;
+    align-items: start;
+    max-width: 1180px;
+  }
+
+  /* Títulos y botones hacen de encabezado: ocupan el ancho entero. */
+  .app-main > .cards-grid > :not(.card) {
+    grid-column: 1 / -1;
+  }
+
+  /* Envoltorio que solo existe para dar un margen: en la rejilla desaparece y
+     la tarjeta de dentro pasa a ser la que se coloca. */
+  .app-main > .cards-grid > .card-wrap {
+    display: contents;
+  }
 }
 
 /* ── Volumen por músculo ────────────────────────────────── */

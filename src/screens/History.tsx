@@ -250,11 +250,11 @@ export default function History() {
   const leptin = computeLeptinSignal(data.checkIns, today, data.profile?.goal)
 
   return (
-    <div className="fade-in">
+    <div className="fade-in cards-grid">
       <p className="eyebrow">Cómo vas</p>
       <h1>Tu cuerpo</h1>
 
-      <div style={{ marginTop: 28 }}>
+      <div className="card-wrap" style={{ marginTop: 28 }}>
         <VolumeByMuscle
           sessions={data.sessions}
           todayIso={today}
