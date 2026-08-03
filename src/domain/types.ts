@@ -145,6 +145,12 @@ export interface Profile {
    * tal.
    */
   volumeLevelOverride?: 1 | 2 | 3 | 4
+  /**
+   * Lo que la app ha aprendido de qué ejercicios te gustan, sin que los hayas
+   * marcado: sube el que entrenas y baja el que cambias por otro. Ver
+   * `src/domain/affinity.ts`.
+   */
+  exerciseAffinity?: Record<string, number>
 }
 
 export type StressLevel = 'bajo' | 'medio' | 'alto'

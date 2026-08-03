@@ -230,27 +230,40 @@ dentro y con los mismos guardas; la segunda además nunca alarga el cardio, solo
 
 ## Cambiar un ejercicio, o añadir otro
 
-Si un ejercicio no te sirve —no te gusta o no tienes con qué hacerlo—, **«Cambiar ejercicio» abre el
-catálogo** y eliges tú, filtrando por grupo muscular o buscando por nombre; la búsqueda ignora las
-tildes, así que «biceps» encuentra «bíceps». Hay también un botón para **añadir un ejercicio más** a
-la sesión, que recibe exactamente el mismo trato que los propuestos: sus series, su peso sugerido y
-su descanso.
+A veces el propuesto no sirve: no gusta, o no se tiene con qué hacerlo. **«Cambiar ejercicio» lo
+sustituye de un toque** — elige la app, que para eso está. Pedirle al usuario que escogiera de una
+lista de cien era exactamente lo contrario del propósito de esto.
 
-Antes esto rotaba a ciegas por las alternativas, prefiriendo un patrón de movimiento distinto al que
-descartabas. La idea era buena y sigue ahí para ordenar la lista (`alternativesFor`), pero como
-único mecanismo fallaba: con pocas opciones en el grupo, tocar el botón iba y venía entre los dos
-mismos ejercicios, que no es cambiar sino dar vueltas. Y el motivo real del cambio —el gimnasio
-tiene la máquina ocupada, hoy te molesta un hombro— la app no lo puede adivinar.
+El sustituto trabaja **los mismos músculos**, no el mismo grupo grueso: eso era lo que permitía que
+cambiar un curl te devolviera un tríceps. Primero los que mueven ese músculo como motor principal;
+después, los que lo acompañan, porque hay músculos con solo tres ejercicios directos en todo el
+catálogo y sin ellos cambiar se convertía en un ir y venir entre dos.
 
-Para que cambiar tenga a dónde ir, el catálogo es largo: **107 ejercicios**, con un mínimo de dos
-opciones por grupo muscular aun entrenando solo con peso corporal, y con su patrón de movimiento
-—y por tanto su animación— cada uno. Dos tests lo vigilan: que ningún ejercicio se quede sin patrón,
-y que ningún grupo se quede corto.
+Y cada toque trae **uno distinto**. La app recuerda lo que ya has descartado en ese hueco de la
+sesión: sin eso, al cambiar A por B el siguiente toque devolvía A, porque A ya no estaba en la sesión
+y volvía a ser candidato. Agotadas las opciones vuelve a empezar, en vez de dejar el botón muerto.
+Si aun así se prefiere elegir a mano, **«Elegirlo yo de la lista»** sigue abriendo el catálogo, con
+buscador y filtro por zona.
 
-El tamaño del catálogo viene además de un fallo real que apareció por el camino: el filtro de
-material daba por disponible cualquier ejercicio que listara «peso corporal» aunque además
-necesitara algo, y por eso proponía **subidas al cajón a quien no tiene cajón**. Ahora subidas al
-cajón y fondos en banco exigen banco, y al corregirlo hubo que rellenar los huecos que dejaba.
+### Lo que la app aprende
+
+Marcar favoritos funciona, pero es trabajo. Así que además se aprende de lo que ya haces
+(`src/domain/affinity.ts`): cada ejercicio que **entrenas** sube, cada uno que **cambias** por otro
+baja, y el que te quedas sube un poco —menos de lo que baja el descartado, porque quedarse con lo
+primero que aparece dice menos que rechazar algo activamente—. Con eso, la próxima vez que hagan
+falta esos músculos, lo que te gusta se propone antes.
+
+Es deliberadamente lento y acotado a ±3. Un solo cambio no condena a un ejercicio —puede que ese día
+no tuvieras sitio, o que te doliera algo— y una sola sesión no lo consagra. Un favorito marcado a
+mano manda sobre lo aprendido: es una preferencia declarada, no una deducción. Y lo aprendido nunca
+manda sobre que el sustituto haga el trabajo: primero que mueva los músculos que tocaba, después que
+te guste.
+
+Los rechazados con **«No me lo propongas más»** siguen siendo distintos: esos desaparecen del todo,
+con la guarda de siempre —si excluirlos dejara un músculo sin ningún ejercicio, se ignora la lista y
+se propone igual, diciéndolo—.
+
+`node scripts/check-cambiar.mjs` comprueba las cuatro cosas en navegador.
 
 ## Tus favoritos
 
@@ -711,7 +724,7 @@ En local la app se sirve en la raíz y en Pages bajo `/app-ejercicio/`. Lo contr
 ```bash
 npm install
 npm run dev       # servidor de desarrollo
-npm test          # 419 tests: motor, catálogo, DHA, leptina, composición, tendencia, cambios, calendario, volumen, variantes, sesión mixta, músculos, foco por músculo, progresión de carga y migración
+npm test          # 434 tests: motor, catálogo, DHA, leptina, composición, tendencia, cambios, calendario, volumen, variantes, sesión mixta, músculos, foco por músculo, progresión de carga y migración
 npm run build     # build de producción (PWA)
 npm run preview   # servir la build
 ```
@@ -737,6 +750,9 @@ npm run preview   # servir la build
   app se migran solos, sin perder nada, marcando lo deducido y sin volver a cambiar al reabrir.
 - `node scripts/comparar-motores.mjs` — genera seis meses de historial con las decisiones de la propia
   app y compara semana a semana lo que ve el motor viejo con lo que ve el nuevo.
+- `node scripts/check-cambiar.mjs` — comprueba que cambiar de ejercicio lo hace la app de un toque,
+  que cada toque trae uno distinto, que el sustituto trabaja lo mismo y que la afinidad aprendida se
+  guarda en el perfil.
 - `node scripts/check-pantalla.mjs` — comprueba que en el móvil la escala está fijada, no hay rebote
   ni selección de texto y el documento no se desplaza; y que en el ordenador la barra pasa a ser
   lateral, el contenido aprovecha el ancho y las tarjetas independientes van en dos columnas.

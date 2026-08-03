@@ -153,12 +153,28 @@ if (!(await page.getByText('Empezar entrenamiento').count())) {
   process.exit(1)
 }
 
-// Cambiar un ejercicio que no encaja, eligiéndolo de la lista.
+// Cambiar un ejercicio que no encaja. Un toque, y elige la app.
+const nombreOriginal = await page.locator('.item-title').first().textContent()
+await page.getByRole('button', { name: 'Cambiar ejercicio' }).first().click()
+await page.waitForTimeout(500)
+if (await page.locator('.picker').count()) {
+  console.error('ERROR: cambiar de un toque no debe abrir ninguna lista')
+  process.exit(1)
+}
+const trasUnToque = await page.locator('.item-title').first().textContent()
+if (trasUnToque === nombreOriginal) {
+  console.error('ERROR: el toque no cambió el ejercicio →', nombreOriginal)
+  process.exit(1)
+}
+console.log('  → un toque:', nombreOriginal, '→', trasUnToque)
+await shot('10a0-cambiado-solo')
+
+// Y si aun así uno quiere elegirlo a mano, la lista sigue estando.
 const nombreAntes = await page.locator('.item-title').first().textContent()
-await page.getByText('Cambiar ejercicio').first().click()
+await page.getByText('Elegirlo yo de la lista').first().click()
 await page.waitForTimeout(400)
 if (!(await page.locator('.picker').count())) {
-  console.error('ERROR: cambiar ejercicio debe abrir la lista para elegir')
+  console.error('ERROR: «elegirlo yo de la lista» debe abrir la lista')
   process.exit(1)
 }
 const opciones = await page.locator('.picker-pick').count()
@@ -166,7 +182,7 @@ if (opciones < 3) {
   console.error('ERROR: la lista debería ofrecer varias opciones; hay', opciones)
   process.exit(1)
 }
-console.log('  → la lista ofrece', opciones, 'ejercicios del grupo')
+console.log('  → la lista ofrece', opciones, 'ejercicios para ese músculo')
 await shot('10a1-lista')
 
 // Marcar un favorito desde la propia lista y elegir ese mismo ejercicio.

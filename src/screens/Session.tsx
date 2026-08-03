@@ -12,7 +12,8 @@ import {
 } from '../domain/types'
 import { initLogs, syncExercise, volumeLoad } from '../domain/setLogs'
 import { DESCANSO_ENTRE_EJERCICIOS } from '../domain/protocol'
-import { changeVariant, swapExercise } from '../domain/swap'
+import { changeVariant, nextAlternative, swapExercise } from '../domain/swap'
+import { trasCambiar, trasEntrenar } from '../domain/affinity'
 import { meterPesas, pesasParaMeter, puedeMeterPesas } from '../domain/mixIn'
 import { prepareExercise } from '../domain/workoutBuilder'
 import { implementOptions, sideOptions, variantLabel } from '../domain/variants'
@@ -62,6 +63,13 @@ export default function SessionScreen({ session }: { session: Session }) {
   const [comoSeHace, setComoSeHace] = useState<number | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
   const [eligiendo, setEligiendo] = useState<Eligiendo | null>(null)
+  /**
+   * Lo que ya se ha descartado en cada hueco de la sesión, para que tocar
+   * «cambiar» recorra opciones distintas en vez de ir y venir entre dos: sin
+   * esto, al cambiar A por B el siguiente toque devolvía A, porque A ya no
+   * estaba en la sesión y volvía a ser candidato.
+   */
+  const descartadosPorHueco = useRef<Map<number, string[]>>(new Map())
 
   const keto = data.checkIns.find((c) => c.date === session.date)?.keto ?? false
   // Con qué se planificó la sesión, para que un ejercicio elegido a mano reciba
@@ -146,6 +154,12 @@ export default function SessionScreen({ session }: { session: Session }) {
       const actual = exercises[eligiendo.indice]
       const sustituto = swapExercise(actual, exercise, profile, data.sessions, contexto)
       setExercises((prev) => prev.map((e, i) => (i === eligiendo.indice ? sustituto : e)))
+      const vistos = descartadosPorHueco.current.get(eligiendo.indice) ?? []
+      descartadosPorHueco.current.set(eligiendo.indice, [...vistos, actual.exerciseId])
+      actions.saveProfile({
+        ...profile,
+        exerciseAffinity: trasCambiar(profile, actual.exerciseId, exercise.id)
+      })
       setAviso(`Cambiado: ${actual.name} → ${exercise.name}.`)
     } else {
       const nuevo = prepareExercise(exercise, profile, {
@@ -158,6 +172,36 @@ export default function SessionScreen({ session }: { session: Session }) {
       setAviso(`Añadido: ${exercise.name}.`)
     }
     setEligiendo(null)
+    setResting(null)
+    setComoSeHace(null)
+  }
+
+  /**
+   * Cambiar el ejercicio de un toque: elige la app, no el usuario.
+   *
+   * Pedirle que escogiera de una lista de cien era justo lo contrario del
+   * propósito de esto. Aquí se sustituye directamente por otro que trabaje los
+   * mismos músculos, y cada toque trae uno nuevo hasta agotar las opciones. De
+   * paso, el descartado baja en la afinidad y el que entra sube un poco: la
+   * próxima vez que hagan falta esos músculos, se propone antes lo que te gusta.
+   */
+  function cambiar(indice: number) {
+    const actual = exercises[indice]
+    const vistos = descartadosPorHueco.current.get(indice) ?? []
+    const sesionAhora = { ...session, exercises }
+    const siguiente = nextAlternative(actual, profile, sesionAhora, 'alto', vistos)
+    if (!siguiente) {
+      setAviso(`No tengo con qué cambiar ${actual.name.toLowerCase()} con tu material.`)
+      return
+    }
+    descartadosPorHueco.current.set(indice, [...vistos, actual.exerciseId])
+    const sustituto = swapExercise(actual, siguiente, profile, data.sessions, contexto)
+    setExercises((prev) => prev.map((e, i) => (i === indice ? sustituto : e)))
+    actions.saveProfile({
+      ...profile,
+      exerciseAffinity: trasCambiar(profile, actual.exerciseId, siguiente.id)
+    })
+    setAviso(`${actual.name} → ${siguiente.name}. Toca otra vez si tampoco encaja.`)
     setResting(null)
     setComoSeHace(null)
   }
@@ -272,6 +316,12 @@ export default function SessionScreen({ session }: { session: Session }) {
 
   function guardar() {
     cerrada.current = true
+    // Lo que has entrenado sube en la afinidad: es la señal más honesta de que
+    // el ejercicio te vale, porque no has tenido que decir nada.
+    actions.saveProfile({
+      ...profile,
+      exerciseAffinity: trasEntrenar(profile, { ...session, exercises })
+    })
     actions.saveSession({
       ...session,
       exercises,
@@ -354,13 +404,19 @@ export default function SessionScreen({ session }: { session: Session }) {
               </button>
             )}
             {e.primary !== 'cardio' && (
-              <button
-                className="disclose"
-                onClick={() => setEligiendo({ modo: 'cambiar', indice: ei })}
-              >
-                <Icon name="spark" />
-                Cambiar ejercicio
-              </button>
+              <>
+                <button className="disclose" onClick={() => cambiar(ei)}>
+                  <Icon name="spark" />
+                  Cambiar ejercicio
+                </button>
+                <button
+                  className="disclose"
+                  onClick={() => setEligiendo({ modo: 'cambiar', indice: ei })}
+                >
+                  <Icon name="chevron" />
+                  Elegirlo yo de la lista
+                </button>
+              </>
             )}
             {/* Quitarlo de hoy está disponible también para el cardio: hay días
                 en que lo que sobra es justo eso. */}

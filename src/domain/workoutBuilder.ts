@@ -1,5 +1,6 @@
 import { EXERCISES } from '../data/exercises'
 import { contributionsOf } from '../data/contributions'
+import { pesoDePreferencia } from './affinity'
 import type {
   Equipment,
   Exercise,
@@ -359,14 +360,14 @@ function pickForGroup(
   if (candidates.length === 0) return undefined
 
   // Con un catálogo grande, lo que hace que las sesiones se parezcan a lo que
-  // uno quiere entrenar son los favoritos: van primero. Después, no repetir lo
-  // de la última sesión —así se rota entre los favoritos en vez de caer siempre
-  // en el mismo—, y por último el mayor estímulo permitido.
-  const favoritos = new Set(profile.favoriteExercises ?? [])
+  // uno quiere entrenar es la preferencia: los favoritos marcados y lo que la
+  // app ha aprendido de lo que entrenas y de lo que cambias. Después, no repetir
+  // lo de la última sesión —así se rota en vez de caer siempre en el mismo—, y
+  // por último el mayor estímulo permitido.
   candidates.sort((a, b) => {
-    const favA = favoritos.has(a.id) ? 0 : 1
-    const favB = favoritos.has(b.id) ? 0 : 1
-    if (favA !== favB) return favA - favB
+    const prefA = pesoDePreferencia(profile, a.id)
+    const prefB = pesoDePreferencia(profile, b.id)
+    if (prefA !== prefB) return prefB - prefA
     const repeatA = recent.has(a.id) ? 1 : 0
     const repeatB = recent.has(b.id) ? 1 : 0
     if (repeatA !== repeatB) return repeatA - repeatB
@@ -418,16 +419,15 @@ export function pickForMuscle(
   if (candidates.length === 0) candidates = porAporte(0.5)
   if (candidates.length === 0) return undefined
 
-  const favoritos = new Set(profile.favoriteExercises ?? [])
   const otros = tambien.filter((m) => m !== muscle)
   const cubre = (e: Exercise) => {
     const c = contributionsOf(e.id)
     return otros.reduce((a, m) => a + (c[m] ?? 0), 0)
   }
   candidates.sort((a, b) => {
-    const favA = favoritos.has(a.id) ? 0 : 1
-    const favB = favoritos.has(b.id) ? 0 : 1
-    if (favA !== favB) return favA - favB
+    const prefA = pesoDePreferencia(profile, a.id)
+    const prefB = pesoDePreferencia(profile, b.id)
+    if (prefA !== prefB) return prefB - prefA
     const repeatA = recent.has(a.id) ? 1 : 0
     const repeatB = recent.has(b.id) ? 1 : 0
     if (repeatA !== repeatB) return repeatA - repeatB
