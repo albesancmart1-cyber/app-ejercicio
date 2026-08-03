@@ -886,6 +886,27 @@ textarea:focus {
   font-size: 0.9375rem;
 }
 
+/* Elegir a mano el nivel de volumen. */
+.level-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 6px;
+}
+
+.level-actions .btn-quiet {
+  width: auto;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.level-picker {
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: var(--r-control);
+  background: var(--fill-3);
+}
+
 /*
  * Qué está haciendo la progresión de carga hoy. Va en la tarjeta del ejercicio
  * porque es donde uno mira el peso y se pregunta por qué no ha subido.

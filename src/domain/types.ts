@@ -137,6 +137,14 @@ export interface Profile {
    * tener que elegir cada día.
    */
   favoriteExercises?: string[]
+  /**
+   * Nivel de volumen elegido a mano. La app decide sola por defecto —solo sube
+   * cuando el cuerpo demuestra que asimila—, pero quien se nota preparado puede
+   * adelantarlo —o quedarse por debajo—. Manda mientras diga algo distinto del
+   * automático; cuando coinciden deja de ser una elección y no se marca como
+   * tal.
+   */
+  volumeLevelOverride?: 1 | 2 | 3 | 4
 }
 
 export type StressLevel = 'bajo' | 'medio' | 'alto'
@@ -336,6 +344,10 @@ export interface Recommendation {
     changes: string[]
     reason: string
     evidence: string[]
+    /** El nivel lo ha elegido el usuario, no la progresión automática. */
+    chosenByUser?: boolean
+    /** Dónde estaría la app si decidiera ella. Para poder compararlo. */
+    autoLevel?: number
   }
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { esSesionLimpia, seriesPorSesion, volumePlan } from './progression'
+import { esSesionLimpia, porQueNoCuentan, revisarSesion, seriesPorSesion, volumePlan } from './progression'
 import { computeReadiness } from './readiness'
 import { recommend, withMoreIntensity } from './recommender'
 import { buildSession, variarRango } from './workoutBuilder'
@@ -75,6 +75,68 @@ const malos = checkIns(1)
 const limpias = (n: number) => Array.from({ length: n }, (_, i) => sesion(3 + i * 3))
 
 describe('qué cuenta como sesión asimilada', () => {
+  /** Sesión de N ejercicios × 3 series, con control fino de lo que falla. */
+  function sesionDe(opts: { ejercicios?: number; sinMarcar?: number; cortas?: number }): Session {
+    const { ejercicios = 5, sinMarcar = 0, cortas = 0 } = opts
+    let quedanSinMarcar = sinMarcar
+    let quedanCortas = cortas
+    return {
+      id: 'x',
+      date: '2026-07-23',
+      kind: 'fuerza',
+      title: 't',
+      completed: true,
+      rpe: 4,
+      exercises: Array.from({ length: ejercicios }, (_, i) => ({
+        exerciseId: 'press_banca_mancuernas',
+        name: 'Press ' + i,
+        primary: 'pecho' as const,
+        plan: { sets: 3, reps: '8-12' },
+        logs: Array.from({ length: 3 }, () => {
+          if (quedanSinMarcar > 0) {
+            quedanSinMarcar -= 1
+            return { weightKg: 14, reps: 10, done: false }
+          }
+          if (quedanCortas > 0) {
+            quedanCortas -= 1
+            return { weightKg: 14, reps: 6, done: true }
+          }
+          return { weightKg: 14, reps: 10, done: true }
+        })
+      }))
+    }
+  }
+
+  it('una serie corta de quince no tira la sesión entera', () => {
+    // Era el fallo que hacía que el volumen no subiera nunca: con «todas o
+    // ninguna», la última serie de la última tabla invalidaba el día completo.
+    expect(esSesionLimpia(sesionDe({ cortas: 1 }))).toBe(true)
+  })
+
+  it('pero si la mayoría se quedan cortas, no cuenta', () => {
+    expect(esSesionLimpia(sesionDe({ cortas: 10 }))).toBe(false)
+  })
+
+  it('una serie sin marcar tampoco la tira', () => {
+    expect(esSesionLimpia(sesionDe({ sinMarcar: 1 }))).toBe(true)
+  })
+
+  it('dejarse un ejercicio entero sí', () => {
+    expect(esSesionLimpia(sesionDe({ sinMarcar: 3 }))).toBe(false)
+  })
+
+  it('dice qué falló, no solo que falló', () => {
+    expect(revisarSesion(sesionDe({ sinMarcar: 5 })).motivo).toBe('series_sin_marcar')
+    expect(revisarSesion(sesionDe({ cortas: 10 })).motivo).toBe('repeticiones_cortas')
+    expect(revisarSesion({ ...sesionDe({}), rpe: 1 }).motivo).toBe('costo_mucho')
+  })
+
+  it('y lo cuenta con números para poder corregirlo', () => {
+    const texto = porQueNoCuentan([sesionDe({ sinMarcar: 5 })])!
+    expect(texto).toMatch(/\d+ de \d+/)
+    expect(texto.toLowerCase()).toContain('marcar')
+  })
+
   it('completa, dentro del rango y sin sufrir', () => {
     expect(esSesionLimpia(sesion(3))).toBe(true)
   })

@@ -536,6 +536,33 @@ sesiones dejan de salir, se baja **un escalón**, no hasta el suelo: tirar de go
 acumulada por cuatro sesiones flojas no lo sostiene nada, y además se corrige solo, porque el nivel
 sale de las sesiones limpias de las últimas ocho semanas.
 
+### Saltar de nivel a mano
+
+La progresión automática va lenta a propósito, pero eso da por hecho que la app sabe de lo que eres
+capaz, y no lo sabe: no tiene ni idea de si llevas años levantando en otro sitio. Desde la tarjeta de
+volumen, **«Subir de nivel»** abre los cuatro niveles con lo que significa cada uno —ejercicios,
+series, series de trabajo, zonas— y el elegido manda sobre el calculado. Se puede elegir también uno
+más bajo: hay semanas en las que uno sabe que no quiere más volumen aunque el cuerpo aguante.
+
+Elegido a mano, la app no se calla ni te lo cambia por la espalda: sigue enseñando dónde estaría ella
+(«por sesiones limpias yo estaría en el 1»), y si la señal de leptina cae dice que bajaría al volumen
+base **manteniendo tu nivel**. Volver a lo automático es un toque. Y cuando el nivel calculado alcanza
+al elegido, deja de marcarse como elección: ya es el mismo.
+
+### Qué cuenta como sesión asimilada
+
+Todo lo anterior descansa en contar **sesiones limpias**, y ahí había un fallo que dejaba la puerta
+cerrada para siempre: se exigía que **cada** serie de **cada** ejercicio llegara al mínimo del rango.
+En una sesión de veinte series, que la última se quede a una repetición es la forma normal de la
+fatiga en series rectas, no un fallo de adaptación — pero invalidaba el día entero. El resultado era
+«0 de tus últimas 3 sesiones» semana tras semana y un volumen que no subía nunca.
+
+Ahora una sesión cuenta si se marcó al menos el **85 %** de las series y **dos tercios** de las que
+llevan repeticiones anotadas llegaron al rango, con la sensación en 3 o más. Y cuando no cuenta, la
+app dice por qué y con números: «quedaron series sin marcar: la última vez, 12 de 20» o «las
+repeticiones se quedaron por debajo del rango: llegaron 4 de 15; si pasa siempre, el peso va por
+delante de lo que toca».
+
 Nada de esto pasa en silencio: la pantalla de hoy muestra un bloque **«Volumen · nivel N de 4»** con
 **qué cambia** respecto al volumen base —acumulado, no solo el último escalón— **por qué** se está en
 ese nivel y **en qué me baso** (cuántas sesiones salieron limpias, qué dice la composición, qué dice
@@ -667,7 +694,7 @@ En local la app se sirve en la raíz y en Pages bajo `/app-ejercicio/`. Lo contr
 ```bash
 npm install
 npm run dev       # servidor de desarrollo
-npm test          # 412 tests: motor, catálogo, DHA, leptina, composición, tendencia, cambios, calendario, volumen, variantes, sesión mixta, músculos, foco por músculo, progresión de carga y migración
+npm test          # 419 tests: motor, catálogo, DHA, leptina, composición, tendencia, cambios, calendario, volumen, variantes, sesión mixta, músculos, foco por músculo, progresión de carga y migración
 npm run build     # build de producción (PWA)
 npm run preview   # servir la build
 ```
@@ -693,6 +720,9 @@ npm run preview   # servir la build
   app se migran solos, sin perder nada, marcando lo deducido y sin volver a cambiar al reabrir.
 - `node scripts/comparar-motores.mjs` — genera seis meses de historial con las decisiones de la propia
   app y compara semana a semana lo que ve el motor viejo con lo que ve el nuevo.
+- `node scripts/check-nivel.mjs` — comprueba que se puede saltar de nivel de volumen a mano, que la
+  elección se guarda en el perfil y manda sobre lo calculado, que se puede deshacer y que la sesión
+  que se construye trae de verdad ese volumen.
 - `node scripts/check-carga.mjs` — comprueba en navegador que una sesión al tope del rango no sube el
   peso y la app lo dice, que dos seguidas sí y de forma proporcional, y que al llegar al tope del
   material la progresión cambia de palanca.

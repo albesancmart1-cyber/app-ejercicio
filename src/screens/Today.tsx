@@ -2,13 +2,14 @@ import { useMemo, useState } from 'react'
 import { MUSCLE_GROUPS, MUSCLE_LABELS, type CheckIn, type Discomfort, type MuscleGroup } from '../domain/types'
 import { computeReadiness } from '../domain/readiness'
 import { canIntensify, canMix, recommend, withMoreIntensity, withSomeStrength } from '../domain/recommender'
-import { volumePlan } from '../domain/progression'
+import { NIVEL_MAXIMO, volumePlan } from '../domain/progression'
 import { interpretTrend } from '../domain/trend'
 import { buildSession } from '../domain/workoutBuilder'
 import { actions, useAppData } from '../store/store'
 import { useToday } from '../store/clock'
 import { findActiveSession } from '../domain/activeSession'
 import Icon from '../components/Icon'
+import VolumeLevelChooser from '../components/VolumeLevelChooser'
 import SessionScreen from './Session'
 
 type Scale = 1 | 2 | 3 | 4 | 5
@@ -338,7 +339,8 @@ export default function Today() {
               <>
                 <hr className="rule" />
                 <p className="eyebrow">
-                  Volumen · nivel {recommendation.volume.level} de 4
+                  Volumen · nivel {recommendation.volume.level} de {NIVEL_MAXIMO}
+                  {recommendation.volume.chosenByUser ? ' · elegido por ti' : ''}
                 </p>
                 {recommendation.volume.changes.length > 0 && (
                   <>
@@ -365,6 +367,16 @@ export default function Today() {
                     </ul>
                   </>
                 )}
+                <VolumeLevelChooser
+                  actual={recommendation.volume.level}
+                  automatico={recommendation.volume.autoLevel}
+                  elegidoPorTi={recommendation.volume.chosenByUser}
+                  onElegir={(n) => actions.saveProfile({ ...profile, volumeLevelOverride: n })}
+                  onAutomatico={() => {
+                    const { volumeLevelOverride: _, ...resto } = profile
+                    actions.saveProfile(resto)
+                  }}
+                />
               </>
             )}
 

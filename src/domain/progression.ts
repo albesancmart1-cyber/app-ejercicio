@@ -49,6 +49,38 @@ export interface VolumePlan {
   reason: string
   /** Señales que sostienen la decisión, para el desplegable de detalle. */
   evidence: string[]
+  /** El nivel lo ha puesto el usuario a mano, no la progresión automática. */
+  chosenByUser?: boolean
+  /** Dónde estaría la app decidiendo ella, para poder comparar. */
+  autoLevel?: VolumeLevel
+}
+
+export const NIVEL_MAXIMO: VolumeLevel = 4
+
+/**
+ * ¿Manda el nivel elegido a mano?
+ *
+ * Mientras esté puesto y diga algo distinto del automático, sí: tanto para
+ * adelantar como para quedarse por debajo, que también es una decisión legítima
+ * —hay semanas en las que uno sabe que no quiere más volumen aunque el cuerpo
+ * aguante—. Cuando coinciden deja de ser una elección: es el mismo nivel, y
+ * seguir marcándolo como «elegido por ti» solo confundiría.
+ */
+export function overrideVigente(elegido: VolumeLevel | undefined, automatico: VolumeLevel): boolean {
+  return elegido !== undefined && elegido !== automatico
+}
+
+/** Lo que cambia al ponerse en un nivel, para enseñarlo antes de elegirlo. */
+export function resumenDeNivel(nivel: VolumeLevel): {
+  nivel: VolumeLevel
+  setsPerExercise: number
+  exercisesPerSession: number
+  focusMuscles: number
+  seriesPorSesion: number
+  repBias: 'normal' | 'variado'
+} {
+  const n = NIVELES[nivel]
+  return { nivel, ...n, seriesPorSesion: seriesPorSesion(nivel) }
 }
 
 /**
@@ -118,29 +150,94 @@ function sesionesRecientes(sessions: Session[], todayIso: string, semanas: numbe
 }
 
 /**
- * Una sesión «limpia» es la prueba de que el cuerpo asimila: todas las series
- * marcadas, dentro o por encima del rango de repeticiones, y sin que costara
- * la vida.
+ * Qué proporción de la sesión hay que haber hecho para que cuente como asimilada.
+ *
+ * No es «todo o nada», y esto era un fallo de verdad: exigir que **cada** serie
+ * de **cada** ejercicio llegara al mínimo del rango hacía que una sesión de
+ * veinte series se cayera entera porque la última se quedó a una repetición. En
+ * series rectas con un rango, que las últimas se queden cortas es la forma
+ * normal de la fatiga, no un fallo de adaptación. Con ese listón la puerta no se
+ * abría nunca y el volumen no subía jamás: el usuario veía «0 de tus últimas 3
+ * sesiones» semana tras semana sin saber por qué.
  */
-export function esSesionLimpia(s: Session): boolean {
+export const PROPORCION_SERIES_HECHAS = 0.85
+export const PROPORCION_SERIES_EN_RANGO = 2 / 3
+
+export type MotivoNoLimpia = 'sin_series' | 'series_sin_marcar' | 'repeticiones_cortas' | 'costo_mucho'
+
+export interface RevisionSesion {
+  limpia: boolean
+  motivo?: MotivoNoLimpia
+  /** Series marcadas y planificadas, para poder decirlo con números. */
+  hechas: number
+  total: number
+  /** Series con repeticiones anotadas que llegaron al mínimo del rango. */
+  enRango: number
+  conReps: number
+}
+
+/**
+ * Si una sesión demuestra que el cuerpo asimila, y si no, por qué no.
+ *
+ * El motivo importa tanto como el veredicto: «no sube el volumen» sin decir qué
+ * falta es exactamente la queja que destapó lo anterior.
+ */
+export function revisarSesion(s: Session): RevisionSesion {
   const fuerza = s.exercises.filter((e) => e.primary !== 'cardio' && e.logs && e.logs.length > 0)
-  if (fuerza.length === 0) return false
+  const vacio = { hechas: 0, total: 0, enRango: 0, conReps: 0 }
+  if (fuerza.length === 0) return { limpia: false, motivo: 'sin_series', ...vacio }
 
-  const todasHechas = fuerza.every((e) => e.logs!.every((l) => l.done))
-  if (!todasHechas) return false
+  const logs = fuerza.flatMap((e) => e.logs!.map((l) => ({ log: l, plan: e.plan })))
+  const total = logs.length
+  const hechas = logs.filter((x) => x.log.done).length
 
-  // Si se anotaron repeticiones, deben alcanzar al menos el mínimo del rango.
-  const llegaAlRango = fuerza.every((e) => {
-    const rango = parseRepRange(e.plan.reps)
-    if (!rango) return true
-    const conReps = e.logs!.filter((l) => typeof l.reps === 'number')
-    if (conReps.length === 0) return true
-    return conReps.every((l) => l.reps! >= rango.min)
-  })
-  if (!llegaAlRango) return false
+  const conRango = logs.filter((x) => x.log.done && typeof x.log.reps === 'number' && parseRepRange(x.plan.reps))
+  const conReps = conRango.length
+  const enRango = conRango.filter((x) => x.log.reps! >= parseRepRange(x.plan.reps)!.min).length
 
+  const cuenta = { hechas, total, enRango, conReps }
+
+  if (hechas / total < PROPORCION_SERIES_HECHAS) {
+    return { limpia: false, motivo: 'series_sin_marcar', ...cuenta }
+  }
+  if (conReps > 0 && enRango / conReps < PROPORCION_SERIES_EN_RANGO) {
+    return { limpia: false, motivo: 'repeticiones_cortas', ...cuenta }
+  }
   // Sensación: 1–2 es que costó demasiado. Sin dato, no penaliza.
-  return s.rpe === undefined || s.rpe >= 3
+  if (s.rpe !== undefined && s.rpe < 3) return { limpia: false, motivo: 'costo_mucho', ...cuenta }
+
+  return { limpia: true, ...cuenta }
+}
+
+/** Una sesión «limpia» es la prueba de que el cuerpo asimila lo que hace. */
+export function esSesionLimpia(s: Session): boolean {
+  return revisarSesion(s).limpia
+}
+
+const EXPLICACION: Record<MotivoNoLimpia, string> = {
+  sin_series: 'no llegó a registrarse ninguna serie de fuerza',
+  series_sin_marcar: 'quedaron series sin marcar',
+  repeticiones_cortas: 'las repeticiones se quedaron por debajo del rango',
+  costo_mucho: 'costó más de la cuenta'
+}
+
+/** Por qué las últimas sesiones no cuentan, en lenguaje llano. */
+export function porQueNoCuentan(sesiones: Session[]): string | null {
+  const fallidas = sesiones.map(revisarSesion).filter((r) => !r.limpia)
+  if (fallidas.length === 0) return null
+  // Se cuenta el motivo más repetido: es el que hay que corregir.
+  const cuenta = new Map<MotivoNoLimpia, number>()
+  for (const f of fallidas) cuenta.set(f.motivo!, (cuenta.get(f.motivo!) ?? 0) + 1)
+  const [motivo] = [...cuenta.entries()].sort((a, b) => b[1] - a[1])[0]
+  if (motivo === 'series_sin_marcar') {
+    const r = fallidas.find((f) => f.motivo === 'series_sin_marcar')!
+    return `En las que no cuentan, ${EXPLICACION[motivo]}: la última vez, ${r.hechas} de ${r.total}. Marcar la serie es lo que me dice que la has hecho.`
+  }
+  if (motivo === 'repeticiones_cortas') {
+    const r = fallidas.find((f) => f.motivo === 'repeticiones_cortas')!
+    return `En las que no cuentan, ${EXPLICACION[motivo]}: llegaron ${r.enRango} de ${r.conReps}. Si pasa siempre, el peso va por delante de lo que toca.`
+  }
+  return `En las que no cuentan, ${EXPLICACION[motivo]}.`
 }
 
 export interface ProgressionInput {
@@ -177,16 +274,35 @@ export function volumePlan({
     evidence.push(`${limpiasDeLasUltimas} de tus últimas ${ultimasCuatro.length} sesiones salieron completas y sin sufrir.`)
   } else {
     evidence.push(`Solo ${limpiasDeLasUltimas} de tus últimas ${ultimasCuatro.length} sesiones salieron completas: aún no toca pedir más.`)
+    const porQue = porQueNoCuentan(ultimasCuatro)
+    if (porQue) evidence.push(porQue)
   }
 
   // ── ¿Puedes? ──────────────────────────────────────────────
   if (recuperacionTocada) {
     evidence.push('Tu señal de leptina está baja: no es momento de añadir carga, sino de recuperar.')
+    // Con un nivel elegido a mano no se baja por la espalda: se respeta y se
+    // dice claramente lo que la app haría, con el botón de volver a lo
+    // automático a un toque. Bajarlo en silencio sería decidir por el usuario
+    // justo después de que él haya decidido.
+    const elegido = profile?.volumeLevelOverride
+    if (elegido && elegido > 1) {
+      return {
+        level: elegido,
+        ...NIVELES[elegido],
+        changes: cambiosAcumulados(elegido),
+        chosenByUser: true,
+        autoLevel: 1,
+        reason: `Mantengo el nivel ${elegido} porque lo has elegido tú, pero con la señal de leptina baja yo bajaría al volumen base: con la recuperación tocada, añadir series no construye músculo, solo acumula fatiga. Tú decides.`,
+        evidence
+      }
+    }
     const nivel: VolumeLevel = 1
     return {
       level: nivel,
       ...NIVELES[nivel],
       changes: ['Volvemos al volumen base mientras se recupera el descanso.'],
+      autoLevel: 1,
       reason:
         'He bajado el volumen a propósito. Con la recuperación tocada, añadir series no construye músculo: solo acumula fatiga. En cuanto el descanso vuelva a su sitio, subimos otra vez.',
       evidence
@@ -214,9 +330,40 @@ export function volumePlan({
   // limpias de las últimas ocho semanas, si la cosa no mejora seguirá bajando.
   if (!asimila) nivel = Math.max(1, nivel - 1) as VolumeLevel
 
+  // ── ¿Lo has decidido tú? ──────────────────────────────────
+  // La app va deliberadamente lenta: seis sesiones limpias por escalón. Quien se
+  // nota preparado puede adelantarlo, y entonces manda su elección. No es una
+  // excepción al criterio, es el criterio: el que entrena eres tú, y la app no
+  // tiene forma de saber que llevas años levantando en otro sitio.
+  //
+  // Se sigue calculando el automático y se enseña al lado, para poder comparar
+  // sin discutir. Y en cuanto el automático alcanza al elegido, el adelanto
+  // sobra: `overrideVigente` deja de darlo por bueno y la app vuelve a decidir.
+  const automatico = nivel
+  const elegido = profile?.volumeLevelOverride
+  const elegidoPorTi = overrideVigente(elegido, automatico)
+  if (elegidoPorTi) nivel = elegido as VolumeLevel
+
   const cambios = cambiosAcumulados(nivel)
   const n = NIVELES[nivel]
   const total = seriesPorSesion(nivel)
+
+  if (elegidoPorTi) {
+    evidence.push(
+      automatico < nivel
+        ? `Has elegido tú el nivel ${nivel}. Por sesiones limpias yo estaría en el ${automatico}, así que vas por delante de lo que te habría propuesto.`
+        : `Has elegido tú el nivel ${nivel}, por debajo del ${automatico} al que habrías llegado.`
+    )
+    return {
+      level: nivel,
+      ...n,
+      changes: cambios,
+      chosenByUser: true,
+      autoLevel: automatico,
+      reason: `Nivel ${nivel} porque lo has puesto tú: ${n.exercisesPerSession} ejercicios y ${n.setsPerExercise} series, ${total} series de trabajo entre ${n.focusMuscles} zonas. Lo mantengo mientras te salga; si las sesiones dejan de salir completas te lo diré, pero no te lo bajo yo.`,
+      evidence
+    }
+  }
 
   let reason: string
   if (nivel === 1) {
@@ -229,5 +376,5 @@ export function volumePlan({
     reason = `He subido el volumen porque lo estás asimilando: ${n.exercisesPerSession} ejercicios y ${n.setsPerExercise} series, ${total} series de trabajo entre ${n.focusMuscles} zonas. Si en algún momento las sesiones dejan de salir completas, bajo un escalón solo.`
   }
 
-  return { level: nivel, ...n, changes: cambios, reason, evidence }
+  return { level: nivel, ...n, changes: cambios, autoLevel: automatico, reason, evidence }
 }
