@@ -76,8 +76,15 @@ Si falla otra cosa, el mensaje del editor de Supabase trae el código (`42501`,
 ## Si el paso 2 salió bien pero la app no entra
 
 - «No he podido enviar el enlace (…)»: revisar el paso 3, y que el correo no
-  esté en la carpeta de no deseados. Supabase limita a unos pocos enlaces por
-  hora en el plan gratuito.
+  esté en la carpeta de no deseados.
+- **«Supabase solo manda unos pocos correos por hora»**: es un 429. El correo
+  que trae Supabase de serie es para probar, no para usar: van **unos pocos
+  envíos por hora** y se comparten entre todos los proyectos. No es un fallo
+  ni se arregla reintentando. Dos salidas: buscar el último enlace que llegó
+  —cada uno vale una vez, pero si no se ha usado sigue sirviendo— o, si
+  molesta a menudo, poner un SMTP propio en **Authentication → Emails → SMTP
+  Settings**, que quita el límite. Para una app de una persona no suele hacer
+  falta: se entra una vez por dispositivo y la sesión se queda.
 - **El enlace del correo lleva a un 404 de GitHub** («There isn't a GitHub
   Pages site here»): mira la barra de direcciones. Si acabó en la raíz del
   dominio, sin `/app-ejercicio/`, es que Supabase no aceptó la dirección de

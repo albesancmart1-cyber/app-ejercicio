@@ -109,8 +109,11 @@ export async function pedirEnlace(email: string): Promise<void> {
   if (!res.ok) {
     const cuerpo = await res.text()
     throw new ErrorNube(
+      // El correo de cortesía de Supabase va muy justo: unos pocos envíos por
+      // hora y a compartir con todo el mundo. Decir «espera un minuto» era
+      // mandarte a reintentar en balde; el que ya te llegó sigue valiendo.
       res.status === 429
-        ? 'Has pedido varios enlaces seguidos. Espera un minuto y vuelve a intentarlo.'
+        ? 'Supabase solo manda unos pocos correos por hora, y ya has gastado el cupo. Busca el último enlace que te llegó, que probablemente siga sirviendo, y si no espera un rato largo antes de pedir otro.'
         : `No he podido enviar el enlace (${res.status}). ${cuerpo.slice(0, 120)}`
     )
   }
