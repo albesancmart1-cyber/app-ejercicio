@@ -1,4 +1,5 @@
 import type { LandmarkOverrides } from './landmarks'
+import type { Lapida } from './merge'
 import type { Muscle, MuscleContributions } from './muscles'
 
 /**
@@ -207,6 +208,8 @@ export type Discomfort = 'ninguna' | 'leves' | MuscleGroup
 
 export interface CheckIn {
   date: string // ISO yyyy-mm-dd
+  /** Cuándo se guardó por última vez. Lo usa la fusión entre dispositivos. */
+  updatedAt?: number
   sleep: 1 | 2 | 3 | 4 | 5
   lightHygiene: boolean
   sunrise: boolean
@@ -299,6 +302,8 @@ export interface PlannedExercise {
 export interface Session {
   id: string
   date: string // ISO yyyy-mm-dd
+  /** Cuándo se guardó por última vez. Lo usa la fusión entre dispositivos. */
+  updatedAt?: number
   kind: SessionKind
   title: string
   exercises: PlannedExercise[]
@@ -375,6 +380,8 @@ export interface Recommendation {
 /** Una lectura de la báscula. Los porcentajes vienen tal cual del aparato. */
 export interface BodyMeasurement {
   date: string // ISO yyyy-mm-dd
+  /** Cuándo se guardó por última vez. Lo usa la fusión entre dispositivos. */
+  updatedAt?: number
   weightKg: number
   fatPercent?: number
   musclePercent?: number
@@ -384,7 +391,15 @@ export interface AppData {
   /** 1 = taxonomía de grupos gruesos. 2 = taxonomía muscular con conteo fraccional. */
   version: 1 | 2
   profile: Profile | null
+  /** Cuándo se guardó el perfil. El perfil es uno solo y no se puede unir por
+   * partes, así que en la fusión gana el más reciente. */
+  profileUpdatedAt?: number
   checkIns: CheckIn[]
   sessions: Session[]
   measurements: BodyMeasurement[]
+  /**
+   * Lo que se ha borrado, para que sincronizar no lo resucite. Ver
+   * `src/domain/merge.ts`.
+   */
+  deleted?: Lapida[]
 }

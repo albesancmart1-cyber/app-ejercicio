@@ -34,6 +34,13 @@ jobs:
       - run: npm run build
         env:
           BASE_PATH: /app-ejercicio/
+          # Dónde vive la nube, si se ha configurado. Son valores públicos —la
+          # clave anónima no abre nada sin sesión, porque la base de datos tiene
+          # el aislamiento por filas activado—, así que van como «variables» del
+          # repositorio y no como secretos. Si no están, la app se construye
+          # igual y guarda solo en el dispositivo.
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
 
       # enablement activa Pages por API si aún no lo está, en vez de fallar con
       # un «Not Found» y dejar la URL en 404 esperando un clic manual.

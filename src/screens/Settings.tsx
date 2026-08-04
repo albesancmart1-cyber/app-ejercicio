@@ -10,6 +10,7 @@ import { ketoAdaptationWeeksLeft, proteinTarget } from '../domain/protocol'
 import { esVerano, objetivoDhaDiario } from '../domain/dha'
 import { exerciseById } from '../data/exercises'
 import ExercisePicker from '../components/ExercisePicker'
+import AccountCard from '../components/AccountCard'
 import LandmarkSettings from '../components/LandmarkSettings'
 import VolumeLevelChooser from '../components/VolumeLevelChooser'
 import { NIVEL_MAXIMO, volumePlan } from '../domain/progression'
@@ -107,7 +108,11 @@ export default function Settings() {
       <p className="eyebrow">Tu configuración</p>
       <h1>Ajustes</h1>
 
-      <div className="card" style={{ marginTop: 28 }}>
+      <div className="card-wrap" style={{ marginTop: 28 }}>
+        <AccountCard />
+      </div>
+
+      <div className="card">
         <p className="eyebrow">Objetivo</p>
         <div className="options">
           {(Object.keys(GOAL_LABELS) as Goal[]).map((g) => (

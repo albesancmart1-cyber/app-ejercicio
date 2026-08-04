@@ -2,6 +2,8 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import './styles/theme.css'
+import { actions } from './store/store'
+import { estadoDeSync, iniciarSync, sincronizar } from './store/sync'
 
 /**
  * La interfaz sigue la hora del día. De noche pasa a ámbar y baja el brillo:
@@ -19,6 +21,34 @@ function applyDaytime() {
 }
 applyDaytime()
 setInterval(applyDaytime, 5 * 60 * 1000)
+
+/**
+ * Si hay nube y sesión, se sincroniza al arrancar: bajar, fusionar, guardar y
+ * subir. Va sin bloquear el arranque a propósito —la app tiene que abrirse y
+ * funcionar sin conexión— y en silencio, salvo que traiga algo, que entonces lo
+ * cuenta la tarjeta de Ajustes.
+ */
+iniciarSync().then((haySesion) => {
+  if (haySesion) sincronizar(actions.snapshot, actions.replaceAll)
+})
+
+// Y al volver la conexión, se reintenta lo que quedó pendiente.
+window.addEventListener('online', () => {
+  const e = estadoDeSync()
+  if (e.estado === 'dentro' && e.pendiente) sincronizar(actions.snapshot, actions.replaceAll)
+})
+
+/*
+ * El enlace del correo puede caer con la app ya abierta —instalada, el sistema
+ * la trae al frente en vez de cargarla de nuevo—, y entonces solo cambia el
+ * fragmento de la URL: no hay recarga y la sesión se quedaría sin recoger.
+ */
+window.addEventListener('hashchange', () => {
+  if (!location.hash.includes('access_token')) return
+  iniciarSync().then((haySesion) => {
+    if (haySesion) sincronizar(actions.snapshot, actions.replaceAll)
+  })
+})
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

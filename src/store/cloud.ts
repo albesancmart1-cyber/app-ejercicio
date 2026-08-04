@@ -1,0 +1,198 @@
+/**
+ * La nube: iniciar sesión y guardar los datos donde los vea cualquier
+ * dispositivo.
+ *
+ * Se habla con Supabase por HTTP, sin su biblioteca. Son dos endpoints de
+ * autenticación y uno de datos, y la app no tiene ninguna dependencia en tiempo
+ * de ejecución más allá de React: meter medio megabyte de SDK para esto sería
+ * pagar mucho por muy poco, y encima en una app que tiene que arrancar sin
+ * conexión.
+ *
+ * **Entrar es por enlace al correo.** Ni contraseñas que recordar ni
+ * contraseñas que perder, que en una app de una sola persona es todo ventaja.
+ * Al volver del enlace, Supabase devuelve los dos tokens en el fragmento de la
+ * URL; se guardan y el fragmento se limpia para que no queden en el historial.
+ *
+ * **Qué se guarda.** Una fila por usuario con el JSON entero. La base de datos
+ * tiene activado el aislamiento por filas (ver `supabase/esquema.sql`), así que
+ * cada cuenta solo puede leer y escribir la suya. La clave pública que va en el
+ * paquete es justo eso, pública: sin sesión no abre nada.
+ */
+import type { AppData } from '../domain/types'
+
+const URL_BASE = (import.meta.env.VITE_SUPABASE_URL ?? '').replace(/\/+$/, '')
+const CLAVE = import.meta.env.VITE_SUPABASE_ANON_KEY ?? ''
+const TABLA = 'ritmo_datos'
+const CLAVE_SESION = 'ritmo-sesion'
+
+/** ¿Se ha configurado una nube? Sin esto la app funciona igual, pero local. */
+export function hayNube(): boolean {
+  return URL_BASE.length > 0 && CLAVE.length > 0
+}
+
+export interface SesionNube {
+  accessToken: string
+  refreshToken: string
+  /** Época en ms en que caduca el token de acceso. */
+  expiraEn: number
+  email: string
+}
+
+export function sesionGuardada(): SesionNube | null {
+  try {
+    const crudo = localStorage.getItem(CLAVE_SESION)
+    if (!crudo) return null
+    const s = JSON.parse(crudo) as SesionNube
+    return s.accessToken && s.refreshToken ? s : null
+  } catch {
+    return null
+  }
+}
+
+function guardarSesion(s: SesionNube | null) {
+  if (s) localStorage.setItem(CLAVE_SESION, JSON.stringify(s))
+  else localStorage.removeItem(CLAVE_SESION)
+}
+
+/** Error con el motivo en castellano, para poder enseñarlo tal cual. */
+export class ErrorNube extends Error {}
+
+async function pedir(ruta: string, init: RequestInit = {}): Promise<Response> {
+  const res = await fetch(`${URL_BASE}${ruta}`, {
+    ...init,
+    headers: { apikey: CLAVE, 'Content-Type': 'application/json', ...(init.headers ?? {}) }
+  })
+  return res
+}
+
+/**
+ * Pide el enlace de acceso al correo. `redirectTo` es a dónde vuelve el enlace:
+ * la propia app, que es lo único que sabe qué hacer con los tokens.
+ */
+export async function pedirEnlace(email: string): Promise<void> {
+  if (!hayNube()) throw new ErrorNube('No hay ninguna nube configurada en esta versión de la app.')
+  const res = await pedir('/auth/v1/otp', {
+    method: 'POST',
+    body: JSON.stringify({
+      email,
+      create_user: true,
+      options: { email_redirect_to: location.origin + location.pathname }
+    })
+  })
+  if (!res.ok) {
+    const cuerpo = await res.text()
+    throw new ErrorNube(
+      res.status === 429
+        ? 'Has pedido varios enlaces seguidos. Espera un minuto y vuelve a intentarlo.'
+        : `No he podido enviar el enlace (${res.status}). ${cuerpo.slice(0, 120)}`
+    )
+  }
+}
+
+function desdeRespuestaDeToken(json: Record<string, unknown>): SesionNube {
+  const usuario = json.user as { email?: string } | undefined
+  return {
+    accessToken: String(json.access_token ?? ''),
+    refreshToken: String(json.refresh_token ?? ''),
+    expiraEn: Date.now() + Number(json.expires_in ?? 3600) * 1000,
+    email: usuario?.email ?? ''
+  }
+}
+
+/**
+ * Recoge la sesión que viene en el fragmento de la URL tras pulsar el enlace, y
+ * limpia la barra de direcciones. Devuelve la sesión si la había.
+ */
+export function recogerSesionDeLaUrl(): SesionNube | null {
+  const hash = location.hash.startsWith('#') ? location.hash.slice(1) : location.hash
+  if (!hash) return null
+  const p = new URLSearchParams(hash)
+  const accessToken = p.get('access_token')
+  const refreshToken = p.get('refresh_token')
+  if (!accessToken || !refreshToken) return null
+
+  const sesion: SesionNube = {
+    accessToken,
+    refreshToken,
+    expiraEn: Date.now() + Number(p.get('expires_in') ?? 3600) * 1000,
+    email: ''
+  }
+  guardarSesion(sesion)
+  // Fuera de la barra de direcciones: un token en el historial es un token que
+  // se comparte sin querer al copiar el enlace.
+  history.replaceState(null, '', location.pathname + location.search)
+  return sesion
+}
+
+/** Renueva el token cuando está a punto de caducar. */
+async function renovar(sesion: SesionNube): Promise<SesionNube> {
+  const res = await pedir('/auth/v1/token?grant_type=refresh_token', {
+    method: 'POST',
+    body: JSON.stringify({ refresh_token: sesion.refreshToken })
+  })
+  if (!res.ok) {
+    guardarSesion(null)
+    throw new ErrorNube('Tu sesión ha caducado. Vuelve a entrar con tu correo.')
+  }
+  const nueva = desdeRespuestaDeToken(await res.json())
+  const conEmail = { ...nueva, email: nueva.email || sesion.email }
+  guardarSesion(conEmail)
+  return conEmail
+}
+
+/** La sesión utilizable ahora mismo, renovándola si hace falta. */
+export async function sesionValida(): Promise<SesionNube | null> {
+  const s = sesionGuardada()
+  if (!s) return null
+  // Un minuto de margen: si caduca a mitad de la petición, no vale de nada.
+  if (s.expiraEn > Date.now() + 60_000) return s
+  return renovar(s)
+}
+
+/** Quién ha entrado, para poder enseñarlo. */
+export async function quienSoy(sesion: SesionNube): Promise<string> {
+  const res = await pedir('/auth/v1/user', {
+    headers: { Authorization: `Bearer ${sesion.accessToken}` }
+  })
+  if (!res.ok) return sesion.email
+  const json = (await res.json()) as { email?: string }
+  const email = json.email ?? sesion.email
+  guardarSesion({ ...sesion, email })
+  return email
+}
+
+export function cerrarSesion(): void {
+  guardarSesion(null)
+}
+
+/** Lo que hay guardado en la nube, o `null` si esta cuenta aún no tiene nada. */
+export async function descargar(): Promise<AppData | null> {
+  const sesion = await sesionValida()
+  if (!sesion) throw new ErrorNube('No has iniciado sesión.')
+  const res = await pedir(`/rest/v1/${TABLA}?select=datos`, {
+    headers: { Authorization: `Bearer ${sesion.accessToken}` }
+  })
+  if (!res.ok) throw new ErrorNube(`No he podido leer tus datos (${res.status}).`)
+  const filas = (await res.json()) as { datos: AppData }[]
+  return filas.length > 0 ? filas[0].datos : null
+}
+
+/** Sube los datos, pisando lo que hubiera: lo que sube ya viene fusionado. */
+export async function subir(data: AppData): Promise<void> {
+  const sesion = await sesionValida()
+  if (!sesion) throw new ErrorNube('No has iniciado sesión.')
+  const res = await pedir(`/rest/v1/${TABLA}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${sesion.accessToken}`,
+      // La fila lleva por clave el usuario, así que insertar y actualizar son la
+      // misma operación: el «upsert» de PostgREST.
+      Prefer: 'resolution=merge-duplicates,return=minimal'
+    },
+    body: JSON.stringify([{ datos: data, actualizado_en: new Date().toISOString() }])
+  })
+  if (!res.ok) {
+    const cuerpo = await res.text()
+    throw new ErrorNube(`No he podido guardar en la nube (${res.status}). ${cuerpo.slice(0, 120)}`)
+  }
+}

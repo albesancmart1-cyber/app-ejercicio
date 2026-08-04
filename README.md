@@ -738,6 +738,63 @@ un hilo con un orden —cómo estás, qué toca, empezar— y partirlo en dos ob
 
 `node scripts/check-pantalla.mjs` comprueba las dos cosas.
 
+## Tus datos en cualquier dispositivo
+
+Por defecto todo se guarda **en el dispositivo** y no sale de ahí. Si quieres entrar desde el móvil y
+desde el ordenador con los mismos datos, la app puede usar una nube — hay que darla de alta una vez.
+
+### Ponerla en marcha (una vez, unos cinco minutos)
+
+1. Crea un proyecto gratuito en [supabase.com](https://supabase.com).
+2. En el **SQL Editor** del panel, pega y ejecuta [`supabase/esquema.sql`](supabase/esquema.sql).
+   Crea la tabla y —lo importante— activa el **aislamiento por filas**, que es lo que hace que cada
+   cuenta solo pueda leer y escribir lo suyo.
+3. En **Authentication → URL Configuration**, añade a *Redirect URLs* la dirección de la app
+   (`https://<usuario>.github.io/app-ejercicio/`).
+4. En **Project Settings → API**, copia el *Project URL* y la clave *anon public*.
+5. En GitHub, **Settings → Secrets and variables → Actions → Variables**, crea
+   `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` con esos dos valores.
+
+En el siguiente despliegue aparece la tarjeta **«Tu cuenta»** en Ajustes. Si las variables no están,
+la app se construye igual y guarda solo en el dispositivo: la nube es opcional de principio a fin.
+
+La clave *anon* va dentro del paquete y **es pública a propósito**: sin sesión iniciada no abre nada,
+porque cada fila exige la sesión de su dueño. Lo que protege los datos es la política de la base de
+datos, no esconder la clave.
+
+### Cómo entra uno
+
+Con el **correo, sin contraseña**: pides un enlace, lo abres, y ya estás dentro. Una contraseña más
+es una contraseña más que perder, y en una app de una sola persona no aporta nada. Al volver del
+enlace los tokens llegan en el fragmento de la URL; se guardan y **el fragmento se limpia**, para que
+no queden en el historial ni se compartan al copiar la dirección.
+
+### Qué pasa cuando los dos lados tienen cosas distintas
+
+Se **juntan**, no se pisan. Entrenas en el móvil, abres el ordenador que lleva días sin actualizarse,
+y la sesión de esta mañana sigue ahí. Se puede juntar porque cada cosa tiene identidad propia —el
+check-in es de un día, la medición es de un día, la sesión tiene su identificador—, así que la fusión
+(`src/domain/merge.ts`) es la unión de las dos listas; cuando la **misma** cosa está en los dos
+lados, gana la que se tocó más tarde. El perfil es lo único que no se puede unir por partes sin
+inventar, y ahí gana el guardado más tarde.
+
+Lo que la unión sola haría mal es **borrar**: si borras una medición en el móvil, el ordenador
+todavía la tiene y al fusionar volvería a aparecer. Por eso lo borrado deja una **lápida** —qué era y
+cuándo— que la fusión respeta, salvo que hayas vuelto a crear esa misma cosa después.
+
+Y el ciclo es siempre el mismo: bajar, fusionar, guardar aquí, subir. Hacerlo dos veces da lo mismo
+que hacerlo una, así que reintentar cuando vuelve la conexión es seguro.
+
+### Sin conexión
+
+Manda siempre **lo que hay en este dispositivo**. La app arranca y funciona entera sin red —se
+entrena en sitios sin cobertura—, así que la nube nunca está en el camino crítico: se lee y se
+escribe en local como siempre y la sincronización va por detrás. Si falla, se queda marcado como
+pendiente y se sube solo al recuperar la conexión. Cerrar sesión tampoco borra nada de aquí.
+
+`node scripts/check-nube.mjs` comprueba todo esto en navegador contra un Supabase simulado, sin
+necesidad de una cuenta real.
+
 ## Instalarla en el móvil
 
 Cada subida a la rama principal despliega la app sola en GitHub Pages
@@ -759,7 +816,7 @@ En local la app se sirve en la raíz y en Pages bajo `/app-ejercicio/`. Lo contr
 ```bash
 npm install
 npm run dev       # servidor de desarrollo
-npm test          # 461 tests: motor, catálogo, DHA, leptina, composición, tendencia, cambios, calendario, volumen, variantes, sesión mixta, músculos, foco por músculo, progresión de carga y migración
+npm test          # 482 tests: motor, catálogo, DHA, leptina, composición, tendencia, cambios, calendario, volumen, variantes, sesión mixta, músculos, foco por músculo, progresión de carga y migración
 npm run build     # build de producción (PWA)
 npm run preview   # servir la build
 ```
@@ -785,6 +842,10 @@ npm run preview   # servir la build
   app se migran solos, sin perder nada, marcando lo deducido y sin volver a cambiar al reabrir.
 - `node scripts/comparar-motores.mjs` — genera seis meses de historial con las decisiones de la propia
   app y compara semana a semana lo que ve el motor viejo con lo que ve el nuevo.
+- `node scripts/check-nube.mjs` — interceptando el tráfico a Supabase, comprueba pedir el enlace,
+  recoger la sesión del fragmento de la URL, fusionar los datos de dos dispositivos sin perder nada,
+  que lo borrado no resucite y que cerrar sesión no borre nada de aquí. Necesita una build hecha con
+  `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` puestas a cualquier valor.
 - `node scripts/check-cardio.mjs` — comprueba que un día de cardio ofrece varias actividades, que cada
   una trae sus minutos equivalentes y que al cambiar se ajusta la dosis y se explica.
 - `node scripts/check-molestias.mjs` — comprueba que en el test diario se pueden marcar varias zonas

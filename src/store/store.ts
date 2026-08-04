@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react'
 import { todayIsoAt } from './clock'
 import { VERSION_ACTUAL, migrar } from './migrate'
 import type { AppData, BodyMeasurement, CheckIn, Profile, Session } from '../domain/types'
+import { claveDeMedicion, claveDeSesion, type Lapida } from '../domain/merge'
 
 const STORAGE_KEY = 'ritmo-data-v1'
 
@@ -71,33 +72,69 @@ export function todayIso(): string {
   return todayIsoAt(new Date())
 }
 
+/**
+ * Deja constancia de un borrado, para que sincronizar no lo resucite.
+ *
+ * Sin esto, borrar una medición en el móvil y abrir el ordenador la traería de
+ * vuelta: la fusión une listas, y lo que no está no se distingue de lo que
+ * todavía no ha llegado.
+ */
+function conLapida(s: AppData, clave: string): Lapida[] {
+  return [...(s.deleted ?? []).filter((l) => l.clave !== clave), { clave, at: Date.now() }]
+}
+
 export const actions = {
   saveProfile(profile: Profile) {
-    setState((s) => ({ ...s, profile }))
+    setState((s) => ({ ...s, profile, profileUpdatedAt: Date.now() }))
   },
   saveCheckIn(checkIn: CheckIn) {
     setState((s) => ({
       ...s,
-      checkIns: [...s.checkIns.filter((c) => c.date !== checkIn.date), checkIn]
+      checkIns: [
+        ...s.checkIns.filter((c) => c.date !== checkIn.date),
+        { ...checkIn, updatedAt: Date.now() }
+      ]
     }))
   },
   saveSession(session: Session) {
     setState((s) => ({
       ...s,
-      sessions: [...s.sessions.filter((x) => x.id !== session.id), session]
+      sessions: [
+        ...s.sessions.filter((x) => x.id !== session.id),
+        { ...session, updatedAt: Date.now() }
+      ]
     }))
   },
   discardSession(id: string) {
-    setState((s) => ({ ...s, sessions: s.sessions.filter((x) => x.id !== id) }))
+    setState((s) => ({
+      ...s,
+      sessions: s.sessions.filter((x) => x.id !== id),
+      deleted: conLapida(s, claveDeSesion(id))
+    }))
   },
   saveMeasurement(measurement: BodyMeasurement) {
     setState((s) => ({
       ...s,
-      measurements: [...s.measurements.filter((m) => m.date !== measurement.date), measurement]
+      measurements: [
+        ...s.measurements.filter((m) => m.date !== measurement.date),
+        { ...measurement, updatedAt: Date.now() }
+      ]
     }))
   },
   deleteMeasurement(date: string) {
-    setState((s) => ({ ...s, measurements: s.measurements.filter((m) => m.date !== date) }))
+    setState((s) => ({
+      ...s,
+      measurements: s.measurements.filter((m) => m.date !== date),
+      deleted: conLapida(s, claveDeMedicion(date))
+    }))
+  },
+  /** Los datos tal cual están aquí, para sincronizar. */
+  snapshot(): AppData {
+    return state
+  },
+  /** El resultado de una fusión, ya calculado fuera. */
+  replaceAll(data: AppData) {
+    setState(() => data)
   },
   exportData(): string {
     return JSON.stringify(state, null, 2)
