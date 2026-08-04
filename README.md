@@ -18,6 +18,15 @@ servidor.
 2. **Check-in diario** (medio minuto) — sueño, energía, higiene lumínica, amanecer, atardecer,
    exposición solar, cetosis, molestias, y dos señales de apetito (hambre al despertar y antojos).
    De ahí salen el índice de disposición del día y la señal de leptina de la semana.
+
+   Las **molestias se marcan por zonas, tantas como haga falta**. Antes solo se admitía una, y el
+   cuerpo no funciona así: de una sesión de empujes se sale con el pecho y el tríceps cargados a la
+   vez. Cada zona marcada se deja descansar hoy, y además **restan puntos según cuántas sean** —4
+   por zona hasta un tope de 12—, porque marcar una dice dónde entrenar y marcar tres dice cómo está
+   el cuerpo. Aparte están las **leves y repartidas**, las que no señalan a ningún sitio: esas bajan
+   el listón sin dejar nada fuera, y se pueden marcar junto con las zonas concretas. Si se marca casi
+   todo, la app lo dice tal cual —«hoy no queda nada a lo que pedirle trabajo de fuerza»— en vez de
+   fingir que está todo cubierto.
 3. **Recomendación** — reglas en cascada, de la más protectora a la más exigente. Cada
    recomendación viene con un «por qué» desplegable en lenguaje llano. Y si lo que te toca no es lo
    que te apetece, decides tú entre tres caminos, con los mismos guardas puestos en los tres:
@@ -724,7 +733,7 @@ En local la app se sirve en la raíz y en Pages bajo `/app-ejercicio/`. Lo contr
 ```bash
 npm install
 npm run dev       # servidor de desarrollo
-npm test          # 434 tests: motor, catálogo, DHA, leptina, composición, tendencia, cambios, calendario, volumen, variantes, sesión mixta, músculos, foco por músculo, progresión de carga y migración
+npm test          # 440 tests: motor, catálogo, DHA, leptina, composición, tendencia, cambios, calendario, volumen, variantes, sesión mixta, músculos, foco por músculo, progresión de carga y migración
 npm run build     # build de producción (PWA)
 npm run preview   # servir la build
 ```
@@ -750,6 +759,8 @@ npm run preview   # servir la build
   app se migran solos, sin perder nada, marcando lo deducido y sin volver a cambiar al reabrir.
 - `node scripts/comparar-motores.mjs` — genera seis meses de historial con las decisiones de la propia
   app y compara semana a semana lo que ve el motor viejo con lo que ve el nuevo.
+- `node scripts/check-molestias.mjs` — comprueba que en el test diario se pueden marcar varias zonas
+  con molestias a la vez, que se guardan en el check-in y que la recomendación las deja fuera todas.
 - `node scripts/check-cambiar.mjs` — comprueba que cambiar de ejercicio lo hace la app de un toque,
   que cada toque trae uno distinto, que el sustituto trabaja lo mismo y que la afinidad aprendida se
   guarda en el perfil.

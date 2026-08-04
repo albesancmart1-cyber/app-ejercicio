@@ -1,5 +1,5 @@
 import type { MuscleGroup, Profile, Recommendation, Session } from './types'
-import { MUSCLE_LABELS } from './types'
+import { MUSCLE_GROUPS, MUSCLE_LABELS } from './types'
 import type { Readiness } from './readiness'
 import {
   computeBalance,
@@ -275,15 +275,24 @@ function decidir(
   const focus = foco.grupos
 
   if (focus.length === 0) {
-    reasons.push('Todos tus grupos musculares están o bien trabajados o aún recuperándose.')
+    // Puede pasar por dos motivos muy distintos, y decir el que no es suena a
+    // que la app no se ha enterado: o está todo cubierto, o has marcado tantas
+    // zonas con molestias que no queda nada que se pueda entrenar hoy.
+    const todoDolorido = readiness.avoid.length > 0 && exclude.length >= MUSCLE_GROUPS.length - 1
+    reasons.push(
+      todoDolorido
+        ? `Has marcado ${readiness.avoid.length} zonas con molestias: hoy no queda nada a lo que pedirle trabajo de fuerza.`
+        : 'Todos tus grupos musculares están o bien trabajados o aún recuperándose.'
+    )
     return {
       kind: 'cardio_suave',
-      title: 'Movimiento suave',
-      message:
-        'Has cubierto bien todos los grupos musculares estos días y los que quedan aún se están recuperando. Hoy, movimiento tranquilo y a disfrutar.',
+      title: todoDolorido ? 'Hoy toca recuperar' : 'Movimiento suave',
+      message: todoDolorido
+        ? 'Con casi todo el cuerpo cargado, entrenar fuerza hoy es sumar fatiga a la que ya tienes. Un paseo tranquilo mueve sangre y ayuda a que las agujetas se vayan antes.'
+        : 'Has cubierto bien todos los grupos musculares estos días y los que quedan aún se están recuperando. Hoy, movimiento tranquilo y a disfrutar.',
       focus: ['cardio'],
       intensity: 'suave',
-      cardioMinutes: 25,
+      cardioMinutes: todoDolorido ? 20 : 25,
       volumeScale,
       rir: 4,
       reasons,

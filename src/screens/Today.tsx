@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import { MUSCLE_GROUPS, MUSCLE_LABELS, type CheckIn, type Discomfort, type MuscleGroup } from '../domain/types'
-import { computeReadiness } from '../domain/readiness'
+import { MUSCLE_GROUPS, MUSCLE_LABELS, type CheckIn, type MuscleGroup } from '../domain/types'
+import { computeReadiness, tieneLevesRepartidas, zonasConMolestias } from '../domain/readiness'
 import { canIntensify, canMix, recommend, withMoreIntensity, withSomeStrength } from '../domain/recommender'
 import { NIVEL_MAXIMO, volumePlan } from '../domain/progression'
 import { interpretTrend } from '../domain/trend'
@@ -97,10 +97,31 @@ export default function Today() {
     wokeHungry: saved?.wokeHungry ?? null,
     cravings: saved?.cravings ?? null
   })
-  const [discomfort, setDiscomfort] = useState<Discomfort | null>(saved?.discomfort ?? null)
+  /**
+   * Molestias: varias zonas a la vez, no una.
+   *
+   * `null` = todavía sin contestar, que es distinto de «ninguna»: la pregunta
+   * sigue siendo obligatoria para poder pasar. `respondido` guarda que ya se ha
+   * tocado algo, y así «Ninguna» —que es la lista vacía— cuenta como respuesta.
+   */
+  const [zonas, setZonas] = useState<MuscleGroup[]>(saved ? zonasConMolestias(saved) : [])
+  const [leves, setLeves] = useState(saved ? tieneLevesRepartidas(saved) : false)
+  const [respondido, setRespondido] = useState(saved !== undefined)
 
   const complete =
-    sleep !== null && energy !== null && discomfort !== null && Object.values(habits).every((v) => v !== null)
+    sleep !== null && energy !== null && respondido && Object.values(habits).every((v) => v !== null)
+
+  /** Marca o desmarca una zona; marcar cualquiera deja de ser «ninguna». */
+  function alternarZona(g: MuscleGroup) {
+    setRespondido(true)
+    setZonas((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]))
+  }
+
+  function sinMolestias() {
+    setRespondido(true)
+    setZonas([])
+    setLeves(false)
+  }
 
   const checkIn: CheckIn | null = useMemo(() => {
     if (!complete) return null
@@ -115,9 +136,13 @@ export default function Today() {
       keto: habits.keto!,
       wokeHungry: habits.wokeHungry!,
       cravings: habits.cravings!,
-      discomfort: discomfort!
+      discomforts: zonas,
+      mildSoreness: leves,
+      // El campo viejo se sigue rellenando como resumen, para que un check-in
+      // guardado hoy se pueda leer con una versión anterior de la app.
+      discomfort: zonas[0] ?? (leves ? 'leves' : 'ninguna')
     }
-  }, [complete, today, sleep, energy, habits, discomfort])
+  }, [complete, today, sleep, energy, habits, zonas, leves])
 
   const renderYesNo = ({ q, key }: { q: string; key: YesNoKey }, i: number) => (
     <div key={key} style={{ marginTop: i === 0 ? 0 : 18 }}>
@@ -236,20 +261,47 @@ export default function Today() {
 
           <div className="card">
             <p className="eyebrow">Cuerpo</p>
-            <h2 style={{ marginBottom: 14 }}>¿Molestias o agujetas?</h2>
+            <h2 style={{ marginBottom: 4 }}>¿Molestias o agujetas?</h2>
+            <p className="faint" style={{ marginBottom: 14 }}>
+              Marca todas las zonas que lo noten. Se sale de una sesión de empujes con el pecho y el
+              tríceps cargados a la vez, y con una sola no se contaba bien.
+            </p>
             <div className="options">
-              <button className="opt" aria-pressed={discomfort === 'ninguna'} onClick={() => setDiscomfort('ninguna')}>
+              <button
+                className="opt"
+                aria-pressed={respondido && zonas.length === 0 && !leves}
+                onClick={sinMolestias}
+              >
                 Ninguna
               </button>
-              <button className="opt" aria-pressed={discomfort === 'leves'} onClick={() => setDiscomfort('leves')}>
-                Leves
-              </button>
               {MUSCLE_GROUPS.filter((g) => g !== 'cardio').map((g: MuscleGroup) => (
-                <button key={g} className="opt" aria-pressed={discomfort === g} onClick={() => setDiscomfort(g)}>
+                <button key={g} className="opt" aria-pressed={zonas.includes(g)} onClick={() => alternarZona(g)}>
                   {MUSCLE_LABELS[g]}
                 </button>
               ))}
             </div>
+            <hr className="rule" />
+            <button
+              className="opt opt-block"
+              aria-pressed={leves}
+              onClick={() => {
+                setRespondido(true)
+                setLeves((v) => !v)
+              }}
+            >
+              Leves y repartidas
+              <span className="opt-desc">
+                Agujetas de las que no señalan a ningún sitio en concreto. Bajan el listón del día sin
+                dejar nada fuera.
+              </span>
+            </button>
+            {zonas.length > 0 && (
+              <p className="faint" style={{ marginTop: 12 }}>
+                {zonas.length === 1
+                  ? 'Hoy dejo descansar esa zona.'
+                  : `Hoy dejo descansar esas ${zonas.length} zonas, y bajo el listón: con varias cargadas el cuerpo pide menos, no solo otra cosa.`}
+              </p>
+            )}
           </div>
 
           <button

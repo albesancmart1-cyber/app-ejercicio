@@ -215,8 +215,45 @@ describe('protección de la recuperación', () => {
   })
 
   it('molestia en una zona la deja fuera de la sesión', () => {
-    const rec = recommend(profile, computeReadiness(checkIn({ discomfort: 'espalda' })), establishedHistory(), TODAY)
+    const rec = recommend(profile, computeReadiness(checkIn({ discomforts: ['espalda'] })), establishedHistory(), TODAY)
     expect(rec.focus).not.toContain('espalda')
+  })
+
+  it('varias zonas marcadas quedan todas fuera', () => {
+    const zonas: MuscleGroup[] = ['espalda', 'pecho', 'hombro']
+    const r = computeReadiness(checkIn({ discomforts: zonas }))
+    expect(r.avoid).toEqual(zonas)
+    const rec = recommend(profile, r, establishedHistory(), TODAY)
+    for (const g of zonas) expect(rec.focus, g).not.toContain(g)
+  })
+
+  it('y cuantas más zonas, menos exigente es el día', () => {
+    const una = computeReadiness(checkIn({ discomforts: ['espalda'] })).score
+    const tres = computeReadiness(checkIn({ discomforts: ['espalda', 'pecho', 'hombro'] })).score
+    expect(tres).toBeLessThan(una)
+  })
+
+  it('con casi todo el cuerpo cargado, lo dice en vez de fingir que está todo cubierto', () => {
+    const todas = MUSCLE_GROUPS.filter((g) => g !== 'cardio')
+    const rec = recommend(profile, computeReadiness(checkIn({ discomforts: todas })), establishedHistory(), TODAY)
+    expect(rec.kind).not.toBe('fuerza')
+    expect(rec.reasons.join(' ')).toMatch(/zonas con molestias/i)
+    expect(rec.reasons.join(' ')).not.toMatch(/cubierto bien todos/i)
+  })
+
+  it('un check-in guardado antes, con una sola zona, se sigue leyendo igual', () => {
+    const viejo = computeReadiness(checkIn({ discomfort: 'espalda' }))
+    expect(viejo.avoid).toEqual(['espalda'])
+    const leves = computeReadiness(checkIn({ discomfort: 'leves' }))
+    expect(leves.avoid).toEqual([])
+    expect(leves.score).toBeLessThan(computeReadiness(checkIn({})).score)
+  })
+
+  it('las leves repartidas se pueden marcar junto con zonas concretas', () => {
+    const soloZona = computeReadiness(checkIn({ discomforts: ['espalda'] }))
+    const conLeves = computeReadiness(checkIn({ discomforts: ['espalda'], mildSoreness: true }))
+    expect(conLeves.score).toBeLessThan(soloZona.score)
+    expect(conLeves.avoid).toEqual(['espalda'])
   })
 })
 

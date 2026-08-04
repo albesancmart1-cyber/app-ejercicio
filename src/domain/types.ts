@@ -202,6 +202,7 @@ export interface ExerciseVariant {
   side?: SideMode
 }
 
+/** @deprecated Una sola zona. La sustituye `CheckIn.discomforts`. */
 export type Discomfort = 'ninguna' | 'leves' | MuscleGroup
 
 export interface CheckIn {
@@ -213,7 +214,21 @@ export interface CheckIn {
   sunExposure: boolean
   keto: boolean
   energy: 1 | 2 | 3 | 4 | 5
+  /**
+   * @deprecated Solo admitía **una** zona, y el cuerpo no funciona así: se sale
+   * de una sesión de empujes con el pecho y el tríceps cargados a la vez.
+   * Se conserva como resumen —lo leen los check-ins guardados de antes— y se
+   * recalcula al guardar; quien manda es `discomforts`.
+   */
   discomfort: Discomfort
+  /**
+   * Zonas con molestias o agujetas, tantas como haga falta. Cada una se deja
+   * descansar hoy, y cuantas más haya, menos exigente es la sesión: tener tres
+   * zonas cargadas no es lo mismo que tener una.
+   */
+  discomforts?: MuscleGroup[]
+  /** Agujetas leves repartidas, sin una zona clara a la que señalar. */
+  mildSoreness?: boolean
   // Señales de leptina. Opcionales: los check-ins guardados antes de existir
   // estas preguntas siguen siendo válidos y no penalizan el cálculo.
   /** Despertarse con hambre voraz apunta a una señal nocturna alterada. */
