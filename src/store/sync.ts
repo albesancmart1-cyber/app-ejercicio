@@ -24,6 +24,7 @@ import {
   descargar,
   hayNube,
   quienSoy,
+  recogerFalloDeLaUrl,
   recogerSesionDeLaUrl,
   sesionGuardada,
   sesionValida,
@@ -69,10 +70,13 @@ export function ultimaNovedad(): string | null {
  */
 export async function iniciarSync(): Promise<boolean> {
   if (!hayNube()) return false
+  // Si el enlace volvió con un fallo hay que mirarlo antes: viene por el mismo
+  // sitio que la sesión, y callárselo deja al usuario sin saber qué ha pasado.
+  const fallo = recogerFalloDeLaUrl()
   const deLaUrl = recogerSesionDeLaUrl()
   const sesion = deLaUrl ?? sesionGuardada()
   if (!sesion) {
-    anunciar({ estado: 'fuera' })
+    anunciar(fallo ? { estado: 'error', mensaje: fallo } : { estado: 'fuera' })
     return false
   }
   anunciar({ estado: 'dentro', email: sesion.email, pendiente: true })

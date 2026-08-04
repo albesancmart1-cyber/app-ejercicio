@@ -72,6 +72,11 @@ export default function AccountCard() {
             Entra con tu correo y tus datos estarán en cualquier dispositivo donde entres. Sin
             contraseña: te mando un enlace y listo.
           </p>
+          {estado.estado === 'error' && (
+            <p className="dim" style={{ marginTop: 10 }}>
+              {estado.mensaje}
+            </p>
+          )}
           <label className="field" style={{ marginTop: 14 }}>
             <span>Tu correo</span>
             <input

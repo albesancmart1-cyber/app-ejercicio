@@ -44,7 +44,7 @@ window.addEventListener('online', () => {
  * fragmento de la URL: no hay recarga y la sesión se quedaría sin recoger.
  */
 window.addEventListener('hashchange', () => {
-  if (!location.hash.includes('access_token')) return
+  if (!/access_token|error/.test(location.hash)) return
   iniciarSync().then((haySesion) => {
     if (haySesion) sincronizar(actions.snapshot, actions.replaceAll)
   })

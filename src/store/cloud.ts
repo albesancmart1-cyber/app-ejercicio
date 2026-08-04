@@ -82,18 +82,29 @@ async function pedir(ruta: string, init: RequestInit = {}): Promise<Response> {
 }
 
 /**
- * Pide el enlace de acceso al correo. `redirectTo` es a dónde vuelve el enlace:
- * la propia app, que es lo único que sabe qué hacer con los tokens.
+ * A dónde tiene que volver el enlace del correo: a esta misma app, que es lo
+ * único que sabe qué hacer con los tokens. Tiene que coincidir con lo que haya
+ * en la lista de direcciones permitidas del panel de Supabase, o el enlace
+ * acaba en la raíz del dominio —donde no hay nada— en vez de aquí.
+ */
+export function dondeVuelve(): string {
+  return location.origin + location.pathname.replace(/index\.html$/, '')
+}
+
+/**
+ * Pide el enlace de acceso al correo.
+ *
+ * Ojo con dónde va la dirección de vuelta: la biblioteca de Supabase la acepta
+ * como `options.emailRedirectTo`, pero eso es azúcar suyo. La API de verdad la
+ * quiere como parámetro `redirect_to` **en la URL**, y lo que va en el cuerpo
+ * que no reconoce lo ignora en silencio. Mandándola en el cuerpo, el enlace
+ * volvía al «Site URL» del proyecto en vez de a la app.
  */
 export async function pedirEnlace(email: string): Promise<void> {
   if (!hayNube()) throw new ErrorNube('No hay ninguna nube configurada en esta versión de la app.')
-  const res = await pedir('/auth/v1/otp', {
+  const res = await pedir(`/auth/v1/otp?redirect_to=${encodeURIComponent(dondeVuelve())}`, {
     method: 'POST',
-    body: JSON.stringify({
-      email,
-      create_user: true,
-      options: { email_redirect_to: location.origin + location.pathname }
-    })
+    body: JSON.stringify({ email, create_user: true })
   })
   if (!res.ok) {
     const cuerpo = await res.text()
@@ -138,6 +149,28 @@ export function recogerSesionDeLaUrl(): SesionNube | null {
   // se comparte sin querer al copiar el enlace.
   history.replaceState(null, '', location.pathname + location.search)
   return sesion
+}
+
+/**
+ * Si el enlace volvió con un fallo en vez de con la sesión, lo cuenta en
+ * castellano y limpia la barra de direcciones.
+ *
+ * Supabase manda el error por el mismo sitio que mandaría los tokens, en el
+ * fragmento de la URL. Sin mirarlo aquí, la app se quedaba callada y parecía
+ * que el enlace no hacía nada.
+ */
+export function recogerFalloDeLaUrl(): string | null {
+  const hash = location.hash.startsWith('#') ? location.hash.slice(1) : location.hash
+  if (!hash) return null
+  const p = new URLSearchParams(hash)
+  const codigo = p.get('error_code') ?? p.get('error')
+  if (!codigo) return null
+  history.replaceState(null, '', location.pathname + location.search)
+
+  if (/otp_expired|access_denied/.test(codigo))
+    return 'Ese enlace ya no vale: solo sirve una vez y caduca al poco de mandarlo. Pide otro y ábrelo en cuanto llegue, en este mismo dispositivo.'
+  const detalle = (p.get('error_description') ?? '').replace(/\+/g, ' ')
+  return `El enlace ha fallado (${codigo}). ${detalle}`
 }
 
 /** Renueva el token cuando está a punto de caducar. */

@@ -58,6 +58,8 @@ let enLaNube = {
 }
 let subidas = 0
 let enlacesPedidos = []
+/** A dónde le pedimos a Supabase que devuelva el enlace del correo. */
+let vueltaPedida = null
 
 await page.route(`${NUBE}/**`, async (route) => {
   const req = route.request()
@@ -66,6 +68,7 @@ await page.route(`${NUBE}/**`, async (route) => {
 
   if (ruta === '/auth/v1/otp') {
     enlacesPedidos.push(JSON.parse(req.postData() ?? '{}').email)
+    vueltaPedida = url.searchParams.get('redirect_to')
     return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
   }
   if (ruta === '/auth/v1/user') {
@@ -149,6 +152,16 @@ comprobar(
 const trasPedir = await tarjeta.innerText()
 comprobar(/enlace a alberto@ejemplo.com/i.test(trasPedir), `no confirma el envío: ${trasPedir.slice(0, 120)}`)
 await page.screenshot({ path: `${OUT}/nube-2-enlace.png` })
+
+// La dirección de vuelta va en la URL, que es donde la API la lee. Mandarla en
+// el cuerpo —como acepta la biblioteca de Supabase— la ignora en silencio y el
+// enlace acaba en la raíz del dominio, con un 404 de GitHub Pages.
+comprobar(vueltaPedida !== null, 'no se le dice a Supabase a dónde tiene que volver el enlace')
+comprobar(
+  vueltaPedida === new URL(BASE).origin + new URL(BASE).pathname,
+  `la vuelta del enlace no apunta a la app: ${vueltaPedida}`
+)
+console.log('  · el enlace volverá a:', vueltaPedida)
 
 // ── Volver desde el enlace del correo ─────────────────────
 // Como si se abriera desde el correo: carga limpia con el fragmento puesto.
@@ -244,6 +257,30 @@ comprobar(
   (await page.evaluate(() => localStorage.getItem('ritmo-sesion'))) !== null,
   'con la app ya abierta, el enlace del correo no llega a iniciar sesión'
 )
+
+// ── Un enlace caducado se explica, no se calla ────────────
+// Es lo que pasa al abrir un enlace viejo, o el mismo dos veces: Supabase
+// devuelve el fallo por el mismo sitio por donde mandaría los tokens. Se
+// prueba sin sesión, que es cuando importa: con sesión ya iniciada, un enlace
+// caducado no cambia nada y no hay nada que contar.
+await page.evaluate(() => localStorage.removeItem('ritmo-sesion'))
+await page.goto('about:blank')
+await page.goto(`${BASE}#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired`)
+await page.waitForTimeout(1500)
+comprobar(
+  !page.url().includes('error_code'),
+  `el error se queda en la barra de direcciones: ${page.url()}`
+)
+await page.getByText('Ajustes', { exact: true }).first().click()
+await page.waitForTimeout(600)
+const conFallo = page.locator('.card').filter({ hasText: 'Tu cuenta' }).first()
+await conFallo.scrollIntoViewIfNeeded()
+const textoFallo = await conFallo.innerText()
+comprobar(
+  /ya no vale|pide otro/i.test(textoFallo),
+  `no se explica que el enlace ha caducado: ${textoFallo.slice(0, 160)}`
+)
+await page.screenshot({ path: `${OUT}/nube-5-caducado.png` })
 
 if (errores.length) fallos.push(`errores en consola: ${errores.join(' | ')}`)
 await browser.close()

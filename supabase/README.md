@@ -78,6 +78,16 @@ Si falla otra cosa, el mensaje del editor de Supabase trae el código (`42501`,
 - «No he podido enviar el enlace (…)»: revisar el paso 3, y que el correo no
   esté en la carpeta de no deseados. Supabase limita a unos pocos enlaces por
   hora en el plan gratuito.
+- **El enlace del correo lleva a un 404 de GitHub** («There isn't a GitHub
+  Pages site here»): mira la barra de direcciones. Si acabó en la raíz del
+  dominio, sin `/app-ejercicio/`, es que Supabase no aceptó la dirección de
+  vuelta y usó el *Site URL* del proyecto. Se arregla en el paso 3: la
+  dirección completa, con `/app-ejercicio/` y la barra final, tiene que estar
+  en **Redirect URLs**.
+- **«Ese enlace ya no vale»**: es lo que dice la app cuando Supabase devuelve
+  `otp_expired`. Cada enlace sirve **una sola vez** y caduca al rato, así que
+  hay que abrir el último que llegó, y desde el mismo dispositivo donde se
+  pidió.
 - «Falta la tabla `ritmo_datos`…»: el paso 2 no llegó a ejecutarse en *este*
   proyecto. Comprobar que el *Project URL* del paso 4 es el del mismo proyecto
   donde se ejecutó el script.
