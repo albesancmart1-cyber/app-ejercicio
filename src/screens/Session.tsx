@@ -21,12 +21,27 @@ import { exerciseById } from '../data/exercises'
 import { actions, useAppData } from '../store/store'
 import { useToday } from '../store/clock'
 import { weeklyMuscleVolume } from '../domain/volume'
+import { explicarEquivalencia, minutosEquivalentes, opcionesDeCardio } from '../domain/cardio'
 import Icon from '../components/Icon'
 import RestTimer from '../components/RestTimer'
 import Chrono, { elapsedSeconds } from '../components/Chrono'
 import ExerciseAnimation from '../components/ExerciseAnimation'
 import ExercisePicker from '../components/ExercisePicker'
 import { patternOf } from '../data/patterns'
+
+/** Los minutos que lleva puestos un ejercicio de cardio, si los dice. */
+function minutosDe(pe: PlannedExercise): number | undefined {
+  const m = pe.plan.reps.match(/(\d+)\s*min/)
+  return m ? Number(m[1]) : undefined
+}
+
+/**
+ * El nombre sin la coletilla entre paréntesis ni tras la coma. En una fila de
+ * botones, «Trote suave (zona 2, puedes hablar) · 35 min» no cabe.
+ */
+function nombreCorto(nombre: string): string {
+  return nombre.replace(/\s*\(.*?\)/g, '').split(',')[0].trim()
+}
 
 function planLabel(pe: PlannedExercise): string {
   const parts = [`${pe.plan.sets} × ${pe.plan.reps}`]
@@ -204,6 +219,36 @@ export default function SessionScreen({ session }: { session: Session }) {
     setAviso(`${actual.name} → ${siguiente.name}. Toca otra vez si tampoco encaja.`)
     setResting(null)
     setComoSeHace(null)
+  }
+
+  /**
+   * Cambiar con qué se hace el cardio, conservando la dosis.
+   *
+   * No es lo mismo andar 35 minutos que trotarlos, así que al cambiar de
+   * actividad se convierten los minutos: lo que se mantiene es el trabajo, no
+   * el reloj.
+   */
+  function cambiarCardio(indice: number, destinoId: string) {
+    const actual = exercises[indice]
+    const destino = exerciseById(destinoId)
+    if (!destino) return
+    const minutosAhora = minutosDe(actual) ?? session.cardioMinutes ?? 25
+    const minutos = minutosEquivalentes(actual.exerciseId, destinoId, minutosAhora)
+    const nota = explicarEquivalencia(actual.exerciseId, destinoId, minutosAhora)
+    setExercises((prev) =>
+      prev.map((e, i) =>
+        i === indice
+          ? {
+              ...e,
+              exerciseId: destino.id,
+              name: destino.name,
+              plan: { ...e.plan, reps: `${minutos} min` },
+              logs: e.logs?.map((l) => ({ ...l, done: false })) ?? undefined
+            }
+          : e
+      )
+    )
+    if (nota) setAviso(nota)
   }
 
   /**
@@ -485,6 +530,31 @@ export default function SessionScreen({ session }: { session: Session }) {
           })()}
 
           <div style={{ height: 10 }} />
+
+          {e.primary === 'cardio' && (
+            <div className="cardio-swap">
+              <p className="faint" style={{ marginBottom: 8 }}>
+                ¿Con qué te apetece hoy? Cambio los minutos para que el trabajo sea el mismo.
+              </p>
+              <div className="options">
+                {opcionesDeCardio(
+                  profile,
+                  session.kind,
+                  e.exerciseId,
+                  minutosDe(e) ?? session.cardioMinutes ?? 25
+                ).map((o) => (
+                  <button
+                    key={o.exercise.id}
+                    className="opt"
+                    aria-pressed={o.actual}
+                    onClick={() => cambiarCardio(ei, o.exercise.id)}
+                  >
+                    {nombreCorto(o.exercise.name)} · {o.minutos} min
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {e.primary === 'cardio' ? (
             <div className="set-row">

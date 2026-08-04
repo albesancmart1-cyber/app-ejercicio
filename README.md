@@ -194,6 +194,32 @@ una que se preparó ayer y nunca se empezó no bloquea el día nuevo.
 
 `node scripts/check-midnight.mjs` lo verifica falseando el reloj del navegador por los dos caminos.
 
+## El cardio: con qué, y cuánto
+
+Un día de cardio no es «35 minutos», es una **cantidad de trabajo**. Si la app propone 35 minutos de
+trote y ese día no apetece correr, andar 35 minutos no es lo mismo: es bastante menos. Así que en la
+sesión de cardio se ofrecen las actividades que se pueden hacer con el material del perfil —andar,
+bici, cuestas, escaleras, trote, comba— **cada una con sus propios minutos**, ordenadas de menos a
+más exigente.
+
+La moneda de cambio son los **MET-minuto**: el coste metabólico de la actividad por el tiempo. Es la
+unidad con la que están escritas las recomendaciones de actividad física —los 150–300 minutos
+semanales de la OMS son MET-minuto disfrazados— y los valores salen del
+[Compendium of Physical Activities](https://pubmed.ncbi.nlm.nih.gov/21681120/) (Ainsworth et al.,
+2011). Con eso, 35 min de trote (7,0 MET) son 245 MET-minuto, y andar (3,5 MET) los mismos 245 pide
+70 minutos. Sale largo porque **es** largo: caminar cuesta la mitad por minuto.
+
+Dos guardas. La conversión **no sube la intensidad de un día que pedía calma**: en un descanso activo
+no se ofrece trote aunque salgan las cuentas, porque el objetivo de ese día es mover sangre, no
+acumular MET-minuto. Y la **movilidad no entra** como alternativa aeróbica: convertir la dosis daría
+«85 min de estiramientos», que no es una recomendación, es una cuenta.
+
+Al cambiar, la app dice por qué cambian los minutos —«caminata tranquila cuesta menos por minuto, así
+que hacen falta 70 min para el mismo trabajo que 35 de trote suave»— y si la equivalencia exacta se
+pasa de hora y media, lo reconoce en vez de disimularlo.
+
+`node scripts/check-cardio.mjs` lo comprueba en navegador.
+
 ## Pesas y cardio el mismo día
 
 La cascada decide qué le conviene hoy a tu cuerpo, pero hay días en que toca cardio y uno se nota
@@ -733,7 +759,7 @@ En local la app se sirve en la raíz y en Pages bajo `/app-ejercicio/`. Lo contr
 ```bash
 npm install
 npm run dev       # servidor de desarrollo
-npm test          # 440 tests: motor, catálogo, DHA, leptina, composición, tendencia, cambios, calendario, volumen, variantes, sesión mixta, músculos, foco por músculo, progresión de carga y migración
+npm test          # 461 tests: motor, catálogo, DHA, leptina, composición, tendencia, cambios, calendario, volumen, variantes, sesión mixta, músculos, foco por músculo, progresión de carga y migración
 npm run build     # build de producción (PWA)
 npm run preview   # servir la build
 ```
@@ -759,6 +785,8 @@ npm run preview   # servir la build
   app se migran solos, sin perder nada, marcando lo deducido y sin volver a cambiar al reabrir.
 - `node scripts/comparar-motores.mjs` — genera seis meses de historial con las decisiones de la propia
   app y compara semana a semana lo que ve el motor viejo con lo que ve el nuevo.
+- `node scripts/check-cardio.mjs` — comprueba que un día de cardio ofrece varias actividades, que cada
+  una trae sus minutos equivalentes y que al cambiar se ajusta la dosis y se explica.
 - `node scripts/check-molestias.mjs` — comprueba que en el test diario se pueden marcar varias zonas
   con molestias a la vez, que se guardan en el check-in y que la recomendación las deja fuera todas.
 - `node scripts/check-cambiar.mjs` — comprueba que cambiar de ejercicio lo hace la app de un toque,

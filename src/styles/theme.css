@@ -1024,6 +1024,14 @@ textarea:focus {
   font-size: 0.9375rem;
 }
 
+/* Con qué se hace el cardio de hoy, y cuánto de cada cosa. */
+.cardio-swap {
+  margin-bottom: 12px;
+  padding: 12px;
+  border-radius: var(--r-control);
+  background: var(--fill-3);
+}
+
 /* Elegir a mano el nivel de volumen. */
 .level-actions {
   display: flex;
