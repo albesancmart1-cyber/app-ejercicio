@@ -38,16 +38,35 @@ export default function Settings() {
    * sus propios archivos desde la caché: sin esto puede pasar un rato hasta que
    * el móvil se entera de que hay algo nuevo, y da la impresión de que un
    * cambio no ha llegado cuando en realidad sí está publicado.
+   *
+   * `registration.update()` solo dispara la comprobación; instalar y activar
+   * el service worker nuevo sigue en marcha cuando esa promesa ya se resolvió.
+   * Recargar en ese momento todavía sirve la versión vieja, que es la que
+   * manda hasta que el nuevo toma el control. Por eso se espera al evento
+   * `controllerchange` —que es justo ese traspaso— antes de recargar, con un
+   * tope de tiempo por si no había nada que actualizar.
    */
   async function buscarActualizacion() {
     setBuscando(true)
-    try {
-      const registros = (await navigator.serviceWorker?.getRegistrations?.()) ?? []
-      await Promise.all(registros.map((r) => r.update()))
-    } catch {
-      // Sin service worker —navegador normal— no hay nada que actualizar.
+    const sw = navigator.serviceWorker
+    if (!sw) {
+      location.reload()
+      return
     }
-    location.reload()
+    let recargada = false
+    const recargarUnaVez = () => {
+      if (recargada) return
+      recargada = true
+      location.reload()
+    }
+    try {
+      sw.addEventListener('controllerchange', recargarUnaVez, { once: true })
+      const registros = await sw.getRegistrations()
+      await Promise.all(registros.map((r) => r.update()))
+      setTimeout(recargarUnaVez, 4000)
+    } catch {
+      recargarUnaVez()
+    }
   }
 
   function update(partial: Partial<typeof profile>) {
