@@ -57,6 +57,22 @@ function guardarSesion(s: SesionNube | null) {
 /** Error con el motivo en castellano, para poder enseñarlo tal cual. */
 export class ErrorNube extends Error {}
 
+/**
+ * Traduce los fallos de la base de datos a algo accionable.
+ *
+ * Los dos que se ven de verdad son de instalación, no de uso: la tabla que no
+ * está porque no se llegó a ejecutar `supabase/esquema.sql`, y el permiso
+ * denegado porque falta la política de aislamiento. Decir «error 404» ahí no
+ * ayuda a nadie; decir qué paso falta, sí.
+ */
+function quejaDeDatos(status: number, cuerpo: string): string {
+  if (status === 404 || /relation .* does not exist|PGRST205/i.test(cuerpo))
+    return 'Falta la tabla ritmo_datos en tu proyecto de Supabase. Ejecuta supabase/esquema.sql en el editor SQL del panel.'
+  if (status === 401 || status === 403)
+    return 'Tu proyecto no me deja tocar esos datos. Revisa que el paso 2 (supabase/esquema.sql) terminara con el aislamiento por filas activado.'
+  return `${cuerpo.slice(0, 140) || 'Error desconocido'} (${status})`
+}
+
 async function pedir(ruta: string, init: RequestInit = {}): Promise<Response> {
   const res = await fetch(`${URL_BASE}${ruta}`, {
     ...init,
@@ -172,7 +188,7 @@ export async function descargar(): Promise<AppData | null> {
   const res = await pedir(`/rest/v1/${TABLA}?select=datos`, {
     headers: { Authorization: `Bearer ${sesion.accessToken}` }
   })
-  if (!res.ok) throw new ErrorNube(`No he podido leer tus datos (${res.status}).`)
+  if (!res.ok) throw new ErrorNube(`No he podido leer tus datos. ${quejaDeDatos(res.status, await res.text())}`)
   const filas = (await res.json()) as { datos: AppData }[]
   return filas.length > 0 ? filas[0].datos : null
 }
@@ -181,7 +197,10 @@ export async function descargar(): Promise<AppData | null> {
 export async function subir(data: AppData): Promise<void> {
   const sesion = await sesionValida()
   if (!sesion) throw new ErrorNube('No has iniciado sesión.')
-  const res = await pedir(`/rest/v1/${TABLA}`, {
+  // `on_conflict` explícito: la fila lleva por clave al usuario y ese campo no
+  // viaja en el cuerpo —lo pone la base de datos sola—, así que más vale no
+  // depender de que PostgREST lo adivine.
+  const res = await pedir(`/rest/v1/${TABLA}?on_conflict=user_id`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${sesion.accessToken}`,
@@ -192,7 +211,6 @@ export async function subir(data: AppData): Promise<void> {
     body: JSON.stringify([{ datos: data, actualizado_en: new Date().toISOString() }])
   })
   if (!res.ok) {
-    const cuerpo = await res.text()
-    throw new ErrorNube(`No he podido guardar en la nube (${res.status}). ${cuerpo.slice(0, 120)}`)
+    throw new ErrorNube(`No he podido guardar en la nube. ${quejaDeDatos(res.status, await res.text())}`)
   }
 }
