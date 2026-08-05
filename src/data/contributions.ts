@@ -10,6 +10,17 @@
  * mientras que el bíceps acompaña —0,5—. Un press de banca inclinado carga el
  * deltoides anterior tanto como el pectoral, así que ahí sí van los dos a 1.
  *
+ * **El agarre cuenta.** El antebrazo va a 0,5 en todo ejercicio donde la mano
+ * sostiene la carga entera sin ayuda: peso muerto, remo con peso libre, colgarse
+ * de una barra, cargar peso andando. No es estabilizar —eso no se cuenta—, es
+ * una contracción máxima mantenida contra una carga que además es la que limita
+ * la serie. Al no contarlo, la app pedía trabajo directo de antebrazo a alguien
+ * que acababa de hacer peso muerto rumano y abdominales colgado de la barra.
+ *
+ * Dónde se corta: en máquinas y poleas **no** se cuenta. Ahí la carga es menor
+ * y el agarre casi nunca es lo que falla, así que sumarlo inflaría la cuenta
+ * hasta dejar el antebrazo permanentemente «cubierto» sin haberlo entrenado.
+ *
  * Un test comprueba que ningún ejercicio de fuerza del catálogo se queda sin
  * mapa y que todos los músculos citados existen.
  */
@@ -38,6 +49,9 @@ export const CONTRIBUTIONS: Record<string, MuscleContributions> = {
   subida_cajon: { cuadriceps: 1, gluteo: 1, isquiosurales: 0.5 },
   paso_lateral_banda: { gluteo: 1, aductores: 0.5 },
   aduccion_cadera_banda: { aductores: 1 },
+  abduccion_cadera_polea: { gluteo: 1 },
+  sentadilla_hack: { cuadriceps: 1, gluteo: 0.5 },
+  patada_gluteo_polea: { gluteo: 1, isquiosurales: 0.5 },
 
   // ── Pierna: dominantes de cadera ──────────────────────────
   puente_gluteo: { gluteo: 1, isquiosurales: 0.5 },
@@ -45,16 +59,30 @@ export const CONTRIBUTIONS: Record<string, MuscleContributions> = {
   puente_una_pierna: { gluteo: 1, isquiosurales: 1 },
   hip_thrust: { gluteo: 1, isquiosurales: 0.5 },
   extension_cadera_polea: { gluteo: 1, isquiosurales: 0.5 },
-  peso_muerto_mancuernas: { isquiosurales: 1, gluteo: 1, erectores_espinales: 0.5 },
-  peso_muerto_rumano: { isquiosurales: 1, gluteo: 1, erectores_espinales: 0.5 },
-  peso_muerto_deficit: { isquiosurales: 1, gluteo: 1, erectores_espinales: 0.5 },
-  peso_muerto_una_pierna: { isquiosurales: 1, gluteo: 1, erectores_espinales: 0.5 },
+  peso_muerto_mancuernas: { isquiosurales: 1, gluteo: 1, erectores_espinales: 0.5, antebrazo: 0.5 },
+  peso_muerto_rumano: { isquiosurales: 1, gluteo: 1, erectores_espinales: 0.5, antebrazo: 0.5 },
+  peso_muerto_deficit: { isquiosurales: 1, gluteo: 1, erectores_espinales: 0.5, antebrazo: 0.5 },
+  peso_muerto_una_pierna: { isquiosurales: 1, gluteo: 1, erectores_espinales: 0.5, antebrazo: 0.5 },
   buenos_dias: { isquiosurales: 1, erectores_espinales: 1, gluteo: 0.5 },
-  swing_kettlebell: { gluteo: 1, isquiosurales: 1, erectores_espinales: 0.5 },
+  swing_kettlebell: { gluteo: 1, isquiosurales: 1, erectores_espinales: 0.5, antebrazo: 0.5 },
   curl_femoral: { isquiosurales: 1 },
   curl_femoral_banda: { isquiosurales: 1 },
   curl_femoral_deslizante: { isquiosurales: 1 },
   curl_nordico_asistido: { isquiosurales: 1 },
+  // El convencional arranca del suelo: además de la bisagra, el cuádriceps
+  // empuja al principio y la espalda entera sostiene la barra.
+  peso_muerto_convencional: {
+    isquiosurales: 1,
+    gluteo: 1,
+    erectores_espinales: 1,
+    cuadriceps: 0.5,
+    trapecio_superior: 0.5,
+    dorsal_ancho: 0.5,
+    antebrazo: 0.5
+  },
+  // Sentado, la cadera va flexionada y el isquio trabaja más estirado; es otro
+  // estímulo que tumbado, no el mismo ejercicio en otra postura.
+  curl_femoral_sentado: { isquiosurales: 1 },
 
   // ── Tobillo ───────────────────────────────────────────────
   // El gastrocnemio cruza la rodilla: con la pierna estirada trabaja él y el
@@ -67,25 +95,32 @@ export const CONTRIBUTIONS: Record<string, MuscleContributions> = {
   elevacion_talones_multipower: { gastrocnemio: 1, soleo: 0.5 },
   elevacion_talones_sentado: { soleo: 1 },
   elevacion_talones_banda: { soleo: 1 },
+  elevacion_talones_burro: { gastrocnemio: 1, soleo: 0.5 },
 
   // ── Espalda ───────────────────────────────────────────────
   // Traccción vertical: manda el dorsal.
-  dominadas: { dorsal_ancho: 1, biceps_braquial: 0.5, espalda_alta: 0.5 },
-  dominadas_supinas: { dorsal_ancho: 1, biceps_braquial: 1, espalda_alta: 0.5 },
-  dominadas_negativas: { dorsal_ancho: 1, biceps_braquial: 0.5, espalda_alta: 0.5 },
+  dominadas: { dorsal_ancho: 1, biceps_braquial: 0.5, espalda_alta: 0.5, antebrazo: 0.5 },
+  dominadas_supinas: { dorsal_ancho: 1, biceps_braquial: 1, espalda_alta: 0.5, antebrazo: 0.5 },
+  dominadas_negativas: { dorsal_ancho: 1, biceps_braquial: 0.5, espalda_alta: 0.5, antebrazo: 0.5 },
   jalon_polea: { dorsal_ancho: 1, biceps_braquial: 0.5, espalda_alta: 0.5 },
   jalon_neutro: { dorsal_ancho: 1, biceps_braquial: 0.5, espalda_alta: 0.5 },
   pullover_mancuerna: { dorsal_ancho: 1, pectoral_mayor: 0.5, triceps_braquial: 0.5 },
+  pullover_polea: { dorsal_ancho: 1, pectoral_mayor: 0.5, triceps_braquial: 0.5 },
+  dominadas_agarre_ancho: { dorsal_ancho: 1, espalda_alta: 0.5, biceps_braquial: 0.5, antebrazo: 0.5 },
 
   // Tracción horizontal: dorsal y espalda alta a la vez.
-  remo_mancuerna: { espalda_alta: 1, dorsal_ancho: 1, biceps_braquial: 0.5 },
-  remo_barra: { espalda_alta: 1, dorsal_ancho: 1, biceps_braquial: 0.5 },
+  remo_mancuerna: { espalda_alta: 1, dorsal_ancho: 1, biceps_braquial: 0.5, antebrazo: 0.5 },
+  remo_barra: { espalda_alta: 1, dorsal_ancho: 1, biceps_braquial: 0.5, antebrazo: 0.5 },
   remo_maquina: { espalda_alta: 1, dorsal_ancho: 1, biceps_braquial: 0.5 },
   remo_polea_sentado: { espalda_alta: 1, dorsal_ancho: 1, biceps_braquial: 0.5 },
   remo_invertido: { espalda_alta: 1, dorsal_ancho: 1, biceps_braquial: 0.5 },
   remo_banda: { espalda_alta: 1, dorsal_ancho: 0.5, biceps_braquial: 0.5 },
+  remo_pendlay: { espalda_alta: 1, dorsal_ancho: 1, biceps_braquial: 0.5, erectores_espinales: 0.5, antebrazo: 0.5 },
+  remo_t: { espalda_alta: 1, dorsal_ancho: 1, biceps_braquial: 0.5, antebrazo: 0.5 },
 
   encogimientos: { trapecio_superior: 1, antebrazo: 0.5 },
+  encogimientos_polea: { trapecio_superior: 1 },
+  hiperextension_reversa: { erectores_espinales: 1, gluteo: 1, isquiosurales: 0.5 },
   hiperextensiones: { erectores_espinales: 1, gluteo: 0.5, isquiosurales: 0.5 },
   superman: { erectores_espinales: 1, gluteo: 0.5 },
   ytw_prono: { espalda_alta: 1, deltoides_posterior: 1, trapecio_superior: 0.5 },
@@ -105,7 +140,13 @@ export const CONTRIBUTIONS: Record<string, MuscleContributions> = {
   // Inclinado y declinado desplazan el reparto: arriba carga el deltoides
   // anterior tanto como el pectoral; abajo se va hacia el pectoral y el tríceps.
   press_inclinado_mancuernas: { pectoral_mayor: 1, deltoides_anterior: 1, triceps_braquial: 0.5 },
+  press_inclinado_barra: { pectoral_mayor: 1, deltoides_anterior: 1, triceps_braquial: 0.5 },
   flexiones_declinadas: { pectoral_mayor: 1, deltoides_anterior: 0.5, triceps_braquial: 0.5 },
+  press_declinado_mancuernas: { pectoral_mayor: 1, triceps_braquial: 0.5 },
+  aperturas_inclinadas: { pectoral_mayor: 1, deltoides_anterior: 0.5 },
+  contractor_pecho: { pectoral_mayor: 1 },
+  // Inclinado hacia delante el trabajo se va al pectoral; vertical, al tríceps.
+  fondos_paralelas: { pectoral_mayor: 1, triceps_braquial: 1, deltoides_anterior: 0.5 },
 
   // ── Hombro ────────────────────────────────────────────────
   press_militar_mancuernas: { deltoides_anterior: 1, triceps_braquial: 0.5, deltoides_lateral: 0.5 },
@@ -121,6 +162,8 @@ export const CONTRIBUTIONS: Record<string, MuscleContributions> = {
   pajaros: { deltoides_posterior: 1, espalda_alta: 0.5 },
   face_pull: { deltoides_posterior: 1, espalda_alta: 1, trapecio_superior: 0.5 },
   rotacion_externa: { deltoides_posterior: 1 },
+  pajaro_maquina: { deltoides_posterior: 1, espalda_alta: 0.5 },
+  press_militar_sentado: { deltoides_anterior: 1, triceps_braquial: 0.5, deltoides_lateral: 0.5 },
   // Está catalogado en «hombro» por el legado, pero el trabajo es antirrotación.
   plancha_toque_hombro: { recto_abdominal: 1, oblicuos: 0.5, deltoides_anterior: 0.5 },
 
@@ -137,8 +180,13 @@ export const CONTRIBUTIONS: Record<string, MuscleContributions> = {
   fondos_entre_sillas: { triceps_braquial: 1, pectoral_mayor: 0.5, deltoides_anterior: 0.5 },
   flexiones_diamante: { triceps_braquial: 1, pectoral_mayor: 0.5, deltoides_anterior: 0.5 },
   curl_muneca: { antebrazo: 1 },
+  curl_muneca_inverso: { antebrazo: 1 },
+  curl_predicador: { biceps_braquial: 1 },
+  press_cerrado: { triceps_braquial: 1, pectoral_mayor: 0.5, deltoides_anterior: 0.5 },
+  fondos_paralelas_triceps: { triceps_braquial: 1, pectoral_mayor: 0.5, deltoides_anterior: 0.5 },
   // Sujetar peso mientras se camina: agarre y trapecio aguantando la carga.
   paseo_granjero: { antebrazo: 1, trapecio_superior: 1, oblicuos: 0.5 },
+  agarre_disco: { antebrazo: 1 },
 
   // ── Core ──────────────────────────────────────────────────
   plancha: { recto_abdominal: 1, oblicuos: 0.5 },
@@ -152,7 +200,16 @@ export const CONTRIBUTIONS: Record<string, MuscleContributions> = {
   russian_twist: { oblicuos: 1, recto_abdominal: 0.5 },
   pallof_press: { oblicuos: 1, recto_abdominal: 0.5 },
   escalador: { recto_abdominal: 1, oblicuos: 0.5 },
-  bird_dog: { erectores_espinales: 1, gluteo: 0.5 }
+  bird_dog: { erectores_espinales: 1, gluteo: 0.5 },
+  crunch_polea: { recto_abdominal: 1, oblicuos: 0.5 },
+  crunch_abdominal: { recto_abdominal: 1 },
+  crunch_inverso: { recto_abdominal: 1, oblicuos: 0.5 },
+  // La rueda es antiextensión con los brazos largos: el abdomen frena y el
+  // dorsal sostiene el tronco desde arriba.
+  rueda_abdominal: { recto_abdominal: 1, oblicuos: 0.5, dorsal_ancho: 0.5 },
+  piernas_colgado: { recto_abdominal: 1, oblicuos: 0.5, antebrazo: 0.5 },
+  lenador_polea: { oblicuos: 1, recto_abdominal: 0.5 },
+  plancha_lastrada: { recto_abdominal: 1, oblicuos: 0.5 }
 }
 
 /**

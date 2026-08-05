@@ -533,9 +533,21 @@ export function buildSession(
       )
     }
 
-    // Un poco de core siempre que la sesión no se haya alargado. En la mixta no,
-    // que el hueco lo ocupa el cardio.
-    if (!recommendation.mixed && exercises.length < cuantos + 1 && !used.has('plancha')) {
+    // Un poco de core para rematar, siempre que la sesión no se haya alargado.
+    // En la mixta no, que el hueco lo ocupa el cardio.
+    //
+    // Dos condiciones que antes faltaban y hacían daño:
+    //
+    //  - **Si el core es una de las zonas vetadas, no se añade.** Este remate se
+    //    colaba al margen de la cascada de molestias, así que marcar agujetas de
+    //    abdomen en el test diario seguía dando abdomen. Era el único sitio del
+    //    constructor que no miraba `avoidGroups`.
+    //  - **Si la sesión ya trae core, tampoco.** Antes se miraba solo si estaba
+    //    la plancha; eligiendo por músculo, el recto abdominal puede abrir la
+    //    sesión y entonces se doblaba el trabajo sin querer.
+    const coreVetado = (recommendation.avoidGroups ?? []).includes('core')
+    const yaHayCore = exercises.some((pe) => pe.primary === 'core')
+    if (!coreVetado && !yaHayCore && !recommendation.mixed && exercises.length < cuantos + 1) {
       const core = pickForGroup('core', profile, 'bajo', used, recent)
       if (core) {
         used.add(core.id)

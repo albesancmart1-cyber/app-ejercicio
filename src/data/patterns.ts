@@ -25,6 +25,7 @@ export type MovementPattern =
   | 'extension_codo'
   | 'isometrico'
   | 'core_dinamico'
+  | 'fondo'
   | 'extension_tobillo'
   | 'cardio'
 
@@ -43,6 +44,7 @@ export const PATTERN_LABELS: Record<MovementPattern, string> = {
   extension_codo: 'Extensión de codo',
   isometrico: 'Sostén isométrico',
   core_dinamico: 'Core dinámico',
+  fondo: 'Fondo en paralelas',
   extension_tobillo: 'Extensión de tobillo',
   cardio: 'Cardio'
 }
@@ -118,6 +120,14 @@ export const PATTERN_CUES: Record<MovementPattern, string[]> = {
     'La zona lumbar pegada al suelo durante todo el movimiento.',
     'Ve despacio: la velocidad aquí solo quita trabajo.',
     'Si la espalda se despega, reduce el recorrido.'
+  ],
+  // Los fondos estaban catalogados como «extensión de codo», cuyo aviso dice que
+  // el codo se queda quieto. En un fondo se mueve el cuerpo entero, así que el
+  // aviso era exactamente al revés de lo que hay que hacer.
+  fondo: [
+    'Baja hasta que el brazo quede en ángulo recto, ni un dedo más: por debajo el hombro paga.',
+    'Inclínate hacia delante para cargar el pecho, o mantente vertical para cargar el tríceps.',
+    'Hombros lejos de las orejas todo el rato; si se te suben, ya has bajado de más.'
   ],
   extension_tobillo: [
     'Sube hasta lo más alto que puedas y baja hasta notar el estiramiento: el recorrido corto es lo que hace que no sirva de nada.',
@@ -220,9 +230,9 @@ export const EXERCISE_PATTERNS: Record<string, MovementPattern> = {
   curl_biceps: 'flexion_codo',
   curl_martillo: 'flexion_codo',
   extension_triceps: 'extension_codo',
-  fondos_banco: 'extension_codo',
+  fondos_banco: 'fondo',
   flexiones_diamante: 'extension_codo',
-  fondos_entre_sillas: 'extension_codo',
+  fondos_entre_sillas: 'fondo',
   curl_concentrado: 'flexion_codo',
   curl_inverso: 'flexion_codo',
   extension_triceps_polea_baja: 'extension_codo',
@@ -257,6 +267,40 @@ export const EXERCISE_PATTERNS: Record<string, MovementPattern> = {
   paseo_granjero: 'isometrico',
   elevacion_lateral_inclinado: 'empuje_vertical',
   aduccion_cadera_banda: 'zancada',
+
+  // Ampliación del catálogo: pullover en polea, abdominales en polea, rueda
+  // abdominal y demás huecos que el usuario echaba en falta.
+  abduccion_cadera_polea: 'zancada',
+  sentadilla_hack: 'sentadilla',
+  patada_gluteo_polea: 'puente',
+  peso_muerto_convencional: 'bisagra',
+  curl_femoral_sentado: 'curl_femoral',
+  elevacion_talones_burro: 'extension_tobillo',
+  pullover_polea: 'traccion_vertical',
+  remo_pendlay: 'traccion_horizontal',
+  remo_t: 'traccion_horizontal',
+  dominadas_agarre_ancho: 'traccion_vertical',
+  encogimientos_polea: 'traccion_horizontal',
+  hiperextension_reversa: 'extension_espalda',
+  press_inclinado_barra: 'empuje_horizontal',
+  press_declinado_mancuernas: 'empuje_horizontal',
+  aperturas_inclinadas: 'empuje_horizontal',
+  contractor_pecho: 'empuje_horizontal',
+  fondos_paralelas: 'fondo',
+  fondos_paralelas_triceps: 'fondo',
+  pajaro_maquina: 'extension_espalda',
+  press_militar_sentado: 'empuje_vertical',
+  curl_predicador: 'flexion_codo',
+  press_cerrado: 'empuje_horizontal',
+  curl_muneca_inverso: 'flexion_codo',
+  agarre_disco: 'isometrico',
+  crunch_polea: 'core_dinamico',
+  rueda_abdominal: 'core_dinamico',
+  piernas_colgado: 'core_dinamico',
+  crunch_abdominal: 'core_dinamico',
+  crunch_inverso: 'core_dinamico',
+  lenador_polea: 'core_dinamico',
+  plancha_lastrada: 'isometrico',
 
   // Cardio
   caminar: 'cardio',

@@ -11,6 +11,7 @@ import {
   withSomeStrength
 } from './recommender'
 import { buildSession } from './workoutBuilder'
+import { contributionsOf } from '../data/contributions'
 import { computeBalance, neglectedGroups, recentlyWorked, weeklySets } from './muscleBalance'
 import {
   RIR_VUELTA,
@@ -451,6 +452,45 @@ describe('construcción de la sesión', () => {
       expect(pe.plan.rir).toBeGreaterThanOrEqual(2)
       expect(pe.plan.restSeconds).toBeGreaterThan(0)
     }
+  })
+
+  // El remate de core se añadía después de la cascada de molestias y sin
+  // consultarla, así que marcar agujetas de abdomen en el test diario daba una
+  // sesión con abdomen igualmente. Es el camino entero: check-in → readiness →
+  // recomendación → sesión, que es donde el usuario lo vio.
+  describe('las molestias declaradas también valen para el remate de core', () => {
+    const conAgujetasDe = (zonas: MuscleGroup[]) => {
+      const r = computeReadiness(checkIn({ discomforts: zonas }))
+      const rec = recommend(profile, r, establishedHistory(), TODAY)
+      return buildSession(rec, profile, establishedHistory(), TODAY)
+    }
+
+    it('con agujetas en el core, la sesión no trae ni un ejercicio de core', () => {
+      const s = conAgujetasDe(['core'])
+      expect(s.exercises.length).toBeGreaterThan(0)
+      expect(s.exercises.map((e) => e.primary)).not.toContain('core')
+    })
+
+    it('y tampoco por la puerta de atrás: nada que trabaje abdomen como motor', () => {
+      const s = conAgujetasDe(['core'])
+      for (const pe of s.exercises) {
+        const aporte = contributionsOf(pe.exerciseId)
+        expect((aporte.recto_abdominal ?? 0) < 1, pe.exerciseId).toBe(true)
+        expect((aporte.oblicuos ?? 0) < 1, pe.exerciseId).toBe(true)
+      }
+    })
+
+    it('sin molestias, el remate de core sigue estando', () => {
+      const rec = recommend(profile, goodDay(), establishedHistory(), TODAY)
+      const s = buildSession(rec, profile, establishedHistory(), TODAY)
+      expect(s.exercises.map((e) => e.primary)).toContain('core')
+    })
+
+    it('y no se dobla: como mucho un ejercicio de core por sesión', () => {
+      const rec = recommend(profile, goodDay(), establishedHistory(), TODAY)
+      const s = buildSession(rec, profile, establishedHistory(), TODAY)
+      expect(s.exercises.filter((e) => e.primary === 'core').length).toBeLessThanOrEqual(1)
+    })
   })
 
   it('la vuelta progresiva reduce las series', () => {

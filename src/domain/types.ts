@@ -59,6 +59,10 @@ export type Equipment =
   | 'maquina_pecho'
   | 'maquina_femoral'
   | 'maquina_extension'
+  // Dos cacharros baratos y muy comunes que el catálogo no sabía nombrar, y por
+  // eso no tenía ni fondos en paralelas ni rueda abdominal.
+  | 'paralelas'
+  | 'rueda_abdominal'
   | 'bici'
   | 'correr'
 
@@ -77,6 +81,8 @@ export const EQUIPMENT_LABELS: Record<Equipment, string> = {
   maquina_pecho: 'Máquina de pecho',
   maquina_femoral: 'Máquina de femoral',
   maquina_extension: 'Máquina de extensión de cuádriceps',
+  paralelas: 'Paralelas o barras de fondos',
+  rueda_abdominal: 'Rueda abdominal',
   bici: 'Bicicleta',
   correr: 'Poder salir a correr / caminar'
 }

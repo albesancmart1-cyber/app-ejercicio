@@ -33,6 +33,9 @@ export const EXERCISES: Exercise[] = [
   { id: 'prensa_una_pierna', name: 'Prensa a una pierna', primary: 'cuadriceps_gluteo', secondary: ['femoral'], equipment: ['maquina_prensa'], stress: 'medio', loadFactor: 0.3 },
   { id: 'paso_lateral_banda', name: 'Pasos laterales con banda', primary: 'cuadriceps_gluteo', secondary: [], equipment: ['bandas'], stress: 'bajo', bodyweightOnly: true },
   { id: 'aduccion_cadera_banda', name: 'Aducción de cadera con banda', primary: 'cuadriceps_gluteo', secondary: [], equipment: ['bandas', 'polea'], stress: 'bajo', loadFactor: 0.15, unilateralOption: true },
+  { id: 'abduccion_cadera_polea', name: 'Abducción de cadera en polea o banda', primary: 'cuadriceps_gluteo', secondary: [], equipment: ['polea', 'bandas'], stress: 'bajo', loadFactor: 0.15, unilateralOption: true },
+  { id: 'sentadilla_hack', name: 'Sentadilla hack en máquina', primary: 'cuadriceps_gluteo', secondary: ['femoral'], equipment: ['maquina_prensa'], stress: 'medio', loadFactor: 0.5 },
+  { id: 'patada_gluteo_polea', name: 'Patada de glúteo en polea', primary: 'cuadriceps_gluteo', secondary: ['femoral'], equipment: ['polea', 'bandas'], stress: 'bajo', loadFactor: 0.2, unilateralOption: true },
 
   // ── Femoral ────────────────────────────────────────────────
   { id: 'puente_femoral', name: 'Puente de glúteo con talones elevados', primary: 'femoral', secondary: ['cuadriceps_gluteo', 'core'], equipment: ['peso_corporal', 'banco'], stress: 'bajo', bodyweightOnly: true },
@@ -49,6 +52,8 @@ export const EXERCISES: Exercise[] = [
   { id: 'buenos_dias', name: 'Buenos días con banda o barra', primary: 'femoral', secondary: ['espalda'], equipment: ['bandas', 'barra'], stress: 'medio', loadFactor: 0.25 },
   { id: 'curl_nordico_asistido', name: 'Curl nórdico asistido', primary: 'femoral', secondary: ['core'], equipment: ['peso_corporal'], stress: 'medio', bodyweightOnly: true },
   { id: 'swing_kettlebell', name: 'Swing con kettlebell', primary: 'femoral', secondary: ['cuadriceps_gluteo', 'core', 'cardio'], equipment: ['kettlebell'], stress: 'medio', loadFactor: 0.6 },
+  { id: 'peso_muerto_convencional', name: 'Peso muerto convencional', primary: 'femoral', secondary: ['espalda', 'cuadriceps_gluteo'], equipment: ['barra'], stress: 'alto', loadFactor: 0.5 },
+  { id: 'curl_femoral_sentado', name: 'Curl femoral sentado en máquina', primary: 'femoral', secondary: [], equipment: ['maquina_femoral'], stress: 'bajo', loadFactor: 0.45, unilateralOption: true },
 
   // ── Gemelo ─────────────────────────────────────────────────
   // La pantorrilla no tenía un solo ejercicio en el catálogo. Con la taxonomía
@@ -63,6 +68,7 @@ export const EXERCISES: Exercise[] = [
   { id: 'elevacion_talones_escalon', name: 'Elevación de talones en un escalón', primary: 'gemelo', secondary: [], equipment: ['peso_corporal'], stress: 'bajo', bodyweightOnly: true },
   { id: 'elevacion_talones_multipower', name: 'Elevación de talones en multipower', primary: 'gemelo', secondary: [], equipment: ['multipower', 'barra'], stress: 'bajo', loadFactor: 0.35 },
   { id: 'elevacion_talones_banda', name: 'Elevación de talones sentado con banda', primary: 'gemelo', secondary: [], equipment: ['bandas'], stress: 'bajo', loadFactor: 0.2 },
+  { id: 'elevacion_talones_burro', name: 'Elevación de talones inclinado (tipo burro)', primary: 'gemelo', secondary: [], equipment: ['peso_corporal', 'banco'], stress: 'bajo', bodyweightOnly: true },
 
   // ── Espalda ────────────────────────────────────────────────
   { id: 'dominadas', name: 'Dominadas (o asistidas)', primary: 'espalda', secondary: ['brazo', 'core'], equipment: ['dominadas_barra'], stress: 'medio', bodyweightOnly: true },
@@ -81,6 +87,12 @@ export const EXERCISES: Exercise[] = [
   { id: 'remo_invertido', name: 'Remo invertido bajo una barra', primary: 'espalda', secondary: ['brazo', 'core'], equipment: ['dominadas_barra', 'multipower'], stress: 'medio', bodyweightOnly: true },
   { id: 'ytw_prono', name: 'Elevaciones Y-T-W tumbado boca abajo', primary: 'espalda', secondary: ['hombro'], equipment: ['peso_corporal'], stress: 'bajo', bodyweightOnly: true },
   { id: 'superman', name: 'Superman (extensión lumbar)', primary: 'espalda', secondary: ['core'], equipment: ['peso_corporal'], stress: 'bajo', bodyweightOnly: true },
+  { id: 'pullover_polea', name: 'Pullover en polea alta', primary: 'espalda', secondary: ['pecho'], equipment: ['polea'], stress: 'bajo', loadFactor: 0.3 },
+  { id: 'remo_pendlay', name: 'Remo Pendlay (desde el suelo)', primary: 'espalda', secondary: ['brazo', 'core'], equipment: ['barra'], stress: 'alto', loadFactor: 0.35 },
+  { id: 'remo_t', name: 'Remo en T', primary: 'espalda', secondary: ['brazo'], equipment: ['barra', 'maquina_remo'], stress: 'medio', loadFactor: 0.4 },
+  { id: 'dominadas_agarre_ancho', name: 'Dominadas con agarre ancho', primary: 'espalda', secondary: ['brazo'], equipment: ['dominadas_barra'], stress: 'medio', bodyweightOnly: true },
+  { id: 'encogimientos_polea', name: 'Encogimientos en polea', primary: 'espalda', secondary: [], equipment: ['polea'], stress: 'bajo', loadFactor: 0.5 },
+  { id: 'hiperextension_reversa', name: 'Hiperextensión inversa', primary: 'espalda', secondary: ['femoral'], equipment: ['banco'], stress: 'bajo', bodyweightOnly: true },
 
   // ── Pecho ──────────────────────────────────────────────────
   { id: 'flexiones', name: 'Flexiones', primary: 'pecho', secondary: ['hombro', 'brazo', 'core'], equipment: ['peso_corporal'], stress: 'bajo', bodyweightOnly: true },
@@ -96,6 +108,11 @@ export const EXERCISES: Exercise[] = [
   { id: 'press_maquina', name: 'Press de pecho en máquina', primary: 'pecho', secondary: ['hombro', 'brazo'], equipment: ['maquina_pecho'], stress: 'bajo', loadFactor: 0.5, unilateralOption: true },
   { id: 'aperturas_mancuernas', name: 'Aperturas con mancuernas', primary: 'pecho', secondary: ['hombro'], equipment: ['mancuernas'], stress: 'bajo', loadFactor: 0.25 },
   { id: 'flexiones_inclinadas', name: 'Flexiones inclinadas en banco', primary: 'pecho', secondary: ['hombro', 'brazo'], equipment: ['banco'], stress: 'bajo', bodyweightOnly: true },
+  { id: 'press_inclinado_barra', name: 'Press inclinado con barra', primary: 'pecho', secondary: ['hombro', 'brazo'], equipment: ['barra', 'multipower'], stress: 'alto', loadFactor: 0.4 },
+  { id: 'press_declinado_mancuernas', name: 'Press declinado con mancuernas', primary: 'pecho', secondary: ['brazo'], equipment: ['mancuernas', 'banco'], stress: 'medio', loadFactor: 0.45, unilateralOption: true },
+  { id: 'aperturas_inclinadas', name: 'Aperturas inclinadas con mancuernas', primary: 'pecho', secondary: ['hombro'], equipment: ['mancuernas', 'banco'], stress: 'bajo', loadFactor: 0.2 },
+  { id: 'contractor_pecho', name: 'Contractor de pecho (peck deck)', primary: 'pecho', secondary: [], equipment: ['maquina_pecho'], stress: 'bajo', loadFactor: 0.4 },
+  { id: 'fondos_paralelas', name: 'Fondos en paralelas', primary: 'pecho', secondary: ['brazo', 'hombro'], equipment: ['paralelas'], stress: 'medio', bodyweightOnly: true },
 
   // ── Hombro ─────────────────────────────────────────────────
   { id: 'press_militar_mancuernas', name: 'Press militar con mancuernas', primary: 'hombro', secondary: ['brazo', 'core'], equipment: ['mancuernas'], stress: 'medio', loadFactor: 0.35, unilateralOption: true },
@@ -112,6 +129,8 @@ export const EXERCISES: Exercise[] = [
   { id: 'plancha_toque_hombro', name: 'Plancha con toque de hombro', primary: 'hombro', secondary: ['core'], equipment: ['peso_corporal'], stress: 'bajo', bodyweightOnly: true },
   { id: 'pike_pushup', name: 'Flexión pica (hombro)', primary: 'hombro', secondary: ['brazo', 'core'], equipment: ['peso_corporal'], stress: 'medio', bodyweightOnly: true },
   { id: 'elevacion_lateral_inclinado', name: 'Elevación lateral inclinado en banco', primary: 'hombro', secondary: [], equipment: ['mancuernas', 'banco', 'polea'], stress: 'bajo', loadFactor: 0.12, unilateralOption: true },
+  { id: 'pajaro_maquina', name: 'Pájaros en máquina (contractor inverso)', primary: 'hombro', secondary: ['espalda'], equipment: ['maquina_pecho'], stress: 'bajo', loadFactor: 0.3 },
+  { id: 'press_militar_sentado', name: 'Press militar sentado con mancuernas', primary: 'hombro', secondary: ['brazo'], equipment: ['mancuernas', 'banco'], stress: 'medio', loadFactor: 0.35, unilateralOption: true },
 
   // ── Brazo ──────────────────────────────────────────────────
   { id: 'curl_biceps', name: 'Curl de bíceps', primary: 'brazo', secondary: [], equipment: ['mancuernas', 'barra', 'bandas', 'polea'], stress: 'bajo', loadFactor: 0.3, unilateralOption: true },
@@ -127,6 +146,11 @@ export const EXERCISES: Exercise[] = [
   { id: 'curl_martillo', name: 'Curl martillo', primary: 'brazo', secondary: [], equipment: ['mancuernas', 'bandas'], stress: 'bajo', loadFactor: 0.3, unilateralOption: true },
   { id: 'curl_muneca', name: 'Curl de muñeca', primary: 'brazo', secondary: [], equipment: ['mancuernas', 'barra'], stress: 'bajo', loadFactor: 0.15, unilateralOption: true },
   { id: 'paseo_granjero', name: 'Paseo del granjero', primary: 'brazo', secondary: ['espalda', 'core'], equipment: ['mancuernas', 'kettlebell'], stress: 'medio', loadFactor: 0.6 },
+  { id: 'curl_predicador', name: 'Curl predicador (banco Scott)', primary: 'brazo', secondary: [], equipment: ['banco', 'mancuernas', 'barra'], stress: 'bajo', loadFactor: 0.25, unilateralOption: true },
+  { id: 'press_cerrado', name: 'Press de banca con agarre cerrado', primary: 'brazo', secondary: ['pecho', 'hombro'], equipment: ['barra', 'multipower'], stress: 'medio', loadFactor: 0.4 },
+  { id: 'fondos_paralelas_triceps', name: 'Fondos en paralelas con el tronco vertical', primary: 'brazo', secondary: ['pecho', 'hombro'], equipment: ['paralelas'], stress: 'medio', bodyweightOnly: true },
+  { id: 'curl_muneca_inverso', name: 'Curl de muñeca inverso (extensores)', primary: 'brazo', secondary: [], equipment: ['mancuernas', 'barra'], stress: 'bajo', loadFactor: 0.1, unilateralOption: true },
+  { id: 'agarre_disco', name: 'Sujeción de disco con pinza', primary: 'brazo', secondary: [], equipment: ['barra', 'mancuernas'], stress: 'bajo', loadFactor: 0.25 },
 
   // ── Core ───────────────────────────────────────────────────
   { id: 'plancha', name: 'Plancha', primary: 'core', secondary: ['hombro'], equipment: ['peso_corporal'], stress: 'bajo', bodyweightOnly: true },
@@ -141,6 +165,15 @@ export const EXERCISES: Exercise[] = [
   { id: 'russian_twist', name: 'Giros rusos sentado', primary: 'core', secondary: [], equipment: ['peso_corporal', 'mancuernas', 'kettlebell'], stress: 'bajo', loadFactor: 0.15 },
   { id: 'escalador', name: 'Escalador (mountain climbers)', primary: 'core', secondary: ['hombro', 'cardio'], equipment: ['peso_corporal'], stress: 'medio', bodyweightOnly: true },
   { id: 'rodillas_colgado', name: 'Elevación de rodillas colgado', primary: 'core', secondary: ['espalda'], equipment: ['dominadas_barra'], stress: 'medio', bodyweightOnly: true },
+  { id: 'crunch_polea', name: 'Abdominales en polea (de rodillas)', primary: 'core', secondary: [], equipment: ['polea'], stress: 'bajo', loadFactor: 0.3 },
+  { id: 'rueda_abdominal', name: 'Rueda abdominal', primary: 'core', secondary: ['espalda', 'hombro'], equipment: ['rueda_abdominal'], stress: 'medio', bodyweightOnly: true },
+  { id: 'piernas_colgado', name: 'Elevación de piernas estiradas colgado', primary: 'core', secondary: ['espalda'], equipment: ['dominadas_barra'], stress: 'medio', bodyweightOnly: true },
+  { id: 'crunch_abdominal', name: 'Encogimiento abdominal', primary: 'core', secondary: [], equipment: ['peso_corporal'], stress: 'bajo', bodyweightOnly: true },
+  { id: 'crunch_inverso', name: 'Crunch inverso', primary: 'core', secondary: [], equipment: ['peso_corporal'], stress: 'bajo', bodyweightOnly: true },
+  { id: 'lenador_polea', name: 'Leñador en polea o banda', primary: 'core', secondary: [], equipment: ['polea', 'bandas'], stress: 'bajo', loadFactor: 0.2, unilateralOption: true },
+  // Sin algo que ponerse encima esto es una plancha a secas, así que exige peso:
+  // listar «peso_corporal» aquí lo haría aparecer a quien no tiene con qué.
+  { id: 'plancha_lastrada', name: 'Plancha con peso encima', primary: 'core', secondary: ['hombro'], equipment: ['mancuernas', 'kettlebell'], stress: 'medio', loadFactor: 0.2 },
 
   // ── Cardio ─────────────────────────────────────────────────
   { id: 'caminar', name: 'Caminata tranquila', primary: 'cardio', secondary: [], equipment: ['peso_corporal', 'correr'], stress: 'bajo', bodyweightOnly: true },

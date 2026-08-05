@@ -199,6 +199,25 @@ const FIGURAS: Record<MovementPattern, JSX.Element> = {
       <Cabeza from={[25, 79]} to={[25, 79]} />
     </>
   ),
+  // Suspendido entre dos barras: las manos no se mueven y lo que sube y baja es
+  // el cuerpo entero. El brazo pasa de estirado a doblado en ángulo recto, que
+  // es justo hasta donde dice el aviso que hay que bajar.
+  fondo: (
+    <>
+      {/* Las paralelas, a la altura de las manos. */}
+      <line className="ground" x1="20" y1="40" x2="40" y2="40" />
+      <line className="ground" x1="60" y1="40" x2="80" y2="40" />
+      {/* Brazo: hombro → codo → mano, con la mano clavada en la barra. */}
+      <polyline className="limb" points="46,44 46,42 66,40">
+        <Ciclo from="46,44 46,42 66,40" to="46,62 58,54 66,40" />
+      </polyline>
+      {/* Tronco y piernas colgando, algo recogidas. */}
+      <polyline className="limb" points="46,44 47,62 45,78 52,86">
+        <Ciclo from="46,44 47,62 45,78 52,86" to="46,62 47,80 45,90 52,92" />
+      </polyline>
+      <Cabeza from={[46, 34]} to={[46, 52]} />
+    </>
+  ),
   // De pie, el cuerpo entero sube unos centímetros al elevar el talón.
   extension_tobillo: (
     <>

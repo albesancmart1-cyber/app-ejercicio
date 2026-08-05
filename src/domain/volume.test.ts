@@ -131,15 +131,21 @@ describe('las series que no cuentan se pueden explicar', () => {
 
 // ── Los ejemplos de mapeo obligatorios ────────────────────
 
+/**
+ * El antebrazo aparece en los tres ejercicios donde la mano sostiene la carga
+ * entera. No estaba, y el usuario lo cazó: la app le pedía trabajo directo de
+ * antebrazo justo después de un peso muerto rumano y de colgarse de la barra.
+ * El porqué del 0,5 y dónde se corta, en `src/data/contributions.test.ts`.
+ */
 describe('los mapeos de referencia', () => {
   const casos: [string, Record<string, number>][] = [
     ['press_banca_barra', { pectoral_mayor: 1, triceps_braquial: 0.5, deltoides_anterior: 0.5 }],
     ['press_banca_mancuernas', { pectoral_mayor: 1, triceps_braquial: 0.5, deltoides_anterior: 0.5 }],
     ['press_militar_barra', { deltoides_anterior: 1, triceps_braquial: 0.5, deltoides_lateral: 0.5 }],
-    ['dominadas', { dorsal_ancho: 1, biceps_braquial: 0.5, espalda_alta: 0.5 }],
-    ['remo_barra', { espalda_alta: 1, dorsal_ancho: 1, biceps_braquial: 0.5 }],
+    ['dominadas', { dorsal_ancho: 1, biceps_braquial: 0.5, espalda_alta: 0.5, antebrazo: 0.5 }],
+    ['remo_barra', { espalda_alta: 1, dorsal_ancho: 1, biceps_braquial: 0.5, antebrazo: 0.5 }],
     ['sentadilla_barra', { cuadriceps: 1, gluteo: 0.5, aductores: 0.5, erectores_espinales: 0.5 }],
-    ['peso_muerto_rumano', { isquiosurales: 1, gluteo: 1, erectores_espinales: 0.5 }],
+    ['peso_muerto_rumano', { isquiosurales: 1, gluteo: 1, erectores_espinales: 0.5, antebrazo: 0.5 }],
     ['curl_biceps', { biceps_braquial: 1 }],
     ['extension_triceps', { triceps_braquial: 1 }],
     ['elevaciones_laterales', { deltoides_lateral: 1 }]
@@ -201,7 +207,8 @@ describe('conteo fraccional de volumen', () => {
     expect(volumenDe(hecho('remo_barra', 3))).toEqual({
       espalda_alta: 3,
       dorsal_ancho: 3,
-      biceps_braquial: 1.5
+      biceps_braquial: 1.5,
+      antebrazo: 1.5
     })
   })
 
