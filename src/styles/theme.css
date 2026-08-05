@@ -1868,3 +1868,143 @@ textarea:focus {
 .exercise-actions .disclose svg {
   transition: none;
 }
+
+
+/* ── Detalle de un entreno del historial ────────────────── */
+
+/*
+ * Una fila del historial que se puede abrir tiene que parecerlo: cursor,
+ * ancho entero y el galón a la derecha. Antes eran divs y no había manera de
+ * saber que había algo debajo.
+ */
+/* La hoja llega hasta abajo del todo, y ahí está la cápsula de navegación
+   flotando: sin este hueco, la última línea del resumen queda debajo. */
+.session-detail .picker-list {
+  padding-bottom: calc(var(--tabbar-height) + 46px + env(safe-area-inset-bottom));
+}
+
+.item-tap {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: var(--sp-3);
+  text-align: left;
+}
+
+.item-tap .item-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Los totales del entreno, en fila y con la cifra grande. */
+.stat-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-5) var(--sp-6);
+  margin-top: var(--sp-3);
+}
+
+.detail-ex {
+  padding: var(--sp-4) 0;
+  border-top: 1px solid var(--separator);
+}
+
+.detail-ex:first-of-type {
+  border-top: none;
+}
+
+/* Serie a serie: número a la izquierda y lo que se hizo al lado. */
+.set-list {
+  list-style: none;
+  margin-top: var(--sp-2);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.set-list li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  background: var(--fill-3);
+  border-radius: var(--r-nested);
+  padding: var(--sp-1) var(--sp-3);
+  font-size: var(--text-body);
+  font-variant-numeric: tabular-nums;
+}
+
+.set-list li.warmup {
+  opacity: 0.55;
+}
+
+.set-n {
+  color: var(--label-3);
+  font-size: var(--text-caption);
+}
+
+.set-val {
+  font-weight: var(--w-medium);
+}
+
+/* ── Figura con los músculos trabajados ─────────────────── */
+
+.bodymap-pair {
+  display: flex;
+  gap: var(--sp-4);
+  justify-content: center;
+  margin-top: var(--sp-3);
+}
+
+.bodymap-fig {
+  flex: 1 1 0;
+  max-width: 150px;
+  text-align: center;
+}
+
+.bodymap {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* La silueta es el envase: se ve, pero no compite con lo encendido. */
+.bodymap-outline {
+  fill: var(--fill-3);
+  stroke: var(--separator);
+  stroke-width: 0.8;
+}
+
+.bodymap-on {
+  fill: var(--accent);
+}
+
+.bodymap-list {
+  list-style: none;
+  margin-top: var(--sp-4);
+}
+
+.bodymap-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1) 0;
+  font-size: var(--text-body);
+}
+
+.bodymap-key {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--r-small);
+  background: var(--accent);
+  flex: 0 0 auto;
+}
+
+.bodymap-name {
+  flex: 1 1 auto;
+  color: var(--label-2);
+}
+
+.bodymap-series {
+  color: var(--label);
+  font-variant-numeric: tabular-nums;
+}

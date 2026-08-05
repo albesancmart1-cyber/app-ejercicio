@@ -10,6 +10,7 @@ import {
 import { actions } from '../store/store'
 import { interpretTrend, type TrendReading } from '../domain/trend'
 import TrendChart from '../components/TrendChart'
+import SessionDetail from '../components/SessionDetail'
 import Icon from '../components/Icon'
 import { formatDuration } from '../components/Chrono'
 import { computeBalance } from '../domain/muscleBalance'
@@ -237,12 +238,19 @@ function BodyCompositionCard({
 export default function History() {
   const data = useAppData()
   const today = useToday()
+  // Qué entreno se está mirando por dentro, si alguno.
+  const [abierta, setAbierta] = useState<string | null>(null)
   const balance = computeBalance(data.sessions, today)
   const maxBalance = Math.max(0.1, ...MUSCLE_GROUPS.map((g) => balance[g]))
   const trained = new Set(data.sessions.filter((s) => s.completed).map((s) => s.date))
   const completed = data.sessions.filter((s) => s.completed)
 
   const leptin = computeLeptinSignal(data.checkIns, today, data.profile?.goal)
+
+  const sesionAbierta = abierta ? data.sessions.find((s) => s.id === abierta) : undefined
+  if (sesionAbierta) {
+    return <SessionDetail session={sesionAbierta} onClose={() => setAbierta(null)} />
+  }
 
   return (
     <div className="fade-in cards-grid">
@@ -351,6 +359,9 @@ export default function History() {
 
       <div className="card">
         <p className="eyebrow">Sesiones</p>
+        <p className="faint" style={{ marginBottom: 10 }}>
+          Toca cualquiera para ver qué peso y qué repeticiones hiciste.
+        </p>
         {completed.length === 0 ? (
           <p className="dim">Aún no hay nada registrado. Todo llegará, sin prisa.</p>
         ) : (
@@ -358,7 +369,7 @@ export default function History() {
             .sort((a, b) => (a.date < b.date ? 1 : -1))
             .slice(0, 12)
             .map((s) => (
-              <div className="item" key={s.id}>
+              <button className="item item-tap" key={s.id} onClick={() => setAbierta(s.id)}>
                 <div className="item-body">
                   <div className="item-title">{s.title}</div>
                   <div className="item-meta">
@@ -368,7 +379,8 @@ export default function History() {
                     {s.cardioMinutes ? ` · ${s.cardioMinutes} min` : ''}
                   </div>
                 </div>
-              </div>
+                <span className="chev" aria-hidden="true" />
+              </button>
             ))
         )}
       </div>
