@@ -1410,18 +1410,43 @@ textarea:focus {
   font-variant-numeric: tabular-nums;
 }
 
-.trend-legend {
-  display: flex;
-  gap: 16px;
-  margin-top: 6px;
-  font-size: 0.8rem;
-  color: var(--text-dim);
+/* Selector de periodo: el control segmentado de siempre, más apretado. */
+.trend-range {
+  margin-bottom: var(--sp-3);
 }
 
-.trend-legend > span {
+.trend-range button {
+  font-size: var(--text-caption);
+  padding: var(--sp-2) 0;
+}
+
+.trend-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-3);
+  margin-top: var(--sp-2);
+}
+
+/*
+ * La leyenda es además el interruptor de cada serie. Apagada se atenúa entera,
+ * marca incluida: si solo se atenuara el texto, la marca de color seguiría
+ * diciendo que la línea está ahí cuando no lo está.
+ */
+.trend-key-btn {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: var(--sp-2);
+  font-size: var(--text-caption);
+  line-height: var(--leading-caption);
+  color: var(--text-dim);
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-control);
+  background: var(--fill-3);
+}
+
+.trend-key-btn[aria-pressed='false'] {
+  opacity: 0.4;
+  text-decoration: line-through;
 }
 
 .trend-key {
@@ -1431,8 +1456,16 @@ textarea:focus {
   flex: 0 0 auto;
 }
 
-.trend-key-dot {
+.trend-key-circulo {
   border-radius: 50%;
+}
+
+.trend-key-rombo {
+  transform: rotate(45deg);
+}
+
+.trend-key-triangulo {
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
 }
 
 /* ── Veredicto de la tendencia ──────────────────────────── */

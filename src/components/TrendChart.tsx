@@ -1,74 +1,192 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import {
+  ETIQUETA_RANGO,
+  RANGOS,
+  casillasDe,
+  haySuficiente,
+  promedio,
+  rangoPorDefecto,
+  repartir,
+  type PuntoDeCasilla,
+  type RangoTendencia
+} from '../domain/trendRange'
+import { computeComposition } from '../domain/body'
+import type { BodyMeasurement } from '../domain/types'
 
 /**
- * Tendencia de grasa y músculo.
+ * Tendencia del cuerpo: peso, grasa, músculo y masa libre de grasa.
  *
- * Grasa (~16 kg) y músculo (~32 kg) tienen escalas muy distintas. En vez de
- * recurrir a un doble eje —que es el error clásico y deforma la comparación—,
- * ambas series se indexan a una base común: **el cambio en kg desde la primera
- * medición**, con la línea de cero como referencia. Además de ser correcto, es
- * justo donde la recomposición se ve: dos líneas separándose del origen.
+ * Las cuatro cifras están en escalas muy distintas —el peso ronda los 78 kg y
+ * la grasa los 16—, así que no se pintan tal cual. Todas se convierten al
+ * **cambio en kilos desde la primera medición de la ventana**, con la línea de
+ * cero como referencia. Además de evitar el doble eje —el error clásico, que
+ * deforma la comparación—, es justo donde se ve lo que importa: la
+ * recomposición son dos líneas separándose del cero mientras el peso apenas se
+ * mueve.
  *
- * Los colores son fijos por serie —la identidad sigue al dato, no al acento
- * horario de la app— y están validados contra las cuatro superficies oscuras
- * (banda de luminosidad, croma, separación para daltonismo y contraste).
+ * El eje horizontal es tiempo de verdad, no una medición por hueco: ver
+ * `src/domain/trendRange.ts`.
+ *
+ * **Los colores no siguen al acento horario de la app**, a diferencia del resto
+ * de la interfaz: aquí la identidad tiene que seguir al dato o la leyenda deja
+ * de valer al atardecer. Y ninguna serie se distingue solo por color: cada una
+ * lleva su marca —círculo, cuadrado, rombo, triángulo—, su trazo y su etiqueta
+ * al final de la línea.
+ *
+ * Masa libre de grasa y músculo son parientes: la primera contiene a la
+ * segunda, más hueso, órganos y agua. Por eso comparten familia de color y se
+ * separan por trazo, discontinuo el de la magra, en vez de pelearse por un
+ * cuarto tono que ya no cabría sin comprometer el daltonismo.
  */
 
 export const SERIES_COLORS = {
+  peso: '#b5aea6',
   grasa: '#cf6d4d',
-  musculo: '#5596d0'
+  musculo: '#5596d0',
+  magra: '#8fc0e8'
 }
 
-export interface TrendPoint {
-  date: string
-  fatKg?: number
-  muscleKg?: number
-}
+type Clave = keyof typeof SERIES_COLORS
+
+const SERIES: { clave: Clave; label: string; marca: 'circulo' | 'cuadrado' | 'rombo' | 'triangulo'; discontinua?: boolean }[] = [
+  { clave: 'peso', label: 'Peso', marca: 'triangulo' },
+  { clave: 'grasa', label: 'Grasa', marca: 'circulo' },
+  { clave: 'musculo', label: 'Músculo', marca: 'cuadrado' },
+  { clave: 'magra', label: 'Masa libre de grasa', marca: 'rombo', discontinua: true }
+]
 
 const W = 320
-const H = 150
-const PAD = { top: 14, right: 34, bottom: 20, left: 30 }
+const H = 160
+const PAD = { top: 14, right: 38, bottom: 24, left: 32 }
 
-function formatDate(iso: string): string {
-  const [, m, d] = iso.split('-')
-  return `${Number(d)}/${Number(m)}`
+/** Los cuatro valores de una casilla, o nada si esa casilla está vacía. */
+interface Valores {
+  peso?: number
+  grasa?: number
+  musculo?: number
+  magra?: number
 }
 
-export default function TrendChart({ points }: { points: TrendPoint[] }) {
+function valoresDe(punto: PuntoDeCasilla, heightCm?: number): Valores | null {
+  if (punto.mediciones.length === 0) return null
+  const c = punto.mediciones.map((m) => computeComposition(m, heightCm))
+  return {
+    peso: promedio(c.map((x) => x.weightKg)),
+    grasa: promedio(c.map((x) => x.fatKg)),
+    musculo: promedio(c.map((x) => x.muscleKg)),
+    magra: promedio(c.map((x) => x.leanKg))
+  }
+}
+
+function Marca({ tipo, cx, cy, r, color }: { tipo: string; cx: number; cy: number; r: number; color: string }) {
+  if (tipo === 'circulo') return <circle cx={cx} cy={cy} r={r} fill={color} />
+  if (tipo === 'cuadrado') return <rect x={cx - r} y={cy - r} width={r * 2} height={r * 2} fill={color} />
+  if (tipo === 'rombo')
+    return <polygon points={`${cx},${cy - r} ${cx + r},${cy} ${cx},${cy + r} ${cx - r},${cy}`} fill={color} />
+  return <polygon points={`${cx},${cy - r} ${cx + r},${cy + r} ${cx - r},${cy + r}`} fill={color} />
+}
+
+export default function TrendChart({
+  measurements,
+  heightCm,
+  todayIso
+}: {
+  measurements: BodyMeasurement[]
+  heightCm?: number
+  todayIso: string
+}) {
+  const [rango, setRango] = useState<RangoTendencia>(() => rangoPorDefecto(measurements, todayIso))
   const [activo, setActivo] = useState<number | null>(null)
+  const [ocultas, setOcultas] = useState<Clave[]>([])
 
-  const base = points[0]
-  const deltas = points.map((p) => ({
-    date: p.date,
-    grasa: p.fatKg !== undefined && base.fatKg !== undefined ? p.fatKg - base.fatKg : undefined,
-    musculo:
-      p.muscleKg !== undefined && base.muscleKg !== undefined ? p.muscleKg - base.muscleKg : undefined
-  }))
+  const puntos = useMemo(() => repartir(measurements, rango, todayIso), [measurements, rango, todayIso])
 
-  const valores = deltas.flatMap((d) => [d.grasa, d.musculo]).filter((v): v is number => v !== undefined)
-  if (valores.length === 0) return null
+  const cambiarRango = (r: RangoTendencia) => {
+    setRango(r)
+    setActivo(null)
+  }
 
+  const selector = (
+    <div className="scale trend-range" role="group" aria-label="Periodo de la gráfica">
+      {RANGOS.map((r) => (
+        <button key={r} aria-pressed={rango === r} onClick={() => cambiarRango(r)}>
+          {ETIQUETA_RANGO[r]}
+        </button>
+      ))}
+    </div>
+  )
+
+  if (!haySuficiente(puntos)) {
+    return (
+      <div>
+        {selector}
+        <p className="faint" style={{ marginTop: 12 }}>
+          En {ETIQUETA_RANGO[rango].toLowerCase()} no hay dos pesadas con las que trazar una
+          tendencia. Prueba con un periodo más largo.
+        </p>
+      </div>
+    )
+  }
+
+  // Todo se mide contra la primera casilla con dato de la ventana: cambiar de
+  // periodo cambia la referencia, que es lo que hace que «1 semana» conteste a
+  // «¿qué ha pasado esta semana?» y no a «¿qué ha pasado desde que empecé?».
+  const crudos = puntos.map((p) => valoresDe(p, heightCm))
+  const base = crudos.find((v) => v !== null) ?? null
+
+  const deltas = crudos.map((v) => {
+    if (!v || !base) return null
+    const d: Valores = {}
+    for (const { clave } of SERIES) {
+      const actual = v[clave]
+      const inicial = base[clave]
+      if (actual !== undefined && inicial !== undefined) d[clave] = actual - inicial
+    }
+    return d
+  })
+
+  const visibles = SERIES.filter((s) => !ocultas.includes(s.clave))
+  const valores = deltas.flatMap((d) =>
+    d ? visibles.map((s) => d[s.clave]).filter((v): v is number => v !== undefined) : []
+  )
   const maxAbs = Math.max(0.5, ...valores.map(Math.abs))
   const yMin = -maxAbs * 1.15
   const yMax = maxAbs * 1.15
 
-  const x = (i: number) =>
-    PAD.left + (i / Math.max(1, deltas.length - 1)) * (W - PAD.left - PAD.right)
-  const y = (v: number) =>
-    PAD.top + ((yMax - v) / (yMax - yMin)) * (H - PAD.top - PAD.bottom)
+  const x = (i: number) => PAD.left + (i / Math.max(1, puntos.length - 1)) * (W - PAD.left - PAD.right)
+  const y = (v: number) => PAD.top + ((yMax - v) / (yMax - yMin)) * (H - PAD.top - PAD.bottom)
 
-  const linea = (clave: 'grasa' | 'musculo') =>
+  /** Une solo las casillas con dato: los huecos se saltan, no cortan la línea. */
+  const linea = (clave: Clave) =>
     deltas
-      .map((d, i) => (d[clave] === undefined ? null : `${x(i)},${y(d[clave]!)}`))
+      .map((d, i) => (d && d[clave] !== undefined ? `${x(i)},${y(d[clave]!)}` : null))
       .filter(Boolean)
       .join(' ')
 
-  const ultimo = deltas[deltas.length - 1]
+  const ultimoConDato = (clave: Clave) => {
+    for (let i = deltas.length - 1; i >= 0; i--) {
+      const d = deltas[i]
+      if (d && d[clave] !== undefined) return { i, v: d[clave]! }
+    }
+    return null
+  }
+
   const fmt = (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(1)}`
+  const casillas = casillasDe(rango, todayIso)
+
+  const alternar = (clave: Clave) =>
+    setOcultas((o) => (o.includes(clave) ? o.filter((c) => c !== clave) : [...o, clave]))
 
   return (
     <div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="trend-chart" role="img" aria-label="Cambio de grasa y músculo desde la primera medición">
+      {selector}
+
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        className="trend-chart"
+        role="img"
+        aria-label={`Cambio de peso, grasa, músculo y masa libre de grasa en ${ETIQUETA_RANGO[rango]}`}
+      >
         {/* Cero: la referencia que da sentido a todo lo demás. */}
         <line x1={PAD.left} y1={y(0)} x2={W - PAD.right} y2={y(0)} className="trend-zero" />
         <text x={PAD.left - 6} y={y(0) + 3} textAnchor="end" className="trend-axis-label">
@@ -81,77 +199,110 @@ export default function TrendChart({ points }: { points: TrendPoint[] }) {
           {`-${maxAbs.toFixed(1)}`}
         </text>
 
-        <polyline points={linea('grasa')} fill="none" stroke={SERIES_COLORS.grasa} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-        <polyline points={linea('musculo')} fill="none" stroke={SERIES_COLORS.musculo} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        {visibles.map((s) => (
+          <polyline
+            key={s.clave}
+            points={linea(s.clave)}
+            fill="none"
+            stroke={SERIES_COLORS[s.clave]}
+            strokeWidth="2"
+            strokeDasharray={s.discontinua ? '5 3' : undefined}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+        ))}
 
         {deltas.map((d, i) => (
-          <g key={d.date}>
-            {d.grasa !== undefined && (
-              <circle cx={x(i)} cy={y(d.grasa)} r={activo === i ? 5 : 3.5} fill={SERIES_COLORS.grasa} />
-            )}
-            {d.musculo !== undefined && (
+          <g key={casillas[i].clave}>
+            {d &&
+              visibles.map(
+                (s) =>
+                  d[s.clave] !== undefined && (
+                    <Marca
+                      key={s.clave}
+                      tipo={s.marca}
+                      cx={x(i)}
+                      cy={y(d[s.clave]!)}
+                      r={activo === i ? 4.5 : 3}
+                      color={SERIES_COLORS[s.clave]}
+                    />
+                  )
+              )}
+            {/* Zona de toque generosa, mayor que la marca. */}
+            {d && (
               <rect
-                x={x(i) - (activo === i ? 4.5 : 3)}
-                y={y(d.musculo) - (activo === i ? 4.5 : 3)}
-                width={activo === i ? 9 : 6}
-                height={activo === i ? 9 : 6}
-                fill={SERIES_COLORS.musculo}
+                x={x(i) - 10}
+                y={0}
+                width={20}
+                height={H}
+                fill="transparent"
+                onClick={() => setActivo(activo === i ? null : i)}
+                style={{ cursor: 'pointer' }}
               />
             )}
-            {/* Zona de toque generosa, mayor que la marca. */}
-            <rect
-              x={x(i) - 14}
-              y={0}
-              width={28}
-              height={H}
-              fill="transparent"
-              onClick={() => setActivo(activo === i ? null : i)}
-              style={{ cursor: 'pointer' }}
-            />
           </g>
         ))}
 
-        {/* Etiqueta directa del último punto: la identidad no depende del color. */}
-        {ultimo.grasa !== undefined && (
-          <text x={W - PAD.right + 4} y={y(ultimo.grasa) + 3} className="trend-end-label">
-            {fmt(ultimo.grasa)}
-          </text>
-        )}
-        {ultimo.musculo !== undefined && (
-          <text x={W - PAD.right + 4} y={y(ultimo.musculo) + 3} className="trend-end-label">
-            {fmt(ultimo.musculo)}
-          </text>
-        )}
+        {/* Etiqueta directa al final de cada línea: la identidad no depende del color. */}
+        {visibles.map((s) => {
+          const u = ultimoConDato(s.clave)
+          return u ? (
+            <text key={s.clave} x={W - PAD.right + 4} y={y(u.v) + 3} className="trend-end-label">
+              {fmt(u.v)}
+            </text>
+          ) : null
+        })}
 
-        <text x={PAD.left} y={H - 4} className="trend-axis-label">
-          {formatDate(deltas[0].date)}
-        </text>
-        <text x={W - PAD.right} y={H - 4} textAnchor="end" className="trend-axis-label">
-          {formatDate(ultimo.date)}
-        </text>
+        {casillas.map((c, i) =>
+          c.destacada ? (
+            <text
+              key={c.clave}
+              x={x(i)}
+              y={H - 6}
+              textAnchor={i === 0 ? 'start' : i === casillas.length - 1 ? 'end' : 'middle'}
+              className="trend-axis-label"
+            >
+              {c.etiqueta}
+            </text>
+          ) : null
+        )}
       </svg>
 
+      {/* La leyenda además enciende y apaga: con cuatro líneas, poder quedarse
+          con dos es lo que hace legible una gráfica de 320 píxeles de ancho. */}
       <div className="trend-legend">
-        <span>
-          <span className="trend-key trend-key-dot" style={{ background: SERIES_COLORS.grasa }} />
-          Grasa
-        </span>
-        <span>
-          <span className="trend-key trend-key-square" style={{ background: SERIES_COLORS.musculo }} />
-          Músculo
-        </span>
+        {SERIES.map((s) => (
+          <button
+            key={s.clave}
+            className="trend-key-btn"
+            aria-pressed={!ocultas.includes(s.clave)}
+            onClick={() => alternar(s.clave)}
+          >
+            <span
+              className={`trend-key trend-key-${s.marca}`}
+              style={{ background: SERIES_COLORS[s.clave] }}
+            />
+            {s.label}
+          </button>
+        ))}
       </div>
 
-      {activo !== null && (
+      {activo !== null && deltas[activo] && (
         <p className="faint" style={{ marginTop: 8 }}>
-          {formatDate(deltas[activo].date)}: grasa{' '}
-          {deltas[activo].grasa !== undefined ? `${fmt(deltas[activo].grasa!)} kg` : '—'}, músculo{' '}
-          {deltas[activo].musculo !== undefined ? `${fmt(deltas[activo].musculo!)} kg` : '—'}
+          {casillas[activo].clave}:{' '}
+          {visibles
+            .map((s) => {
+              const v = deltas[activo]![s.clave]
+              return `${s.label.toLowerCase()} ${v !== undefined ? `${fmt(v)} kg` : '—'}`
+            })
+            .join(', ')}
         </p>
       )}
+
       <p className="faint" style={{ marginTop: 8 }}>
-        Cambio en kg desde tu primera medición. Las dos series comparten escala, así que la
-        recomposición se ve como dos líneas separándose del cero.
+        Cambio en kilos desde la primera pesada del periodo. Las cuatro series comparten escala, así
+        que la recomposición se ve como grasa y músculo separándose del cero con el peso casi
+        quieto. Toca una serie de la leyenda para esconderla.
       </p>
     </div>
   )

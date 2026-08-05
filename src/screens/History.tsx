@@ -169,12 +169,7 @@ function BodyCompositionCard({
 
           {ordenadas.length >= 2 && (
             <div style={{ marginTop: 18 }}>
-              <TrendChart
-                points={[...ordenadas].reverse().map((m) => {
-                  const c = computeComposition(m, heightCm)
-                  return { date: m.date, fatKg: c.fatKg, muscleKg: c.muscleKg }
-                })}
-              />
+              <TrendChart measurements={measurements} heightCm={heightCm} todayIso={today} />
             </div>
           )}
 
