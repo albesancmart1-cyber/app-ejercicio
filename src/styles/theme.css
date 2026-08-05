@@ -1,16 +1,27 @@
 /*
  * Ritmo — sistema visual.
  *
- * Lenguaje Apple: tipografía del sistema con jerarquía clara, listas agrupadas
- * sobre superficies translúcidas, esquinas continuas y mucho aire. La barra de
- * navegación es una cápsula flotante de **cristal líquido**: desenfoca y satura
- * lo que pasa por detrás, y lleva su brillo especular en el borde superior y su
- * sombra por debajo, de modo que parece un objeto físico apoyado sobre la app.
+ * La estructura sigue la referencia de estilo que trajo el usuario (shadcn/ui):
+ * escala tipográfica de ocho pasos con su tracking, espaciado de base 4,
+ * densidad compacta, radios que marcan jerarquía —24 contenedores, 18 lo que se
+ * toca— y tarjetas definidas por un borde de un píxel más una sombra que apenas
+ * se nota.
  *
- * Lo que no se toca del diseño anterior, porque es salud y no estética: el
- * color de acento sigue la hora del día (amanecer, día, atardecer, noche) y por
- * la noche la interfaz elimina el azul. La propia app respeta la higiene
- * lumínica que predica.
+ * **Los colores no vienen de ahí, y es deliberado.** La referencia es
+ * monocroma y clara; Ritmo es oscura y ámbar porque el acento sigue la hora del
+ * día y por la noche elimina el azul. Eso no es estética, es la higiene
+ * lumínica que la app predica, y sería absurdo que la propia app la rompiera.
+ * Se ha tomado prestada la gramática y no la paleta.
+ *
+ * Dos cosas más se quedan fuera de la referencia, a sabiendas:
+ *
+ *  - **La barra de navegación** sigue siendo una cápsula flotante de cristal
+ *    líquido: desenfoca lo que pasa por detrás y lleva su brillo en el borde.
+ *    La referencia tiene una barra lateral de escritorio y ningún componente
+ *    equivalente, y es lo que hace que esto se lea como app y no como página.
+ *  - **Los números del entreno** —peso, repeticiones, cuenta atrás— no bajan a
+ *    la densidad compacta: van en los pasos grandes de la escala, como bloques
+ *    de dato. Se leen de reojo, a media serie, y ahí 14 píxeles no valen.
  */
 
 :root {
@@ -49,11 +60,69 @@
   --accent-soft: rgba(255, 159, 107, 0.16);
   --accent-ink: #1a1005;
 
-  /* Esquinas continuas: tarjetas amplias, controles medios, cápsulas. */
-  --r-card: 22px;
-  --r-control: 14px;
-  --r-small: 10px;
+  /*
+   * Radios: el radio marca la jerarquía. 24 para contenedores, 18 para todo lo
+   * que se toca —botones, campos, etiquetas—, 10 para lo anidado y 6 para
+   * detalles. Nada entre medias.
+   *
+   * La cápsula de la barra de navegación se queda fuera de esa regla, y a
+   * propósito: es lo que hace que la app se lea como app y no como página, y en
+   * la referencia no hay ningún componente equivalente al que atenerse.
+   */
+  --r-card: 24px;
+  --r-control: 18px;
+  --r-nested: 10px;
+  --r-small: 6px;
   --r-pill: 980px;
+
+  /* Escala de espaciado, base 4. */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-12: 48px;
+
+  /*
+   * Escala tipográfica de ocho pasos, con su interlineado y su tracking. El
+   * tracking se aprieta cuanto más grande es el texto y se abre en las
+   * mayúsculas pequeñas; fuera del rango ±0,05em el sistema deja de sostenerse.
+   *
+   * En píxeles y no en rem a propósito: la escala está definida en píxeles y
+   * media escalón de diferencia estropea la relación entre pasos.
+   */
+  --text-caption: 12px;
+  --leading-caption: 1.33;
+  --tracking-caption: 0.05em;
+  --text-body: 14px;
+  --leading-body: 1.43;
+  --text-body-lg: 16px;
+  --leading-body-lg: 1.5;
+  --text-subheading: 18px;
+  --leading-subheading: 1.56;
+  --text-heading-sm: 24px;
+  --leading-heading-sm: 1.33;
+  --tracking-heading-sm: -0.025em;
+  --text-heading: 30px;
+  --leading-heading: 1.2;
+  --tracking-heading: -0.025em;
+  --text-heading-lg: 36px;
+  --leading-heading-lg: 1.11;
+  --tracking-heading-lg: -0.025em;
+  --text-display: 48px;
+  --leading-display: 1.1;
+  --tracking-display: -0.05em;
+
+  --w-regular: 400;
+  --w-medium: 500;
+  --w-semibold: 600;
+
+  /* Elevación: un pelo de borde y una sombra que apenas se nota. */
+  --card-padding: 20px;
+  --elevation-card: 0 0 0 1px var(--separator), 0 1px 3px rgba(0, 0, 0, 0.34),
+    0 1px 2px -1px rgba(0, 0, 0, 0.34);
+  --page-max: 1280px;
 
   --step: 8px;
   --tabbar-height: 64px;
@@ -148,9 +217,10 @@ textarea,
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display',
     ui-sans-serif, system-ui, 'Segoe UI', Roboto, sans-serif;
-  font-size: 17px;
-  line-height: 1.45;
-  letter-spacing: -0.01em;
+  /* Densidad compacta: el cuerpo es el paso «body» de la escala, y el tracking
+     lo pone cada paso, no una regla global. */
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
   background: var(--bg);
   color: var(--label);
   min-height: 100dvh;
@@ -219,61 +289,108 @@ body::after {
 }
 
 /* ── Tipografía ─────────────────────────────────────────── */
-/* Escala del sistema: título grande, titulares, cuerpo, pie. */
+/*
+ * Ocho pasos y ni uno más, cada uno con su interlineado y su tracking. El peso
+ * no pasa de 600: por encima, la escala deja de leerse como una jerarquía y
+ * empieza a leerse como énfasis suelto.
+ *
+ * Los números del entreno —peso, repeticiones, cuenta atrás— no bajan con el
+ * resto: van en los pasos grandes, como bloques de dato. Es lo que hace que la
+ * densidad compacta sea legible a media serie, mirando el móvil de reojo.
+ */
 
 .eyebrow {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-size: var(--text-caption);
+  line-height: var(--leading-caption);
+  font-weight: var(--w-medium);
+  letter-spacing: var(--tracking-caption);
   text-transform: uppercase;
   color: var(--label-3);
-  margin-bottom: 6px;
+  margin-bottom: var(--sp-2);
 }
 
 h1 {
-  font-size: 2.125rem;
-  font-weight: 700;
-  letter-spacing: -0.032em;
-  line-height: 1.08;
+  font-size: var(--text-heading);
+  line-height: var(--leading-heading);
+  font-weight: var(--w-semibold);
+  letter-spacing: var(--tracking-heading);
 }
 
 h2 {
-  font-size: 1.3125rem;
-  font-weight: 600;
-  letter-spacing: -0.024em;
-  line-height: 1.2;
+  font-size: var(--text-heading-sm);
+  line-height: var(--leading-heading-sm);
+  font-weight: var(--w-semibold);
+  letter-spacing: var(--tracking-heading-sm);
 }
 
 h3 {
-  font-size: 1.0625rem;
-  font-weight: 600;
-  letter-spacing: -0.018em;
+  font-size: var(--text-subheading);
+  line-height: var(--leading-subheading);
+  font-weight: var(--w-semibold);
 }
 
 p {
-  font-size: 1.0625rem;
-  line-height: 1.47;
-  letter-spacing: -0.012em;
+  font-size: var(--text-body-lg);
+  line-height: var(--leading-body-lg);
 }
 
 .lede {
   color: var(--label-2);
-  font-size: 1.0625rem;
-  line-height: 1.47;
-  margin-top: 8px;
+  font-size: var(--text-body-lg);
+  line-height: var(--leading-body-lg);
+  margin-top: var(--sp-2);
 }
 
 .dim {
   color: var(--label-2);
-  font-size: 0.9375rem;
-  line-height: 1.45;
-  letter-spacing: -0.006em;
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
 }
 
 .faint {
   color: var(--label-3);
-  font-size: 0.8125rem;
-  line-height: 1.4;
+  font-size: var(--text-caption);
+  line-height: var(--leading-caption);
+}
+
+/*
+ * Bloque de dato: rótulo pequeño en mayúsculas y cifra grande. Sin tarjeta ni
+ * adornos —la escala tipográfica basta para que se lea como una métrica—, que
+ * es justo lo que pide la referencia.
+ */
+.stat {
+  display: block;
+}
+
+.stat-label {
+  font-size: var(--text-caption);
+  line-height: var(--leading-caption);
+  letter-spacing: var(--tracking-caption);
+  text-transform: uppercase;
+  color: var(--label-3);
+}
+
+.stat-value {
+  display: block;
+  font-size: var(--text-heading-lg);
+  line-height: var(--leading-heading-lg);
+  font-weight: var(--w-semibold);
+  letter-spacing: var(--tracking-heading-lg);
+  font-variant-numeric: tabular-nums;
+  margin-top: var(--sp-1);
+}
+
+.stat-value.lg {
+  font-size: var(--text-display);
+  line-height: var(--leading-display);
+  letter-spacing: var(--tracking-display);
+}
+
+.stat-note {
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+  color: var(--label-3);
+  margin-top: var(--sp-1);
 }
 
 .accent {
@@ -293,9 +410,11 @@ p {
   position: relative;
   background: var(--surface);
   border-radius: var(--r-card);
-  padding: 18px;
-  margin-bottom: 12px;
-  box-shadow: inset 0 0 0 0.5px var(--separator);
+  padding: var(--card-padding);
+  margin-bottom: var(--sp-3);
+  /* El borde de un píxel no es decorativo: sin él la sombra sola no llega a
+     definir el canto de la tarjeta, y el bloque se deshace sobre el fondo. */
+  box-shadow: var(--elevation-card);
 }
 
 .card + .card {
@@ -337,16 +456,22 @@ button:active {
   transform: scale(0.97);
 }
 
+/*
+ * Botones: misma forma y mismo tipo para todos; lo único que los distingue es
+ * la claridad del relleno. El radio de 18 sobre una altura de unos 44 da la
+ * cápsula del sistema sin llegar a ser un óvalo.
+ */
 .btn {
   display: block;
   width: 100%;
   border-radius: var(--r-control);
-  padding: 15px 18px;
-  font-size: 1.0625rem;
-  font-weight: 600;
-  letter-spacing: -0.014em;
+  padding: var(--sp-3) var(--sp-4);
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+  font-weight: var(--w-medium);
   text-align: center;
-  margin-bottom: 10px;
+  margin-bottom: var(--sp-2);
+  min-height: 44px;
 }
 
 .btn-primary {
@@ -377,8 +502,8 @@ button:active {
 
 .btn-quiet {
   color: var(--label-2);
-  font-size: 1rem;
-  padding: 14px;
+  font-size: var(--text-body);
+  padding: var(--sp-3);
   width: 100%;
 }
 
@@ -389,8 +514,9 @@ button:active {
 /* Dentro de una tarjeta, junto a otras acciones del ejercicio. */
 .btn-quiet.btn-inline {
   width: auto;
+  min-height: 0;
   padding: 2px 0;
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
   color: var(--label-3);
   text-align: left;
 }
@@ -407,15 +533,16 @@ button:active {
   flex-direction: column;
 }
 
+/* Etiqueta: misma cápsula que los botones, en pequeño. */
 .opt {
-  border-radius: var(--r-pill);
-  padding: 9px 16px;
-  font-size: 0.9375rem;
-  font-weight: 500;
-  letter-spacing: -0.01em;
+  border-radius: var(--r-control);
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+  font-weight: var(--w-medium);
   color: var(--label-2);
   background: var(--fill-3);
-  box-shadow: inset 0 0 0 0.5px var(--separator);
+  box-shadow: inset 0 0 0 1px var(--separator);
 }
 
 .opt[aria-pressed='true'] {
@@ -428,35 +555,36 @@ button:active {
   width: 100%;
   text-align: left;
   border-radius: var(--r-control);
-  padding: 15px 18px;
-  font-size: 1.0625rem;
-  font-weight: 500;
+  padding: var(--sp-3) var(--sp-4);
+  font-size: var(--text-body-lg);
+  font-weight: var(--w-medium);
   color: var(--label);
 }
 
 .opt-block .opt-desc {
   display: block;
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
+  line-height: var(--leading-caption);
   color: var(--label-3);
-  margin-top: 3px;
-  font-weight: 400;
+  margin-top: var(--sp-1);
+  font-weight: var(--w-regular);
 }
 
 /* Control segmentado, como el del sistema: pista hundida y píldoras dentro. */
 .scale {
   display: flex;
-  gap: 3px;
-  padding: 3px;
+  gap: var(--sp-1);
+  padding: var(--sp-1);
   border-radius: var(--r-control);
   background: var(--fill-3);
 }
 
 .scale button {
   flex: 1;
-  padding: 10px 0;
-  border-radius: calc(var(--r-control) - 4px);
-  font-size: 1rem;
-  font-weight: 500;
+  padding: var(--sp-2) 0;
+  border-radius: var(--r-nested);
+  font-size: var(--text-body-lg);
+  font-weight: var(--w-medium);
   font-variant-numeric: tabular-nums;
   color: var(--label-2);
 }
@@ -478,28 +606,36 @@ button:active {
 /* ── Campos ─────────────────────────────────────────────── */
 
 .field {
-  margin-bottom: 14px;
+  margin-bottom: var(--sp-3);
 }
 
 .field > span {
   display: block;
-  font-size: 0.8125rem;
+  font-size: var(--text-caption);
+  line-height: var(--leading-caption);
   color: var(--label-3);
-  margin-bottom: 6px;
+  margin-bottom: var(--sp-2);
 }
 
+/*
+ * El campo se distingue de la tarjeta por debajo con un relleno más oscuro, no
+ * con un borde. Al enfocarlo, el relleno cede el sitio a un anillo de un píxel.
+ *
+ * 16px de tipo y no 14 aunque la escala diga 14: por debajo de 16, iOS hace
+ * zoom solo al enfocar un campo, y eso descoloca la app entera.
+ */
 input,
 select,
 textarea {
   width: 100%;
   font-family: inherit;
-  font-size: 1.0625rem;
+  font-size: var(--text-body-lg);
   color: var(--label);
   background: var(--fill-3);
   border: none;
   border-radius: var(--r-control);
-  padding: 13px 15px;
-  box-shadow: inset 0 0 0 0.5px var(--separator);
+  padding: var(--sp-3) var(--sp-3);
+  box-shadow: inset 0 0 0 1px var(--separator);
   transition: box-shadow 0.2s ease, background-color 0.2s ease;
 }
 
@@ -822,9 +958,9 @@ textarea:focus {
   .app-main > .cards-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 20px;
+    column-gap: var(--sp-5);
     align-items: start;
-    max-width: 1180px;
+    max-width: var(--page-max);
   }
 
   /* Títulos y botones hacen de encabezado: ocupan el ancho entero. */
