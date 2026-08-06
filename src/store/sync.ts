@@ -22,7 +22,7 @@ import {
   ErrorNube,
   cerrarSesion,
   descargar,
-  entrarConCodigo,
+  entrarConAcceso,
   hayNube,
   quienSoy,
   recogerFalloDeLaUrl,
@@ -134,20 +134,21 @@ export async function sincronizar(
 }
 
 /**
- * Entrar tecleando el código del correo, que es la única vía que funciona en la
- * app instalada en iOS: ver `entrarConCodigo` en `./cloud`.
+ * Entrar con lo que traiga el correo —el enlace pegado o el código— que es la
+ * única vía que funciona en la app instalada en iOS: ver `entrarConAcceso` en
+ * `./cloud`.
  */
-export async function entrarConCodigoYSincronizar(
+export async function entrarConAccesoYSincronizar(
   email: string,
-  codigo: string,
+  texto: string,
   leer: () => AppData,
   escribir: (data: AppData) => void
 ): Promise<{ ok: boolean; novedad: string | null; error?: string }> {
   try {
-    const sesion = await entrarConCodigo(email, codigo)
+    const sesion = await entrarConAcceso(email, texto)
     anunciar({ estado: 'dentro', email: sesion.email, pendiente: true })
   } catch (e) {
-    const mensaje = e instanceof ErrorNube ? e.message : 'No he podido validar el código.'
+    const mensaje = e instanceof ErrorNube ? e.message : 'No he podido validar ese acceso.'
     anunciar({ estado: 'error', mensaje })
     return { ok: false, novedad: null, error: mensaje }
   }

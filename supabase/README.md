@@ -28,25 +28,6 @@ sincronizar: en Ajustes pone que todo se guarda en este dispositivo, y ya.
    Sin esto el enlace del correo se abre y no entra: Supabase se niega a
    mandar los tokens a una dirección que no reconoce.
 
-3b. **Meter el código en los correos.** Panel → **Authentication** →
-   **Emails** (o *Email Templates*). Hay que editar **dos** plantillas, *Magic
-   Link* y *Confirm signup*, y añadir en cada una una línea con el código:
-
-   ```html
-   <p>O escribe este código en la app: <strong>{{ .Token }}</strong></p>
-   ```
-
-   **Esto no es opcional si vas a usar la app instalada en el móvil.** En iOS,
-   una app añadida a la pantalla de inicio tiene su propio almacén, separado
-   del de Safari: no comparten ni sesión ni datos. Y el enlace del correo
-   siempre se abre en Safari, porque iOS no sabe abrir un enlace dentro de una
-   app instalada. Resultado: entras en Safari, la sesión se queda allí, y la
-   app de la pantalla de inicio te sigue viendo como un dispositivo nuevo. El
-   código es la única vía que funciona ahí, porque se teclea dentro de la app.
-
-   Supabase genera el código siempre; lo que pasa es que las plantillas de
-   serie solo enseñan el enlace.
-
 4. **Copiar las dos claves.** Panel → **Project Settings** → **API**:
    *Project URL* y la clave **anon public**.
 
@@ -92,6 +73,37 @@ habituales:
 Si falla otra cosa, el mensaje del editor de Supabase trae el código (`42501`,
 `42P01`…) y la sentencia: con eso se sabe exactamente qué bloque es.
 
+## La app instalada en el móvil
+
+En iOS, una app añadida a la pantalla de inicio **tiene su propio almacén**,
+separado del de Safari: no comparten ni sesión ni datos. Y el enlace del correo
+siempre se abre en Safari, porque iOS no sabe abrir un enlace dentro de una app
+instalada. Resultado: entras por el enlace, la sesión se queda en Safari, y la
+app de la pantalla de inicio te sigue viendo como un dispositivo nuevo.
+
+No es un fallo ni tiene arreglo por la vía del enlace. La app resuelve esto
+dejando **pegar el enlace en vez de pulsarlo**: el enlace lleva el testigo
+dentro y la app lo canjea ella misma, sin salir. Desde la app instalada:
+
+1. Ajustes → Tu cuenta → escribe el correo → **Mandarme el acceso**.
+2. Abre el correo y **mantén pulsado** el enlace → *Copiar enlace*.
+   **No lo pulses**: sirve una sola vez y abrirlo lo gasta.
+3. Vuelve a la app, pégalo en el campo y **Entrar**.
+
+Esto no necesita configurar nada en Supabase, que es justamente por lo que se
+hizo así: enseñar además un código de seis cifras en el correo obligaría a
+editar las plantillas, y Supabase no deja editarlas sin un servidor de correo
+propio. Si algún día lo hay, la app acepta el código en el mismo campo.
+
+## Si quieres quitarte el límite de correos (opcional)
+
+El correo de serie de Supabase permite unos pocos envíos por hora. Si molesta,
+en **Authentication → Emails → SMTP Settings** se puede poner un servidor
+propio. **No hace falta tener dominio**: Brevo, SendGrid y Mailjet dejan
+verificar una sola dirección de envío —tu propio Gmail, por ejemplo— en su plan
+gratuito, y dan usuario y contraseña de SMTP. Con eso configurado se desbloquea
+también la edición de plantillas.
+
 ## Si el paso 2 salió bien pero la app no entra
 
 - «No he podido enviar el enlace (…)»: revisar el paso 3, y que el correo no
@@ -116,11 +128,9 @@ Si falla otra cosa, el mensaje del editor de Supabase trae el código (`42501`,
   pidió.
 - **En el móvil entro por el enlace, pero la app de la pantalla de inicio sale
   vacía.** No es un fallo: en iOS son dos sitios distintos con almacenes
-  separados. Abre la app instalada, pide el correo desde dentro y entra con el
-  **código**. Requiere el paso 3b.
-- **El correo llega sin código**: falta el paso 3b, o se editó solo una de las
-  dos plantillas. La de *Magic Link* es la de una cuenta que ya existe; la de
-  *Confirm signup*, la de la primera vez.
+  separados. Ver «La app instalada en el móvil», más arriba.
+- **«Ese enlace ya no vale» al pegarlo**: lo pulsaste antes de copiarlo y se
+  gastó. Pide otro correo y esta vez cópialo sin abrirlo.
 - «Falta la tabla `ritmo_datos`…»: el paso 2 no llegó a ejecutarse en *este*
   proyecto. Comprobar que el *Project URL* del paso 4 es el del mismo proyecto
   donde se ejecutó el script.

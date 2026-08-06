@@ -68,8 +68,11 @@ let subidas = 0
 let enlacesPedidos = []
 /** A dónde le pedimos a Supabase que devuelva el enlace del correo. */
 let vueltaPedida = null
-/** Con qué etiquetas se ha intentado validar el código. */
+/** Con qué etiquetas se ha intentado validar el acceso. */
 let tiposProbados = []
+/** El testigo que llevaría dentro el enlace del correo. */
+const TESTIGO = 'pkce_abc123def456ghi789jkl'
+const ENLACE = `${NUBE}/auth/v1/verify?token=${TESTIGO}&type=magiclink&redirect_to=${BASE}`
 
 await page.route(`${NUBE}/**`, async (route) => {
   const req = route.request()
@@ -85,8 +88,11 @@ await page.route(`${NUBE}/**`, async (route) => {
     const c = JSON.parse(req.postData() ?? '{}')
     tiposProbados.push(c.type)
     // Como una cuenta recién creada: solo vale la etiqueta «signup», que es la
-    // que el cliente no puede adivinar desde fuera.
-    if (c.type !== 'signup' || c.token !== '424242') {
+    // que el cliente no puede adivinar desde fuera. Y vale tanto el código
+    // tecleado como el testigo sacado de un enlace pegado.
+    const valeCodigo = c.token === '424242'
+    const valeEnlace = c.token_hash === TESTIGO
+    if (c.type !== 'signup' || !(valeCodigo || valeEnlace)) {
       return route.fulfill({ status: 403, contentType: 'application/json', body: '{}' })
     }
     return route.fulfill({
@@ -335,42 +341,60 @@ await cuentaFuera.locator('input[type="email"]').fill('alberto@ejemplo.com')
 await cuentaFuera.getByRole('button', { name: /Mandarme el acceso/ }).click()
 await page.waitForTimeout(700)
 
-const campoCodigo = cuentaFuera.locator('input[inputmode="numeric"]')
-comprobar(await campoCodigo.count(), 'tras pedir el correo debería poder teclearse el código')
-await cuentaFuera.scrollIntoViewIfNeeded()
-await page.screenshot({ path: `${OUT}/nube-6-codigo.png` })
-
-// Uno que no vale: se explica y no se entra.
-await campoCodigo.fill('000000')
-await cuentaFuera.getByRole('button', { name: /^Entrar$/ }).click()
-await page.waitForTimeout(700)
-const conMalo = await cuentaFuera.innerText()
-comprobar(/no vale|caducado|usado/i.test(conMalo), `un código malo debería explicarse: ${conMalo.slice(0, 200)}`)
+const campoAcceso = cuentaFuera.locator('input[inputmode="url"]')
+comprobar(await campoAcceso.count(), 'tras pedir el correo debería poder pegarse el enlace')
+const pasos = await cuentaFuera.innerText()
 comprobar(
-  (await page.evaluate(() => localStorage.getItem('ritmo-sesion'))) === null,
-  'un código que no vale no puede dejar sesión guardada'
+  /no lo pulses|Copiar enlace/i.test(pasos),
+  `debería avisar de copiar el enlace en vez de pulsarlo: ${pasos.slice(0, 260)}`
+)
+await cuentaFuera.scrollIntoViewIfNeeded()
+await page.screenshot({ path: `${OUT}/nube-6-pegar-enlace.png` })
+
+// Algo que no es un enlace: se dice y no se molesta al servidor.
+const antesDeNada = tiposProbados.length
+await campoAcceso.fill('esto no es un enlace')
+await cuentaFuera.getByRole('button', { name: /^Entrar$/ }).click()
+await page.waitForTimeout(600)
+comprobar(
+  tiposProbados.length === antesDeNada,
+  'pegar algo que no es un enlace no debería llegar a pedir nada'
 )
 
-// El bueno: entra, y de paso se ve que ha probado más de una etiqueta.
-await campoCodigo.fill('424242')
+// Un enlace ya gastado: se explica y no se entra.
+await campoAcceso.fill(`${NUBE}/auth/v1/verify?token=pkce_gastado0000000000000&type=magiclink`)
+await cuentaFuera.getByRole('button', { name: /^Entrar$/ }).click()
+await page.waitForTimeout(900)
+const conMalo = await cuentaFuera.innerText()
+comprobar(
+  /una sola vez|gastado|c[oó]pialo/i.test(conMalo),
+  `un enlace gastado debería explicarse: ${conMalo.slice(0, 240)}`
+)
+comprobar(
+  (await page.evaluate(() => localStorage.getItem('ritmo-sesion'))) === null,
+  'un enlace que no vale no puede dejar sesión guardada'
+)
+
+// El bueno: entra sin pasar por el navegador.
+await campoAcceso.fill(ENLACE)
 await cuentaFuera.getByRole('button', { name: /^Entrar$/ }).click()
 await page.waitForTimeout(1500)
 comprobar(
   (await page.evaluate(() => localStorage.getItem('ritmo-sesion'))) !== null,
-  'con el código bueno debería quedar la sesión guardada'
+  'con el enlace bueno debería quedar la sesión guardada'
 )
 comprobar(
-  tiposProbados.includes('email') && tiposProbados.includes('signup'),
-  `debería probar varias etiquetas de código: ${JSON.stringify(tiposProbados)}`
+  tiposProbados.includes('magiclink') && tiposProbados.includes('signup'),
+  `debería probar el tipo del enlace y luego los demás: ${JSON.stringify(tiposProbados)}`
 )
 const dentroPorCodigo = await page.locator('.card').filter({ hasText: 'Tu cuenta' }).first().innerText()
 comprobar(
   /alberto@ejemplo.com/.test(dentroPorCodigo),
-  `tras entrar con código debería decir con qué cuenta: ${dentroPorCodigo.slice(0, 160)}`
+  `tras entrar pegando el enlace debería decir con qué cuenta: ${dentroPorCodigo.slice(0, 160)}`
 )
-console.log('  · etiquetas probadas para el código:', JSON.stringify(tiposProbados))
+console.log('  · etiquetas probadas para el acceso:', JSON.stringify(tiposProbados))
 await page.locator('.card').filter({ hasText: 'Tu cuenta' }).first().scrollIntoViewIfNeeded()
-await page.screenshot({ path: `${OUT}/nube-7-dentro-por-codigo.png` })
+await page.screenshot({ path: `${OUT}/nube-7-dentro-por-enlace-pegado.png` })
 
 if (errores.length) fallos.push(`errores en consola: ${errores.join(' | ')}`)
 await browser.close()
@@ -379,4 +403,4 @@ if (fallos.length) {
   console.error('✗ ' + fallos.join('\n✗ '))
   process.exit(1)
 }
-console.log('✓ entrar por enlace y por código, fusionar los dos dispositivos, no resucitar lo borrado y salir sin perder nada')
+console.log('✓ entrar por enlace, pegando el enlace sin salir de la app, fusionar los dos dispositivos, no resucitar lo borrado y salir sin perder nada')

@@ -223,6 +223,198 @@ describe('entrar tecleando el código del correo', () => {
   })
 })
 
+/**
+ * Entrar pegando el enlace.
+ *
+ * Es la vía que funciona sin tocar nada en Supabase, y por tanto la que de
+ * verdad resuelve el caso de la app instalada en iOS: editar las plantillas de
+ * correo para que enseñen un código exige un servidor de correo propio.
+ */
+describe('sacar el testigo de un enlace pegado', () => {
+  it('del enlace tal cual viene en el correo', async () => {
+    montarNavegador()
+    const { testigoDeEnlace } = await cargarNube()
+
+    const r = testigoDeEnlace(
+      'https://abc.supabase.co/auth/v1/verify?token=pkce_abc123def456ghi&type=magiclink&redirect_to=https://ejemplo.com/app/'
+    )
+
+    expect(r).toEqual({ testigo: 'pkce_abc123def456ghi', tipo: 'magiclink' })
+  })
+
+  it('también si el correo lo llama token_hash', async () => {
+    montarNavegador()
+    const { testigoDeEnlace } = await cargarNube()
+
+    expect(
+      testigoDeEnlace('https://abc.supabase.co/auth/v1/verify?token_hash=abc123def456ghi789&type=email')
+    ).toEqual({ testigo: 'abc123def456ghi789', tipo: 'email' })
+  })
+
+  it('aguanta los saltos de línea que mete el correo al copiar', async () => {
+    montarNavegador()
+    const { testigoDeEnlace } = await cargarNube()
+
+    const r = testigoDeEnlace(
+      '  https://abc.supabase.co/auth/v1/verify?token=abc123def456\n  ghi789&type=signup  '
+    )
+
+    expect(r?.testigo).toBe('abc123def456ghi789')
+  })
+
+  it('y un testigo suelto, por si alguien lo saca a mano', async () => {
+    montarNavegador()
+    const { testigoDeEnlace } = await cargarNube()
+
+    expect(testigoDeEnlace('abcdefghij0123456789klmn')).toEqual({
+      testigo: 'abcdefghij0123456789klmn',
+      tipo: undefined
+    })
+  })
+
+  it('no se traga cualquier cosa', async () => {
+    montarNavegador()
+    const { testigoDeEnlace } = await cargarNube()
+
+    expect(testigoDeEnlace('')).toBeNull()
+    expect(testigoDeEnlace('hola qué tal')).toBeNull()
+    expect(testigoDeEnlace('https://ejemplo.com/sin-token?a=1')).toBeNull()
+    // Seis cifras son un código, no un testigo de enlace.
+    expect(testigoDeEnlace('123456')).toBeNull()
+  })
+})
+
+describe('entrar pegando el enlace', () => {
+  function nubeQueAcepta(tipoBueno: string, testigoBueno: string) {
+    const cuerpos: Record<string, string>[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init: RequestInit = {}) => {
+        const c = JSON.parse(String(init.body))
+        cuerpos.push(c)
+        if (c.type !== tipoBueno || c.token_hash !== testigoBueno) {
+          return new Response('{}', { status: 403 })
+        }
+        return new Response(
+          JSON.stringify({
+            access_token: 'tok',
+            refresh_token: 'ref',
+            expires_in: 3600,
+            user: { email: 'alberto@ejemplo.com' }
+          }),
+          { status: 200 }
+        )
+      })
+    )
+    return cuerpos
+  }
+
+  const ENLACE =
+    'https://abc.supabase.co/auth/v1/verify?token=abc123def456ghi789&type=magiclink&redirect_to=x'
+
+  it('canjea el testigo sin pasar por el navegador', async () => {
+    const { guardado } = montarNavegador()
+    const cuerpos = nubeQueAcepta('magiclink', 'abc123def456ghi789')
+    const { entrarConEnlace } = await cargarNube()
+
+    const sesion = await entrarConEnlace('alberto@ejemplo.com', ENLACE)
+
+    expect(sesion.accessToken).toBe('tok')
+    expect(guardado.get('ritmo-sesion')).toBeTruthy()
+    // Se manda como `token_hash`, que es lo que espera la API para un enlace.
+    expect(cuerpos[0].token_hash).toBe('abc123def456ghi789')
+  })
+
+  it('prueba primero el tipo que trae el propio enlace', async () => {
+    montarNavegador()
+    const cuerpos = nubeQueAcepta('magiclink', 'abc123def456ghi789')
+    const { entrarConEnlace } = await cargarNube()
+
+    await entrarConEnlace('alberto@ejemplo.com', ENLACE)
+
+    expect(cuerpos).toHaveLength(1)
+    expect(cuerpos[0].type).toBe('magiclink')
+  })
+
+  it('y si ese no cuela, sigue probando: una cuenta nueva trae otro tipo', async () => {
+    montarNavegador()
+    const cuerpos = nubeQueAcepta('signup', 'abc123def456ghi789')
+    const { entrarConEnlace } = await cargarNube()
+
+    await entrarConEnlace('alberto@ejemplo.com', ENLACE)
+
+    expect(cuerpos.map((c) => c.type)).toContain('signup')
+  })
+
+  it('un enlace ya gastado se explica diciendo qué hacer', async () => {
+    montarNavegador()
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 403 })))
+    const { entrarConEnlace } = await cargarNube()
+
+    await expect(entrarConEnlace('alberto@ejemplo.com', ENLACE)).rejects.toThrow(
+      /una sola vez|gastado|cópialo/i
+    )
+  })
+
+  it('pegar algo que no es el enlace se dice antes de molestar al servidor', async () => {
+    montarNavegador()
+    const espia = vi.fn()
+    vi.stubGlobal('fetch', espia)
+    const { entrarConEnlace } = await cargarNube()
+
+    await expect(entrarConEnlace('alberto@ejemplo.com', 'no es un enlace')).rejects.toThrow(
+      /Copiar enlace|no parece/i
+    )
+    expect(espia).not.toHaveBeenCalled()
+  })
+})
+
+describe('la app distingue sola lo que le pegan', () => {
+  it('seis cifras van por la vía del código', async () => {
+    montarNavegador()
+    const cuerpos: Record<string, string>[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_u: string, init: RequestInit = {}) => {
+        cuerpos.push(JSON.parse(String(init.body)))
+        return new Response(
+          JSON.stringify({ access_token: 't', refresh_token: 'r', expires_in: 3600 }),
+          { status: 200 }
+        )
+      })
+    )
+    const { entrarConAcceso } = await cargarNube()
+
+    await entrarConAcceso('alberto@ejemplo.com', '424242')
+
+    expect(cuerpos[0].token).toBe('424242')
+    expect(cuerpos[0].token_hash).toBeUndefined()
+  })
+
+  it('un enlace va por la vía del enlace, aunque lleve cifras dentro', async () => {
+    montarNavegador()
+    const cuerpos: Record<string, string>[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_u: string, init: RequestInit = {}) => {
+        cuerpos.push(JSON.parse(String(init.body)))
+        return new Response(
+          JSON.stringify({ access_token: 't', refresh_token: 'r', expires_in: 3600 }),
+          { status: 200 }
+        )
+      })
+    )
+    const { entrarConAcceso } = await cargarNube()
+
+    await entrarConAcceso(
+      'alberto@ejemplo.com',
+      'https://abc.supabase.co/auth/v1/verify?token=123456abcdef7890ghij&type=email'
+    )
+
+    expect(cuerpos[0].token_hash).toBe('123456abcdef7890ghij')
+  })
+})
+
 describe('cuando el enlace vuelve con un fallo', () => {
   it('lo cuenta en castellano en vez de quedarse callada', async () => {
     montarNavegador(

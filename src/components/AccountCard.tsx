@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ErrorNube, hayNube, pedirEnlace } from '../store/cloud'
 import {
-  entrarConCodigoYSincronizar,
+  entrarConAccesoYSincronizar,
   escucharSync,
   esperandoEnlace,
   estadoDeSync,
@@ -22,8 +22,12 @@ import { actions } from '../store/store'
  * Safari, y el enlace del correo siempre abre Safari porque iOS no sabe abrir
  * un enlace dentro de una app instalada. Resultado: entras en Safari, la sesión
  * se guarda allí, y la app instalada te sigue viendo como un dispositivo nuevo.
- * Por eso el mismo correo trae además un código de seis cifras, que se teclea
- * aquí dentro y sí funciona.
+ * La salida es no salir de la app: **pegar aquí el enlace en vez de pulsarlo**.
+ * El enlace lleva el testigo dentro, y canjearlo es una petición que la app
+ * puede hacer ella misma. No hace falta tocar nada en el servidor, que es lo
+ * que lo hace viable: enseñar además un código de seis cifras depende de las
+ * plantillas de correo, y esas no se dejan editar sin un servidor de correo
+ * propio. Si algún día lo hay, el código también se acepta aquí.
  *
  * Todo esto es opcional. Si esta versión no lleva nube configurada, la tarjeta
  * lo dice y la app sigue funcionando igual, guardando en este dispositivo.
@@ -41,7 +45,7 @@ function esAppInstalada(): boolean {
 export default function AccountCard() {
   const [estado, setEstado] = useState(estadoDeSync())
   const [email, setEmail] = useState('')
-  const [codigo, setCodigo] = useState('')
+  const [acceso, setAcceso] = useState('')
   const [aviso, setAviso] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
   const [validando, setValidando] = useState(false)
@@ -64,8 +68,8 @@ export default function AccountCard() {
       setPedido(true)
       setAviso(
         instalada
-          ? `Te he mandado un correo a ${limpio}. Ábrelo, copia el código de seis cifras y escríbelo aquí abajo.`
-          : `Te he mandado un correo a ${limpio}, con un enlace y un código. Cualquiera de los dos vale.`
+          ? `Te he mandado un correo a ${limpio}. Ábrelo y sigue los pasos de aquí abajo.`
+          : `Te he mandado un correo a ${limpio}. Pulsa el enlace desde este mismo dispositivo.`
       )
     } catch (e) {
       setAviso(e instanceof ErrorNube ? e.message : 'No he podido mandar el correo.')
@@ -74,21 +78,31 @@ export default function AccountCard() {
     }
   }
 
-  async function validarCodigo() {
+  async function validarAcceso() {
     setValidando(true)
     setAviso(null)
-    const r = await entrarConCodigoYSincronizar(
+    const r = await entrarConAccesoYSincronizar(
       email.trim(),
-      codigo,
+      acceso,
       actions.snapshot,
       actions.replaceAll
     )
     setValidando(false)
     if (r.ok) {
-      setCodigo('')
+      setAcceso('')
       setAviso(r.novedad ?? 'Ya estás dentro. Tus datos se han juntado con los de la nube.')
     } else {
-      setAviso(r.error ?? 'No he podido entrar con ese código.')
+      setAviso(r.error ?? 'No he podido entrar con eso.')
+    }
+  }
+
+  /** Pegar desde el portapapeles, que en el móvil es lo natural. */
+  async function pegar() {
+    try {
+      const texto = await navigator.clipboard.readText()
+      if (texto.trim()) setAcceso(texto.trim())
+    } catch {
+      setAviso('Tu navegador no me deja leer el portapapeles. Pega el enlace a mano en el campo.')
     }
   }
 
@@ -130,9 +144,9 @@ export default function AccountCard() {
 
           {instalada && (
             <p className="dim" style={{ marginTop: 10 }}>
-              Estás en la app instalada. Aquí <strong>usa el código</strong>, no el enlace: el
-              enlace del correo se abre en el navegador, y para iOS el navegador y esta app son dos
-              sitios distintos que no comparten nada.
+              Estás en la app instalada. Aquí el enlace del correo <strong>no lo pulses</strong>:
+              se abriría en el navegador, y para iOS el navegador y esta app son dos sitios
+              distintos que no comparten nada. <strong>Cópialo y pégalo aquí abajo.</strong>
             </p>
           )}
 
@@ -160,23 +174,43 @@ export default function AccountCard() {
           {pedido && (
             <div className="fade-in" style={{ marginTop: 6 }}>
               <hr className="rule" />
-              <p className="eyebrow">Entrar con el código</p>
-              <label className="field">
-                <span>Las seis cifras del correo</span>
+              <p className="eyebrow">
+                {instalada ? 'Entrar pegando el enlace' : '¿El enlace no te sirve?'}
+              </p>
+              {!instalada && (
+                <p className="dim" style={{ marginBottom: 10 }}>
+                  Si estás intentando entrar en la app instalada en el móvil, el enlace no vale
+                  ahí. Cópialo y pégalo <strong>dentro de la app</strong>, en esta misma pantalla.
+                </p>
+              )}
+              <ol className="steps">
+                <li>Abre el correo que te acabo de mandar.</li>
+                <li>
+                  <strong>Mantén pulsado</strong> el enlace y elige «Copiar enlace». No lo pulses:
+                  sirve una sola vez y abrirlo lo gasta.
+                </li>
+                <li>Vuelve aquí y pégalo.</li>
+              </ol>
+              <label className="field" style={{ marginTop: 12 }}>
+                <span>El enlace del correo</span>
                 <input
                   type="text"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  placeholder="000000"
-                  maxLength={6}
-                  value={codigo}
-                  onChange={(e) => setCodigo(e.target.value.replace(/\D/g, ''))}
+                  inputMode="url"
+                  autoComplete="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  placeholder="https://…/auth/v1/verify?token=…"
+                  value={acceso}
+                  onChange={(e) => setAcceso(e.target.value)}
                 />
               </label>
+              <button className="btn btn-secondary" onClick={pegar}>
+                Pegar lo copiado
+              </button>
               <button
-                className="btn btn-secondary"
-                disabled={validando || codigo.length < 6}
-                onClick={validarCodigo}
+                className="btn btn-primary"
+                disabled={validando || acceso.trim().length < 6}
+                onClick={validarAcceso}
               >
                 {validando ? 'Comprobando…' : 'Entrar'}
               </button>
@@ -203,8 +237,8 @@ export default function AccountCard() {
           {!instalada && (
             <p className="faint" style={{ marginTop: 10 }}>
               Si añades la app a la pantalla de inicio, tendrás que volver a entrar dentro de ella:
-              para iOS son dos sitios distintos. Allí usa el código del correo, que el enlace se
-              abre siempre aquí.
+              para iOS son dos sitios distintos. Allí pide otro correo y, en vez de pulsar el
+              enlace, cópialo y pégalo dentro de la app.
             </p>
           )}
 

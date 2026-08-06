@@ -167,6 +167,100 @@ export async function entrarConCodigo(email: string, codigo: string): Promise<Se
   )
 }
 
+/**
+ * Lo que hay que sacar de un enlace del correo para poder canjearlo aquí.
+ *
+ * El enlace de Supabase es una dirección a su propio servidor con el testigo
+ * dentro: `…/auth/v1/verify?token=<testigo>&type=magiclink&redirect_to=…`.
+ * Ese `token` es lo único que hace falta; el resto de la dirección es el paseo
+ * por el navegador que aquí precisamente queremos evitar.
+ *
+ * Se acepta el enlace entero pegado tal cual —con espacios o saltos de línea
+ * que meta el correo al copiar— y también el testigo suelto, por si alguien lo
+ * extrae a mano.
+ */
+export function testigoDeEnlace(texto: string): { testigo: string; tipo?: string } | null {
+  const limpio = texto.trim().replace(/\s+/g, '')
+  if (!limpio) return null
+
+  // Si trae una dirección, se lee de sus parámetros. Puede venir en la parte de
+  // la consulta o en el fragmento, según por dónde haya pasado el enlace.
+  const enUrl = limpio.match(/[?&#]/) ? limpio : null
+  if (enUrl) {
+    const trozos = enUrl.split(/[?#]/).slice(1).join('&')
+    const p = new URLSearchParams(trozos)
+    const testigo = p.get('token_hash') ?? p.get('token')
+    if (testigo) return { testigo, tipo: p.get('type') ?? undefined }
+    return null
+  }
+
+  // Un testigo suelto: lo suficientemente largo como para no confundirlo con
+  // el código de seis cifras.
+  return /^[A-Za-z0-9_-]{20,}$/.test(limpio) ? { testigo: limpio } : null
+}
+
+/**
+ * Entrar pegando el enlace del correo, sin salir de la app.
+ *
+ * Es la vía que **no necesita tocar nada en Supabase**: el enlace ya trae el
+ * testigo, y canjearlo es una petición que se puede hacer desde aquí. Sirve
+ * para el caso que no tiene otra salida —la app instalada en iOS, que no
+ * comparte almacén con Safari y a la que ningún enlace del correo puede
+ * llegar— sin depender de que el correo enseñe además un código, que es cosa
+ * de las plantillas y esas no se dejan editar sin un servidor de correo propio.
+ *
+ * **El enlace hay que copiarlo, no pulsarlo**: sirve una sola vez, así que
+ * abrirlo primero en el navegador lo gasta.
+ */
+export async function entrarConEnlace(email: string, texto: string): Promise<SesionNube> {
+  if (!hayNube()) throw new ErrorNube('No hay ninguna nube configurada en esta versión de la app.')
+  const encontrado = testigoDeEnlace(texto)
+  if (!encontrado) {
+    throw new ErrorNube(
+      'Eso no parece el enlace del correo. Mantén pulsado el enlace, elige «Copiar enlace» y pégalo aquí entero.'
+    )
+  }
+
+  // El tipo que venga en el enlace primero, y si no cuela, los de siempre: una
+  // cuenta recién creada trae un enlace de confirmación y no de acceso.
+  const tipos = [encontrado.tipo, ...TIPOS_DE_CODIGO].filter(
+    (t, i, xs): t is string => Boolean(t) && xs.indexOf(t) === i
+  )
+
+  let ultimoEstado = 0
+  for (const type of tipos) {
+    const res = await pedir('/auth/v1/verify', {
+      method: 'POST',
+      body: JSON.stringify({ type, token_hash: encontrado.testigo })
+    })
+    if (res.ok) {
+      const sesion = desdeRespuestaDeToken(await res.json())
+      const conEmail = { ...sesion, email: sesion.email || email }
+      guardarSesion(conEmail)
+      return conEmail
+    }
+    ultimoEstado = res.status
+  }
+
+  throw new ErrorNube(
+    ultimoEstado === 403 || ultimoEstado === 401
+      ? 'Ese enlace ya no vale. Sirve una sola vez, así que si lo pulsaste antes ya está gastado: pide otro correo y esta vez cópialo sin abrirlo.'
+      : `No he podido validar el enlace (${ultimoEstado}).`
+  )
+}
+
+/**
+ * Entrar con lo que sea que haya pegado el usuario: el enlace o las seis
+ * cifras. Distinguirlo aquí evita explicarle la diferencia en la pantalla.
+ */
+export async function entrarConAcceso(email: string, texto: string): Promise<SesionNube> {
+  const soloCifras = texto.replace(/\D/g, '')
+  if (!texto.includes('/') && soloCifras.length >= 6 && soloCifras.length <= 8) {
+    return entrarConCodigo(email, soloCifras)
+  }
+  return entrarConEnlace(email, texto)
+}
+
 function desdeRespuestaDeToken(json: Record<string, unknown>): SesionNube {
   const usuario = json.user as { email?: string } | undefined
   return {
