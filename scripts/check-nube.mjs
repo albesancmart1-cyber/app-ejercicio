@@ -24,7 +24,15 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
 const errores = []
 page.on('pageerror', (e) => errores.push(e.message))
-page.on('console', (m) => m.type() === 'error' && errores.push(m.text()))
+page.on('console', (m) => {
+  if (m.type() !== 'error') return
+  // Un 403 del endpoint de validación **es** la respuesta esperada cuando se
+  // prueba una etiqueta de código que no era: el navegador lo apunta como error
+  // de red, pero el flujo lo contempla y sigue. Contarlo como fallo obligaría a
+  // no probar más de una etiqueta, que es justo lo que hay que hacer.
+  if (/status of 403/.test(m.text())) return
+  errores.push(m.text())
+})
 
 const fallos = []
 const comprobar = (ok, queja) => {
@@ -60,6 +68,8 @@ let subidas = 0
 let enlacesPedidos = []
 /** A dónde le pedimos a Supabase que devuelva el enlace del correo. */
 let vueltaPedida = null
+/** Con qué etiquetas se ha intentado validar el código. */
+let tiposProbados = []
 
 await page.route(`${NUBE}/**`, async (route) => {
   const req = route.request()
@@ -70,6 +80,25 @@ await page.route(`${NUBE}/**`, async (route) => {
     enlacesPedidos.push(JSON.parse(req.postData() ?? '{}').email)
     vueltaPedida = url.searchParams.get('redirect_to')
     return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
+  }
+  if (ruta === '/auth/v1/verify') {
+    const c = JSON.parse(req.postData() ?? '{}')
+    tiposProbados.push(c.type)
+    // Como una cuenta recién creada: solo vale la etiqueta «signup», que es la
+    // que el cliente no puede adivinar desde fuera.
+    if (c.type !== 'signup' || c.token !== '424242') {
+      return route.fulfill({ status: 403, contentType: 'application/json', body: '{}' })
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        access_token: 'tok-codigo',
+        refresh_token: 'ref-codigo',
+        expires_in: 3600,
+        user: { email: 'alberto@ejemplo.com' }
+      })
+    })
   }
   if (ruta === '/auth/v1/user') {
     return route.fulfill({
@@ -143,14 +172,17 @@ await tarjeta.first().scrollIntoViewIfNeeded()
 await page.screenshot({ path: `${OUT}/nube-1-fuera.png` })
 
 await tarjeta.locator('input[type="email"]').fill('alberto@ejemplo.com')
-await tarjeta.getByRole('button', { name: /Mandarme el enlace/ }).click()
+await tarjeta.getByRole('button', { name: /Mandarme el acceso/ }).click()
 await page.waitForTimeout(700)
 comprobar(
   enlacesPedidos.includes('alberto@ejemplo.com'),
   `no se pidió el enlace: ${JSON.stringify(enlacesPedidos)}`
 )
 const trasPedir = await tarjeta.innerText()
-comprobar(/enlace a alberto@ejemplo.com/i.test(trasPedir), `no confirma el envío: ${trasPedir.slice(0, 120)}`)
+comprobar(
+  /a alberto@ejemplo\.com/i.test(trasPedir),
+  `no confirma el envío: ${trasPedir.slice(0, 160)}`
+)
 await page.screenshot({ path: `${OUT}/nube-2-enlace.png` })
 
 // La dirección de vuelta va en la URL, que es donde la API la lee. Mandarla en
@@ -282,6 +314,64 @@ comprobar(
 )
 await page.screenshot({ path: `${OUT}/nube-5-caducado.png` })
 
+// ── Entrar con el código, que es la vía de la app instalada ──
+// En iOS, una app añadida a la pantalla de inicio tiene su propio almacén y el
+// enlace del correo siempre abre Safari: por enlace no se puede entrar ahí.
+// Se simula ese caso arrancando sin ninguna sesión guardada.
+await page.evaluate(() => localStorage.removeItem('ritmo-sesion'))
+await page.reload()
+await page.waitForTimeout(900)
+await page.getByText('Ajustes', { exact: true }).first().click()
+await page.waitForTimeout(600)
+
+const cuentaFuera = page.locator('.card').filter({ hasText: 'Tu cuenta' }).first()
+await cuentaFuera.scrollIntoViewIfNeeded()
+comprobar(
+  (await cuentaFuera.locator('input[type="text"]').count()) === 0,
+  'el campo del código no debería salir antes de pedir el correo'
+)
+
+await cuentaFuera.locator('input[type="email"]').fill('alberto@ejemplo.com')
+await cuentaFuera.getByRole('button', { name: /Mandarme el acceso/ }).click()
+await page.waitForTimeout(700)
+
+const campoCodigo = cuentaFuera.locator('input[inputmode="numeric"]')
+comprobar(await campoCodigo.count(), 'tras pedir el correo debería poder teclearse el código')
+await cuentaFuera.scrollIntoViewIfNeeded()
+await page.screenshot({ path: `${OUT}/nube-6-codigo.png` })
+
+// Uno que no vale: se explica y no se entra.
+await campoCodigo.fill('000000')
+await cuentaFuera.getByRole('button', { name: /^Entrar$/ }).click()
+await page.waitForTimeout(700)
+const conMalo = await cuentaFuera.innerText()
+comprobar(/no vale|caducado|usado/i.test(conMalo), `un código malo debería explicarse: ${conMalo.slice(0, 200)}`)
+comprobar(
+  (await page.evaluate(() => localStorage.getItem('ritmo-sesion'))) === null,
+  'un código que no vale no puede dejar sesión guardada'
+)
+
+// El bueno: entra, y de paso se ve que ha probado más de una etiqueta.
+await campoCodigo.fill('424242')
+await cuentaFuera.getByRole('button', { name: /^Entrar$/ }).click()
+await page.waitForTimeout(1500)
+comprobar(
+  (await page.evaluate(() => localStorage.getItem('ritmo-sesion'))) !== null,
+  'con el código bueno debería quedar la sesión guardada'
+)
+comprobar(
+  tiposProbados.includes('email') && tiposProbados.includes('signup'),
+  `debería probar varias etiquetas de código: ${JSON.stringify(tiposProbados)}`
+)
+const dentroPorCodigo = await page.locator('.card').filter({ hasText: 'Tu cuenta' }).first().innerText()
+comprobar(
+  /alberto@ejemplo.com/.test(dentroPorCodigo),
+  `tras entrar con código debería decir con qué cuenta: ${dentroPorCodigo.slice(0, 160)}`
+)
+console.log('  · etiquetas probadas para el código:', JSON.stringify(tiposProbados))
+await page.locator('.card').filter({ hasText: 'Tu cuenta' }).first().scrollIntoViewIfNeeded()
+await page.screenshot({ path: `${OUT}/nube-7-dentro-por-codigo.png` })
+
 if (errores.length) fallos.push(`errores en consola: ${errores.join(' | ')}`)
 await browser.close()
 
@@ -289,4 +379,4 @@ if (fallos.length) {
   console.error('✗ ' + fallos.join('\n✗ '))
   process.exit(1)
 }
-console.log('✓ entrar por enlace, fusionar los dos dispositivos, no resucitar lo borrado y salir sin perder nada')
+console.log('✓ entrar por enlace y por código, fusionar los dos dispositivos, no resucitar lo borrado y salir sin perder nada')

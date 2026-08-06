@@ -106,6 +106,123 @@ describe('pedir el enlace del correo', () => {
   })
 })
 
+/**
+ * Entrar con código.
+ *
+ * Existe porque en iOS la app instalada en la pantalla de inicio tiene su
+ * propio almacén, separado del de Safari, y el enlace del correo siempre abre
+ * Safari. Por enlace es imposible entrar en la app instalada.
+ */
+describe('entrar tecleando el código del correo', () => {
+  /** Un Supabase que solo acepta el código con una etiqueta concreta. */
+  function nubeQueAcepta(tipoBueno: string) {
+    const intentos: string[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init: RequestInit = {}) => {
+        const cuerpo = JSON.parse(String(init.body))
+        intentos.push(cuerpo.type)
+        if (cuerpo.type !== tipoBueno) return new Response('{}', { status: 403 })
+        return new Response(
+          JSON.stringify({
+            access_token: 'tok',
+            refresh_token: 'ref',
+            expires_in: 3600,
+            user: { email: 'alberto@ejemplo.com' }
+          }),
+          { status: 200 }
+        )
+      })
+    )
+    return intentos
+  }
+
+  it('con una cuenta que ya existía, el código entra', async () => {
+    const { guardado } = montarNavegador()
+    nubeQueAcepta('email')
+    const { entrarConCodigo } = await cargarNube()
+
+    const sesion = await entrarConCodigo('alberto@ejemplo.com', '123456')
+
+    expect(sesion.accessToken).toBe('tok')
+    expect(sesion.email).toBe('alberto@ejemplo.com')
+    expect(guardado.get('ritmo-sesion')).toBeTruthy()
+  })
+
+  it('y con una cuenta recién creada también, aunque la API lo etiquete distinto', async () => {
+    // El correo de confirmación de una cuenta nueva lleva el código con otro
+    // tipo, y desde el cliente no hay forma de saber cuál de los dos vino.
+    montarNavegador()
+    const intentos = nubeQueAcepta('signup')
+    const { entrarConCodigo } = await cargarNube()
+
+    await entrarConCodigo('alberto@ejemplo.com', '123456')
+
+    expect(intentos).toContain('email')
+    expect(intentos).toContain('signup')
+  })
+
+  it('deja de probar en cuanto uno funciona', async () => {
+    montarNavegador()
+    const intentos = nubeQueAcepta('email')
+    const { entrarConCodigo } = await cargarNube()
+
+    await entrarConCodigo('alberto@ejemplo.com', '123456')
+
+    expect(intentos).toEqual(['email'])
+  })
+
+  it('el código va sin espacios ni guiones, se escriba como se escriba', async () => {
+    montarNavegador()
+    const enviados: string[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_u: string, init: RequestInit = {}) => {
+        enviados.push(JSON.parse(String(init.body)).token)
+        return new Response(
+          JSON.stringify({ access_token: 't', refresh_token: 'r', expires_in: 3600 }),
+          { status: 200 }
+        )
+      })
+    )
+    const { entrarConCodigo } = await cargarNube()
+
+    await entrarConCodigo('alberto@ejemplo.com', '123 456')
+
+    expect(enviados[0]).toBe('123456')
+  })
+
+  it('un código corto ni se manda: se avisa y punto', async () => {
+    montarNavegador()
+    const espia = vi.fn()
+    vi.stubGlobal('fetch', espia)
+    const { entrarConCodigo, ErrorNube } = await cargarNube()
+
+    await expect(entrarConCodigo('alberto@ejemplo.com', '123')).rejects.toBeInstanceOf(ErrorNube)
+    expect(espia).not.toHaveBeenCalled()
+  })
+
+  it('un código que no vale se explica, no se traga', async () => {
+    montarNavegador()
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 403 })))
+    const { entrarConCodigo } = await cargarNube()
+
+    await expect(entrarConCodigo('alberto@ejemplo.com', '000000')).rejects.toThrow(
+      /no vale|caducado|usado/i
+    )
+  })
+
+  it('y si falla no deja media sesión guardada', async () => {
+    const { guardado } = montarNavegador()
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 403 })))
+    const { entrarConCodigo } = await cargarNube()
+
+    await entrarConCodigo('alberto@ejemplo.com', '000000').catch(() => {})
+
+    expect(guardado.get('ritmo-sesion')).toBeUndefined()
+  })
+})
+
 describe('cuando el enlace vuelve con un fallo', () => {
   it('lo cuenta en castellano en vez de quedarse callada', async () => {
     montarNavegador(

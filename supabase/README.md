@@ -28,6 +28,25 @@ sincronizar: en Ajustes pone que todo se guarda en este dispositivo, y ya.
    Sin esto el enlace del correo se abre y no entra: Supabase se niega a
    mandar los tokens a una dirección que no reconoce.
 
+3b. **Meter el código en los correos.** Panel → **Authentication** →
+   **Emails** (o *Email Templates*). Hay que editar **dos** plantillas, *Magic
+   Link* y *Confirm signup*, y añadir en cada una una línea con el código:
+
+   ```html
+   <p>O escribe este código en la app: <strong>{{ .Token }}</strong></p>
+   ```
+
+   **Esto no es opcional si vas a usar la app instalada en el móvil.** En iOS,
+   una app añadida a la pantalla de inicio tiene su propio almacén, separado
+   del de Safari: no comparten ni sesión ni datos. Y el enlace del correo
+   siempre se abre en Safari, porque iOS no sabe abrir un enlace dentro de una
+   app instalada. Resultado: entras en Safari, la sesión se queda allí, y la
+   app de la pantalla de inicio te sigue viendo como un dispositivo nuevo. El
+   código es la única vía que funciona ahí, porque se teclea dentro de la app.
+
+   Supabase genera el código siempre; lo que pasa es que las plantillas de
+   serie solo enseñan el enlace.
+
 4. **Copiar las dos claves.** Panel → **Project Settings** → **API**:
    *Project URL* y la clave **anon public**.
 
@@ -95,6 +114,13 @@ Si falla otra cosa, el mensaje del editor de Supabase trae el código (`42501`,
   `otp_expired`. Cada enlace sirve **una sola vez** y caduca al rato, así que
   hay que abrir el último que llegó, y desde el mismo dispositivo donde se
   pidió.
+- **En el móvil entro por el enlace, pero la app de la pantalla de inicio sale
+  vacía.** No es un fallo: en iOS son dos sitios distintos con almacenes
+  separados. Abre la app instalada, pide el correo desde dentro y entra con el
+  **código**. Requiere el paso 3b.
+- **El correo llega sin código**: falta el paso 3b, o se editó solo una de las
+  dos plantillas. La de *Magic Link* es la de una cuenta que ya existe; la de
+  *Confirm signup*, la de la primera vez.
 - «Falta la tabla `ritmo_datos`…»: el paso 2 no llegó a ejecutarse en *este*
   proyecto. Comprobar que el *Project URL* del paso 4 es el del mismo proyecto
   donde se ejecutó el script.

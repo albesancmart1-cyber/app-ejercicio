@@ -119,6 +119,54 @@ export async function pedirEnlace(email: string): Promise<void> {
   }
 }
 
+/**
+ * Entrar tecleando el código que viene en el mismo correo que el enlace.
+ *
+ * Existe por una limitación de iOS que no tiene vuelta: **una app añadida a la
+ * pantalla de inicio tiene su propio almacén, separado del de Safari**. No
+ * comparten ni sesión ni datos. Y el enlace del correo siempre se abre en
+ * Safari, porque iOS no sabe abrir un enlace dentro de una app instalada. Con
+ * lo cual, por enlace es imposible entrar en la app instalada: entras en
+ * Safari, la sesión se guarda ahí, y la app de la pantalla de inicio sigue
+ * viéndote como un dispositivo nuevo.
+ *
+ * El código sí funciona, porque se teclea dentro de la propia app.
+ *
+ * Lo del `tipo` es una peculiaridad de la API: el mismo código se verifica con
+ * una etiqueta distinta según el correo que lo trajo. Si la cuenta ya existía,
+ * el correo es de acceso y el tipo es `email`; si se acaba de crear, el correo
+ * es de confirmación y el tipo es `signup`. Desde aquí no hay forma de saber
+ * cuál de los dos era, así que se prueban por orden.
+ */
+const TIPOS_DE_CODIGO = ['email', 'signup', 'magiclink'] as const
+
+export async function entrarConCodigo(email: string, codigo: string): Promise<SesionNube> {
+  if (!hayNube()) throw new ErrorNube('No hay ninguna nube configurada en esta versión de la app.')
+  const limpio = codigo.replace(/\D/g, '')
+  if (limpio.length < 6) throw new ErrorNube('El código son seis cifras. Míralo otra vez en el correo.')
+
+  let ultimoEstado = 0
+  for (const type of TIPOS_DE_CODIGO) {
+    const res = await pedir('/auth/v1/verify', {
+      method: 'POST',
+      body: JSON.stringify({ type, email, token: limpio })
+    })
+    if (res.ok) {
+      const sesion = desdeRespuestaDeToken(await res.json())
+      const conEmail = { ...sesion, email: sesion.email || email }
+      guardarSesion(conEmail)
+      return conEmail
+    }
+    ultimoEstado = res.status
+  }
+
+  throw new ErrorNube(
+    ultimoEstado === 403 || ultimoEstado === 401
+      ? 'Ese código no vale: o está mal copiado, o ya se ha usado, o ha caducado. Pide otro correo e inténtalo con el nuevo.'
+      : `No he podido validar el código (${ultimoEstado}).`
+  )
+}
+
 function desdeRespuestaDeToken(json: Record<string, unknown>): SesionNube {
   const usuario = json.user as { email?: string } | undefined
   return {
