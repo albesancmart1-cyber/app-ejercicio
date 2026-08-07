@@ -1299,8 +1299,8 @@ textarea:focus {
 .set-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 0;
+  gap: var(--sp-2);
+  padding: var(--sp-2) 0;
 }
 
 .set-index {
@@ -1328,9 +1328,40 @@ textarea:focus {
 }
 
 .set-field > span {
-  font-size: 0.74rem;
+  font-size: 0.7rem;
   color: var(--text-faint);
   flex: 0 0 auto;
+}
+
+/* El RIR ocupa menos: es un dígito, y peso y repeticiones necesitan el sitio. */
+.set-field-rir {
+  flex: 0 0 62px;
+}
+
+/*
+ * Lo que se hizo la última vez, justo bajo el nombre del ejercicio.
+ *
+ * Va antes de tocar nada porque es la pregunta que uno se hace al llegar a la
+ * máquina —«¿con cuánto lo dejé?»—, y tenerla delante es lo que convierte el
+ * registro en una comparación en vez de en un formulario.
+ */
+.last-time {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-1) var(--sp-2);
+  margin-top: var(--sp-2);
+  font-size: var(--text-caption);
+  line-height: var(--leading-caption);
+  color: var(--label-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.last-time-tag {
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caption);
+  color: var(--label-3);
+  font-size: var(--text-caption);
 }
 
 /* ── Temporizador de descanso ───────────────────────────── */

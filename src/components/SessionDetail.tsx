@@ -57,12 +57,26 @@ export default function SessionDetail({ session, onClose }: { session: Session; 
               <span className="stat-value">{formatDuration(session.durationSec)}</span>
             </span>
           ) : null}
+          {r.esfuerzo.medida && (
+            <span className="stat">
+              <span className="stat-label">RIR medio</span>
+              <span className="stat-value">{r.esfuerzo.rirMedio}</span>
+            </span>
+          )}
         </div>
 
         {r.cargaTotal > 0 && (
           <p className="faint" style={{ marginTop: 4 }}>
             «Levantado» es el peso por las repeticiones de cada serie, sumado. Sirve para comparar
             un entreno con el mismo entreno de la semana pasada, no con otro distinto.
+          </p>
+        )}
+
+        {r.esfuerzo.medida && (
+          <p className="faint" style={{ marginTop: 4 }}>
+            {r.esfuerzo.seriesDuras > 0
+              ? `${r.esfuerzo.seriesDuras} de ${r.esfuerzo.seriesMedidas} series fueron a una repetición del fallo o menos. Es lo que más cuesta reponer, y lo que la app mira para decidir si mañana toca apretar o descansar.`
+              : `Ninguna de las ${r.esfuerzo.seriesMedidas} series medidas llegó cerca del fallo.`}
           </p>
         )}
 
@@ -96,7 +110,8 @@ export default function SessionDetail({ session, onClose }: { session: Session; 
                 e.variante?.side === 'unilateral' ? 'a un lado cada vez' : null,
                 e.anadido ? 'añadido a mano' : null,
                 e.pesoMaximo !== undefined ? `tope ${e.pesoMaximo} kg` : null,
-                e.cargaTotal !== undefined ? formatCarga(e.cargaTotal) : null
+                e.cargaTotal !== undefined ? formatCarga(e.cargaTotal) : null,
+                e.rirMedio !== undefined ? `RIR ${e.rirMedio}` : null
               ]
                 .filter(Boolean)
                 .join(' · ') || 'sin peso'}

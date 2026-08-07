@@ -1,6 +1,7 @@
 import type { MuscleGroup, Profile, Recommendation, Session } from './types'
 import { MUSCLE_GROUPS, MUSCLE_LABELS } from './types'
 import type { Readiness } from './readiness'
+import { esfuerzoReciente, explicarEsfuerzo, pideAflojar } from './effort'
 import {
   computeBalance,
   consecutiveStrengthSessions,
@@ -167,6 +168,32 @@ function decidir(
       title: 'Día de respiro',
       message:
         `Llevas ${streak} días seguidos moviéndote y eso está muy bien. Hoy toca dejar que el cuerpo asimile: paseo suave, movilidad, y mañana volvemos con más ganas.`,
+      focus: ['cardio'],
+      intensity: 'suave',
+      cardioMinutes: 20,
+      volumeScale: 0.5,
+      rir: 5,
+      reasons,
+      ketoAdapting
+    }
+  }
+
+  // ── 2b. El cuerpo ya ha cobrado bastante ────────────────────
+  // Esto no lo decide el calendario sino el RIR que el usuario anotó: llevar
+  // muchas series cerca del fallo en dos días es fatiga que hay que reponer,
+  // aunque no se acumulen días seguidos y aunque hoy se sienta bien. Solo actúa
+  // cuando hay medida —sin RIR anotado no se penaliza por sospecha— y nunca
+  // sobre una disposición alta, que ahí manda cómo se siente.
+  const esfuerzo = esfuerzoReciente(sessions, todayIso)
+  if (pideAflojar(esfuerzo) && readiness.level !== 'alto') {
+    const detalle = explicarEsfuerzo(esfuerzo)
+    if (detalle) reasons.push(detalle)
+    reasons.push('Eso se repone descansando, no apretando más.')
+    return {
+      kind: 'descanso_activo',
+      title: 'Hoy toca reponer',
+      message:
+        'Has apretado de verdad estos días y el cuerpo aún lo está pagando. Hoy, movimiento suave: es lo que convierte ese esfuerzo en adaptación en vez de en un agujero.',
       focus: ['cardio'],
       intensity: 'suave',
       cardioMinutes: 20,

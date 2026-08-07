@@ -9,6 +9,8 @@
  * volumen y progresión viven donde vivían.
  */
 import { volumenDe, type MuscleVolume } from './volume'
+import { esfuerzoDe, type EsfuerzoSesion } from './effort'
+import { rirMedioDe } from './ultimaVez'
 import type { Muscle } from './muscles'
 import type { ExerciseVariant, PlannedExercise, Session, SetLog } from './types'
 
@@ -26,6 +28,8 @@ export interface ResumenEjercicio {
   /** Kilos por repetición sumados. Sin peso anotado, no hay cifra que dar. */
   cargaTotal?: number
   variante?: ExerciseVariant
+  /** RIR real medio de las series que contaron, si se anotó. */
+  rirMedio?: number
   /** El usuario lo añadió a mano durante la sesión. */
   anadido: boolean
 }
@@ -38,6 +42,8 @@ export interface ResumenSesion {
   cargaTotal: number
   /** Series por músculo, contadas como cuenta el motor: primario 1, ayuda 0,5. */
   musculos: Partial<MuscleVolume>
+  /** Lo que costó de verdad, según el RIR anotado. */
+  esfuerzo: EsfuerzoSesion
   /** Ejercicios que no llegaron a registrarse. */
   sinHacer: number
 }
@@ -68,6 +74,7 @@ function resumirEjercicio(pe: PlannedExercise): ResumenEjercicio {
     cargaTotal:
       conPeso.length > 0 ? conPeso.reduce((a, l) => a + l.weightKg! * l.reps!, 0) : undefined,
     variante: pe.variant,
+    rirMedio: rirMedioDe(cuentan),
     anadido: pe.addedByUser === true
   }
 }
@@ -94,14 +101,21 @@ export function resumirSesion(session: Session): ResumenSesion {
     repsTotales: ejercicios.reduce((a, e) => a + e.repsTotales, 0),
     cargaTotal: ejercicios.reduce((a, e) => a + (e.cargaTotal ?? 0), 0),
     musculos,
+    esfuerzo: esfuerzoDe(session),
     sinHacer: ejercicios.filter((e) => e.seriesHechas === 0).length
   }
 }
 
-/** Cómo se lee una serie suelta: «40 kg × 8» o «× 12» si va sin peso. */
+/**
+ * Cómo se lee una serie suelta: «40 kg × 8 · RIR 2».
+ *
+ * El RIR solo aparece si se anotó: poner «RIR —» en las sesiones antiguas sería
+ * llenar el resumen de huecos que no significan nada.
+ */
 export function describirSerie(l: SetLog): string {
   const reps = l.reps !== undefined ? `× ${l.reps}` : '× —'
-  return l.weightKg !== undefined ? `${l.weightKg} kg ${reps}` : reps
+  const base = l.weightKg !== undefined ? `${l.weightKg} kg ${reps}` : reps
+  return l.rir !== undefined ? `${base} · RIR ${l.rir}` : base
 }
 
 /** Kilos con separador de millar, que un entreno pasa de los mil fácilmente. */

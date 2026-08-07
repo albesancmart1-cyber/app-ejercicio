@@ -11,6 +11,7 @@ import {
   type SideMode
 } from '../domain/types'
 import { initLogs, syncExercise, volumeLoad } from '../domain/setLogs'
+import { describirUltimaVez } from '../domain/ultimaVez'
 import { DESCANSO_ENTRE_EJERCICIOS } from '../domain/protocol'
 import { changeVariant, nextAlternative, swapExercise } from '../domain/swap'
 import { trasCambiar, trasEntrenar } from '../domain/affinity'
@@ -45,7 +46,9 @@ function nombreCorto(nombre: string): string {
 
 function planLabel(pe: PlannedExercise): string {
   const parts = [`${pe.plan.sets} × ${pe.plan.reps}`]
-  if (pe.plan.rir !== undefined && pe.primary !== 'cardio') parts.push(`RIR ${pe.plan.rir}`)
+  // «Ve a RIR 2» y no «RIR 2» a secas: es el objetivo, y el que cuenta luego es
+  // el que se anota serie a serie.
+  if (pe.plan.rir !== undefined && pe.primary !== 'cardio') parts.push(`ve a RIR ${pe.plan.rir}`)
   if (pe.plan.restSeconds) parts.push(`${Math.round(pe.plan.restSeconds / 60)}′ descanso`)
   const forma = variantLabel(pe.variant)
   if (forma) parts.push(forma)
@@ -421,6 +424,12 @@ export default function SessionScreen({ session }: { session: Session }) {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="item-title">{e.name}</div>
               <div className="item-meta">{planLabel(e)}</div>
+              {e.previous && (
+                <div className="last-time">
+                  <span className="last-time-tag">La última vez</span>
+                  {describirUltimaVez(e.previous, today)}
+                </div>
+              )}
               {e.progressNote && <div className="progress-note">{e.progressNote}</div>}
             </div>
             <div className="reorder">
@@ -601,6 +610,23 @@ export default function SessionScreen({ session }: { session: Session }) {
                       aria-label={`Repeticiones de la serie ${si + 1} de ${e.name}`}
                     />
                     <span>reps</span>
+                  </label>
+                  {/* El RIR al que se fue de verdad. El plan pide uno, pero el
+                      que cuenta para el estrés es este. */}
+                  <label className="set-field set-field-rir">
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      max={10}
+                      placeholder={e.plan.rir !== undefined ? `${e.plan.rir}` : '—'}
+                      value={serie.rir ?? ''}
+                      onChange={(ev) =>
+                        updateSet(ei, si, { rir: ev.target.value ? Number(ev.target.value) : undefined })
+                      }
+                      aria-label={`Repeticiones en reserva reales de la serie ${si + 1} de ${e.name}`}
+                    />
+                    <span>RIR</span>
                   </label>
                   <button
                     className="check"

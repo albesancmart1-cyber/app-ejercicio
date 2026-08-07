@@ -17,6 +17,7 @@ import { patternOf } from '../data/patterns'
 import { contributionsOf } from '../data/contributions'
 import { pesoDePreferencia } from './affinity'
 import { initLogs } from './setLogs'
+import { ultimaVezDe } from './ultimaVez'
 import { STRESS_RANK, hasEquipment, planFor, prepareExercise } from './workoutBuilder'
 import type { Muscle } from './muscles'
 import type {
@@ -123,7 +124,10 @@ export function swapExercise(
   })
   // Se conserva el número de series planificado: cambia el ejercicio, no la dosis.
   const plan = { ...sustituto.plan, sets: pe.plan.sets }
-  return { ...sustituto, plan, logs: initLogs(plan) }
+  // El sustituto trae su propia última vez: la referencia es la de **ese**
+  // ejercicio, no la del que se acaba de descartar.
+  const previa = ultimaVezDe(next.id, history, sustituto.variant)
+  return { ...sustituto, plan, logs: initLogs(plan, previa) }
 }
 
 /**

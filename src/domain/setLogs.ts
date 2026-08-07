@@ -8,12 +8,26 @@
  * la app no se entera del cambio.
  */
 import type { PlannedExercise, PlannedSet, SetLog } from './types'
+import type { UltimaVez } from './ultimaVez'
 
-/** Una entrada por serie planificada, con el peso sugerido precargado. */
-export function initLogs(plan: PlannedSet): SetLog[] {
-  return Array.from({ length: Math.max(1, plan.sets) }, () => ({
+/**
+ * Una entrada por serie planificada, precargada con la referencia que toca.
+ *
+ * **El peso lo pone el plan y las repeticiones la última vez**, y esa división
+ * es deliberada. El peso del plan ya viene de mirar el historial: la progresión
+ * decide si toca mantener o subir, y precargar aquí el peso viejo pelearía con
+ * esa decisión justo cuando dice que hay que subir. Las repeticiones, en
+ * cambio, no las decide nadie: son la marca a batir, y tenerlas delante serie
+ * por serie es lo que convierte el registro en una comparación.
+ *
+ * Van serie a serie y no como un número único porque la referencia de la
+ * tercera serie es la tercera serie de aquel día, no la media: si la última vez
+ * fueron 10, 9 y 8, la caída forma parte del dato.
+ */
+export function initLogs(plan: PlannedSet, previa?: UltimaVez): SetLog[] {
+  return Array.from({ length: Math.max(1, plan.sets) }, (_, i) => ({
     weightKg: plan.weightKg,
-    reps: undefined,
+    reps: previa?.series[i]?.reps,
     done: false
   }))
 }

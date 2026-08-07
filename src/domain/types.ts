@@ -1,5 +1,6 @@
 import type { LandmarkOverrides } from './landmarks'
 import type { Lapida } from './merge'
+import type { UltimaVez } from './ultimaVez'
 import type { Muscle, MuscleContributions } from './muscles'
 
 /**
@@ -264,6 +265,18 @@ export interface SetLog {
   weightKg?: number
   /** Repeticiones realmente completadas. */
   reps?: number
+  /**
+   * Repeticiones en reserva **reales** de esta serie: las que se habrían podido
+   * hacer más antes de fallar.
+   *
+   * No confundir con `plan.rir`, que es a lo que la app pedía ir. El plan es una
+   * intención y esto es lo que pasó, y la diferencia entre ambos es justo la
+   * información que hacía falta: dos sesiones con el mismo peso y las mismas
+   * repeticiones dejan un estrés muy distinto si una se hizo a dos de fallar y
+   * la otra al fallo. Sin este dato, la app estimaba el estrés por lo que había
+   * pedido, no por lo que se había hecho.
+   */
+  rir?: number
   done: boolean
   /** Serie de aproximación: no cuenta para el volumen semanal. */
   warmup?: boolean
@@ -286,6 +299,12 @@ export interface PlannedExercise {
   variant?: ExerciseVariant
   /** Añadido a mano durante la sesión, no propuesto por la app. */
   addedByUser?: boolean
+  /**
+   * Qué se hizo la última vez en este mismo ejercicio, congelado al construir
+   * la sesión. Es la base desde la que decidir hoy: sin ella hay que adivinar,
+   * y adivinar hacia abajo es la forma más silenciosa de no progresar.
+   */
+  previous?: UltimaVez
   /**
    * Qué músculos mueve y cuánto, congelado en el momento de registrar. Se
    * guarda con la sesión —en vez de mirarlo siempre en el catálogo— para que

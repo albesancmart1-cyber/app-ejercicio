@@ -21,6 +21,7 @@ import {
   repPrescription
 } from './protocol'
 import { initLogs, parseRepRange, repVerdict, type RepVerdict } from './setLogs'
+import { ultimaVezDe } from './ultimaVez'
 import { FACTOR_UNILATERAL, defaultVariant, sameVariant, scaleForSide } from './variants'
 
 let idCounter = 0
@@ -313,13 +314,17 @@ export function prepareExercise(
   const nota = notaDeProgreso(
     progresoDeCarga(exercise, profile, rx.loadScale, opts.history, variant)
   )
+  // Lo que se hizo la última vez viaja con el ejercicio: es la base desde la
+  // que decidir hoy, y precarga las repeticiones serie a serie.
+  const previa = ultimaVezDe(exercise.id, opts.history, variant)
   return {
     exerciseId: exercise.id,
     name: exercise.name,
     primary: exercise.primary,
     plan,
     variant,
-    logs: initLogs(plan),
+    logs: initLogs(plan, previa),
+    ...(previa ? { previous: previa } : {}),
     ...(nota ? { progressNote: nota } : {}),
     ...(opts.addedByUser ? { addedByUser: true } : {})
   }
@@ -600,7 +605,9 @@ export function buildSession(
     kind: recommendation.kind,
     title: recommendation.title,
     // Cada ejercicio nace con sus series listas para rellenar.
-    exercises: exercises.map((pe) => ({ ...pe, logs: initLogs(pe.plan) })),
+    // Los que ya traen registro —los que pasaron por `prepareExercise`— se
+    // quedan con el suyo, que lleva las repeticiones de la última vez.
+    exercises: exercises.map((pe) => (pe.logs ? pe : { ...pe, logs: initLogs(pe.plan) })),
     cardioMinutes: recommendation.cardioMinutes,
     completed: false
   }

@@ -208,6 +208,56 @@ describe('protección de la recuperación', () => {
     expect(rec.title).toBe('Día de respiro')
   })
 
+  // El usuario lo pidió así: que el RIR que se anota mande sobre el que se
+  // prescribió, para saber de verdad a qué estrés se ha llevado al cuerpo.
+  it('muchas series al fallo estos días → hoy toca reponer, aunque no haya racha', () => {
+    const duro = (date: string): Session => ({
+      id: `duro-${date}`,
+      date,
+      kind: 'fuerza',
+      title: 'Fuerza',
+      completed: true,
+      exercises: [
+        {
+          exerciseId: 'press_banca_mancuernas',
+          name: 'Press',
+          primary: 'pecho' as MuscleGroup,
+          plan: { sets: 5, reps: '8-12', rir: 2 },
+          done: true,
+          logs: Array.from({ length: 5 }, () => ({ weightKg: 20, reps: 8, rir: 0, done: true }))
+        }
+      ]
+    })
+    const medio = computeReadiness(checkIn({ sleep: 3, energy: 3 }))
+    const history = [...establishedHistory(), duro('2026-07-24'), duro('2026-07-25')]
+    const rec = recommend(profile, medio, history, TODAY)
+    expect(rec.kind).toBe('descanso_activo')
+    expect(rec.reasons.join(' ')).toMatch(/fallo/i)
+  })
+
+  it('las mismas series pero lejos del fallo no frenan nada', () => {
+    const suave = (date: string): Session => ({
+      id: `suave-${date}`,
+      date,
+      kind: 'fuerza',
+      title: 'Fuerza',
+      completed: true,
+      exercises: [
+        {
+          exerciseId: 'press_banca_mancuernas',
+          name: 'Press',
+          primary: 'pecho' as MuscleGroup,
+          plan: { sets: 5, reps: '8-12', rir: 2 },
+          done: true,
+          logs: Array.from({ length: 5 }, () => ({ weightKg: 20, reps: 8, rir: 3, done: true }))
+        }
+      ]
+    })
+    const medio = computeReadiness(checkIn({ sleep: 3, energy: 3 }))
+    const rec = recommend(profile, medio, [...establishedHistory(), suave('2026-07-25')], TODAY)
+    expect(rec.kind).not.toBe('descanso_activo')
+  })
+
   it('no repite un grupo entrenado hace menos de 48 h', () => {
     const history = [...establishedHistory(), session('2026-07-24', ['sentadilla_goblet'])]
     expect(recentlyWorked(history, TODAY, 2)).toContain('cuadriceps_gluteo')
@@ -490,6 +540,82 @@ describe('construcción de la sesión', () => {
       const rec = recommend(profile, goodDay(), establishedHistory(), TODAY)
       const s = buildSession(rec, profile, establishedHistory(), TODAY)
       expect(s.exercises.filter((e) => e.primary === 'core').length).toBeLessThanOrEqual(1)
+    })
+  })
+
+  // Lo que el usuario pidió: llegar a un ejercicio ya hecho y ver de qué base
+  // parte, sin tener que acordarse ni buscar en el historial.
+  describe('cada ejercicio arranca con lo de la última vez', () => {
+    const rec = () => ({ ...baseRec(), focus: ['pecho'] as MuscleGroup[] })
+
+    /**
+     * Historial en el que **el ejercicio que el motor va a elegir hoy** ya se
+     * hizo, con las repeticiones dadas. Se construye una sesión de prueba para
+     * ver qué elige y se le fabrica el pasado a ese, en vez de dar por hecho
+     * cuál será: quién gana depende de preferencias y de lo reciente, y fijarlo
+     * a mano haría el test frágil sin comprobar nada más.
+     *
+     * La sesión fabricada va **antes** de la última del historial a propósito:
+     * el motor evita repetir lo de la sesión más reciente, así que ponerla al
+     * final haría que eligiera otro ejercicio y el test mediría eso en vez de
+     * la referencia.
+     */
+    function historialDeLoQueElija(reps: number[]): { history: Session[]; id: string } {
+      const sonda = buildSession(rec(), profile, establishedHistory(), TODAY)
+      const elegido = sonda.exercises.find((e) => e.primary !== 'cardio')!
+      return {
+        id: elegido.exerciseId,
+        history: [
+          {
+            ...session('2026-07-15', [elegido.exerciseId]),
+            exercises: [
+              {
+                exerciseId: elegido.exerciseId,
+                name: elegido.name,
+                primary: elegido.primary,
+                plan: { sets: reps.length, reps: '8-12', rir: 2 },
+                variant: elegido.variant,
+                done: true,
+                logs: reps.map((r) => ({ weightKg: 14, reps: r, rir: 2, done: true }))
+              }
+            ]
+          },
+          ...establishedHistory()
+        ]
+      }
+    }
+
+    it('trae lo que se hizo, serie a serie', () => {
+      const { history, id } = historialDeLoQueElija([10, 9, 8])
+      const s = buildSession(rec(), profile, history, TODAY)
+      const pe = s.exercises.find((e) => e.exerciseId === id)
+      expect(pe?.previous?.series.map((l) => l.reps)).toEqual([10, 9, 8])
+    })
+
+    it('y precarga esas repeticiones para poder compararse', () => {
+      const { history, id } = historialDeLoQueElija([10, 9, 8])
+      const s = buildSession(rec(), profile, history, TODAY)
+      const pe = s.exercises.find((e) => e.exerciseId === id)
+      expect(pe?.logs?.slice(0, 3).map((l) => l.reps)).toEqual([10, 9, 8])
+    })
+
+    it('el RIR de aquel día viaja con la referencia', () => {
+      const { history, id } = historialDeLoQueElija([10, 9])
+      const s = buildSession(rec(), profile, history, TODAY)
+      expect(s.exercises.find((e) => e.exerciseId === id)?.previous?.rirMedio).toBe(2)
+    })
+
+    it('sin haberlo hecho nunca, no se inventa una base', () => {
+      const s = buildSession(rec(), profile, establishedHistory(), TODAY)
+      for (const e of s.exercises) expect(e.previous).toBeUndefined()
+    })
+
+    it('las series siguen naciendo sin marcar: la referencia no es un registro', () => {
+      const { history } = historialDeLoQueElija([10])
+      const s = buildSession(rec(), profile, history, TODAY)
+      for (const e of s.exercises) {
+        for (const l of e.logs ?? []) expect(l.done).toBe(false)
+      }
     })
   })
 

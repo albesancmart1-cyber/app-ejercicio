@@ -35,18 +35,40 @@ export const RIR_EFECTIVO = 3
 
 export type MuscleVolume = Record<Muscle, number>
 
-/** Cuántas series efectivas tiene un ejercicio ya registrado. */
+/**
+ * Cuántas series efectivas tiene un ejercicio ya registrado.
+ *
+ * **Manda el RIR anotado, no el prescrito.** El plan dice a cuánto del fallo
+ * había que quedarse, pero es una intención: si el plan pedía quedarse a dos y
+ * la serie acabó al fallo, el estímulo fue el de una serie al fallo. Cuando hay
+ * RIR real anotado se cuenta serie a serie con él; cuando no lo hay —registros
+ * de antes de que se pudiera anotar— se cae al del plan, que es la mejor
+ * estimación disponible.
+ */
 export function seriesEfectivas(pe: PlannedExercise): number {
-  // Sin repeticiones en reserva anotadas se asume trabajo real: los registros
-  // antiguos no llevaban el dato y descartarlos borraría historial.
-  if (pe.plan.rir !== undefined && pe.plan.rir > RIR_EFECTIVO) return 0
-
   const logs = pe.logs
   if (!logs || logs.length === 0) {
     // Registro antiguo sin series: se usa el marcador de ejercicio completado.
+    if (pe.plan.rir !== undefined && pe.plan.rir > RIR_EFECTIVO) return 0
     return pe.done === true ? pe.plan.sets : 0
   }
-  return logs.filter((l) => l.done && !l.warmup).length
+
+  const hechas = logs.filter((l) => l.done && !l.warmup)
+  const conRir = hechas.filter((l) => typeof l.rir === 'number')
+
+  // Sin ni un RIR anotado en todo el ejercicio, decide el plan como siempre.
+  if (conRir.length === 0) {
+    if (pe.plan.rir !== undefined && pe.plan.rir > RIR_EFECTIVO) return 0
+    return hechas.length
+  }
+
+  // Con RIR anotado en algunas, las que no lo llevan se juzgan por el plan: sin
+  // dato no se descarta trabajo que sí se hizo.
+  return hechas.filter((l) =>
+    typeof l.rir === 'number'
+      ? l.rir <= RIR_EFECTIVO
+      : pe.plan.rir === undefined || pe.plan.rir <= RIR_EFECTIVO
+  ).length
 }
 
 /** Volumen fraccional que aporta un ejercicio, músculo a músculo. */
