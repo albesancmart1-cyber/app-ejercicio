@@ -405,6 +405,27 @@ export interface Session {
   durationSec?: number
 }
 
+/**
+ * Un entreno guardado para repetirlo.
+ *
+ * Guarda **la estructura** —qué ejercicios, en qué orden, con qué series y
+ * repeticiones— y no los pesos: esos los pone la progresión cada vez, mirando
+ * lo que hiciste la última vez. Ver `src/domain/rutinas.ts`.
+ */
+export interface Routine {
+  id: string
+  name: string
+  /** Carpeta en la que se guarda, si el usuario la ha puesto en alguna. */
+  folder?: string
+  kind: SessionKind
+  exercises: PlannedExercise[]
+  createdAt: number
+  /** Cuándo se tocó por última vez. Lo usa la fusión entre dispositivos. */
+  updatedAt?: number
+  /** De qué sesión salió. */
+  fromSessionId?: string
+}
+
 export interface Recommendation {
   kind: SessionKind
   title: string
@@ -485,6 +506,8 @@ export interface AppData {
   checkIns: CheckIn[]
   sessions: Session[]
   measurements: BodyMeasurement[]
+  /** Entrenos guardados para repetir. Ausente hasta que se guarda el primero. */
+  routines?: Routine[]
   /**
    * Lo que se ha borrado, para que sincronizar no lo resucite. Ver
    * `src/domain/merge.ts`.

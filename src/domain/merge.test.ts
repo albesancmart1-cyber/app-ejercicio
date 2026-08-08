@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { claveDeMedicion, claveDeSesion, fusionar, resumirFusion, unirLapidas } from './merge'
-import type { AppData, BodyMeasurement, CheckIn, Profile, Session } from './types'
+import {
+  claveDeMedicion,
+  claveDeRutina,
+  claveDeSesion,
+  fusionar,
+  resumirFusion,
+  unirLapidas
+} from './merge'
+import type { AppData, BodyMeasurement, CheckIn, Profile, Routine, Session } from './types'
 
 const perfil = (name: string): Profile => ({
   name,
@@ -214,5 +221,56 @@ describe('se cuenta lo que ha traído', () => {
   it('si no ha traído nada, no dice nada', () => {
     const { resumen } = fusionar(datos(), datos())
     expect(resumirFusion(resumen)).toBeNull()
+  })
+})
+
+// ── Rutinas ───────────────────────────────────────────────
+
+const rutina = (id: string, name: string, updatedAt?: number): Routine => ({
+  id,
+  name,
+  kind: 'fuerza',
+  exercises: [],
+  createdAt: 1,
+  updatedAt
+})
+
+describe('las rutinas también viajan entre dispositivos', () => {
+  it('se juntan las de los dos lados', () => {
+    const { data } = fusionar(
+      datos({ routines: [rutina('a', 'Torso')] }),
+      datos({ routines: [rutina('b', 'Pierna')] })
+    )
+    expect(data.routines?.map((r) => r.id).sort()).toEqual(['a', 'b'])
+  })
+
+  it('con la misma rutina en los dos, gana la tocada más tarde', () => {
+    const { data } = fusionar(
+      datos({ routines: [rutina('a', 'Torso viejo', 100)] }),
+      datos({ routines: [rutina('a', 'Torso nuevo', 200)] })
+    )
+    expect(data.routines).toHaveLength(1)
+    expect(data.routines![0].name).toBe('Torso nuevo')
+  })
+
+  it('una rutina borrada aquí no vuelve de la nube', () => {
+    const { data } = fusionar(
+      datos({ routines: [], deleted: [{ clave: claveDeRutina('a'), at: 500 }] }),
+      datos({ routines: [rutina('a', 'Torso', 100)] })
+    )
+    expect(data.routines).toBeUndefined()
+  })
+
+  it('pero volver a guardarla después del borrado sí la resucita', () => {
+    const { data } = fusionar(
+      datos({ routines: [], deleted: [{ clave: claveDeRutina('a'), at: 500 }] }),
+      datos({ routines: [rutina('a', 'Torso', 900)] })
+    )
+    expect(data.routines).toHaveLength(1)
+  })
+
+  it('sin rutinas en ninguno de los dos, no se inventa la lista', () => {
+    const { data } = fusionar(datos(), datos())
+    expect(data.routines).toBeUndefined()
   })
 })

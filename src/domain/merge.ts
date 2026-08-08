@@ -16,11 +16,11 @@
  * eso lo borrado deja una **lápida** —qué era y cuándo se borró— y la unión la
  * respeta mientras nadie haya vuelto a crear esa misma cosa después.
  */
-import type { AppData, BodyMeasurement, CheckIn, Session } from './types'
+import type { AppData, BodyMeasurement, CheckIn, Routine, Session } from './types'
 
 /** Qué se borró y cuándo, para que la fusión no lo resucite. */
 export interface Lapida {
-  /** `sesion:<id>`, `medicion:<fecha>` o `checkin:<fecha>`. */
+  /** `sesion:<id>`, `medicion:<fecha>`, `checkin:<fecha>` o `rutina:<id>`. */
   clave: string
   at: number
 }
@@ -33,6 +33,9 @@ export function claveDeMedicion(fecha: string): string {
 }
 export function claveDeCheckIn(fecha: string): string {
   return `checkin:${fecha}`
+}
+export function claveDeRutina(id: string): string {
+  return `rutina:${id}`
 }
 
 /** Cuándo se tocó por última vez. Lo que no lo lleva es de antes de sincronizar. */
@@ -98,7 +101,12 @@ export function fusionar(local: AppData, remoto: AppData): { data: AppData; resu
   const claveCheckIn = (c: CheckIn) => claveDeCheckIn(c.date)
   const claveMedicion = (m: BodyMeasurement) => claveDeMedicion(m.date)
 
+  const claveRutina = (r: Routine) => claveDeRutina(r.id)
+
   const sessions = unir(local.sessions, remoto.sessions, claveSesion).filter(vivo(claveSesion))
+  const routines = unir(local.routines ?? [], remoto.routines ?? [], claveRutina).filter(
+    vivo(claveRutina)
+  )
   const checkIns = unir(local.checkIns, remoto.checkIns, claveCheckIn).filter(vivo(claveCheckIn))
   const measurements = unir(local.measurements, remoto.measurements, claveMedicion).filter(
     vivo(claveMedicion)
@@ -129,6 +137,7 @@ export function fusionar(local: AppData, remoto: AppData): { data: AppData; resu
       sessions: [...sessions].sort((a, b) => (a.date < b.date ? -1 : 1)),
       checkIns: [...checkIns].sort((a, b) => (a.date < b.date ? -1 : 1)),
       measurements: [...measurements].sort((a, b) => (a.date < b.date ? -1 : 1)),
+      routines: routines.length > 0 ? routines : undefined,
       deleted: lapidas.length > 0 ? lapidas : undefined
     },
     resumen: {

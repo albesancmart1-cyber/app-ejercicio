@@ -1,5 +1,11 @@
 import { useMemo, useState } from 'react'
-import { MUSCLE_GROUPS, MUSCLE_LABELS, type CheckIn, type MuscleGroup } from '../domain/types'
+import {
+  MUSCLE_GROUPS,
+  MUSCLE_LABELS,
+  type CheckIn,
+  type MuscleGroup,
+  type Routine
+} from '../domain/types'
 import { computeReadiness, tieneLevesRepartidas, zonasConMolestias } from '../domain/readiness'
 import { canIntensify, canMix, recommend, withMoreIntensity, withSomeStrength } from '../domain/recommender'
 import { NIVEL_MAXIMO, volumePlan } from '../domain/progression'
@@ -8,6 +14,7 @@ import { buildSession } from '../domain/workoutBuilder'
 import { actions, useAppData } from '../store/store'
 import { useToday } from '../store/clock'
 import { findActiveSession } from '../domain/activeSession'
+import { aSesion, carpetasDe, describirRutina } from '../domain/rutinas'
 import Icon from '../components/Icon'
 import VolumeLevelChooser from '../components/VolumeLevelChooser'
 import SessionScreen from './Session'
@@ -193,6 +200,22 @@ export default function Today() {
   function startSession() {
     if (!recommendation) return
     actions.saveSession(buildSession(recommendation, profile, data.sessions, today, checkIn?.keto ?? false))
+    setPhase('inicio')
+  }
+
+  /**
+   * Hacer hoy una rutina guardada. El plan viene de la rutina, pero los pesos
+   * los sigue poniendo la progresión: repetir un entreno no es repetir sus
+   * kilos.
+   */
+  function empezarRutina(rutina: Routine) {
+    actions.saveSession(
+      aSesion(rutina, profile, data.sessions, {
+        date: today,
+        keto: checkIn?.keto ?? false,
+        rir: recommendation?.rir
+      })
+    )
     setPhase('inicio')
   }
 
@@ -452,6 +475,44 @@ export default function Today() {
           <button className="btn btn-primary" onClick={startSession}>
             Preparar la sesión
           </button>
+
+          {/*
+            Las rutinas guardadas van **después** de la propuesta y en tono
+            menor, y no es un capricho de maquetación: lo de arriba tiene en
+            cuenta cómo has dormido, qué te duele y qué llevas semanas sin
+            trabajar, y una rutina fija no sabe nada de eso. Repetir una es una
+            decisión de hoy que se toma a sabiendas, no un modo en el que uno se
+            queda.
+          */}
+          {(data.routines ?? []).length > 0 && (
+            <div className="card" style={{ marginTop: 8 }}>
+              <p className="eyebrow">O repite una rutina tuya</p>
+              <p className="faint" style={{ marginBottom: 12 }}>
+                Lo de arriba está pensado para hoy —tu descanso, tus molestias, lo que llevas sin
+                tocar—. Una rutina guardada no sabe nada de eso, así que elígela tú si hoy te
+                apetece esa y no otra.
+              </p>
+              {carpetasDe(data.routines ?? []).map((c) => (
+                <div key={c.nombre ?? 'sueltas'}>
+                  {c.nombre && (
+                    <p className="eyebrow" style={{ marginTop: 12 }}>
+                      {c.nombre}
+                    </p>
+                  )}
+                  {c.rutinas.map((r) => (
+                    <button className="item item-tap" key={r.id} onClick={() => empezarRutina(r)}>
+                      <div className="item-body">
+                        <div className="item-title">{r.name}</div>
+                        <div className="item-meta">{describirRutina(r)}</div>
+                      </div>
+                      <span className="chev" aria-hidden="true" />
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+
           <button className="btn-quiet" onClick={() => setPhase('checkin')}>
             Revisar mis respuestas
           </button>

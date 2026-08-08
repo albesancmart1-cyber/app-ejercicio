@@ -9,6 +9,7 @@ import {
 import { ketoAdaptationWeeksLeft, proteinTarget } from '../domain/protocol'
 import { esVerano, objetivoDhaDiario } from '../domain/dha'
 import { exerciseById } from '../data/exercises'
+import { carpetasDe, describirRutina } from '../domain/rutinas'
 import ExercisePicker from '../components/ExercisePicker'
 import AccountCard from '../components/AccountCard'
 import LandmarkSettings from '../components/LandmarkSettings'
@@ -320,6 +321,41 @@ export default function Settings() {
           Elegir favoritos del catálogo
         </button>
       </div>
+
+      {(data.routines ?? []).length > 0 && (
+        <div className="card">
+          <p className="eyebrow">Tus rutinas</p>
+          <p className="dim" style={{ marginBottom: 14 }}>
+            Entrenos que guardaste para repetir. Los tienes al preparar el día, debajo de lo que la
+            app te proponga: eso de arriba mira cómo has dormido y qué te duele hoy, y una rutina
+            guardada no puede saberlo.
+          </p>
+          {carpetasDe(data.routines ?? []).map((c) => (
+            <div key={c.nombre ?? 'sueltas'}>
+              {c.nombre && (
+                <p className="eyebrow" style={{ marginTop: 12 }}>
+                  {c.nombre}
+                </p>
+              )}
+              {c.rutinas.map((r) => (
+                <div className="item" key={r.id}>
+                  <div className="item-body">
+                    <div className="item-title">{r.name}</div>
+                    <div className="item-meta">{describirRutina(r)}</div>
+                  </div>
+                  <button
+                    className="opt"
+                    onClick={() => actions.deleteRoutine(r.id)}
+                    aria-label={`Borrar la rutina ${r.name}`}
+                  >
+                    Borrar
+                  </button>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
 
       {(profile.dislikedExercises ?? []).length > 0 && (
         <div className="card">

@@ -46,6 +46,13 @@ import {
 } from '../domain/superseries'
 import { DESCANSO_ENTRE_EJERCICIOS } from '../domain/protocol'
 import { changeVariant, nextAlternative, swapExercise } from '../domain/swap'
+import {
+  desdeSesion,
+  nombreLibre,
+  nombrePropuesto,
+  nombresDeCarpeta,
+  sePuedeGuardar
+} from '../domain/rutinas'
 import { trasCambiar, trasEntrenar } from '../domain/affinity'
 import { meterPesas, pesasParaMeter, puedeMeterPesas } from '../domain/mixIn'
 import { prepareExercise } from '../domain/workoutBuilder'
@@ -144,6 +151,10 @@ export default function SessionScreen({ session }: { session: Session }) {
   const tarjetas = useRef<(HTMLDivElement | null)[]>([])
   /** Qué ejercicio tiene abierta su ficha de marcas. */
   const [ficha, setFicha] = useState<number | null>(null)
+  /** El formulario de guardar esto como rutina. */
+  const [guardandoRutina, setGuardandoRutina] = useState(false)
+  const [nombreRutina, setNombreRutina] = useState('')
+  const [carpetaRutina, setCarpetaRutina] = useState('')
   /**
    * Los récords conseguidos hoy, por serie. Se guardan para que la medalla se
    * quede puesta: enterarse de que aquella fue tu mejor serie y que el aviso
@@ -530,6 +541,18 @@ export default function SessionScreen({ session }: { session: Session }) {
     setResting(null)
     setAhora(null)
     setComoSeHace(null)
+  }
+
+  function guardarRutina() {
+    const rutinas = data.routines ?? []
+    const rutina = desdeSesion({ ...session, exercises }, nombreLibre(rutinas, nombreRutina), {
+      folder: carpetaRutina
+    })
+    actions.saveRoutine(rutina)
+    setGuardandoRutina(false)
+    setAviso(
+      `Rutina «${rutina.name}» guardada${rutina.folder ? ` en ${rutina.folder}` : ''}. La tienes al preparar el día, debajo de lo que te proponga.`
+    )
   }
 
   function empezar() {
@@ -1032,6 +1055,68 @@ export default function SessionScreen({ session }: { session: Session }) {
       <button className="btn btn-secondary" onClick={() => setEligiendo({ modo: 'anadir' })}>
         Añadir un ejercicio de la lista
       </button>
+
+      {/*
+        Guardar el entreno de hoy para repetirlo. Guarda la estructura y no los
+        kilos: los pesos los sigue poniendo la progresión cada vez, que es lo
+        que hace que repetir una rutina no sea repetir el mismo entreno.
+      */}
+      {sePuedeGuardar({ ...session, exercises }) && (
+        <>
+          {!guardandoRutina ? (
+            <button
+              className="btn-quiet"
+              onClick={() => {
+                setNombreRutina(nombrePropuesto(session))
+                setCarpetaRutina('')
+                setGuardandoRutina(true)
+              }}
+            >
+              Guardar esto como rutina
+            </button>
+          ) : (
+            <div className="card fade-in">
+              <p className="eyebrow">Guardar como rutina</p>
+              <p className="faint" style={{ marginBottom: 12 }}>
+                Se guardan los ejercicios, el orden y las series. Los pesos no: esos los pone la
+                progresión cada vez que la repitas, mirando lo que hiciste la última vez.
+              </p>
+              <label className="field">
+                <span>Nombre</span>
+                <input
+                  type="text"
+                  value={nombreRutina}
+                  onChange={(ev) => setNombreRutina(ev.target.value)}
+                  aria-label="Nombre de la rutina"
+                />
+              </label>
+              <label className="field" style={{ marginTop: 12 }}>
+                <span>Carpeta (opcional)</span>
+                <input
+                  type="text"
+                  list="carpetas-de-rutinas"
+                  placeholder="Casa, gimnasio, torso…"
+                  value={carpetaRutina}
+                  onChange={(ev) => setCarpetaRutina(ev.target.value)}
+                  aria-label="Carpeta de la rutina"
+                />
+              </label>
+              <datalist id="carpetas-de-rutinas">
+                {nombresDeCarpeta(data.routines ?? []).map((c) => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
+              <div style={{ height: 14 }} />
+              <button className="btn btn-primary" disabled={!nombreRutina.trim()} onClick={guardarRutina}>
+                Guardar rutina
+              </button>
+              <button className="btn-quiet" onClick={() => setGuardandoRutina(false)}>
+                Ahora no
+              </button>
+            </div>
+          )}
+        </>
+      )}
 
       {aviso && (
         <p className="faint" style={{ margin: '0 4px 14px' }}>

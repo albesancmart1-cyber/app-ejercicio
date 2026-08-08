@@ -1,8 +1,8 @@
 import { useSyncExternalStore } from 'react'
 import { todayIsoAt } from './clock'
 import { VERSION_ACTUAL, migrar } from './migrate'
-import type { AppData, BodyMeasurement, CheckIn, Profile, Session } from '../domain/types'
-import { claveDeMedicion, claveDeSesion, type Lapida } from '../domain/merge'
+import type { AppData, BodyMeasurement, CheckIn, Profile, Routine, Session } from '../domain/types'
+import { claveDeMedicion, claveDeRutina, claveDeSesion, type Lapida } from '../domain/merge'
 
 const STORAGE_KEY = 'ritmo-data-v1'
 
@@ -110,6 +110,22 @@ export const actions = {
       ...s,
       sessions: s.sessions.filter((x) => x.id !== id),
       deleted: conLapida(s, claveDeSesion(id))
+    }))
+  },
+  saveRoutine(routine: Routine) {
+    setState((s) => ({
+      ...s,
+      routines: [
+        ...(s.routines ?? []).filter((r) => r.id !== routine.id),
+        { ...routine, updatedAt: Date.now() }
+      ]
+    }))
+  },
+  deleteRoutine(id: string) {
+    setState((s) => ({
+      ...s,
+      routines: (s.routines ?? []).filter((r) => r.id !== id),
+      deleted: conLapida(s, claveDeRutina(id))
     }))
   },
   saveMeasurement(measurement: BodyMeasurement) {
