@@ -25,6 +25,16 @@ import {
   notaDe
 } from '../domain/preferencias'
 import { mantenerPantalla, soportaWakeLock } from '../store/wakeLock'
+import {
+  desencadenar,
+  encadenarConSiguiente,
+  etiquetaDe,
+  moverBloque,
+  puedeEncadenar,
+  puedeMover,
+  siguePrevio,
+  siguientePaso
+} from '../domain/superseries'
 import { DESCANSO_ENTRE_EJERCICIOS } from '../domain/protocol'
 import { changeVariant, nextAlternative, swapExercise } from '../domain/swap'
 import { trasCambiar, trasEntrenar } from '../domain/affinity'
@@ -72,12 +82,15 @@ function describirDiscos(objetivoKg: number): string {
   return r.desvioKg === 0 ? base : `${base} → ${r.totalKg} kg (${r.desvioKg} respecto a lo pedido)`
 }
 
-function planLabel(pe: PlannedExercise, descansoSeg?: number): string {
+function planLabel(pe: PlannedExercise, descansoSeg?: number, enSuperserie = false): string {
   const parts = [`${pe.plan.sets} × ${pe.plan.reps}`]
   // «Ve a RIR 2» y no «RIR 2» a secas: es el objetivo, y el que cuenta luego es
   // el que se anota serie a serie.
   if (pe.plan.rir !== undefined && pe.primary !== 'cardio') parts.push(`ve a RIR ${pe.plan.rir}`)
-  if (descansoSeg) parts.push(`${formatDescanso(descansoSeg)} descanso`)
+  // Dentro de una superserie el descanso no va entre series, va al cerrar la
+  // vuelta. Decir «90 s descanso» a secas ahí sería justo lo contrario.
+  if (enSuperserie) parts.push('sin descanso hasta cerrar la vuelta')
+  else if (descansoSeg) parts.push(`${formatDescanso(descansoSeg)} descanso`)
   const forma = variantLabel(pe.variant)
   if (forma) parts.push(forma)
   return parts.join(' · ')
@@ -111,6 +124,14 @@ export default function SessionScreen({ session }: { session: Session }) {
   const [eligiendo, setEligiendo] = useState<Eligiendo | null>(null)
   /** Qué ejercicio tiene abierto su panel de ajustes propios. */
   const [ajustando, setAjustando] = useState<number | null>(null)
+  /**
+   * A qué serie toca ir ahora. En una superserie el recorrido no es de arriba
+   * abajo, así que hay que decir en voz alta dónde estás: si no, se marca una
+   * serie y no se sabe si toca bajar al siguiente o seguir donde estabas.
+   */
+  const [ahora, setAhora] = useState<{ exercise: number; set: number } | null>(null)
+  /** Las tarjetas, para poder traer a la vista la que toca. */
+  const tarjetas = useRef<(HTMLDivElement | null)[]>([])
   /**
    * Lo que ya se ha descartado en cada hueco de la sesión, para que tocar
    * «cambiar» recorra opciones distintas en vez de ir y venir entre dos: sin
@@ -205,6 +226,11 @@ export default function SessionScreen({ session }: { session: Session }) {
     )
   }
 
+  /** Trae a la vista la tarjeta que toca, sin dar un salto brusco. */
+  function irA(ei: number) {
+    tarjetas.current[ei]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+
   function toggleSet(ei: number, si: number) {
     const ejercicio = exercises[ei]
     const marcando = ejercicio.logs?.[si]?.done !== true
@@ -212,26 +238,51 @@ export default function SessionScreen({ session }: { session: Session }) {
 
     if (!marcando) {
       setResting(null)
+      setAhora(null)
       return
     }
     if (ejercicio.primary === 'cardio') return
 
-    const esUltimaSerie = si === (ejercicio.logs?.length ?? 1) - 1
-    const siguiente = exercises[ei + 1]
+    // Quién va después —y si hay descanso de por medio— lo decide el recorrido,
+    // que sabe de superseries. Aquí solo se pinta lo que diga.
+    const paso = siguientePaso(exercises, ei, si, {
+      descanso: (pe) => descansoDe(profile, pe.exerciseId, pe.plan.restSeconds),
+      entreEjercicios: DESCANSO_ENTRE_EJERCICIOS
+    })
 
-    const descanso = descansoDe(profile, ejercicio.exerciseId, ejercicio.plan.restSeconds)
-    if (!esUltimaSerie && descanso) {
-      setResting({ exercise: ei, set: si, seconds: descanso })
-    } else if (esUltimaSerie && siguiente) {
-      // Antes no había pausa al cambiar de ejercicio: se encadenaba la última
-      // serie de uno con la primera del siguiente.
-      setResting({
-        exercise: ei,
-        set: si,
-        seconds: DESCANSO_ENTRE_EJERCICIOS,
-        nextName: siguiente.name
-      })
+    if (!paso) {
+      setResting(null)
+      setAhora(null)
+      return
     }
+
+    if (paso.tipo === 'encadena') {
+      // Lo que hace que una superserie sea una superserie: nada de descanso, y
+      // la siguiente tarjeta delante de los ojos.
+      setResting(null)
+      setAhora({ exercise: paso.exercise, set: paso.set })
+      irA(paso.exercise)
+      return
+    }
+
+    setResting({ exercise: ei, set: si, seconds: paso.seconds, nextName: paso.nombre })
+    setAhora(paso.exercise !== undefined ? { exercise: paso.exercise, set: paso.set ?? 0 } : null)
+  }
+
+  function encadenar(ei: number) {
+    setExercises((prev) => encadenarConSiguiente(prev, ei))
+    setResting(null)
+    setAhora(null)
+    setAviso(
+      `${exercises[ei].name} y ${exercises[ei + 1].name}, encadenados: una serie de cada uno seguida y el descanso al cerrar la vuelta.`
+    )
+  }
+
+  function soltar(ei: number) {
+    setExercises((prev) => desencadenar(prev, ei))
+    setResting(null)
+    setAhora(null)
+    setAviso(`${exercises[ei].name} vuelve a ir por su cuenta, con su descanso entre series.`)
   }
 
   /**
@@ -413,15 +464,15 @@ export default function SessionScreen({ session }: { session: Session }) {
     )
   }
 
+  /**
+   * Subir o bajar. Se mueve el **bloque**: una superserie viaja entera, porque
+   * dejar a uno de sus miembros suelto en medio de la lista rompería el
+   * recorrido sin que se vea por qué.
+   */
   function mover(ei: number, delta: number) {
-    const destino = ei + delta
-    if (destino < 0 || destino >= exercises.length) return
-    setExercises((prev) => {
-      const copia = [...prev]
-      ;[copia[ei], copia[destino]] = [copia[destino], copia[ei]]
-      return copia
-    })
+    setExercises((prev) => moverBloque(prev, ei, delta))
     setResting(null)
+    setAhora(null)
     setComoSeHace(null)
   }
 
@@ -503,12 +554,36 @@ export default function SessionScreen({ session }: { session: Session }) {
       </p>
 
       {exercises.map((e, ei) => (
-        <div className="card" key={`${e.exerciseId}-${ei}`}>
+        <div
+          className={[
+            'card',
+            etiquetaDe(exercises, ei) ? 'en-superserie' : '',
+            siguePrevio(exercises, ei) ? 'sigue-superserie' : '',
+            ahora?.exercise === ei ? 'toca-ahora' : ''
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          key={`${e.exerciseId}-${ei}`}
+          ref={(nodo) => {
+            tarjetas.current[ei] = nodo
+          }}
+        >
           <div className="row" style={{ alignItems: 'flex-start' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="item-title">{e.name}</div>
+              <div className="item-title">
+                {etiquetaDe(exercises, ei) && (
+                  <span className="ss-tag" title="Superserie">
+                    {etiquetaDe(exercises, ei)}
+                  </span>
+                )}
+                {e.name}
+              </div>
               <div className="item-meta">
-                {planLabel(e, descansoDe(profile, e.exerciseId, e.plan.restSeconds))}
+                {planLabel(
+                  e,
+                  descansoDe(profile, e.exerciseId, e.plan.restSeconds),
+                  etiquetaDe(exercises, ei) !== undefined
+                )}
               </div>
               {e.previous && (
                 <div className="last-time">
@@ -519,18 +594,28 @@ export default function SessionScreen({ session }: { session: Session }) {
               {e.progressNote && <div className="progress-note">{e.progressNote}</div>}
             </div>
             <div className="reorder">
-              <button onClick={() => mover(ei, -1)} disabled={ei === 0} aria-label={`Subir ${e.name}`}>
+              <button
+                onClick={() => mover(ei, -1)}
+                disabled={!puedeMover(exercises, ei, -1)}
+                aria-label={`Subir ${e.name}`}
+              >
                 ↑
               </button>
               <button
                 onClick={() => mover(ei, 1)}
-                disabled={ei === exercises.length - 1}
+                disabled={!puedeMover(exercises, ei, 1)}
                 aria-label={`Bajar ${e.name}`}
               >
                 ↓
               </button>
             </div>
           </div>
+
+          {/* Dónde estás del recorrido. En una superserie es imprescindible: la
+              serie que toca no es la de debajo, es la de otra tarjeta. */}
+          {ahora?.exercise === ei && (
+            <p className="ahora-toca">Ahora: serie {ahora.set + 1}</p>
+          )}
 
           <div className="exercise-actions">
             {patternOf(e.exerciseId) && (
@@ -568,6 +653,22 @@ export default function SessionScreen({ session }: { session: Session }) {
               <Icon name="close" />
               Quitar
             </button>
+            {/* Encadenar es una decisión del momento —hoy tengo prisa, hoy
+                quiero apretar— y por eso vive aquí y no en los ajustes. */}
+            {etiquetaDe(exercises, ei) && (
+              <button className="disclose" onClick={() => soltar(ei)}>
+                <Icon name="close" />
+                Sacar de la superserie
+              </button>
+            )}
+            {/* Sale también en el último de un grupo: así se mete un tercero sin
+                tener que deshacer nada. */}
+            {puedeEncadenar(exercises, ei) && (
+              <button className="disclose" onClick={() => encadenar(ei)}>
+                <Icon name="spark" />
+                Encadenar con el siguiente
+              </button>
+            )}
             {e.primary !== 'cardio' && e.plan.weightKg ? (
               <button className="disclose" onClick={() => anadirCalentamiento(ei)}>
                 <Icon name="chevron" />

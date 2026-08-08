@@ -12,6 +12,7 @@ import { seriesEfectivas, volumenDe, type MuscleVolume } from './volume'
 import { esfuerzoDe, type EsfuerzoSesion } from './effort'
 import { rirMedioDe } from './ultimaVez'
 import { esCalentamiento, tipoDe } from './setLogs'
+import { etiquetaDe } from './superseries'
 import type { Muscle } from './muscles'
 import type { ExerciseVariant, PlannedExercise, Session, SetLog } from './types'
 
@@ -33,6 +34,8 @@ export interface ResumenEjercicio {
   rirMedio?: number
   /** El usuario lo añadió a mano durante la sesión. */
   anadido: boolean
+  /** «A1», «A2»… si fue parte de una superserie. */
+  superserie?: string
 }
 
 export interface ResumenSesion {
@@ -62,7 +65,7 @@ function seriesQueCuentan(logs: SetLog[]): SetLog[] {
   return logs.filter((l) => l.done && !esCalentamiento(l))
 }
 
-function resumirEjercicio(pe: PlannedExercise): ResumenEjercicio {
+function resumirEjercicio(pe: PlannedExercise, superserie?: string): ResumenEjercicio {
   const logs = (pe.logs ?? []).filter((l) => l.done)
   const cuentan = seriesQueCuentan(pe.logs ?? [])
 
@@ -84,14 +87,18 @@ function resumirEjercicio(pe: PlannedExercise): ResumenEjercicio {
       conPeso.length > 0 ? conPeso.reduce((a, l) => a + l.weightKg! * l.reps!, 0) : undefined,
     variante: pe.variant,
     rirMedio: rirMedioDe(cuentan),
-    anadido: pe.addedByUser === true
+    anadido: pe.addedByUser === true,
+    superserie
   }
 }
 
 export function resumirSesion(session: Session): ResumenSesion {
   const ejercicios = session.exercises
-    .filter((pe) => pe.primary !== 'cardio')
-    .map(resumirEjercicio)
+    // La etiqueta se saca **antes** de filtrar el cardio, porque se calcula
+    // sobre la posición en la sesión entera.
+    .map((pe, i) => ({ pe, etiqueta: etiquetaDe(session.exercises, i) }))
+    .filter(({ pe }) => pe.primary !== 'cardio')
+    .map(({ pe, etiqueta }) => resumirEjercicio(pe, etiqueta))
 
   const musculos: Partial<MuscleVolume> = {}
   for (const pe of session.exercises) {

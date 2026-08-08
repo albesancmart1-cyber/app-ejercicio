@@ -109,7 +109,10 @@ export default function SessionDetail({ session, onClose }: { session: Session; 
         {r.ejercicios.map((e, i) => (
           <div className="detail-ex" key={`${e.exerciseId}-${i}`}>
             <div className="row">
-              <h3>{e.name}</h3>
+              <h3>
+                {e.superserie && <span className="ss-tag">{e.superserie}</span>}
+                {e.name}
+              </h3>
               <span className="faint">
                 {e.seriesHechas} de {e.seriesPlanificadas}
               </span>

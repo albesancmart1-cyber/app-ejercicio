@@ -127,7 +127,9 @@ export function swapExercise(
   // El sustituto trae su propia última vez: la referencia es la de **ese**
   // ejercicio, no la del que se acaba de descartar.
   const previa = ultimaVezDe(next.id, history, sustituto.variant)
-  return { ...sustituto, plan, logs: initLogs(plan, previa) }
+  // La superserie es del **hueco**, no del ejercicio: cambiar el segundo de una
+  // pareja por otro deja la pareja donde estaba, que es lo que uno espera.
+  return { ...sustituto, plan, logs: initLogs(plan, previa), supersetId: pe.supersetId }
 }
 
 /**

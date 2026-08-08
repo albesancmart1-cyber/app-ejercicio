@@ -2130,6 +2130,65 @@ textarea:focus {
 }
 
 
+/* ── Superseries ────────────────────────────────────────── */
+
+/*
+ * Los ejercicios encadenados se dibujan como un bloque.
+ *
+ * La marca es una barra al costado izquierdo, continua de una tarjeta a la
+ * siguiente: es lo que dice «esto va junto» sin necesidad de leer nada. El
+ * segundo de la pareja pierde la separación de arriba y se pega al primero,
+ * porque dos tarjetas separadas por aire no parecen una cosa.
+ */
+.card.en-superserie {
+  border-left: 2px solid var(--accent);
+  border-top-left-radius: var(--r-control);
+  border-bottom-left-radius: var(--r-control);
+}
+
+.card.sigue-superserie {
+  margin-top: calc(var(--sp-3) * -1);
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.card.en-superserie:not(.sigue-superserie) {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+/* «A1», «A2»: la posición dentro del grupo, delante del nombre. */
+.ss-tag {
+  display: inline-block;
+  margin-right: var(--sp-2);
+  padding: 1px 7px;
+  border-radius: var(--r-small);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--text-caption);
+  font-weight: 600;
+  letter-spacing: var(--tracking-caption);
+  vertical-align: middle;
+}
+
+/*
+ * Dónde estás del recorrido. En una superserie la serie que toca no es la de
+ * debajo sino la de otra tarjeta, así que hay que señalarla: sin esto se marca
+ * una serie y no se sabe a dónde mirar.
+ */
+.card.toca-ahora {
+  box-shadow: var(--elevation-card), 0 0 0 1.5px var(--accent);
+}
+
+.ahora-toca {
+  margin: var(--sp-2) 0 0;
+  font-size: var(--text-caption);
+  line-height: var(--leading-caption);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+
 /* ── Ajustes propios de un ejercicio ────────────────────── */
 
 .ex-prefs {

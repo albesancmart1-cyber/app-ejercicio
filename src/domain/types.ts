@@ -353,6 +353,16 @@ export interface PlannedExercise {
   /** Añadido a mano durante la sesión, no propuesto por la app. */
   addedByUser?: boolean
   /**
+   * Con qué otros ejercicios va encadenado sin descanso. Los que comparten este
+   * identificador forman una superserie: se hace una serie de cada uno seguida y
+   * el descanso llega al cerrar la vuelta. Ver `src/domain/superseries.ts`.
+   *
+   * Solo cambia el **orden** en que se recorren y cuándo se descansa: una serie
+   * cuenta lo mismo encadenada que suelta, así que el volumen y el estrés ni se
+   * enteran.
+   */
+  supersetId?: string
+  /**
    * Qué se hizo la última vez en este mismo ejercicio, congelado al construir
    * la sesión. Es la base desde la que decidir hoy: sin ella hay que adivinar,
    * y adivinar hacia abajo es la forma más silenciosa de no progresar.
