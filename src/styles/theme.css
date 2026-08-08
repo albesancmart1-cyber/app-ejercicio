@@ -2128,3 +2128,26 @@ textarea:focus {
   color: var(--label-3);
   font-variant-numeric: tabular-nums;
 }
+
+
+/* ── Ajustes propios de un ejercicio ────────────────────── */
+
+.ex-prefs {
+  margin-top: var(--sp-3);
+  padding: var(--sp-3) 0 var(--sp-1);
+  border-top: 1px solid var(--separator);
+}
+
+/*
+ * La nota del usuario, cuando el panel está cerrado. Con una barra al lado en
+ * vez de una tarjeta: es una anotación al margen del ejercicio, no un bloque
+ * más que compita con el nombre y el plan.
+ */
+.ex-note {
+  margin-top: var(--sp-3);
+  padding-left: var(--sp-3);
+  border-left: 2px solid var(--accent-soft);
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+  color: var(--label-2);
+}

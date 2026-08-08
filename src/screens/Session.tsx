@@ -16,6 +16,15 @@ import {
 import { initLogs, syncExercise, tipoDe, volumeLoad } from '../domain/setLogs'
 import { describirUltimaVez } from '../domain/ultimaVez'
 import { calentamientoPara, describirReparto, repartirDiscos } from '../domain/discos'
+import {
+  DESCANSOS,
+  conDescanso,
+  conNota,
+  descansoDe,
+  formatDescanso,
+  notaDe
+} from '../domain/preferencias'
+import { mantenerPantalla, soportaWakeLock } from '../store/wakeLock'
 import { DESCANSO_ENTRE_EJERCICIOS } from '../domain/protocol'
 import { changeVariant, nextAlternative, swapExercise } from '../domain/swap'
 import { trasCambiar, trasEntrenar } from '../domain/affinity'
@@ -63,12 +72,12 @@ function describirDiscos(objetivoKg: number): string {
   return r.desvioKg === 0 ? base : `${base} → ${r.totalKg} kg (${r.desvioKg} respecto a lo pedido)`
 }
 
-function planLabel(pe: PlannedExercise): string {
+function planLabel(pe: PlannedExercise, descansoSeg?: number): string {
   const parts = [`${pe.plan.sets} × ${pe.plan.reps}`]
   // «Ve a RIR 2» y no «RIR 2» a secas: es el objetivo, y el que cuenta luego es
   // el que se anota serie a serie.
   if (pe.plan.rir !== undefined && pe.primary !== 'cardio') parts.push(`ve a RIR ${pe.plan.rir}`)
-  if (pe.plan.restSeconds) parts.push(`${Math.round(pe.plan.restSeconds / 60)}′ descanso`)
+  if (descansoSeg) parts.push(`${formatDescanso(descansoSeg)} descanso`)
   const forma = variantLabel(pe.variant)
   if (forma) parts.push(forma)
   return parts.join(' · ')
@@ -100,6 +109,8 @@ export default function SessionScreen({ session }: { session: Session }) {
   const [comoSeHace, setComoSeHace] = useState<number | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
   const [eligiendo, setEligiendo] = useState<Eligiendo | null>(null)
+  /** Qué ejercicio tiene abierto su panel de ajustes propios. */
+  const [ajustando, setAjustando] = useState<number | null>(null)
   /**
    * Lo que ya se ha descartado en cada hueco de la sesión, para que tocar
    * «cambiar» recorra opciones distintas en vez de ir y venir entre dos: sin
@@ -208,8 +219,9 @@ export default function SessionScreen({ session }: { session: Session }) {
     const esUltimaSerie = si === (ejercicio.logs?.length ?? 1) - 1
     const siguiente = exercises[ei + 1]
 
-    if (!esUltimaSerie && ejercicio.plan.restSeconds) {
-      setResting({ exercise: ei, set: si, seconds: ejercicio.plan.restSeconds })
+    const descanso = descansoDe(profile, ejercicio.exerciseId, ejercicio.plan.restSeconds)
+    if (!esUltimaSerie && descanso) {
+      setResting({ exercise: ei, set: si, seconds: descanso })
     } else if (esUltimaSerie && siguiente) {
       // Antes no había pausa al cambiar de ejercicio: se encadenaba la última
       // serie de uno con la primera del siguiente.
@@ -447,6 +459,16 @@ export default function SessionScreen({ session }: { session: Session }) {
   const volumen = exercises.reduce((acc, e) => acc + volumeLoad(e), 0)
   const enMarcha = startedAt !== undefined
 
+  // La pantalla se mantiene encendida solo mientras el entreno está en marcha,
+  // y se suelta al salir de la pantalla: fuera de aquí no hay motivo para
+  // gastar batería.
+  useEffect(() => {
+    const activo = enMarcha && profile.keepAwake === true
+    mantenerPantalla(activo)
+    return () => mantenerPantalla(false)
+  }, [enMarcha, profile.keepAwake])
+
+
   if (eligiendo) {
     const actual = eligiendo.modo === 'cambiar' ? exercises[eligiendo.indice] : undefined
     return (
@@ -485,7 +507,9 @@ export default function SessionScreen({ session }: { session: Session }) {
           <div className="row" style={{ alignItems: 'flex-start' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="item-title">{e.name}</div>
-              <div className="item-meta">{planLabel(e)}</div>
+              <div className="item-meta">
+                {planLabel(e, descansoDe(profile, e.exerciseId, e.plan.restSeconds))}
+              </div>
               {e.previous && (
                 <div className="last-time">
                   <span className="last-time-tag">La última vez</span>
@@ -551,6 +575,15 @@ export default function SessionScreen({ session }: { session: Session }) {
               </button>
             ) : null}
             {e.primary !== 'cardio' && (
+              <button
+                className="disclose"
+                onClick={() => setAjustando(ajustando === ei ? null : ei)}
+              >
+                <Icon name="chevron" />
+                {ajustando === ei ? 'Cerrar los ajustes' : 'Descanso y notas'}
+              </button>
+            )}
+            {e.primary !== 'cardio' && (
               <button className="btn-quiet btn-inline" onClick={() => noProponerMas(ei)}>
                 No me lo propongas más
               </button>
@@ -605,6 +638,65 @@ export default function SessionScreen({ session }: { session: Session }) {
               </>
             )
           })()}
+
+          {/*
+            Lo que se ajusta una vez y vale para siempre: cuánto descansa uno en
+            **este** ejercicio y la nota que no quiere volver a averiguar. Va en
+            el perfil, no en la sesión, así que la próxima vez ya está puesto.
+          */}
+          {ajustando === ei && e.primary !== 'cardio' && (
+            <div className="fade-in ex-prefs">
+              <p className="eyebrow">Descanso entre series</p>
+              <div className="options">
+                {DESCANSOS.map((seg) => (
+                  <button
+                    key={seg}
+                    className="opt"
+                    aria-pressed={descansoDe(profile, e.exerciseId, e.plan.restSeconds) === seg}
+                    onClick={() => actions.saveProfile(conDescanso(profile, e.exerciseId, seg))}
+                  >
+                    {formatDescanso(seg)}
+                  </button>
+                ))}
+              </div>
+              <label className="field" style={{ marginTop: 14 }}>
+                <span>Tu nota para este ejercicio</span>
+                <input
+                  type="text"
+                  placeholder="El agujero del asiento, el agarre que no molesta…"
+                  defaultValue={notaDe(profile, e.exerciseId)}
+                  onBlur={(ev) => actions.saveProfile(conNota(profile, e.exerciseId, ev.target.value))}
+                  aria-label={`Nota para ${e.name}`}
+                />
+              </label>
+              {soportaWakeLock() && (
+                <div className="row" style={{ marginTop: 14 }}>
+                  <span className="dim">Que la pantalla no se apague</span>
+                  <div className="options">
+                    <button
+                      className="opt"
+                      aria-pressed={profile.keepAwake === true}
+                      onClick={() => actions.saveProfile({ ...profile, keepAwake: true })}
+                    >
+                      Sí
+                    </button>
+                    <button
+                      className="opt"
+                      aria-pressed={profile.keepAwake !== true}
+                      onClick={() => actions.saveProfile({ ...profile, keepAwake: false })}
+                    >
+                      No
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* La nota propia se ve siempre, no solo con los ajustes abiertos. */}
+          {notaDe(profile, e.exerciseId) && ajustando !== ei && (
+            <p className="ex-note">{notaDe(profile, e.exerciseId)}</p>
+          )}
 
           <div style={{ height: 10 }} />
 

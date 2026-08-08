@@ -146,6 +146,23 @@ export interface Profile {
    */
   favoriteExercises?: string[]
   /**
+   * Notas propias por ejercicio: el agujero del asiento, el agarre que no
+   * molesta la muñeca, la máquina que está descalibrada. Van en el perfil y no
+   * en la sesión porque valen para siempre, no para un día.
+   */
+  exerciseNotes?: Record<string, string>
+  /**
+   * Descanso preferido por ejercicio, en segundos. Lo que propone el protocolo
+   * es un buen punto de partida, pero cuánto necesita cada uno entre series de
+   * un ejercicio concreto solo lo sabe quien lo hace.
+   */
+  restOverrides?: Record<string, number>
+  /**
+   * Que la pantalla no se apague mientras se entrena. Desactivado por defecto:
+   * gasta batería, y hay quien prefiere bloquear el móvil entre series.
+   */
+  keepAwake?: boolean
+  /**
    * Nivel de volumen elegido a mano. La app decide sola por defecto —solo sube
    * cuando el cuerpo demuestra que asimila—, pero quien se nota preparado puede
    * adelantarlo —o quedarse por debajo—. Manda mientras diga algo distinto del
