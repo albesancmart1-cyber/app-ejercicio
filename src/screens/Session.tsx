@@ -15,6 +15,7 @@ import {
 } from '../domain/types'
 import { initLogs, syncExercise, tipoDe, volumeLoad } from '../domain/setLogs'
 import { describirUltimaVez } from '../domain/ultimaVez'
+import { calentamientoPara, describirReparto, repartirDiscos } from '../domain/discos'
 import { DESCANSO_ENTRE_EJERCICIOS } from '../domain/protocol'
 import { changeVariant, nextAlternative, swapExercise } from '../domain/swap'
 import { trasCambiar, trasEntrenar } from '../domain/affinity'
@@ -45,6 +46,21 @@ function minutosDe(pe: PlannedExercise): number | undefined {
  */
 function nombreCorto(nombre: string): string {
   return nombre.replace(/\s*\(.*?\)/g, '').split(',')[0].trim()
+}
+
+/** ¿Este ejercicio se hace con barra? Solo entonces hay discos que repartir. */
+function conBarra(pe: PlannedExercise): boolean {
+  if (pe.variant?.implement) return pe.variant.implement === 'barra' || pe.variant.implement === 'multipower'
+  const ex = exerciseById(pe.exerciseId)
+  return ex ? ex.equipment.includes('barra') || ex.equipment.includes('multipower') : false
+}
+
+/** «60 kg: 1×20 por lado» — y lo que falte, dicho. */
+function describirDiscos(objetivoKg: number): string {
+  const r = repartirDiscos(objetivoKg)
+  if (r.imposible) return describirReparto(r)
+  const base = `${describirReparto(r)} por lado`
+  return r.desvioKg === 0 ? base : `${base} → ${r.totalKg} kg (${r.desvioKg} respecto a lo pedido)`
 }
 
 function planLabel(pe: PlannedExercise): string {
@@ -146,6 +162,36 @@ export default function SessionScreen({ session }: { session: Session }) {
     // Se escribe también `warmup` para que una sesión guardada hoy y abierta
     // por una versión anterior siga contando bien el calentamiento.
     updateSet(ei, si, { tipo: siguiente, warmup: siguiente === 'calentamiento' })
+  }
+
+  /**
+   * Mete las series de calentamiento delante de las de trabajo.
+   *
+   * El salto de peso sale del material: con barra hay que poner el mismo disco
+   * a los dos lados, así que lo mínimo que se mueve son 2,5 kg; con mancuernas,
+   * lo que salte el juego. Sin peso de trabajo no hay porcentaje que calcular y
+   * el botón no aparece.
+   */
+  function anadirCalentamiento(ei: number) {
+    const e = exercises[ei]
+    const trabajo = e.plan.weightKg
+    if (!trabajo) return
+    const conBarra = e.variant?.implement === 'barra' || e.variant?.implement === 'multipower'
+    const series = calentamientoPara(trabajo, { salto: conBarra ? 2.5 : 2 })
+    if (series.length === 0) return
+    setExercises((prev) =>
+      prev.map((x, i) => {
+        if (i !== ei) return x
+        const nuevas: SetLog[] = series.map((c) => ({
+          weightKg: c.weightKg,
+          reps: c.reps,
+          done: false,
+          tipo: 'calentamiento' as const,
+          warmup: true
+        }))
+        return { ...x, logs: [...nuevas, ...(x.logs ?? [])] }
+      })
+    )
   }
 
   function toggleSet(ei: number, si: number) {
@@ -498,6 +544,12 @@ export default function SessionScreen({ session }: { session: Session }) {
               <Icon name="close" />
               Quitar
             </button>
+            {e.primary !== 'cardio' && e.plan.weightKg ? (
+              <button className="disclose" onClick={() => anadirCalentamiento(ei)}>
+                <Icon name="chevron" />
+                Añadir calentamiento
+              </button>
+            ) : null}
             {e.primary !== 'cardio' && (
               <button className="btn-quiet btn-inline" onClick={() => noProponerMas(ei)}>
                 No me lo propongas más
@@ -665,6 +717,15 @@ export default function SessionScreen({ session }: { session: Session }) {
                     <Icon name="check" />
                   </button>
                 </div>
+                {/*
+                  Qué discos poner, solo cuando hay barra de por medio: con
+                  mancuernas no hay nada que repartir. Se calcula sobre el peso
+                  que hay escrito en esa serie, no sobre el del plan, porque lo
+                  que se monta es lo que se va a levantar.
+                */}
+                {conBarra(e) && serie.weightKg ? (
+                  <p className="plate-hint">{describirDiscos(serie.weightKg)}</p>
+                ) : null}
                 {resting && resting.exercise === ei && resting.set === si && (
                   <RestTimer
                     seconds={resting.seconds}

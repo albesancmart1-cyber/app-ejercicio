@@ -2113,3 +2113,18 @@ textarea:focus {
 .set-row:has(.set-type-drop) {
   padding-left: var(--sp-4);
 }
+
+
+/*
+ * Qué discos poner, bajo la serie a la que corresponden.
+ *
+ * Va sangrado hasta la altura de los campos —no del número de serie— para que
+ * se lea como una nota de esa fila y no como una línea suelta entre series.
+ */
+.plate-hint {
+  margin: 0 0 var(--sp-2) 30px;
+  font-size: var(--text-caption);
+  line-height: var(--leading-caption);
+  color: var(--label-3);
+  font-variant-numeric: tabular-nums;
+}
