@@ -2130,6 +2130,71 @@ textarea:focus {
 }
 
 
+/* ── Récords ────────────────────────────────────────────── */
+
+/*
+ * La medalla de una serie, justo debajo de la fila que la ha conseguido.
+ *
+ * Sangrada como la nota de los discos, para que se lea como parte de esa fila.
+ * En acento y con el destello delante: es la única línea de la pantalla que uno
+ * quiere que le salte a la vista.
+ */
+.record-hint {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  margin: 0 0 var(--sp-2) 30px;
+  font-size: var(--text-caption);
+  line-height: var(--leading-caption);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.record-hint svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+}
+
+/*
+ * Un nombre que además lleva a algún sitio. Sin subrayado ni color de enlace:
+ * el subrayado punteado basta para insinuar que se toca sin convertir la lista
+ * de ejercicios en una lista de enlaces.
+ */
+.link-inline {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--label-3);
+  cursor: pointer;
+}
+
+/* La curva de la ficha de un ejercicio. */
+.ficha-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+  margin: var(--sp-3) 0 var(--sp-2);
+  overflow: visible;
+}
+
+.ficha-linea {
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ficha-punto {
+  fill: var(--accent);
+}
+
+
 /* ── Superseries ────────────────────────────────────────── */
 
 /*

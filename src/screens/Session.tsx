@@ -26,6 +26,15 @@ import {
 } from '../domain/preferencias'
 import { mantenerPantalla, soportaWakeLock } from '../store/wakeLock'
 import {
+  NOMBRE_MARCA,
+  celebrar,
+  conSerie,
+  marcasDeSerie,
+  recordsDe,
+  type Records,
+  type TipoMarca
+} from '../domain/records'
+import {
   desencadenar,
   encadenarConSiguiente,
   etiquetaDe,
@@ -51,6 +60,7 @@ import RestTimer from '../components/RestTimer'
 import Chrono, { elapsedSeconds } from '../components/Chrono'
 import ExerciseAnimation from '../components/ExerciseAnimation'
 import ExercisePicker from '../components/ExercisePicker'
+import ExerciseSheet from '../components/ExerciseSheet'
 import { patternOf } from '../data/patterns'
 
 /** Los minutos que lleva puestos un ejercicio de cardio, si los dice. */
@@ -132,6 +142,20 @@ export default function SessionScreen({ session }: { session: Session }) {
   const [ahora, setAhora] = useState<{ exercise: number; set: number } | null>(null)
   /** Las tarjetas, para poder traer a la vista la que toca. */
   const tarjetas = useRef<(HTMLDivElement | null)[]>([])
+  /** Qué ejercicio tiene abierta su ficha de marcas. */
+  const [ficha, setFicha] = useState<number | null>(null)
+  /**
+   * Los récords conseguidos hoy, por serie. Se guardan para que la medalla se
+   * quede puesta: enterarse de que aquella fue tu mejor serie y que el aviso
+   * desaparezca al marcar la siguiente sería enterarse a medias.
+   */
+  const [marcas, setMarcas] = useState<Record<string, TipoMarca[]>>({})
+  /**
+   * Contra qué se comparan las series de hoy. Se calcula una vez al abrir la
+   * sesión —el historial no cambia mientras entrenas— y se va actualizando con
+   * lo que se marca, para no cantar tres veces el mismo récord.
+   */
+  const recordsPrevios = useRef<Map<string, Records>>(new Map())
   /**
    * Lo que ya se ha descartado en cada hueco de la sesión, para que tocar
    * «cambiar» recorra opciones distintas en vez de ir y venir entre dos: sin
@@ -226,6 +250,22 @@ export default function SessionScreen({ session }: { session: Session }) {
     )
   }
 
+  /**
+   * Contra qué se compara este ejercicio. Por forma, no solo por ejercicio: un
+   * récord a un brazo no se mide contra los de a dos.
+   */
+  function previosDe(pe: PlannedExercise): { clave: string; previos: Records } {
+    const clave = `${pe.exerciseId}|${pe.variant?.implement ?? ''}|${pe.variant?.side ?? ''}`
+    const ya = recordsPrevios.current.get(clave)
+    if (ya) return { clave, previos: ya }
+    const r = recordsDe(pe.exerciseId, data.sessions, {
+      variant: pe.variant,
+      excluirSesion: session.id
+    })
+    recordsPrevios.current.set(clave, r)
+    return { clave, previos: r }
+  }
+
   /** Trae a la vista la tarjeta que toca, sin dar un salto brusco. */
   function irA(ei: number) {
     tarjetas.current[ei]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -239,9 +279,25 @@ export default function SessionScreen({ session }: { session: Session }) {
     if (!marcando) {
       setResting(null)
       setAhora(null)
+      // Desmarcar una serie retira su medalla: si no se hizo, no hay récord.
+      setMarcas((m) => {
+        const { [`${ejercicio.exerciseId}-${si}`]: _fuera, ...resto } = m
+        return resto
+      })
       return
     }
     if (ejercicio.primary === 'cardio') return
+
+    // ¿Ha sido esta serie lo mejor que has hecho aquí? Se mira ahora, con la
+    // serie recién marcada: enterarse media hora después no es enterarse.
+    const serie = { ...(ejercicio.logs?.[si] ?? { done: false }), done: true }
+    const { clave, previos } = previosDe(ejercicio)
+    const nuevas = marcasDeSerie(serie, previos)
+    recordsPrevios.current.set(clave, conSerie(previos, serie, session.date))
+    if (nuevas.length > 0) {
+      setMarcas((m) => ({ ...m, [`${ejercicio.exerciseId}-${si}`]: nuevas }))
+      setAviso(celebrar(nuevas, serie, previos) ?? null)
+    }
 
     // Quién va después —y si hay descanso de por medio— lo decide el recorrido,
     // que sabe de superseries. Aquí solo se pinta lo que diga.
@@ -520,6 +576,18 @@ export default function SessionScreen({ session }: { session: Session }) {
   }, [enMarcha, profile.keepAwake])
 
 
+  if (ficha !== null && exercises[ficha]) {
+    return (
+      <ExerciseSheet
+        exerciseId={exercises[ficha].exerciseId}
+        name={exercises[ficha].name}
+        sessions={data.sessions}
+        todayIso={today}
+        onClose={() => setFicha(null)}
+      />
+    )
+  }
+
   if (eligiendo) {
     const actual = eligiendo.modo === 'cambiar' ? exercises[eligiendo.indice] : undefined
     return (
@@ -626,6 +694,12 @@ export default function SessionScreen({ session }: { session: Session }) {
               >
                 <Icon name="chevron" />
                 ¿Cómo se hace?
+              </button>
+            )}
+            {e.primary !== 'cardio' && (
+              <button className="disclose" onClick={() => setFicha(ei)}>
+                <Icon name="spark" />
+                Mis marcas
               </button>
             )}
             {e.primary !== 'cardio' && (
@@ -919,6 +993,14 @@ export default function SessionScreen({ session }: { session: Session }) {
                 {conBarra(e) && serie.weightKg ? (
                   <p className="plate-hint">{describirDiscos(serie.weightKg)}</p>
                 ) : null}
+                {/* La medalla se queda puesta el resto de la sesión: es lo
+                    único del entreno que uno quiere volver a mirar. */}
+                {marcas[`${e.exerciseId}-${si}`] && (
+                  <p className="record-hint">
+                    <Icon name="spark" />
+                    {marcas[`${e.exerciseId}-${si}`].map((t) => NOMBRE_MARCA[t]).join(' · ')}
+                  </p>
+                )}
                 {resting && resting.exercise === ei && resting.set === si && (
                   <RestTimer
                     seconds={resting.seconds}

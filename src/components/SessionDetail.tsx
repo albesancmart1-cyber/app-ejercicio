@@ -3,6 +3,8 @@ import { formatDuration } from './Chrono'
 import BodyMap from './BodyMap'
 import { TIPO_SERIE_LABELS, type Session } from '../domain/types'
 import { esCalentamiento, tipoDe } from '../domain/setLogs'
+import { NOMBRE_MARCA, recordsDeLaSesion } from '../domain/records'
+import Icon from './Icon'
 
 /**
  * Lo que se hizo en un entreno, abierto desde el historial.
@@ -17,9 +19,22 @@ import { esCalentamiento, tipoDe } from '../domain/setLogs'
  * saber cuánto y dónde; el detalle serie a serie se busca después, y solo a
  * veces.
  */
-export default function SessionDetail({ session, onClose }: { session: Session; onClose: () => void }) {
+export default function SessionDetail({
+  session,
+  history = [],
+  onExercise,
+  onClose
+}: {
+  session: Session
+  /** Todo el historial, para saber qué de aquel día fue un récord. */
+  history?: Session[]
+  /** Abrir la ficha de un ejercicio. */
+  onExercise?: (exerciseId: string, name: string) => void
+  onClose: () => void
+}) {
   const r = resumirSesion(session)
   const cardio = session.exercises.filter((pe) => pe.primary === 'cardio')
+  const records = history.length > 0 ? recordsDeLaSesion(session, history) : []
 
   return (
     <div className="picker session-detail">
@@ -95,6 +110,21 @@ export default function SessionDetail({ session, onClose }: { session: Session; 
           </p>
         )}
 
+        {/* Lo que aquel día fue lo mejor que habías hecho nunca. Es lo primero
+            que uno busca al volver a abrir un entreno. */}
+        {records.length > 0 && (
+          <>
+            <hr className="rule" />
+            <p className="eyebrow">Récords de este día</p>
+            {records.map((x) => (
+              <p className="record-hint" key={x.exerciseId}>
+                <Icon name="spark" />
+                {x.name}: {x.tipos.map((t) => NOMBRE_MARCA[t].toLowerCase()).join(', ')}
+              </p>
+            ))}
+          </>
+        )}
+
         <hr className="rule" />
         <p className="eyebrow">Qué se movió</p>
         <BodyMap volumen={r.musculos} />
@@ -111,7 +141,15 @@ export default function SessionDetail({ session, onClose }: { session: Session; 
             <div className="row">
               <h3>
                 {e.superserie && <span className="ss-tag">{e.superserie}</span>}
-                {e.name}
+                {/* El nombre lleva a la ficha del ejercicio: mirando un entreno
+                    viejo, la pregunta que sigue es «¿y cómo voy en esto?». */}
+                {onExercise ? (
+                  <button className="link-inline" onClick={() => onExercise(e.exerciseId, e.name)}>
+                    {e.name}
+                  </button>
+                ) : (
+                  e.name
+                )}
               </h3>
               <span className="faint">
                 {e.seriesHechas} de {e.seriesPlanificadas}

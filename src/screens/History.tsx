@@ -11,6 +11,7 @@ import { actions } from '../store/store'
 import { interpretTrend, type TrendReading } from '../domain/trend'
 import TrendChart from '../components/TrendChart'
 import SessionDetail from '../components/SessionDetail'
+import ExerciseSheet from '../components/ExerciseSheet'
 import EstresCard from '../components/EstresCard'
 import Icon from '../components/Icon'
 import { formatDuration } from '../components/Chrono'
@@ -241,6 +242,8 @@ export default function History() {
   const today = useToday()
   // Qué entreno se está mirando por dentro, si alguno.
   const [abierta, setAbierta] = useState<string | null>(null)
+  // Y qué ejercicio tiene abierta su ficha de marcas.
+  const [ficha, setFicha] = useState<{ exerciseId: string; name: string } | null>(null)
   const balance = computeBalance(data.sessions, today)
   const maxBalance = Math.max(0.1, ...MUSCLE_GROUPS.map((g) => balance[g]))
   const trained = new Set(data.sessions.filter((s) => s.completed).map((s) => s.date))
@@ -248,9 +251,28 @@ export default function History() {
 
   const leptin = computeLeptinSignal(data.checkIns, today, data.profile?.goal)
 
+  if (ficha) {
+    return (
+      <ExerciseSheet
+        exerciseId={ficha.exerciseId}
+        name={ficha.name}
+        sessions={data.sessions}
+        todayIso={today}
+        onClose={() => setFicha(null)}
+      />
+    )
+  }
+
   const sesionAbierta = abierta ? data.sessions.find((s) => s.id === abierta) : undefined
   if (sesionAbierta) {
-    return <SessionDetail session={sesionAbierta} onClose={() => setAbierta(null)} />
+    return (
+      <SessionDetail
+        session={sesionAbierta}
+        history={data.sessions}
+        onExercise={(exerciseId, name) => setFicha({ exerciseId, name })}
+        onClose={() => setAbierta(null)}
+      />
+    )
   }
 
   return (
