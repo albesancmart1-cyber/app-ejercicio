@@ -2075,3 +2075,41 @@ textarea:focus {
   display: grid;
   place-items: center;
 }
+
+
+/* ── Tipo de serie ──────────────────────────────────────── */
+/*
+ * El número de la serie es también el botón que cambia su tipo. Se toca y
+ * cicla; una letra sustituye al número cuando deja de ser una serie normal, con
+ * el color diciendo de qué se trata. Ocupa el mismo sitio que ocupaba el
+ * número, que en una fila con peso, repeticiones y RIR es todo el que hay.
+ */
+.set-type {
+  border-radius: var(--r-small);
+  padding: var(--sp-1) 0;
+  font-weight: var(--w-medium);
+  font-variant-numeric: tabular-nums;
+  min-height: 26px;
+}
+
+.set-type-normal {
+  color: var(--label-3);
+}
+
+/* Calentamiento: apagado, que no compite con el trabajo de verdad. */
+.set-type-calentamiento {
+  color: var(--label-2);
+  background: var(--fill-3);
+}
+
+/* Al fallo y drop set llevan el acento: son las que cuentan distinto. */
+.set-type-fallo,
+.set-type-drop {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* El drop continúa la serie de arriba, y la fila se sangra para que se lea así. */
+.set-row:has(.set-type-drop) {
+  padding-left: var(--sp-4);
+}

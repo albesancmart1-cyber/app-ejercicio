@@ -260,6 +260,34 @@ export interface PlannedSet {
 }
 
 /** Lo que realmente se hizo en una serie concreta. */
+/**
+ * Qué clase de serie es. No es una etiqueta decorativa: cada tipo cuenta
+ * distinto para el volumen y para el esfuerzo.
+ *
+ *  - `calentamiento`: prepara, no estimula. No cuenta.
+ *  - `normal`: la serie de trabajo de siempre.
+ *  - `fallo`: se llegó al punto de no poder completar otra repetición. Vale una
+ *    serie, y su RIR es cero por definición aunque no se anote.
+ *  - `drop`: se bajó el peso y se siguió sin descansar. **Continúa** la serie
+ *    anterior en vez de ser una nueva, así que cuenta media.
+ */
+export type TipoSerie = 'calentamiento' | 'normal' | 'fallo' | 'drop'
+
+export const TIPO_SERIE_LABELS: Record<TipoSerie, string> = {
+  calentamiento: 'Calentamiento',
+  normal: 'Normal',
+  fallo: 'Al fallo',
+  drop: 'Drop set'
+}
+
+/** Lo que se pinta en el botón de la serie: una letra basta y ocupa poco. */
+export const TIPO_SERIE_CORTO: Record<TipoSerie, string> = {
+  calentamiento: 'C',
+  normal: '',
+  fallo: 'F',
+  drop: 'D'
+}
+
 export interface SetLog {
   /** Peso real usado, en kg. Ausente en ejercicios de peso corporal. */
   weightKg?: number
@@ -278,7 +306,15 @@ export interface SetLog {
    */
   rir?: number
   done: boolean
-  /** Serie de aproximación: no cuenta para el volumen semanal. */
+  /**
+   * Qué clase de serie. Ausente en los registros de antes de que existiera: ahí
+   * manda `warmup`, y a falta de los dos se asume normal.
+   */
+  tipo?: TipoSerie
+  /**
+   * @deprecated Lo sustituye `tipo: 'calentamiento'`. Se conserva porque lo
+   * llevan las sesiones ya guardadas y porque `tipoDe()` lo sigue leyendo.
+   */
   warmup?: boolean
 }
 

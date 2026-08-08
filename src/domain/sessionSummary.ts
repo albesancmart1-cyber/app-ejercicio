@@ -8,9 +8,10 @@
  * No calcula nada nuevo sobre el entreno ni juzga: resume. Las decisiones sobre
  * volumen y progresión viven donde vivían.
  */
-import { volumenDe, type MuscleVolume } from './volume'
+import { seriesEfectivas, volumenDe, type MuscleVolume } from './volume'
 import { esfuerzoDe, type EsfuerzoSesion } from './effort'
 import { rirMedioDe } from './ultimaVez'
+import { esCalentamiento, tipoDe } from './setLogs'
 import type { Muscle } from './muscles'
 import type { ExerciseVariant, PlannedExercise, Session, SetLog } from './types'
 
@@ -36,7 +37,15 @@ export interface ResumenEjercicio {
 
 export interface ResumenSesion {
   ejercicios: ResumenEjercicio[]
+  /** Series de trabajo contadas a pelo, sin ponderar por tipo. */
   seriesTotales: number
+  /**
+   * Las que cuentan de verdad para el volumen: el calentamiento no suma y el
+   * drop set suma medio. Es la cifra que se enseña, porque es la que cuadra con
+   * el desglose por músculo; dar una arriba y otra abajo confunde más de lo que
+   * informa.
+   */
+  seriesEfectivas: number
   repsTotales: number
   /** Kilos levantados sumando peso × repeticiones de cada serie. */
   cargaTotal: number
@@ -48,9 +57,9 @@ export interface ResumenSesion {
   sinHacer: number
 }
 
-/** Las series que cuentan como trabajo: hechas y sin marcar de aproximación. */
+/** Las series que cuentan como trabajo: hechas y sin ser calentamiento. */
 function seriesQueCuentan(logs: SetLog[]): SetLog[] {
-  return logs.filter((l) => l.done && !l.warmup)
+  return logs.filter((l) => l.done && !esCalentamiento(l))
 }
 
 function resumirEjercicio(pe: PlannedExercise): ResumenEjercicio {
@@ -99,6 +108,12 @@ export function resumirSesion(session: Session): ResumenSesion {
     ejercicios,
     seriesTotales: ejercicios.reduce((a, e) => a + e.seriesHechas, 0),
     repsTotales: ejercicios.reduce((a, e) => a + e.repsTotales, 0),
+    seriesEfectivas:
+      Math.round(
+        session.exercises
+          .filter((pe) => pe.primary !== 'cardio')
+          .reduce((a, pe) => a + seriesEfectivas(pe), 0) * 2
+      ) / 2,
     cargaTotal: ejercicios.reduce((a, e) => a + (e.cargaTotal ?? 0), 0),
     musculos,
     esfuerzo: esfuerzoDe(session),
@@ -115,7 +130,9 @@ export function resumirSesion(session: Session): ResumenSesion {
 export function describirSerie(l: SetLog): string {
   const reps = l.reps !== undefined ? `× ${l.reps}` : '× —'
   const base = l.weightKg !== undefined ? `${l.weightKg} kg ${reps}` : reps
-  return l.rir !== undefined ? `${base} · RIR ${l.rir}` : base
+  // Una serie al fallo no necesita que le escriban el RIR: ya lo dice su tipo.
+  if (l.rir !== undefined) return `${base} · RIR ${l.rir}`
+  return tipoDe(l) === 'fallo' ? `${base} · al fallo` : base
 }
 
 /** Kilos con separador de millar, que un entreno pasa de los mil fácilmente. */

@@ -12,6 +12,7 @@
  * hace un mes siga enseñando lo que se veía entonces.
  */
 import { sameVariant } from './variants'
+import { esCalentamiento } from './setLogs'
 import type { ExerciseVariant, Session, SetLog } from './types'
 
 export interface UltimaVez {
@@ -25,9 +26,9 @@ export interface UltimaVez {
   otraForma?: boolean
 }
 
-/** Las series que cuentan como trabajo: hechas y sin marcar de aproximación. */
+/** Las series que cuentan como trabajo: hechas y sin ser calentamiento. */
 function seriesDeTrabajo(logs: SetLog[] | undefined): SetLog[] {
-  return (logs ?? []).filter((l) => l.done && !l.warmup)
+  return (logs ?? []).filter((l) => l.done && !esCalentamiento(l))
 }
 
 export function rirMedioDe(series: SetLog[]): number | undefined {

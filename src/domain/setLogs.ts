@@ -7,7 +7,7 @@
  * guardadas antes de existir este registro siguen siendo válidas y el resto de
  * la app no se entera del cambio.
  */
-import type { PlannedExercise, PlannedSet, SetLog } from './types'
+import type { PlannedExercise, PlannedSet, SetLog, TipoSerie } from './types'
 import type { UltimaVez } from './ultimaVez'
 
 /**
@@ -32,6 +32,55 @@ export function initLogs(plan: PlannedSet, previa?: UltimaVez): SetLog[] {
   }))
 }
 
+/**
+ * Qué clase de serie es, leyendo también los registros antiguos.
+ *
+ * Antes solo existía «es calentamiento o no», guardado como `warmup`. Esa
+ * bandera se sigue respetando para que las sesiones ya guardadas cuenten igual
+ * que el día que se registraron.
+ */
+export function tipoDe(l: SetLog): TipoSerie {
+  if (l.tipo) return l.tipo
+  return l.warmup === true ? 'calentamiento' : 'normal'
+}
+
+export function esCalentamiento(l: SetLog): boolean {
+  return tipoDe(l) === 'calentamiento'
+}
+
+/**
+ * Cuánto cuenta esta serie para el volumen.
+ *
+ * El calentamiento no estimula, así que no suma. Una serie al fallo es una
+ * serie entera. Y un **drop set cuenta media**: no es una serie nueva sino la
+ * continuación de la anterior con menos peso y sin descanso, y contarlo entero
+ * inflaría la cuenta semanal justo en los ejercicios donde más se usa.
+ *
+ * El medio punto es una decisión, no un dato: los marcos de landmarks cuentan
+ * «series duras» y no hay consenso sobre cuánto vale la cola de un drop set.
+ * Media es el punto intermedio entre no contarlo —que ignoraría trabajo real— y
+ * contarlo entero.
+ */
+export function pesoEnVolumen(l: SetLog): number {
+  const t = tipoDe(l)
+  if (t === 'calentamiento') return 0
+  if (t === 'drop') return 0.5
+  return 1
+}
+
+/**
+ * A cuántas repeticiones del fallo se quedó, para lo que hay que estimar.
+ *
+ * Una serie marcada como al fallo tiene RIR cero por definición: es lo que
+ * significa. Anotarlo a mano encima es redundante, y no dar por hecho el cero
+ * dejaría fuera del recuento de esfuerzo justo las series que más cuestan.
+ */
+export function rirDe(l: SetLog, planRir?: number): number | undefined {
+  if (typeof l.rir === 'number') return l.rir
+  if (tipoDe(l) === 'fallo') return 0
+  return planRir
+}
+
 export function completedSets(pe: PlannedExercise): SetLog[] {
   return (pe.logs ?? []).filter((l) => l.done)
 }
@@ -44,7 +93,13 @@ export function completedSets(pe: PlannedExercise): SetLog[] {
 export function syncExercise(pe: PlannedExercise): PlannedExercise {
   if (!pe.logs) return pe
   const hechas = completedSets(pe)
-  const pesos = hechas.map((l) => l.weightKg).filter((w): w is number => typeof w === 'number' && w > 0)
+  // El peso de referencia sale de las series de trabajo, nunca de un
+  // calentamiento ni de la cola de un drop set: los dos van más ligeros y
+  // arrastrarían la progresión hacia abajo.
+  const deTrabajo = hechas.filter((l) => !esCalentamiento(l) && tipoDe(l) !== 'drop')
+  const pesos = (deTrabajo.length > 0 ? deTrabajo : hechas)
+    .map((l) => l.weightKg)
+    .filter((w): w is number => typeof w === 'number' && w > 0)
   return {
     ...pe,
     done: hechas.length > 0,
@@ -55,6 +110,11 @@ export function syncExercise(pe: PlannedExercise): PlannedExercise {
 /** Volumen de trabajo: suma de peso × repeticiones de las series hechas. */
 export function volumeLoad(pe: PlannedExercise): number {
   return completedSets(pe).reduce((acc, l) => acc + (l.weightKg ?? 0) * (l.reps ?? 0), 0)
+}
+
+/** Las series que cuentan como trabajo: hechas y sin ser calentamiento. */
+export function seriesDeTrabajo(pe: PlannedExercise): SetLog[] {
+  return completedSets(pe).filter((l) => !esCalentamiento(l))
 }
 
 export interface RepRange {
@@ -90,7 +150,12 @@ export type RepVerdict = 'sube' | 'mantiene' | 'progresa_suave'
 export function repVerdict(pe: PlannedExercise): RepVerdict | undefined {
   const rango = parseRepRange(pe.plan.reps)
   if (!rango) return undefined
-  const hechas = completedSets(pe).filter((l) => typeof l.reps === 'number')
+  // El calentamiento se queda fuera —no dice nada del rango— y el drop set
+  // también: sus repeticiones son con menos peso, así que compararlas con el
+  // rango prescrito haría subir la carga por un motivo que no es.
+  const hechas = seriesDeTrabajo(pe).filter(
+    (l) => typeof l.reps === 'number' && tipoDe(l) !== 'drop'
+  )
   if (hechas.length === 0) return undefined
   if (hechas.some((l) => l.reps! < rango.min)) return 'mantiene'
   if (hechas.every((l) => l.reps! >= rango.max)) return 'sube'

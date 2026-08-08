@@ -1,7 +1,8 @@
 import { describirSerie, formatCarga, resumirSesion } from '../domain/sessionSummary'
 import { formatDuration } from './Chrono'
 import BodyMap from './BodyMap'
-import type { Session } from '../domain/types'
+import { TIPO_SERIE_LABELS, type Session } from '../domain/types'
+import { esCalentamiento, tipoDe } from '../domain/setLogs'
 
 /**
  * Lo que se hizo en un entreno, abierto desde el historial.
@@ -39,7 +40,7 @@ export default function SessionDetail({ session, onClose }: { session: Session; 
         <div className="stat-row">
           <span className="stat">
             <span className="stat-label">Series</span>
-            <span className="stat-value">{r.seriesTotales}</span>
+            <span className="stat-value">{r.seriesEfectivas}</span>
           </span>
           <span className="stat">
             <span className="stat-label">Repeticiones</span>
@@ -64,6 +65,14 @@ export default function SessionDetail({ session, onClose }: { session: Session; 
             </span>
           )}
         </div>
+
+        {r.seriesEfectivas !== r.seriesTotales && (
+          <p className="faint" style={{ marginTop: 4 }}>
+            Hiciste {r.seriesTotales} series de trabajo y cuentan {r.seriesEfectivas}: el
+            calentamiento no suma y un drop set suma medio, porque continúa la serie anterior en
+            vez de ser una nueva.
+          </p>
+        )}
 
         {r.cargaTotal > 0 && (
           <p className="faint" style={{ marginTop: 4 }}>
@@ -120,10 +129,12 @@ export default function SessionDetail({ session, onClose }: { session: Session; 
             {e.series.length > 0 ? (
               <ol className="set-list">
                 {e.series.map((l, j) => (
-                  <li key={j} className={l.warmup ? 'warmup' : ''}>
+                  <li key={j} className={esCalentamiento(l) ? 'warmup' : ''}>
                     <span className="set-n">{j + 1}</span>
                     <span className="set-val">{describirSerie(l)}</span>
-                    {l.warmup && <span className="faint">aproximación</span>}
+                    {tipoDe(l) !== 'normal' && tipoDe(l) !== 'fallo' && (
+                      <span className="faint">{TIPO_SERIE_LABELS[tipoDe(l)].toLowerCase()}</span>
+                    )}
                   </li>
                 ))}
               </ol>

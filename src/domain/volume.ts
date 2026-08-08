@@ -22,6 +22,7 @@ import { daysBetween } from './muscleBalance'
 import { ALL_MUSCLES, MUSCLES, REGIONS, musclesOf } from './muscles'
 import type { Muscle, Region, VolumeLandmarks } from './muscles'
 import type { PlannedExercise, Session } from './types'
+import { esCalentamiento, pesoEnVolumen, rirDe } from './setLogs'
 
 /** Ventana de conteo: el volumen es un asunto semanal. */
 export const VENTANA_DIAS = 7
@@ -53,22 +54,19 @@ export function seriesEfectivas(pe: PlannedExercise): number {
     return pe.done === true ? pe.plan.sets : 0
   }
 
-  const hechas = logs.filter((l) => l.done && !l.warmup)
-  const conRir = hechas.filter((l) => typeof l.rir === 'number')
+  // Cada serie aporta según su tipo —el calentamiento nada, el drop set media—
+  // y solo si se llevó lo bastante cerca del fallo. `rirDe` resuelve de dónde
+  // sale ese RIR: el anotado, el cero implícito de una serie al fallo, o el del
+  // plan como última estimación.
+  const total = logs
+    .filter((l) => l.done && !esCalentamiento(l))
+    .reduce((acc, l) => {
+      const rir = rirDe(l, pe.plan.rir)
+      if (rir !== undefined && rir > RIR_EFECTIVO) return acc
+      return acc + pesoEnVolumen(l)
+    }, 0)
 
-  // Sin ni un RIR anotado en todo el ejercicio, decide el plan como siempre.
-  if (conRir.length === 0) {
-    if (pe.plan.rir !== undefined && pe.plan.rir > RIR_EFECTIVO) return 0
-    return hechas.length
-  }
-
-  // Con RIR anotado en algunas, las que no lo llevan se juzgan por el plan: sin
-  // dato no se descarta trabajo que sí se hizo.
-  return hechas.filter((l) =>
-    typeof l.rir === 'number'
-      ? l.rir <= RIR_EFECTIVO
-      : pe.plan.rir === undefined || pe.plan.rir <= RIR_EFECTIVO
-  ).length
+  return Math.round(total * 2) / 2
 }
 
 /** Volumen fraccional que aporta un ejercicio, músculo a músculo. */

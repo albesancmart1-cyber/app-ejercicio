@@ -19,7 +19,8 @@
  * tiene un sitio donde se juzga el cuerpo entero —el test diario— y este dato
  * entra ahí como una señal más, no como un veredicto.
  */
-import type { Session, SetLog } from './types'
+import { esCalentamiento, rirDe } from './setLogs'
+import type { PlannedExercise, Session, SetLog } from './types'
 
 /**
  * A partir de aquí una serie cuenta como llevada cerca del fallo. Uno o menos:
@@ -41,16 +42,19 @@ export interface EsfuerzoSesion {
   medida: boolean
 }
 
-function seriesDeTrabajo(logs: SetLog[] | undefined): SetLog[] {
-  return (logs ?? []).filter((l) => l.done && !l.warmup)
+function seriesDeTrabajo(pe: PlannedExercise): SetLog[] {
+  return (pe.logs ?? []).filter((l) => l.done && !esCalentamiento(l))
 }
 
 export function esfuerzoDe(session: Session): EsfuerzoSesion {
   const conRir: number[] = []
   for (const pe of session.exercises) {
     if (pe.primary === 'cardio') continue
-    for (const l of seriesDeTrabajo(pe.logs)) {
-      if (typeof l.rir === 'number') conRir.push(l.rir)
+    for (const l of seriesDeTrabajo(pe)) {
+      // Una serie marcada al fallo aporta su cero aunque no se haya escrito: es
+      // lo que significa, y dejarla fuera perdería justo la que más cuesta.
+      const rir = typeof l.rir === 'number' ? l.rir : rirDe(l, undefined)
+      if (typeof rir === 'number') conRir.push(rir)
     }
   }
   if (conRir.length === 0) {

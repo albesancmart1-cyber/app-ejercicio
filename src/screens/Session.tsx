@@ -3,14 +3,17 @@ import {
   EQUIPMENT_LABELS,
   MUSCLE_LABELS,
   SIDE_LABELS,
+  TIPO_SERIE_CORTO,
+  TIPO_SERIE_LABELS,
   type Equipment,
   type Exercise,
   type PlannedExercise,
   type Session,
   type SetLog,
-  type SideMode
+  type SideMode,
+  type TipoSerie
 } from '../domain/types'
-import { initLogs, syncExercise, volumeLoad } from '../domain/setLogs'
+import { initLogs, syncExercise, tipoDe, volumeLoad } from '../domain/setLogs'
 import { describirUltimaVez } from '../domain/ultimaVez'
 import { DESCANSO_ENTRE_EJERCICIOS } from '../domain/protocol'
 import { changeVariant, nextAlternative, swapExercise } from '../domain/swap'
@@ -130,6 +133,19 @@ export default function SessionScreen({ session }: { session: Session }) {
         return syncExercise({ ...e, logs })
       })
     )
+  }
+
+  /**
+   * Cicla el tipo de la serie. El orden no es alfabético: va del caso más común
+   * al más raro, para que llegar a lo habitual cueste menos toques.
+   */
+  function ciclarTipo(ei: number, si: number) {
+    const orden: TipoSerie[] = ['normal', 'calentamiento', 'fallo', 'drop']
+    const actual = tipoDe(exercises[ei].logs?.[si] ?? { done: false })
+    const siguiente = orden[(orden.indexOf(actual) + 1) % orden.length]
+    // Se escribe también `warmup` para que una sesión guardada hoy y abierta
+    // por una versión anterior siga contando bien el calentamiento.
+    updateSet(ei, si, { tipo: siguiente, warmup: siguiente === 'calentamiento' })
   }
 
   function toggleSet(ei: number, si: number) {
@@ -584,7 +600,19 @@ export default function SessionScreen({ session }: { session: Session }) {
             (e.logs ?? []).map((serie, si) => (
               <div key={si}>
                 <div className="set-row">
-                  <span className="set-index">{si + 1}</span>
+                  {/*
+                    El número de la serie es además su tipo: se toca y cicla
+                    entre normal, calentamiento, al fallo y drop set. Un botón
+                    donde ya había un número, en vez de un control nuevo: en una
+                    fila de 390 píxeles no cabe nada más.
+                  */}
+                  <button
+                    className={`set-index set-type set-type-${tipoDe(serie)}`}
+                    onClick={() => ciclarTipo(ei, si)}
+                    aria-label={`Serie ${si + 1}: ${TIPO_SERIE_LABELS[tipoDe(serie)].toLowerCase()}. Tocar para cambiar de tipo`}
+                  >
+                    {TIPO_SERIE_CORTO[tipoDe(serie)] || si + 1}
+                  </button>
                   <label className="set-field">
                     <input
                       type="number"

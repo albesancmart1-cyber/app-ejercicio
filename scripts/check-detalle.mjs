@@ -122,8 +122,8 @@ comprobar(
   `falta la serie de 22 kg × 9: ${series.join(' | ')}`
 )
 comprobar(
-  series.some((s) => /aproximaci/i.test(s)),
-  'el calentamiento debería distinguirse de las series que cuentan'
+  series.some((s) => /calentamiento/i.test(s)),
+  `el calentamiento debería distinguirse de las series que cuentan: ${series.join(' | ')}`
 )
 await page.screenshot({ path: `${OUT}/detalle-2-resumen.png` })
 
