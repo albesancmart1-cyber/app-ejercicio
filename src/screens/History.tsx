@@ -12,6 +12,7 @@ import { interpretTrend, type TrendReading } from '../domain/trend'
 import TrendChart from '../components/TrendChart'
 import SessionDetail from '../components/SessionDetail'
 import ExerciseSheet from '../components/ExerciseSheet'
+import MonthReport from '../components/MonthReport'
 import EstresCard from '../components/EstresCard'
 import Icon from '../components/Icon'
 import { formatDuration } from '../components/Chrono'
@@ -284,6 +285,12 @@ export default function History() {
           abrir esta pestaña, antes que el detalle de volumen por músculo. */}
       <div className="card-wrap" style={{ marginTop: 28 }}>
         <EstresCard sessions={data.sessions} todayIso={today} />
+      </div>
+
+      {/* El mes, para la pregunta que uno se hace el día 1 y que ninguna otra
+          tarjeta responde: «¿qué tal fue?». */}
+      <div className="card-wrap">
+        <MonthReport sessions={data.sessions} todayIso={today} />
       </div>
 
       <div className="card-wrap">
