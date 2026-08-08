@@ -2151,3 +2151,80 @@ textarea:focus {
   line-height: var(--leading-body);
   color: var(--label-2);
 }
+
+
+/* ── Cómo está el cuerpo ────────────────────────────────── */
+
+.estres-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+  margin: var(--sp-3) 0 var(--sp-2);
+  overflow: visible;
+}
+
+/* Cada día entrenado. Apagadas: son el material del que salen las curvas, no
+   el protagonista. */
+.estres-bar {
+  fill: var(--fill-1);
+}
+
+.estres-fatiga {
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+/* La base va discontinua: es una referencia, no una medida del día. */
+.estres-base {
+  stroke: var(--label-3);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+  stroke-linejoin: round;
+}
+
+.estres-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-4);
+  font-size: var(--text-caption);
+  color: var(--label-2);
+}
+
+.estres-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.estres-key {
+  width: 14px;
+  height: 2px;
+  flex: 0 0 auto;
+}
+
+.estres-key-fatiga {
+  background: var(--accent);
+}
+
+.estres-key-base {
+  background: repeating-linear-gradient(
+    to right,
+    var(--label-3) 0 4px,
+    transparent 4px 7px
+  );
+}
+
+/*
+ * El nivel se dice con palabra y con color, nunca solo con color: «pasado» en
+ * rojo y «en tu sitio» en verde serían indistinguibles para quien no separa
+ * esos dos tonos.
+ */
+.estres-tag {
+  font-size: var(--text-caption);
+}
+
+.estres-pasado {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
