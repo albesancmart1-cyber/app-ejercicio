@@ -10,6 +10,7 @@ import { ketoAdaptationWeeksLeft, proteinTarget } from '../domain/protocol'
 import { esVerano, objetivoDhaDiario } from '../domain/dha'
 import { exerciseById } from '../data/exercises'
 import { carpetasDe, describirRutina } from '../domain/rutinas'
+import { csvASesiones, resumirImportacion, sesionesACsv, type ResultadoImportacion } from '../domain/csv'
 import ExercisePicker from '../components/ExercisePicker'
 import AccountCard from '../components/AccountCard'
 import LandmarkSettings from '../components/LandmarkSettings'
@@ -24,6 +25,10 @@ export default function Settings() {
   const data = useAppData()
   const profile = data.profile!
   const fileInput = useRef<HTMLInputElement>(null)
+  const csvInput = useRef<HTMLInputElement>(null)
+  /** Lo leído de un CSV, a la espera de que el usuario confirme que entra. */
+  const [previa, setPrevia] = useState<ResultadoImportacion | null>(null)
+  const [importado, setImportado] = useState<string | null>(null)
   const [confirmReset, setConfirmReset] = useState(false)
   const [eligiendoFavorito, setEligiendoFavorito] = useState(false)
   const [buscando, setBuscando] = useState(false)
@@ -81,6 +86,21 @@ export default function Settings() {
       favoriteExercises: favoritos.includes(id) ? favoritos.filter((f) => f !== id) : [...favoritos, id],
       dislikedExercises: (profile.dislikedExercises ?? []).filter((d) => d !== id)
     })
+  }
+
+  function descargar(contenido: string, nombre: string, tipo: string) {
+    const blob = new Blob([contenido], { type: tipo })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = nombre
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  function exportCsv() {
+    // Con BOM: si no, Excel se come las tildes al abrirlo.
+    descargar(`﻿${sesionesACsv(data.sessions)}`, `ritmo-${todayIso()}.csv`, 'text/csv')
   }
 
   function exportData() {
@@ -416,6 +436,80 @@ export default function Settings() {
             })
           }
         />
+        <hr className="rule" />
+        {/*
+          El JSON de arriba sirve para hacer copia y volver a entrar; el CSV,
+          para *mirarlo*: nadie abre un JSON en una hoja de cálculo para ver
+          cómo le fue el trimestre.
+        */}
+        <p className="eyebrow">Hoja de cálculo</p>
+        <p className="dim" style={{ marginBottom: 14 }}>
+          Una fila por serie, con su peso, sus repeticiones y su RIR. Se abre en cualquier hoja de
+          cálculo, y es también por donde entra el historial de Hevy o de Strong.
+        </p>
+        <button className="btn btn-secondary" onClick={exportCsv}>
+          Exportar a CSV
+        </button>
+        <div style={{ height: 8 }} />
+        <button className="btn-quiet" onClick={() => csvInput.current?.click()}>
+          Importar un CSV
+        </button>
+        <input
+          ref={csvInput}
+          type="file"
+          accept=".csv,text/csv"
+          style={{ display: 'none' }}
+          aria-label="Archivo CSV para importar"
+          onChange={(e) => {
+            const f = e.target.files?.[0]
+            if (f) f.text().then((t) => setPrevia(csvASesiones(t)))
+            e.target.value = ''
+          }}
+        />
+
+        {/*
+          Se enseña qué va a entrar **antes** de tocar nada. Meter años de
+          historial es irreversible de hecho: aunque se pueda borrar, nadie va a
+          repasar seiscientas sesiones para deshacerlo.
+        */}
+        {previa && (
+          <div className="fade-in" style={{ marginTop: 16 }}>
+            <p className="dim">{resumirImportacion(previa)}</p>
+            {previa.avisos.map((a, i) => (
+              <p className="faint" key={i} style={{ marginTop: 6 }}>
+                {a}
+              </p>
+            ))}
+            {!previa.error && (
+              <>
+                <div style={{ height: 12 }} />
+                <button
+                  className="btn btn-primary"
+                  onClick={() => {
+                    const traidas = actions.importSessions(previa.sesiones)
+                    setPrevia(null)
+                    setImportado(
+                      traidas === 0
+                        ? 'Ya tenías todo eso registrado: no ha entrado nada nuevo.'
+                        : `Añadidos ${traidas} ${traidas === 1 ? 'entreno' : 'entrenos'} a tu historial.`
+                    )
+                  }}
+                >
+                  Añadirlo a mi historial
+                </button>
+              </>
+            )}
+            <button className="btn-quiet" onClick={() => setPrevia(null)}>
+              {previa.error ? 'Entendido' : 'Ahora no'}
+            </button>
+          </div>
+        )}
+        {importado && (
+          <p className="dim" style={{ marginTop: 12 }}>
+            {importado}
+          </p>
+        )}
+
         <hr className="rule" />
         {!confirmReset ? (
           <button className="btn-quiet" onClick={() => setConfirmReset(true)}>

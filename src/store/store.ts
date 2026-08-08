@@ -112,6 +112,26 @@ export const actions = {
       deleted: conLapida(s, claveDeSesion(id))
     }))
   },
+  /**
+   * Mete sesiones traídas de fuera **sin pisar lo que ya hay**.
+   *
+   * Importar es añadir, nunca sustituir: quien trae su historial de otra app ya
+   * puede llevar semanas registrando aquí, y machacar eso sería el peor
+   * estreno posible. Y no se cuela dos veces lo mismo si se importa el archivo
+   * repetido: una sesión con la misma fecha y el mismo título ya está.
+   *
+   * Devuelve cuántas han entrado de verdad.
+   */
+  importSessions(sesiones: Session[]): number {
+    let traidas = 0
+    setState((s) => {
+      const ya = new Set(s.sessions.map((x) => `${x.date}|${x.title}`))
+      const nuevas = sesiones.filter((x) => !ya.has(`${x.date}|${x.title}`))
+      traidas = nuevas.length
+      return { ...s, sessions: [...s.sessions, ...nuevas] }
+    })
+    return traidas
+  },
   saveRoutine(routine: Routine) {
     setState((s) => ({
       ...s,
