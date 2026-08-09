@@ -131,7 +131,7 @@ if (/menos has trabajado estas dos semanas/i.test(texto)) {
 }
 
 // Y la sesión que prepara tiene que traer trabajo de lo que estaba a cero.
-const prepara = page.getByText('Preparar la sesión', { exact: false }).first()
+const prepara = page.getByText('Empezar entreno', { exact: false }).first()
 if (await prepara.count()) {
   await prepara.click()
   await page.waitForTimeout(800)

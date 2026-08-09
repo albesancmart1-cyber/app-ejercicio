@@ -95,7 +95,7 @@ for (const pantalla of PANTALLAS) {
   await page.waitForTimeout(250)
   await byText('Ver qué me conviene').click()
   await page.waitForTimeout(350)
-  await byText('Preparar la sesión').click()
+  await byText('Empezar entreno').click()
   await page.waitForTimeout(450)
 
   const alto = pantalla.height
@@ -116,7 +116,9 @@ for (const pantalla of PANTALLAS) {
   let total = await contenedor.evaluate((el) => el.scrollHeight - el.clientHeight)
   // Si el plan del día sale corto, se mide en «Cuerpo», que siempre es larga.
   if (total < 200) {
-    await page.locator('.tab', { hasText: 'Cuerpo' }).click()
+    await page.locator('.tab', { hasText: 'Progreso' }).click()
+await page.waitForTimeout(400)
+await page.getByRole('tab', { name: 'Año' }).click()
     await page.waitForTimeout(400)
     total = await contenedor.evaluate((el) => el.scrollHeight - el.clientHeight)
   }

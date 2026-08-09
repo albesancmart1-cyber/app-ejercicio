@@ -85,7 +85,9 @@ await page.evaluate(
 
 await page.goto(BASE)
 await page.waitForTimeout(800)
-await page.getByText('Cuerpo', { exact: true }).first().click()
+await page.getByText('Progreso', { exact: true }).first().click()
+await page.waitForTimeout(400)
+await page.getByRole('tab', { name: 'Año' }).click()
 await page.waitForTimeout(700)
 
 // ── La fila se puede pulsar ───────────────────────────────

@@ -1271,7 +1271,7 @@ export default function SessionScreen({ session }: { session: Session }) {
           </p>
           <div style={{ height: 20 }} />
           <button className="btn btn-primary" onClick={guardar}>
-            Guardar
+            Guardar el entreno
           </button>
         </div>
       )}

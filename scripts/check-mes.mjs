@@ -73,7 +73,9 @@ await page.evaluate((d) => localStorage.setItem('ritmo-data-v1', JSON.stringify(
 await page.goto(BASE)
 await page.waitForTimeout(900)
 
-await page.getByRole('button', { name: /Cuerpo/ }).click()
+await page.getByRole('button', { name: 'Progreso', exact: true }).click()
+await page.waitForTimeout(400)
+await page.getByRole('tab', { name: 'Mes' }).click()
 await page.waitForTimeout(700)
 
 const informe = page.locator('.card').filter({ has: page.getByRole('button', { name: 'El mes anterior' }) }).first()
@@ -109,7 +111,9 @@ await page.evaluate(() => {
 })
 await page.reload()
 await page.waitForTimeout(900)
-await page.getByRole('button', { name: /Cuerpo/ }).click()
+await page.getByRole('button', { name: 'Progreso', exact: true }).click()
+await page.waitForTimeout(400)
+await page.getByRole('tab', { name: 'Mes' }).click()
 await page.waitForTimeout(600)
 const vacio = await page
   .locator('.card')

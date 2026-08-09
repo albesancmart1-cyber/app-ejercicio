@@ -162,7 +162,7 @@ for (const ancho of [1280, 1600]) {
   comprobar(!d.desplazamientoHorizontal, `a ${ancho}px aparece desplazamiento horizontal`)
 
   // Dos columnas de tarjetas donde son independientes.
-  await page.getByText('Ajustes', { exact: true }).first().click()
+  await page.getByText('Yo', { exact: true }).first().click()
   await page.waitForTimeout(700)
   const columnas = await page.evaluate(() => {
     const cards = [...document.querySelectorAll('.cards-grid > .card')]

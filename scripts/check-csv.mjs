@@ -77,7 +77,7 @@ await page.evaluate((d) => localStorage.setItem('ritmo-data-v1', JSON.stringify(
 await page.goto(BASE)
 await page.waitForTimeout(900)
 
-await page.getByRole('button', { name: /Ajustes/ }).click()
+await page.getByRole('button', { name: 'Yo', exact: true }).click()
 await page.waitForTimeout(600)
 
 // ── Sacarlo en CSV ────────────────────────────────────────
@@ -144,7 +144,9 @@ const repetido = await page.evaluate(
 comprobar(repetido === 3, `importar dos veces el mismo archivo no debería duplicar: ${repetido}`)
 
 // ── Y lo importado cuenta en el historial ─────────────────
-await page.getByRole('button', { name: 'Cuerpo', exact: true }).click()
+await page.getByRole('button', { name: 'Progreso', exact: true }).click()
+await page.waitForTimeout(400)
+await page.getByRole('tab', { name: 'Año' }).click()
 await page.waitForTimeout(700)
 const cuerpo = await page.locator('.fade-in').first().innerText()
 comprobar(/Push|Pull/.test(cuerpo), `los entrenos importados deberían salir en el historial: ${cuerpo.slice(-400)}`)

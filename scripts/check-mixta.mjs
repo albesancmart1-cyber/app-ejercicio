@@ -153,7 +153,7 @@ await page.getByText('Pesas sin quitar el cardio').click()
 await page.waitForTimeout(300)
 
 // ── El plan que sale ──────────────────────────────────────
-await byText('Preparar la sesión').click()
+await byText('Empezar entreno').click()
 await page.waitForTimeout(450)
 const nombres = await page.locator('.item-title').allTextContents()
 const pesas = nombres.slice(0, -1)

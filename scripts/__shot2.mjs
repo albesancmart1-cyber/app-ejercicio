@@ -3,7 +3,7 @@ const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-119
 const p = await b.newPage({ viewport: { width: 390, height: 844 } })
 await p.goto('http://localhost:4173/')
 await p.waitForTimeout(700)
-await p.getByText('Cuerpo', { exact: true }).first().click()
+await p.getByText('Progreso', { exact: true }).first().click()
 await p.waitForTimeout(600)
 await p.locator('.item-tap').first().click()
 await p.waitForTimeout(600)

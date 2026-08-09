@@ -89,7 +89,7 @@ await byText('Ver qué me conviene').click()
 await page.waitForTimeout(350)
 const tocaba = (await page.locator('.eyebrow').nth(1).textContent()).trim()
 if (!/cardio/i.test(tocaba)) fallar('el historial debería llevar a cardio; llevó a', tocaba)
-await byText('Preparar la sesión').click()
+await byText('Empezar entreno').click()
 await page.waitForTimeout(450)
 
 const antes = await page.locator('.item-title').allTextContents()

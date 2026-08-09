@@ -77,7 +77,7 @@ export interface ZonaDeLaSemana {
   grupo: MuscleGroup
   nombre: string
   series: number
-  /** El mínimo que hace falta para que la zona progrese. */
+  /** Series semanales a partir de las cuales la zona progresa (suelo del MAV). */
   minimo: number
   /** El máximo que se asimila. */
   maximo: number
@@ -113,11 +113,17 @@ export function zonasDeLaSemana(
   return MUSCLE_GROUPS.filter((g) => g !== 'cardio')
     .map((grupo) => {
       const series = Math.round((porGrupo.get(grupo) ?? 0) * 2) / 2
-      // El umbral de la zona es el del músculo más exigente que la compone: si
-      // el pectoral pide diez series, el pecho no está cubierto con seis.
+      /*
+       * El umbral es el del músculo más exigente de la zona: si el pectoral
+       * pide doce series, el pecho no está cubierto con seis.
+       *
+       * Y se usa el suelo del rango adaptativo, no el mínimo de mantenimiento:
+       * la pregunta de esta pantalla es «¿esto me hace progresar?», y con el
+       * mínimo de mantenimiento la respuesta sería que sí casi siempre.
+       */
       const musculos = musculosDeGrupo(grupo)
       const marcas = musculos.map((m) => landmarksFor(m, opts))
-      const minimo = marcas.length > 0 ? Math.max(...marcas.map((l) => l.mev)) : 0
+      const minimo = marcas.length > 0 ? Math.max(...marcas.map((l) => l.mavMin)) : 0
       const maximo = marcas.length > 0 ? Math.max(...marcas.map((l) => l.mrv)) : 0
       return {
         grupo,

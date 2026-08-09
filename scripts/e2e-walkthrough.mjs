@@ -82,9 +82,9 @@ await byText('Ver qué me conviene').click()
 
 // ── Recomendación ─────────────────────────────────────────
 await shot('08-recomendacion')
-const recomendado = await page.locator('.eyebrow').nth(1).textContent()
+const recomendado = await page.locator('.decision-titulo').first().textContent()
 console.log('  → recomienda:', recomendado)
-await byText('Por qué esto hoy').click()
+await byText('Con todo el detalle').click()
 await shot('09-por-que')
 
 // Pesas sin renunciar al cardio: la opción intermedia, cuando lo que tocaba era cardio.
@@ -102,7 +102,7 @@ if (await botonMixto.count()) {
   }
   console.log('  → mixta:', mixto)
   await shot('09c-mixta')
-  await byText('Preparar la sesión').click()
+  await byText('Empezar entreno').click()
   await page.waitForTimeout(400)
   const nombres = await page.locator('.item-title').allTextContents()
   const filas = await page.locator('.set-row').count()
@@ -132,9 +132,11 @@ const botonPesas = page.getByText('Prefiero algo con pesas')
 if (await botonPesas.count()) {
   await botonPesas.click()
   await page.waitForTimeout(300)
-  const subido = await page.locator('.eyebrow').nth(1).textContent()
+  const subido = await page.locator('.decision-titulo').first().textContent()
   console.log('  → tras pedir pesas:', subido)
-  if (subido === recomendado) {
+  // La zona puede seguir siendo la misma —lo que cambia es la intensidad—, así
+  // que lo que se comprueba es que la app reconozca que va a petición tuya.
+  if (!(await page.getByText('A petición tuya').count())) {
     console.error('ERROR: pedir pesas no cambió la recomendación')
     process.exit(1)
   }
@@ -144,7 +146,7 @@ if (await botonPesas.count()) {
   await botonPesas.click()
   await page.waitForTimeout(300)
 }
-await byText('Preparar la sesión').click()
+await byText('Empezar entreno').click()
 
 // ── El plan, antes de arrancar nada ───────────────────────
 await shot('10-plan')
@@ -332,7 +334,9 @@ if (await campos.count()) {
 }
 
 // Salir a otra pestaña a mitad de entrenamiento no puede borrar lo anotado.
-await page.locator('.tab', { hasText: 'Cuerpo' }).click()
+await page.locator('.tab', { hasText: 'Progreso' }).click()
+await page.waitForTimeout(400)
+await page.getByRole('tab', { name: 'Cuerpo' }).click()
 await page.waitForTimeout(500)
 await page.locator('.tab', { hasText: 'Hoy' }).click()
 await page.waitForTimeout(500)
@@ -426,11 +430,13 @@ await shot('10c-series-registradas')
 await byText('Terminar').click()
 await page.locator('.scale button').nth(3).click()
 await shot('11-sensacion')
-await byText('Guardar').click()
+await page.getByRole('button', { name: 'Guardar el entreno' }).click()
 await shot('12-completada')
 
 // ── Cuerpo: balance muscular y señal de leptina ───────────
-await page.locator('.tab', { hasText: 'Cuerpo' }).click()
+await page.locator('.tab', { hasText: 'Progreso' }).click()
+await page.waitForTimeout(400)
+await page.getByRole('tab', { name: 'Cuerpo' }).click()
 
 // ── Composición corporal ──────────────────────────────────
 await byText('Anotar una medición').click()
@@ -475,7 +481,9 @@ await page.evaluate(() => {
   localStorage.setItem('ritmo-data-v1', JSON.stringify(datos))
 })
 await page.reload()
-await page.locator('.tab', { hasText: 'Cuerpo' }).click()
+await page.locator('.tab', { hasText: 'Progreso' }).click()
+await page.waitForTimeout(400)
+await page.getByRole('tab', { name: 'Cuerpo' }).click()
 await page.waitForTimeout(600)
 
 if (!(await page.locator('.trend-chart').count())) {
@@ -532,7 +540,7 @@ await page.locator('.card').filter({ hasText: 'Reparto por zonas' }).scrollIntoV
 await shot('13c-reparto')
 
 // ── Mesa: idea de comida ──────────────────────────────────
-await page.locator('.tab', { hasText: 'Mesa' }).click()
+await page.locator('.tab', { hasText: 'Cocina' }).click()
 await shot('14-mesa')
 await byText('Dame una idea').click()
 const primera = await page.locator('.card h2').first().textContent()
@@ -616,7 +624,7 @@ await shot('16d-higado-bacalao')
 await page.locator('.card').filter({ hasText: 'PESCADO' }).first().scrollIntoViewIfNeeded()
 await shot('17-recetario')
 
-await page.locator('.tab', { hasText: 'Ajustes' }).click()
+await page.locator('.tab', { hasText: 'Yo' }).click()
 await shot('18-ajustes')
 
 // Los favoritos marcados durante la sesión deben estar aquí, y poderse ampliar.

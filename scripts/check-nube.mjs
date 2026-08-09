@@ -164,7 +164,7 @@ await page.evaluate(() => {
 // ── Pedir el enlace ───────────────────────────────────────
 await page.goto(BASE)
 await page.waitForTimeout(700)
-await page.getByText('Ajustes', { exact: true }).first().click()
+await page.getByText('Yo', { exact: true }).first().click()
 await page.waitForTimeout(600)
 
 const tarjeta = page.locator('.card').filter({ hasText: 'Tu cuenta' })
@@ -230,7 +230,7 @@ comprobar(
 )
 console.log('  · y en la nube:', JSON.stringify(idsNube))
 
-await page.getByText('Ajustes', { exact: true }).first().click()
+await page.getByText('Yo', { exact: true }).first().click()
 await page.waitForTimeout(600)
 const dentro = await page.locator('.card').filter({ hasText: 'Tu cuenta' }).first().innerText()
 comprobar(/alberto@ejemplo.com/.test(dentro), `no dice con qué cuenta se ha entrado: ${dentro.slice(0, 120)}`)
@@ -267,7 +267,7 @@ comprobar(
 console.log('  · tras borrar y sincronizar:', JSON.stringify(trasBorrar))
 
 // ── Cerrar sesión no borra nada de aquí ───────────────────
-await page.getByText('Ajustes', { exact: true }).first().click()
+await page.getByText('Yo', { exact: true }).first().click()
 await page.waitForTimeout(600)
 const cuenta = page.locator('.card').filter({ hasText: 'Tu cuenta' }).first()
 await cuenta.scrollIntoViewIfNeeded()
@@ -309,7 +309,7 @@ comprobar(
   !page.url().includes('error_code'),
   `el error se queda en la barra de direcciones: ${page.url()}`
 )
-await page.getByText('Ajustes', { exact: true }).first().click()
+await page.getByText('Yo', { exact: true }).first().click()
 await page.waitForTimeout(600)
 const conFallo = page.locator('.card').filter({ hasText: 'Tu cuenta' }).first()
 await conFallo.scrollIntoViewIfNeeded()
@@ -327,7 +327,7 @@ await page.screenshot({ path: `${OUT}/nube-5-caducado.png` })
 await page.evaluate(() => localStorage.removeItem('ritmo-sesion'))
 await page.reload()
 await page.waitForTimeout(900)
-await page.getByText('Ajustes', { exact: true }).first().click()
+await page.getByText('Yo', { exact: true }).first().click()
 await page.waitForTimeout(600)
 
 const cuentaFuera = page.locator('.card').filter({ hasText: 'Tu cuenta' }).first()

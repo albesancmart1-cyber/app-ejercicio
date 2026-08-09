@@ -185,7 +185,7 @@ async function entrenar(fecha, { mal = false, capturas = [], nivelAnterior = nul
       `Sube a nivel ${rec.nivel} de 4: la app dice qué cambia, por qué y en qué se basa`)
   }
 
-  await byText('Preparar la sesión').click()
+  await byText('Empezar entreno').click()
   await page.waitForTimeout(250)
   for (const c of capturas.filter((c) => c.cuando === 'plan')) await shot(c.nombre, c.nota)
 
@@ -196,7 +196,7 @@ async function entrenar(fecha, { mal = false, capturas = [], nivelAnterior = nul
 
   await byText('Terminar').click()
   await page.locator('.scale button').nth(3).click() // sensación 4 sobre 5
-  await byText('Guardar').click()
+  await page.getByRole('button', { name: 'Guardar el entreno' }).click()
   await page.waitForTimeout(200)
 
   bitacora.sesiones.push({ fecha: iso(fecha), ...rec, ejercicios: registro })
@@ -206,7 +206,9 @@ async function entrenar(fecha, { mal = false, capturas = [], nivelAnterior = nul
 /** Mediciones de la báscula, desde la pantalla de Cuerpo. */
 async function medir(fecha, { pesoKg, grasaPct, musculoPct, capturas = [] }) {
   await irAlDia(fecha)
-  await page.locator('.tab', { hasText: 'Cuerpo' }).click()
+  await page.locator('.tab', { hasText: 'Progreso' }).click()
+await page.waitForTimeout(400)
+await page.getByRole('tab', { name: 'Cuerpo' }).click()
   await page.waitForTimeout(200)
   await byText('Anotar una medición').click()
   const campos = page.locator('.card').filter({ hasText: 'COMPOSICIÓN CORPORAL' }).locator('input')
@@ -360,7 +362,9 @@ for (let dia = 0; dia < SEMANAS * 7; dia++) {
 
 // ── Foto final ────────────────────────────────────────────
 await irAlDia(new Date(fecha.getTime() + 86400000))
-await page.locator('.tab', { hasText: 'Cuerpo' }).click()
+await page.locator('.tab', { hasText: 'Progreso' }).click()
+await page.waitForTimeout(400)
+await page.getByRole('tab', { name: 'Cuerpo' }).click()
 await page.waitForTimeout(400)
 await page.locator('.card').filter({ hasText: 'Balance muscular' }).first().scrollIntoViewIfNeeded()
 await shot('sim-13-balance-final', 'Balance muscular tras seis meses: ningún grupo abandonado')

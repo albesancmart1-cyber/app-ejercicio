@@ -2188,6 +2188,168 @@ textarea:focus {
 }
 
 
+/* ── Los destinos de Progreso ───────────────────────────── */
+
+/*
+ * Cinco secciones con nombre en vez de un scroll de ocho tarjetas.
+ *
+ * Van en tira desplazable y no en un control segmentado de cinco huecos: a 390
+ * px, cinco segmentos dejan setenta y ocho píxeles por palabra, y «Ejercicios»
+ * no cabe sin partirse. Desplazar es peor que ver todo a la vez, pero mucho
+ * mejor que leer «Ejerci…».
+ */
+.segmentos {
+  display: flex;
+  gap: var(--sp-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin: var(--sp-5) 0 var(--sp-4);
+  padding-bottom: 2px;
+}
+
+.segmentos::-webkit-scrollbar {
+  display: none;
+}
+
+.segmento {
+  flex: none;
+  padding: 9px 16px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--separator);
+  background: var(--fill-3);
+  color: var(--label-2);
+  font-size: var(--text-body);
+  font-weight: var(--w-regular);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.segmento.on {
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  color: var(--accent);
+  font-weight: var(--w-medium);
+}
+
+/* ── Lo que falta por trabajar, por zona ────────────────── */
+
+.zona {
+  margin-bottom: var(--sp-4);
+}
+
+.zona:last-of-type {
+  margin-bottom: 0;
+}
+
+.zona-nombre {
+  font-size: var(--text-body);
+  color: var(--label);
+}
+
+.zona-track {
+  position: relative;
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: var(--fill-3);
+  margin-top: var(--sp-2);
+  overflow: hidden;
+}
+
+.zona-fill {
+  height: 100%;
+  border-radius: var(--r-pill);
+  transition: width 0.24s var(--ease);
+}
+
+/* El estado con su color, y siempre con la cifra al lado en el texto. */
+.zona-fill.corto {
+  background: var(--st-pasado);
+}
+
+.zona-fill.bien {
+  background: var(--st-fresco);
+}
+
+.zona-fill.pasado {
+  background: var(--st-alto);
+}
+
+/* La marca del mínimo semanal: sin la referencia, una barra al 60 % no dice
+   si vas bien o mal. */
+.zona-minimo {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  background: var(--label-3);
+  z-index: 1;
+}
+
+/* ── El año ─────────────────────────────────────────────── */
+
+.ano-meses {
+  display: flex;
+  gap: 5px;
+  align-items: flex-end;
+}
+
+.ano-mes {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+
+.ano-track {
+  height: 56px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.ano-bar {
+  width: 100%;
+  border-radius: var(--r-small);
+  background: var(--fill-3);
+}
+
+.ano-bar.on {
+  background: var(--accent);
+}
+
+.ano-ini {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--label-3);
+}
+
+.hito {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--separator);
+}
+
+.hito:last-child {
+  border-bottom: 0;
+}
+
+.hito-fecha {
+  font-size: var(--text-caption);
+  color: var(--label-3);
+  font-variant-numeric: tabular-nums;
+  flex: none;
+  width: 74px;
+}
+
+.hito svg {
+  width: 17px;
+  height: 17px;
+  color: var(--accent);
+  flex: none;
+}
+
+
 /* ── La decisión del día ────────────────────────────────── */
 
 /*

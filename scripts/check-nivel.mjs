@@ -114,6 +114,13 @@ console.log('  · nivel de partida:', nivelAntes)
 await page.screenshot({ path: `${OUT}/nivel-1-antes.png` })
 
 // ── Subir de nivel ────────────────────────────────────────
+// El detalle del volumen va plegado: es de leer con calma, no de mirar antes
+// de entrenar.
+const desplegar = page.getByRole('button', { name: /Volumen · nivel/ }).first()
+if (await desplegar.count()) {
+  await desplegar.click()
+  await page.waitForTimeout(400)
+}
 const boton = page.getByRole('button', { name: /Subir de nivel|Cambiar de nivel/ }).first()
 comprobar(await boton.count(), 'no hay botón para cambiar de nivel')
 if (await boton.count()) {
@@ -174,7 +181,7 @@ await page.waitForTimeout(400)
 await page.locator('.level-picker .opt').nth(3).click()
 await page.waitForTimeout(600)
 
-await page.getByText('Preparar la sesión', { exact: false }).first().click()
+await page.getByText('Empezar entreno', { exact: false }).first().click()
 await page.waitForTimeout(900)
 const filas = await page.locator('.set-row').count()
 const conCore = await page.locator('.card').count()

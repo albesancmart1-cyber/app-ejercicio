@@ -62,7 +62,9 @@ const datos = (sessions) => ({
 const irACuerpo = async () => {
   await page.goto(BASE)
   await page.waitForTimeout(900)
-  await page.getByText('Cuerpo', { exact: true }).first().click()
+  await page.getByText('Progreso', { exact: true }).first().click()
+await page.waitForTimeout(400)
+await page.getByRole('tab', { name: 'Cuerpo' }).click()
   await page.waitForTimeout(700)
 }
 

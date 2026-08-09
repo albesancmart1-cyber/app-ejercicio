@@ -142,7 +142,9 @@ comprobar(series === 4, `deberían quedar las cuatro series marcadas, hay ${seri
 
 await page.goto(BASE)
 await page.waitForTimeout(900)
-await page.getByText('Cuerpo', { exact: true }).first().click()
+await page.getByText('Progreso', { exact: true }).first().click()
+await page.waitForTimeout(400)
+await page.getByRole('tab', { name: 'Año' }).click()
 await page.waitForTimeout(700)
 await page.locator('.item-tap').first().click()
 await page.waitForTimeout(700)

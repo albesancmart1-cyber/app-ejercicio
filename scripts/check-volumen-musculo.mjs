@@ -90,7 +90,9 @@ await page.evaluate(() => {
 // ── La vista de volumen ───────────────────────────────────
 await page.goto(BASE)
 await page.waitForTimeout(700)
-await page.getByText('Cuerpo', { exact: false }).first().click()
+await page.getByText('Progreso', { exact: true }).first().click()
+await page.waitForTimeout(400)
+await page.getByRole('tab', { name: 'Cuerpo' }).click()
 await page.waitForTimeout(700)
 
 comprobar(
@@ -118,7 +120,7 @@ comprobar(/Mínimo \d+/.test(detalle), 'el desglose no enseña los landmarks del
 await page.screenshot({ path: `${OUT}/vm-2-desglose.png` })
 
 // ── Los objetivos se ajustan y se guardan ─────────────────
-await page.getByText('Ajustes', { exact: false }).first().click()
+await page.getByText('Yo', { exact: true }).first().click()
 await page.waitForTimeout(600)
 comprobar(await page.getByText('Objetivos de volumen').count(), 'no está la tarjeta de objetivos')
 
@@ -141,7 +143,9 @@ comprobar(
 // Y el cambio se nota donde importa: al recargar, la vista usa el valor propio.
 await page.reload()
 await page.waitForTimeout(700)
-await page.getByText('Cuerpo', { exact: false }).first().click()
+await page.getByText('Progreso', { exact: true }).first().click()
+await page.waitForTimeout(400)
+await page.getByRole('tab', { name: 'Cuerpo' }).click()
 await page.waitForTimeout(600)
 await page.getByRole('button', { name: /Brazo/ }).first().click()
 await page.waitForTimeout(300)
@@ -165,7 +169,7 @@ if (await pesas.count()) {
   await pesas.click()
   await page.waitForTimeout(400)
 }
-await page.getByText('Preparar la sesión', { exact: false }).first().click()
+await page.getByText('Empezar entreno', { exact: false }).first().click()
 await page.waitForTimeout(700)
 await page.getByText('Añadir un ejercicio de la lista').click()
 await page.waitForTimeout(600)

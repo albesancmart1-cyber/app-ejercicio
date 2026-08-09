@@ -96,7 +96,7 @@ if (await pesas.count()) {
   await pesas.click()
   await page.waitForTimeout(400)
 }
-await page.getByText('Preparar la sesión', { exact: false }).first().click()
+await page.getByText('Empezar entreno', { exact: false }).first().click()
 await page.waitForTimeout(800)
 
 /** Nombre del primer ejercicio de la sesión. */
@@ -149,11 +149,26 @@ console.log('  · afinidad aprendida:', JSON.stringify(afinidad))
 const antes = afinidad
 await page.getByText('Empezar entrenamiento', { exact: false }).first().click()
 await page.waitForTimeout(400)
-const checks = page.locator('.set-row button.check')
-const n = await checks.count()
+/** Marca una serie y, si salta el descanso a pantalla completa, lo salta. */
+async function marcarSerie(n) {
+  await page.locator('.set-row button.check').nth(n).click()
+  await page.waitForTimeout(400)
+  // Un récord también toma la pantalla, y va por delante del descanso.
+  const seguir = page.getByRole('button', { name: 'Seguir entrenando' })
+  if (await seguir.count()) {
+    await seguir.click()
+    await page.waitForTimeout(300)
+  }
+  const saltar = page.getByRole('button', { name: 'Saltar descanso' })
+  if (await saltar.count()) {
+    await saltar.click()
+    await page.waitForTimeout(300)
+  }
+}
+
+const n = await page.locator('.set-row button.check').count()
 for (let i = 0; i < n; i++) {
-  await checks.nth(i).click()
-  await page.waitForTimeout(50)
+  await marcarSerie(i)
 }
 await page.getByText('Terminar', { exact: false }).first().click()
 await page.waitForTimeout(500)
@@ -162,7 +177,7 @@ if (await sens.count()) {
   await sens.nth(3).click()
   await page.waitForTimeout(300)
 }
-const guardar = page.getByText('Guardar', { exact: false }).first()
+const guardar = page.getByRole('button', { name: 'Guardar el entreno' }).first()
 if (await guardar.count()) {
   await guardar.click()
   await page.waitForTimeout(800)

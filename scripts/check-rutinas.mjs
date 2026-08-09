@@ -126,7 +126,7 @@ comprobar(/casa/i.test(plan), `y bajo su carpeta: ${plan.slice(0, 400)}`)
 // El orden importa: primero lo que propone la app, después las rutinas.
 const posiciones = await page.evaluate(() => {
   const texto = document.body.innerText.toLowerCase()
-  return { propuesta: texto.indexOf('preparar la sesión'), rutinas: texto.indexOf('o repite una rutina') }
+  return { propuesta: texto.indexOf('empezar entreno'), rutinas: texto.indexOf('o repite una rutina') }
 })
 comprobar(
   posiciones.propuesta >= 0 && posiciones.rutinas > posiciones.propuesta,
@@ -155,7 +155,7 @@ console.log('  · sesión desde la rutina:', JSON.stringify(sesion))
 await page.screenshot({ path: `${OUT}/rut-3-repetida.png`, fullPage: true })
 
 // ── Borrarla desde Ajustes ────────────────────────────────
-await page.getByRole('button', { name: /Ajustes/ }).click()
+await page.getByRole('button', { name: 'Yo', exact: true }).click()
 await page.waitForTimeout(600)
 const ajustes = await page.locator('.fade-in').first().innerText()
 comprobar(/Tus rutinas/i.test(ajustes), 'las rutinas deberían gestionarse desde Ajustes')

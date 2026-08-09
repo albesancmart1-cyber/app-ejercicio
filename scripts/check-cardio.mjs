@@ -97,7 +97,7 @@ await page.waitForTimeout(600)
 const recomendacion = await page.locator('body').innerText()
 comprobar(/cardio|paseo|movimiento/i.test(recomendacion), `hoy no tocaba cardio: ${recomendacion.slice(0, 120)}`)
 
-await page.getByText('Preparar la sesión', { exact: false }).first().click()
+await page.getByText('Empezar entreno', { exact: false }).first().click()
 await page.waitForTimeout(800)
 
 const selector = page.locator('.cardio-swap')

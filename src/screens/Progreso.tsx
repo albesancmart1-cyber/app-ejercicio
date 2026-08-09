@@ -12,6 +12,9 @@ import { interpretTrend, type TrendReading } from '../domain/trend'
 import TrendChart from '../components/TrendChart'
 import SessionDetail from '../components/SessionDetail'
 import ExerciseSheet from '../components/ExerciseSheet'
+import ExerciseList from '../components/ExerciseList'
+import SemanaCard from '../components/SemanaCard'
+import AnoCard from '../components/AnoCard'
 import MonthReport from '../components/MonthReport'
 import EstresCard from '../components/EstresCard'
 import Icon from '../components/Icon'
@@ -21,6 +24,17 @@ import VolumeByMuscle from '../components/VolumeByMuscle'
 import { computeLeptinSignal } from '../domain/leptin'
 import { useAppData } from '../store/store'
 import { useToday } from '../store/clock'
+
+/** Los cinco destinos de Progreso, en el orden en que se miran. */
+type Seccion = 'semana' | 'mes' | 'ano' | 'cuerpo' | 'ejercicios'
+
+const SECCIONES: { id: Seccion; label: string }[] = [
+  { id: 'semana', label: 'Semana' },
+  { id: 'mes', label: 'Mes' },
+  { id: 'ano', label: 'Año' },
+  { id: 'cuerpo', label: 'Cuerpo' },
+  { id: 'ejercicios', label: 'Ejercicios' }
+]
 
 function lastNDays(n: number): string[] {
   const days: string[] = []
@@ -238,13 +252,14 @@ function BodyCompositionCard({
   )
 }
 
-export default function History() {
+export default function Progreso() {
   const data = useAppData()
   const today = useToday()
   // Qué entreno se está mirando por dentro, si alguno.
   const [abierta, setAbierta] = useState<string | null>(null)
   // Y qué ejercicio tiene abierta su ficha de marcas.
   const [ficha, setFicha] = useState<{ exerciseId: string; name: string } | null>(null)
+  const [seccion, setSeccion] = useState<Seccion>('semana')
   const balance = computeBalance(data.sessions, today)
   const maxBalance = Math.max(0.1, ...MUSCLE_GROUPS.map((g) => balance[g]))
   const trained = new Set(data.sessions.filter((s) => s.completed).map((s) => s.date))
@@ -279,26 +294,56 @@ export default function History() {
   return (
     <div className="fade-in cards-grid">
       <p className="eyebrow">Cómo vas</p>
-      <h1>Tu cuerpo</h1>
+      <h1>Progreso</h1>
 
-      {/* Cómo está el cuerpo va lo primero: es la pregunta que uno trae al
-          abrir esta pestaña, antes que el detalle de volumen por músculo. */}
-      <div className="card-wrap" style={{ marginTop: 28 }}>
-        <EstresCard sessions={data.sessions} todayIso={today} />
+      {/*
+        Cinco destinos con nombre en vez de un scroll de ocho tarjetas.
+        «Cuerpo» era un cajón de sastre: estrés, mes, volumen, composición,
+        leptina, reparto, calendario e historial, todo seguido y sin relación
+        entre ello. Nadie llegaba abajo, y lo que se mira a diario —cómo va la
+        semana— estaba enterrado.
+      */}
+      <div className="segmentos" role="tablist" aria-label="Qué mirar">
+        {SECCIONES.map((s) => (
+          <button
+            key={s.id}
+            role="tab"
+            aria-selected={seccion === s.id}
+            className={`segmento ${seccion === s.id ? 'on' : ''}`}
+            onClick={() => setSeccion(s.id)}
+          >
+            {s.label}
+          </button>
+        ))}
       </div>
 
+      {seccion === 'semana' && (
+        <SemanaCard
+          sessions={data.sessions}
+          todayIso={today}
+          opts={{ overrides: data.profile?.landmarkOverrides, deficit: data.profile?.deficitPhase }}
+        />
+      )}
+
+      {seccion === 'mes' && (
+        <>
       {/* El mes, para la pregunta que uno se hace el día 1 y que ninguna otra
           tarjeta responde: «¿qué tal fue?». */}
       <div className="card-wrap">
         <MonthReport sessions={data.sessions} todayIso={today} />
       </div>
 
-      <div className="card-wrap">
-        <VolumeByMuscle
-          sessions={data.sessions}
-          todayIso={today}
-          opts={{ overrides: data.profile?.landmarkOverrides, deficit: data.profile?.deficitPhase }}
-        />
+        </>
+      )}
+
+      {seccion === 'ano' && <AnoCard sessions={data.sessions} todayIso={today} />}
+
+      {seccion === 'cuerpo' && (
+        <>
+      {/* Cómo está el cuerpo va lo primero: es la pregunta que uno trae al
+          abrir esta pestaña, antes que el detalle de volumen por músculo. */}
+      <div className="card-wrap" style={{ marginTop: 28 }}>
+        <EstresCard sessions={data.sessions} todayIso={today} />
       </div>
 
       <BodyCompositionCard
@@ -359,6 +404,14 @@ export default function History() {
         )}
       </div>
 
+      <div className="card-wrap">
+        <VolumeByMuscle
+          sessions={data.sessions}
+          todayIso={today}
+          opts={{ overrides: data.profile?.landmarkOverrides, deficit: data.profile?.deficitPhase }}
+        />
+      </div>
+
       <div className="card">
         <p className="eyebrow">Reparto por zonas</p>
         {MUSCLE_GROUPS.map((g) => {
@@ -379,47 +432,16 @@ export default function History() {
         </p>
       </div>
 
-      <div className="card">
-        <p className="eyebrow">Cuatro semanas</p>
-        <div className="calendar">
-          {lastNDays(28).map((d) => (
-            <div key={d} className={`day ${trained.has(d) ? 'on' : ''} ${d === today ? 'now' : ''}`}>
-              {Number(d.slice(8))}
-            </div>
-          ))}
-        </div>
-        <p className="faint" style={{ marginTop: 14 }}>
-          Los huecos también forman parte del camino.
-        </p>
-      </div>
+        </>
+      )}
 
-      <div className="card">
-        <p className="eyebrow">Sesiones</p>
-        <p className="faint" style={{ marginBottom: 10 }}>
-          Toca cualquiera para ver qué peso y qué repeticiones hiciste.
-        </p>
-        {completed.length === 0 ? (
-          <p className="dim">Aún no hay nada registrado. Todo llegará, sin prisa.</p>
-        ) : (
-          [...completed]
-            .sort((a, b) => (a.date < b.date ? 1 : -1))
-            .slice(0, 12)
-            .map((s) => (
-              <button className="item item-tap" key={s.id} onClick={() => setAbierta(s.id)}>
-                <div className="item-body">
-                  <div className="item-title">{s.title}</div>
-                  <div className="item-meta">
-                    {s.date}
-                    {s.durationSec ? ` · ${formatDuration(s.durationSec)}` : ''}
-                    {s.rpe ? ` · sensación ${s.rpe}/5` : ''}
-                    {s.cardioMinutes ? ` · ${s.cardioMinutes} min` : ''}
-                  </div>
-                </div>
-                <span className="chev" aria-hidden="true" />
-              </button>
-            ))
-        )}
-      </div>
+      {seccion === 'ejercicios' && (
+        <ExerciseList
+          sessions={data.sessions}
+          todayIso={today}
+          onOpen={(exerciseId, name) => setFicha({ exerciseId, name })}
+        />
+      )}
     </div>
   )
 }

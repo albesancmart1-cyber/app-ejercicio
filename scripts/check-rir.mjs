@@ -126,7 +126,7 @@ for (const etiqueta of ['Pesas sin quitar el cardio', 'Prefiero hacer pesas', 'A
     break
   }
 }
-const irAlPlan = page.getByText('Preparar la sesión', { exact: false }).first()
+const irAlPlan = page.getByText('Empezar entreno', { exact: false }).first()
 if (await irAlPlan.count()) {
   await irAlPlan.click()
   await page.waitForTimeout(900)
@@ -221,7 +221,9 @@ await page.evaluate(() => {
 })
 await page.goto(BASE)
 await page.waitForTimeout(900)
-await page.getByText('Cuerpo', { exact: true }).first().click()
+await page.getByText('Progreso', { exact: true }).first().click()
+await page.waitForTimeout(400)
+await page.getByRole('tab', { name: 'Año' }).click()
 await page.waitForTimeout(700)
 await page.locator('.item-tap').first().click()
 await page.waitForTimeout(700)

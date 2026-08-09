@@ -160,7 +160,7 @@ console.log('    ', subido.slice(0, 220))
 await page.screenshot({ path: `${OUT}/vol-02-subido.png` })
 
 // La sesión construida debe reflejarlo: más series de las de base.
-await page.getByText('Preparar la sesión').click()
+await page.getByText('Empezar entreno').click()
 await page.waitForTimeout(500)
 const meta = await page.locator('.item-meta').first().textContent()
 const series = Number(meta.match(/^(\d+) ×/)?.[1])

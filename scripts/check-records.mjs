@@ -180,7 +180,9 @@ comprobar(
 )
 
 // ── Y en el historial, los récords de aquel día ───────────
-await page.getByRole('button', { name: /Cuerpo/ }).click()
+await page.getByRole('button', { name: 'Progreso', exact: true }).click()
+await page.waitForTimeout(400)
+await page.getByRole('tab', { name: 'Año' }).click()
 await page.waitForTimeout(600)
 await page.locator('.item-tap').first().click()
 await page.waitForTimeout(600)

@@ -126,7 +126,7 @@ async function planDeCurl({ veces, peso, topeMancuernas }) {
     await pesas.click()
     await page.waitForTimeout(400)
   }
-  await page.getByText('Preparar la sesión', { exact: false }).first().click()
+  await page.getByText('Empezar entreno', { exact: false }).first().click()
   await page.waitForTimeout(800)
 
   // El curl no tiene por qué salir propuesto —con el bíceps ya servido, la app
