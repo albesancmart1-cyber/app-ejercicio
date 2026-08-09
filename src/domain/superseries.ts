@@ -311,3 +311,38 @@ export function describirGrupo(exercises: PlannedExercise[], g: Grupo): string {
       : `${nombres.slice(0, -1).join(', ')} y ${nombres[nombres.length - 1]}`
   return `Superserie ${g.letra}: ${lista}, sin descanso entre medias. ${vueltas} vueltas.`
 }
+
+/**
+ * Dónde está uno ahora mismo: la primera serie sin marcar, siguiendo el
+ * recorrido real —que en una superserie no es de arriba abajo—.
+ *
+ * Es lo que necesita el modo foco para saber qué enseñar al abrir la sesión, y
+ * también para recuperarla a mitad: quien cierra la app con siete series hechas
+ * espera volver a la octava, no a la primera.
+ */
+export function serieEnCurso(
+  exercises: PlannedExercise[]
+): { exercise: number; set: number } | null {
+  const hecha = (ei: number, si: number) => exercises[ei]?.logs?.[si]?.done === true
+
+  // Se recorre vuelta a vuelta: primero la serie 1 de todo el grupo, luego la
+  // 2… Fuera de una superserie el grupo es de uno solo, así que sale el orden
+  // normal de arriba abajo.
+  const maxSeries = Math.max(0, ...exercises.map((e) => e.logs?.length ?? 0))
+  const bloques = gruposDe(exercises)
+
+  for (let i = 0; i < exercises.length; i++) {
+    if (exercises[i].primary === 'cardio') continue
+    const grupo = bloques.find((g) => g.indices.includes(i))
+    // Un ejercicio ya recorrido dentro de su grupo se salta: lo cubre su primero.
+    if (grupo && grupo.indices[0] !== i) continue
+    const miembros = grupo ? grupo.indices : [i]
+    for (let si = 0; si < maxSeries; si++) {
+      for (const k of miembros) {
+        if ((exercises[k].logs?.length ?? 0) <= si) continue
+        if (!hecha(k, si)) return { exercise: k, set: si }
+      }
+    }
+  }
+  return null
+}

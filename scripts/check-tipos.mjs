@@ -75,6 +75,13 @@ await page.evaluate(
 await page.goto(BASE)
 await page.waitForTimeout(1000)
 
+// Una sesión ya en marcha abre en modo foco: aquí se comprueba la lista.
+const aLaLista = page.getByRole('button', { name: 'Ver todos los ejercicios' })
+if (await aLaLista.count()) {
+  await aLaLista.click()
+  await page.waitForTimeout(400)
+}
+
 const tarjeta = page.locator('.card').filter({ hasText: 'Press de banca con mancuernas' })
 if ((await tarjeta.count()) === 0) {
   console.error('✗ no se ha recuperado la sesión en marcha')
@@ -127,7 +134,19 @@ console.log('  · tipos guardados:', JSON.stringify(guardado))
 // ── Y cuentan como deben en el volumen ────────────────────
 for (let i = 0; i < 4; i++) {
   await tarjeta.getByRole('button', { name: new RegExp(`Marcar serie ${i + 1}`) }).click()
-  await page.waitForTimeout(150)
+  await page.waitForTimeout(500)
+  // El récord y el descanso toman la pantalla entera, en ese orden: hay que
+  // salir de los dos para poder marcar la siguiente.
+  const seguir = page.getByRole('button', { name: 'Seguir entrenando' })
+  if (await seguir.count()) {
+    await seguir.click()
+    await page.waitForTimeout(300)
+  }
+  const saltar = page.getByRole('button', { name: 'Saltar descanso' })
+  if (await saltar.count()) {
+    await saltar.click()
+    await page.waitForTimeout(300)
+  }
 }
 await page.waitForTimeout(400)
 

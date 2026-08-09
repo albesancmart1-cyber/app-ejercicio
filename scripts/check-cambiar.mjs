@@ -149,6 +149,11 @@ console.log('  · afinidad aprendida:', JSON.stringify(afinidad))
 const antes = afinidad
 await page.getByText('Empezar entrenamiento', { exact: false }).first().click()
 await page.waitForTimeout(400)
+// Empezar entra en el modo foco; lo que se comprueba aquí es la lista.
+if (await page.locator('.focus').count()) {
+  await page.getByRole('button', { name: 'Ver todos los ejercicios' }).click()
+  await page.waitForTimeout(300)
+}
 /** Marca una serie y, si salta el descanso a pantalla completa, lo salta. */
 async function marcarSerie(n) {
   await page.locator('.set-row button.check').nth(n).click()

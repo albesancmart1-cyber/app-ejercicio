@@ -190,7 +190,12 @@ async function entrenar(fecha, { mal = false, capturas = [], nivelAnterior = nul
   for (const c of capturas.filter((c) => c.cuando === 'plan')) await shot(c.nombre, c.nota)
 
   await page.getByText('Empezar entrenamiento').click()
-  await page.waitForTimeout(150)
+  await page.waitForTimeout(200)
+  // El entreno arranca en modo foco; la simulación anota sobre la lista.
+  if (await page.locator('.focus').count()) {
+    await page.getByRole('button', { name: 'Ver todos los ejercicios' }).click()
+    await page.waitForTimeout(200)
+  }
   const registro = await registrarSesion()
   for (const c of capturas.filter((c) => c.cuando === 'sesion')) await shot(c.nombre, c.nota)
 

@@ -316,6 +316,18 @@ if (!crono || !/\d+:\d\d/.test(crono)) {
 console.log('  → cronómetro en marcha:', crono)
 await shot('10b-en-marcha')
 
+// Al empezar, la pantalla se pone en modo foco: una serie y nada más.
+if (!(await page.locator('.focus').count())) {
+  console.error('ERROR: al empezar debería entrar en el modo foco')
+  process.exit(1)
+}
+console.log('  → modo foco:', (await page.locator('.focus-nombre').textContent())?.trim())
+await shot('10b1-foco')
+
+// El resto del recorrido se hace sobre la lista, que es donde se cambia el plan.
+await page.getByRole('button', { name: 'Ver todos los ejercicios' }).click()
+await page.waitForTimeout(400)
+
 // ── Sesión: registro serie a serie y descanso ─────────────
 const filas = page.locator('.set-row')
 const totalSeries = await filas.count()
@@ -340,6 +352,14 @@ await page.getByRole('tab', { name: 'Cuerpo' }).click()
 await page.waitForTimeout(500)
 await page.locator('.tab', { hasText: 'Hoy' }).click()
 await page.waitForTimeout(500)
+// Volver a Hoy a mitad de entreno cae otra vez en el modo foco, que es lo
+// suyo: lo que se estaba haciendo era una serie. La lista, a un toque.
+if (!(await page.locator('.focus').count())) {
+  console.error('ERROR: al volver a Hoy con el entreno en marcha debería abrir el modo foco')
+  process.exit(1)
+}
+await page.getByRole('button', { name: 'Ver todos los ejercicios' }).click()
+await page.waitForTimeout(400)
 const camposTrasVolver = page.locator('.set-row').first().locator('input')
 const pesoTrasVolver = await camposTrasVolver.nth(0).inputValue()
 const repsTrasVolver = await camposTrasVolver.nth(1).inputValue()

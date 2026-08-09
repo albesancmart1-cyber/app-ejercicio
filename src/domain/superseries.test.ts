@@ -10,6 +10,7 @@ import {
   ordenarGrupos,
   puedeEncadenar,
   puedeMover,
+  serieEnCurso,
   siguePrevio,
   siguientePaso
 } from './superseries'
@@ -221,5 +222,52 @@ describe('reordenar por bloques', () => {
     expect(puedeMover(lista, 0, -1)).toBe(false)
     expect(puedeMover(lista, 1, 1)).toBe(false)
     expect(moverBloque(lista, 0, -1)).toBe(lista)
+  })
+})
+
+describe('dónde estoy ahora', () => {
+  it('la primera serie sin marcar, de arriba abajo', () => {
+    const lista = [ej('a', 2), ej('b', 2)]
+    expect(serieEnCurso(lista)).toEqual({ exercise: 0, set: 0 })
+  })
+
+  it('con la primera hecha, la segunda del mismo ejercicio', () => {
+    const lista = [ej('a', 2, { logs: [{ done: true }, { done: false }] }), ej('b', 2)]
+    expect(serieEnCurso(lista)).toEqual({ exercise: 0, set: 1 })
+  })
+
+  it('en superserie sigue la vuelta, no la columna', () => {
+    const lista = encadenarConSiguiente(
+      [ej('a', 2, { logs: [{ done: true }, { done: false }] }), ej('b', 2)],
+      0
+    )
+    // Tras la serie 1 de A toca la serie 1 de B, no la 2 de A.
+    expect(serieEnCurso(lista)).toEqual({ exercise: 1, set: 0 })
+  })
+
+  it('cerrada la vuelta, vuelve arriba a la siguiente', () => {
+    const lista = encadenarConSiguiente(
+      [
+        ej('a', 2, { logs: [{ done: true }, { done: false }] }),
+        ej('b', 2, { logs: [{ done: true }, { done: false }] })
+      ],
+      0
+    )
+    expect(serieEnCurso(lista)).toEqual({ exercise: 0, set: 1 })
+  })
+
+  it('pasa al siguiente ejercicio cuando el anterior está entero', () => {
+    const lista = [ej('a', 1, { logs: [{ done: true }] }), ej('b', 2)]
+    expect(serieEnCurso(lista)).toEqual({ exercise: 1, set: 0 })
+  })
+
+  it('con todo marcado no queda nada en curso', () => {
+    const lista = [ej('a', 1, { logs: [{ done: true }] })]
+    expect(serieEnCurso(lista)).toBeNull()
+  })
+
+  it('el cardio no cuenta como serie en curso', () => {
+    const lista = [ej('bici', 1, { primary: 'cardio' }), ej('a', 1)]
+    expect(serieEnCurso(lista)).toEqual({ exercise: 1, set: 0 })
   })
 })

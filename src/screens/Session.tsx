@@ -44,6 +44,7 @@ import {
   moverBloque,
   puedeEncadenar,
   puedeMover,
+  serieEnCurso,
   siguePrevio,
   siguientePaso
 } from '../domain/superseries'
@@ -68,6 +69,7 @@ import { explicarEquivalencia, minutosEquivalentes, opcionesDeCardio } from '../
 import Icon from '../components/Icon'
 import RestScreen from '../components/RestScreen'
 import RecordScreen from '../components/RecordScreen'
+import FocusMode from '../components/FocusMode'
 import Chrono, { elapsedSeconds } from '../components/Chrono'
 import ExerciseAnimation from '../components/ExerciseAnimation'
 import ExercisePicker from '../components/ExercisePicker'
@@ -120,6 +122,19 @@ function planLabel(pe: PlannedExercise, descansoSeg?: number, enSuperserie = fal
 /** Qué está abierto sobre la sesión: cambiar un ejercicio, o añadir uno nuevo. */
 type Eligiendo = { modo: 'cambiar'; indice: number } | { modo: 'anadir' }
 
+/**
+ * Cómo se enseña la sesión mientras está en marcha: la serie que toca sola en
+ * la pantalla, o la lista entera. Se empieza en foco —es donde se pasa el 90 %
+ * del entreno— y la lista queda a un toque para lo demás.
+ */
+type Modo = 'foco' | 'lista'
+
+/** Las repeticiones que pide el plan, para arrancar el contador en algo. */
+function repsDelPlan(pe: PlannedExercise): number {
+  const m = pe.plan.reps.match(/\d+/)
+  return m ? Number(m[0]) : 8
+}
+
 /** Dónde está el descanso activo y de qué tipo. */
 interface Resting {
   exercise: number
@@ -145,6 +160,10 @@ export default function SessionScreen({ session }: { session: Session }) {
   const [eligiendo, setEligiendo] = useState<Eligiendo | null>(null)
   /** Qué ejercicio tiene abierto su panel de ajustes propios. */
   const [ajustando, setAjustando] = useState<number | null>(null)
+  /** Foco o lista, mientras el entreno está en marcha. */
+  const [modo, setModo] = useState<Modo>('foco')
+  /** El menú de lo secundario, abierto sobre el modo foco. */
+  const [menu, setMenu] = useState(false)
   /**
    * A qué serie toca ir ahora. En una superserie el recorrido no es de arriba
    * abajo, así que hay que decir en voz alta dónde estás: si no, se marca una
@@ -705,6 +724,171 @@ export default function SessionScreen({ session }: { session: Session }) {
     )
   }
 
+  /*
+   * Dónde está uno ahora mismo. Manda `ahora` —lo que dijo el recorrido al
+   * marcar la última serie, que en una superserie no es la de debajo— y solo si
+   * no sirve se recalcula mirando la lista.
+   */
+  const puntoDeFoco = (() => {
+    if (ahora) {
+      const pe = exercises[ahora.exercise]
+      const log = pe?.logs?.[ahora.set]
+      if (pe && pe.primary !== 'cardio' && log && !log.done) return ahora
+    }
+    return serieEnCurso(exercises)
+  })()
+
+  /*
+   * El modo foco: mientras se entrena, una serie en la pantalla y nada más.
+   *
+   * Se cae solo a la lista cuando ya no queda nada que marcar —ahí lo que toca
+   * es terminar— y cuando se pide verla, que es de donde salen los cambios de
+   * plan.
+   */
+  if (enMarcha && modo === 'foco' && puntoDeFoco) {
+    const ei = puntoDeFoco.exercise
+    const si = puntoDeFoco.set
+    const e = exercises[ei]
+    const serie = e.logs?.[si] ?? { done: false }
+    const previa = e.previous?.series[si]
+    const paso = siguientePaso(exercises, ei, si, {
+      descanso: (pe) => descansoDe(profile, pe.exerciseId, pe.plan.restSeconds),
+      entreEjercicios: DESCANSO_ENTRE_EJERCICIOS
+    })
+    const nombreSiguiente = paso?.nombre
+    const indiceSiguiente = paso?.exercise
+
+    const cerrarMenu = (hacer: () => void) => {
+      setMenu(false)
+      hacer()
+    }
+
+    return (
+      <>
+        <FocusMode
+          ejercicio={e}
+          etiqueta={etiquetaDe(exercises, ei)}
+          set={serie}
+          totalSeries={(e.logs ?? []).length}
+          serieN={si + 1}
+          totalSerieN={{ hechas: doneSets, total: totalSets }}
+          conBarra={conBarra(e)}
+          crono={<Chrono startedAt={startedAt!} />}
+          pesoSugerido={e.plan.weightKg}
+          repsSugeridas={repsDelPlan(e)}
+          ultimaVez={previa ? `La última vez: ${describirSerieUltimaVez(previa)}` : undefined}
+          discos={conBarra(e) && serie.weightKg ? describirDiscos(serie.weightKg) : undefined}
+          siguiente={
+            nombreSiguiente
+              ? {
+                  etiqueta:
+                    indiceSiguiente !== undefined ? etiquetaDe(exercises, indiceSiguiente) : undefined,
+                  nombre: nombreSiguiente,
+                  sinDescanso: paso?.tipo === 'encadena'
+                }
+              : undefined
+          }
+          onCambiarPeso={(delta) => {
+            const base = serie.weightKg ?? e.plan.weightKg ?? 0
+            updateSet(ei, si, { weightKg: Math.max(0, Math.round((base + delta) * 4) / 4) })
+          }}
+          onCambiarReps={(delta) => {
+            const base = serie.reps ?? repsDelPlan(e)
+            updateSet(ei, si, { reps: Math.max(0, base + delta) })
+          }}
+          // Volver a tocar el que ya está puesto lo quita: anotar un RIR por
+          // error y no poder desanotarlo falsearía la fatiga del día.
+          onCambiarRir={(rir) => updateSet(ei, si, { rir: serie.rir === rir ? undefined : rir })}
+          onCambiarTipo={() => ciclarTipo(ei, si)}
+          onHecha={() => toggleSet(ei, si)}
+          onMenu={() => setMenu(true)}
+          onVerTodo={() => setModo('lista')}
+        />
+
+        {aviso && <p className="faint focus-aviso">{aviso}</p>}
+
+        {menu && (
+          <div className="hoja-fondo fade-in" onClick={() => setMenu(false)}>
+            <div
+              className="hoja"
+              role="dialog"
+              aria-label={`Opciones de ${e.name}`}
+              onClick={(ev) => ev.stopPropagation()}
+            >
+              <p className="eyebrow">{e.name}</p>
+              <div className="hoja-acciones">
+                {patternOf(e.exerciseId) && (
+                  <button
+                    onClick={() =>
+                      cerrarMenu(() => {
+                        setComoSeHace(ei)
+                        setModo('lista')
+                      })
+                    }
+                  >
+                    ¿Cómo se hace?
+                  </button>
+                )}
+                <button onClick={() => cerrarMenu(() => setFicha(ei))}>Mis marcas</button>
+                <button onClick={() => cerrarMenu(() => cambiar(ei))}>Cambiar ejercicio</button>
+                <button
+                  onClick={() => cerrarMenu(() => setEligiendo({ modo: 'cambiar', indice: ei }))}
+                >
+                  Elegirlo yo de la lista
+                </button>
+                {e.plan.weightKg ? (
+                  <button onClick={() => cerrarMenu(() => anadirCalentamiento(ei))}>
+                    Añadir calentamiento
+                  </button>
+                ) : null}
+                {etiquetaDe(exercises, ei) ? (
+                  <button onClick={() => cerrarMenu(() => soltar(ei))}>Sacar de la superserie</button>
+                ) : null}
+                {puedeEncadenar(exercises, ei) && (
+                  <button onClick={() => cerrarMenu(() => encadenar(ei))}>
+                    Encadenar con el siguiente
+                  </button>
+                )}
+                <button
+                  onClick={() =>
+                    cerrarMenu(() => {
+                      setAjustando(ei)
+                      setModo('lista')
+                    })
+                  }
+                >
+                  Descanso y notas
+                </button>
+                <button onClick={() => cerrarMenu(() => quitar(ei))}>Quitar de hoy</button>
+                <button onClick={() => cerrarMenu(() => noProponerMas(ei))}>
+                  No me lo propongas más
+                </button>
+              </div>
+              <div className="hoja-acciones hoja-sesion">
+                <button onClick={() => cerrarMenu(() => setModo('lista'))}>
+                  Ver todos los ejercicios
+                </button>
+                <button
+                  onClick={() =>
+                    cerrarMenu(() => {
+                      setModo('lista')
+                      setFinishing(true)
+                    })
+                  }
+                >
+                  Terminar el entreno
+                </button>
+              </div>
+              <button className="btn-quiet" onClick={() => setMenu(false)}>
+                Cerrar
+              </button>
+            </div>
+          </div>
+        )}
+      </>
+    )
+  }
+
   return (
     <div className="fade-in">
       <div className="row">
@@ -719,6 +903,14 @@ export default function SessionScreen({ session }: { session: Session }) {
           ? `${doneSets} de ${totalSets} series. A tu ritmo: quedarte con ganas de más es la idea.`
           : 'Revisa el plan con calma: cambia lo que no encaje y ordénalo como quieras. Cuando estés, empezamos.'}
       </p>
+
+      {/* La lista es la vista de los cambios de plan; la de entrenar es la
+          otra. Por eso la puerta de vuelta va arriba y no al final. */}
+      {enMarcha && puntoDeFoco && (
+        <button className="btn btn-secondary" onClick={() => setModo('foco')}>
+          Volver a la serie que toca
+        </button>
+      )}
 
       {exercises.map((e, ei) => (
         <div

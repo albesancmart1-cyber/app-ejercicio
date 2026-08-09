@@ -67,6 +67,13 @@ await page.evaluate((d) => localStorage.setItem('ritmo-data-v1', JSON.stringify(
 await page.goto(BASE)
 await page.waitForTimeout(1000)
 
+// Una sesión ya en marcha abre en modo foco: aquí se comprueba la lista.
+const aLaLista = page.getByRole('button', { name: 'Ver todos los ejercicios' })
+if (await aLaLista.count()) {
+  await aLaLista.click()
+  await page.waitForTimeout(400)
+}
+
 const tarjeta = page.locator('.card').filter({ hasText: 'Press de banca con mancuernas' })
 if ((await tarjeta.count()) === 0) {
   console.error('✗ no se ha recuperado la sesión en marcha')

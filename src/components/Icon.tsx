@@ -53,7 +53,24 @@ const paths: Record<string, JSX.Element> = {
   chevron: <path d="M9.2 5.4l6.6 6.6-6.6 6.6" />,
   moon: <path d="M20.2 14.6A8.4 8.4 0 1 1 9.6 4.1a6.9 6.9 0 0 0 10.6 10.5z" />,
   /* Cerrar: para la hoja del catálogo de ejercicios. */
-  close: <path d="M6.4 6.4l11.2 11.2M17.6 6.4L6.4 17.6" />
+  close: <path d="M6.4 6.4l11.2 11.2M17.6 6.4L6.4 17.6" />,
+  /* Tres puntos: todo lo que no es la acción principal del momento. */
+  dots: (
+    <>
+      <circle cx="5.2" cy="12" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="18.8" cy="12" r="1.4" fill="currentColor" stroke="none" />
+    </>
+  ),
+  /* Lista: volver a ver todos los ejercicios de la sesión. */
+  list: (
+    <>
+      <path d="M9 6.4h11M9 12h11M9 17.6h11" />
+      <circle cx="4.6" cy="6.4" r="1.05" fill="currentColor" stroke="none" />
+      <circle cx="4.6" cy="12" r="1.05" fill="currentColor" stroke="none" />
+      <circle cx="4.6" cy="17.6" r="1.05" fill="currentColor" stroke="none" />
+    </>
+  )
 }
 
 export default function Icon({ name, className }: { name: keyof typeof paths; className?: string }) {
