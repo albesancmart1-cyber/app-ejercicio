@@ -2188,6 +2188,165 @@ textarea:focus {
 }
 
 
+/* ── La decisión del día ────────────────────────────────── */
+
+/*
+ * La tarjeta de «hoy toca». Una pantalla, una decisión: el veredicto en grande,
+ * el anillo de disposición al lado y el botón dentro. Todo lo demás —el nivel
+ * de volumen, el detalle de las razones— se pliega debajo.
+ */
+.decision {
+  margin-top: var(--sp-2);
+}
+
+.decision-titulo {
+  font-size: var(--text-heading-lg);
+  line-height: var(--leading-heading-lg);
+  letter-spacing: var(--tracking-heading-lg);
+  font-weight: var(--w-semibold);
+  margin-top: var(--sp-1);
+}
+
+.decision-meta {
+  color: var(--label-2);
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+  margin-top: var(--sp-2);
+}
+
+/* El botón primario, dentro de la tarjeta y a la altura del pulgar. */
+.decision-cta {
+  margin-top: var(--sp-4);
+  height: 58px;
+  font-size: var(--text-body-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+}
+
+.decision-cta svg {
+  width: 19px;
+  height: 19px;
+}
+
+/* El anillo de disposición. */
+.ring-disposicion {
+  flex: none;
+}
+
+.ring-num {
+  fill: var(--label);
+  font-size: 32px;
+  font-weight: var(--w-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.ring-cap {
+  fill: var(--label-3);
+  font-size: 12px;
+  font-weight: var(--w-regular);
+}
+
+/*
+ * Las tres razones. Fuera de la tarjeta y en tono menor: informan sin competir
+ * con la decisión. El punto de color dice de qué va cada una, y va siempre con
+ * su frase al lado —el color solo no es accesible—.
+ */
+.razones {
+  margin-top: var(--sp-5);
+}
+
+.razon {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-2) 0;
+  color: var(--label-2);
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+}
+
+.razon-punto {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+  margin-top: 8px;
+  background: var(--label-3);
+}
+
+.razon-punto.bien {
+  background: var(--st-fresco);
+}
+
+.razon-punto.ojo {
+  background: var(--st-tuyo);
+}
+
+/* ── La tira de la semana ───────────────────────────────── */
+
+.week-card {
+  margin-top: var(--sp-5);
+  width: 100%;
+  text-align: left;
+  display: block;
+}
+
+.week-tap {
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.week-strip {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: flex-end;
+}
+
+.week-day {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+
+.week-track {
+  height: 42px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.week-bar {
+  width: 100%;
+  border-radius: var(--r-small);
+  background: var(--fill-3);
+  transition: height 0.24s var(--ease);
+}
+
+/* Entrenado en ámbar; descansado, apagado. Descansar es parte del trabajo, no
+   un hueco, así que no se pinta de rojo ni se deja en blanco. */
+.week-bar.on {
+  background: var(--accent);
+}
+
+.week-bar.hoy {
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.week-ini {
+  display: block;
+  margin-top: var(--sp-2);
+  font-size: var(--text-caption);
+  color: var(--label-3);
+}
+
+.week-ini.hoy {
+  color: var(--accent);
+  font-weight: var(--w-medium);
+}
+
+
 /* ── Descanso y récord, a pantalla completa ─────────────── */
 
 /*

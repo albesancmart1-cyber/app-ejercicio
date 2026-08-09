@@ -14,9 +14,12 @@ import { buildSession } from '../domain/workoutBuilder'
 import { actions, useAppData } from '../store/store'
 import { useToday } from '../store/clock'
 import { findActiveSession } from '../domain/activeSession'
+import { razonesCortas, resumenDelPlan, tituloDeHoy } from '../domain/decision'
 import { aSesion, carpetasDe, describirRutina } from '../domain/rutinas'
 import Icon from '../components/Icon'
 import VolumeLevelChooser from '../components/VolumeLevelChooser'
+import ReadinessRing from '../components/ReadinessRing'
+import WeekStrip from '../components/WeekStrip'
 import SessionScreen from './Session'
 
 type Scale = 1 | 2 | 3 | 4 | 5
@@ -90,6 +93,8 @@ export default function Today() {
 
   const [phase, setPhase] = useState<'inicio' | 'checkin' | 'plan'>('inicio')
   const [showWhy, setShowWhy] = useState(false)
+  /** El detalle del nivel de volumen, plegado: es de leer con calma. */
+  const [verVolumen, setVerVolumen] = useState(false)
   // Qué ha pedido el usuario por encima de lo que tocaba: nada, pesas en vez
   // del cardio, o pesas sin renunciar al cardio.
   const [override, setOverride] = useState<'ninguno' | 'pesas' | 'mixto'>('ninguno')
@@ -345,23 +350,25 @@ export default function Today() {
 
       {phase === 'plan' && recommendation && readiness && (
         <div className="fade-in">
-          <p className="eyebrow">Disposición del cuerpo</p>
-          <div className="row" style={{ alignItems: 'flex-end' }}>
-            <span className="score">
-              {readiness.score}
-              <small> / 100</small>
-            </span>
-            <span className="tag accent">{readiness.level}</span>
-          </div>
-          <div className="meter" aria-hidden="true">
-            {Array.from({ length: 10 }, (_, i) => (
-              <span key={i} className={i < Math.round(readiness.score / 10) ? 'on' : ''} />
-            ))}
-          </div>
-
-          <div className="card" style={{ marginTop: 24 }}>
-            <p className="eyebrow">{recommendation.title}</p>
-            <p>{recommendation.message}</p>
+          {/*
+            La decisión del día, y dentro su botón.
+            Antes había que pasar por siete bloques de explicación —disposición,
+            mensaje, etiquetas, nivel de volumen, qué cambia, en qué me baso y
+            por qué esto hoy— para llegar a «Preparar la sesión». El gesto más
+            repetido de la app era el que más costaba alcanzar; ahora está en la
+            primera pantalla y el matiz se queda debajo.
+          */}
+          <div className="card decision">
+            <div className="row" style={{ alignItems: 'flex-start', gap: 12 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p className="eyebrow" style={{ color: 'var(--accent)' }}>
+                  {tituloDeHoy(recommendation).gancho}
+                </p>
+                <h1 className="decision-titulo">{tituloDeHoy(recommendation).titular}</h1>
+                <p className="decision-meta">{resumenDelPlan(recommendation)}</p>
+              </div>
+              <ReadinessRing readiness={readiness} />
+            </div>
 
             <div className="tag-row">
               <span className="tag">Intensidad {recommendation.intensity}</span>
@@ -376,6 +383,13 @@ export default function Today() {
               {recommendation.ketoAdapting && <span className="tag">Adaptación cetogénica</span>}
               {recommendation.userOverride && <span className="tag accent">A petición tuya</span>}
             </div>
+
+            <button className="btn btn-primary decision-cta" onClick={startSession}>
+              <Icon name="spark" />
+              {recommendation.kind === 'descanso_activo' || recommendation.kind === 'cardio_suave'
+                ? 'Empezar'
+                : 'Empezar entreno'}
+            </button>
 
             {override === 'ninguno' && canIntensify(recommendation) && (
               <>
@@ -413,10 +427,21 @@ export default function Today() {
             {recommendation.volume && recommendation.kind === 'fuerza' && (
               <>
                 <hr className="rule" />
-                <p className="eyebrow">
+                {/* El nivel de volumen se pliega: es de leer con calma, no de
+                    mirar antes de entrenar. Su sitio natural es Progreso. */}
+                <button
+                  className="disclose"
+                  aria-expanded={verVolumen}
+                  onClick={() => setVerVolumen((v) => !v)}
+                >
+                  <Icon name="chevron" />
                   Volumen · nivel {recommendation.volume.level} de {NIVEL_MAXIMO}
                   {recommendation.volume.chosenByUser ? ' · elegido por ti' : ''}
-                </p>
+                </button>
+              </>
+            )}
+            {recommendation.volume && recommendation.kind === 'fuerza' && verVolumen && (
+              <>
                 {recommendation.volume.changes.length > 0 && (
                   <>
                     <p className="faint" style={{ fontSize: '0.8rem', margin: '0 0 4px' }}>
@@ -455,10 +480,21 @@ export default function Today() {
               </>
             )}
 
-            <hr className="rule" />
+          </div>
+
+          {/* Las tres razones, fuera de la tarjeta y en tono menor: informan sin
+              competir con la decisión ni con su botón. */}
+          <div className="razones">
+            <p className="eyebrow">Por qué esto hoy</p>
+            {razonesCortas(recommendation, readiness).map((r, i) => (
+              <div className="razon" key={i}>
+                <span className={`razon-punto ${r.tono}`} aria-hidden="true" />
+                <span>{r.texto}</span>
+              </div>
+            ))}
             <button className="disclose" aria-expanded={showWhy} onClick={() => setShowWhy(!showWhy)}>
               <Icon name="chevron" />
-              Por qué esto hoy
+              {showWhy ? 'Menos detalle' : 'Con todo el detalle'}
             </button>
             {showWhy && (
               <ul className="reasons">
@@ -472,9 +508,8 @@ export default function Today() {
             )}
           </div>
 
-          <button className="btn btn-primary" onClick={startSession}>
-            Preparar la sesión
-          </button>
+          <WeekStrip sessions={data.sessions} todayIso={today} />
+
 
           {/*
             Las rutinas guardadas van **después** de la propuesta y en tono
