@@ -141,10 +141,12 @@ comprobar(
 console.log('  · guardado:', JSON.stringify(guardado.discomforts), '· leves:', guardado.mildSoreness)
 
 // ── Y la recomendación las respeta todas ──────────────────
-const porQue = page.getByText('Por qué esto hoy', { exact: false }).first()
-if (await porQue.count()) {
-  await porQue.scrollIntoViewIfNeeded()
-  await porQue.click()
+// «Por qué esto hoy» ya no se despliega: son tres razones cortas siempre a la
+// vista, y el razonamiento entero está detrás de «Con todo el detalle».
+const detalle = page.getByRole('button', { name: 'Con todo el detalle' }).first()
+if (await detalle.count()) {
+  await detalle.scrollIntoViewIfNeeded()
+  await detalle.click()
   await page.waitForTimeout(400)
 }
 const texto = await page.locator('body').innerText()

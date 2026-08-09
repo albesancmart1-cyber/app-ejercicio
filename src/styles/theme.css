@@ -3252,3 +3252,147 @@ textarea:focus {
   padding-top: var(--sp-2);
   border-top: 1px solid var(--separator);
 }
+
+
+/* ── Cocina ─────────────────────────────────────────────── */
+
+/*
+ * Tres platos delante, sin haber pedido nada.
+ *
+ * La pantalla pedía dos filtros y daba una idea al pulsar un botón: elegir
+ * antes de ver nada y tirar de la palanca hasta que saliera algo apetecible.
+ * Quien abre esto no quiere configurar un filtro, quiere cenar; y elegir de
+ * verdad es comparar, que con una sola idea es imposible.
+ */
+.ideas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+
+.idea {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  text-align: left;
+  padding: var(--sp-4);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  box-shadow: var(--elevation-card);
+}
+
+.idea:active {
+  background: var(--surface-strong);
+}
+
+.idea-cuerpo {
+  flex: 1;
+  min-width: 0;
+}
+
+.idea-nombre {
+  display: block;
+  font-size: var(--text-subheading);
+  line-height: var(--leading-subheading);
+  font-weight: var(--w-semibold);
+}
+
+.idea-meta {
+  display: block;
+  margin-top: var(--sp-1);
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+  color: var(--label-2);
+}
+
+.idea > svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  color: var(--label-3);
+}
+
+/* Volver de una receta a las tres ideas. */
+.btn-atras {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-4);
+  padding: var(--sp-2) 0;
+  font-size: var(--text-body);
+  color: var(--label-2);
+}
+
+.btn-atras svg {
+  width: 16px;
+  height: 16px;
+  transform: rotate(180deg);
+}
+
+/*
+ * La proteína del día, como banda y no como barra que se llena. Un depósito
+ * que sube invita a contar, y esta app no cuenta nada: la regla va de poco a
+ * mucho para que se lea que el objetivo es una zona ancha, no una diana.
+ */
+.banda-num {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  margin: var(--sp-2) 0 var(--sp-4);
+  font-size: var(--text-heading-lg);
+  line-height: var(--leading-heading-lg);
+  letter-spacing: var(--tracking-heading-lg);
+  font-weight: var(--w-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.banda-num small {
+  font-size: var(--text-body);
+  font-weight: var(--w-regular);
+  color: var(--label-3);
+  letter-spacing: 0;
+}
+
+.banda {
+  position: relative;
+  height: 10px;
+}
+
+.banda-track {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--r-pill);
+  background: var(--fill-3);
+}
+
+.banda-zona {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+}
+
+.banda-pies {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--sp-2);
+}
+
+
+/* ── Yo ─────────────────────────────────────────────────── */
+
+/*
+ * Los ajustes eran quinientas líneas en un solo scroll: objetivo, material,
+ * medidas, volumen, umbrales, cetosis, DHA, favoritos, descartados, rutinas,
+ * versión, copias, CSV y borrarlo todo, seguidos y sin relación entre ellos.
+ * Cuatro grupos con nombre, y dentro de cada uno lo que de verdad va junto.
+ */
+.yo-nota {
+  margin: 0 var(--sp-1) var(--sp-4);
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+  color: var(--label-2);
+}

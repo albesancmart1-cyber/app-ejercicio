@@ -79,6 +79,10 @@ await page.waitForTimeout(900)
 
 await page.getByRole('button', { name: 'Yo', exact: true }).click()
 await page.waitForTimeout(600)
+// Las copias y el CSV viven en «Cuenta», con la versión y el borrado: es lo que
+// se toca una vez al año, y no tiene por qué compartir pantalla con el objetivo.
+await page.getByRole('tab', { name: 'Cuenta' }).click()
+await page.waitForTimeout(400)
 
 // ── Sacarlo en CSV ────────────────────────────────────────
 const descarga = page.waitForEvent('download')

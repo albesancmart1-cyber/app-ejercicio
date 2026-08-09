@@ -39,6 +39,14 @@ const comprobar = (ok, queja) => {
   if (!ok) fallos.push(queja)
 }
 
+/** Yo → Cuenta, que es el grupo donde vive la tarjeta de la cuenta. */
+async function irACuenta() {
+  await page.getByText('Yo', { exact: true }).first().click()
+  await page.waitForTimeout(600)
+  await page.getByRole('tab', { name: 'Cuenta' }).click()
+  await page.waitForTimeout(400)
+}
+
 // ── El Supabase de mentira ────────────────────────────────
 /** Lo que «hay en la nube». Empieza con una sesión que este móvil no tiene. */
 let enLaNube = {
@@ -164,11 +172,10 @@ await page.evaluate(() => {
 // ── Pedir el enlace ───────────────────────────────────────
 await page.goto(BASE)
 await page.waitForTimeout(700)
-await page.getByText('Yo', { exact: true }).first().click()
-await page.waitForTimeout(600)
+await irACuenta()
 
 const tarjeta = page.locator('.card').filter({ hasText: 'Tu cuenta' })
-comprobar(await tarjeta.count(), 'no aparece la tarjeta de cuenta en Ajustes')
+comprobar(await tarjeta.count(), 'no aparece la tarjeta de cuenta en Yo · Cuenta')
 if ((await tarjeta.count()) === 0) {
   console.error('✗ ' + fallos.join('\n✗ '))
   await browser.close()
@@ -230,8 +237,7 @@ comprobar(
 )
 console.log('  · y en la nube:', JSON.stringify(idsNube))
 
-await page.getByText('Yo', { exact: true }).first().click()
-await page.waitForTimeout(600)
+await irACuenta()
 const dentro = await page.locator('.card').filter({ hasText: 'Tu cuenta' }).first().innerText()
 comprobar(/alberto@ejemplo.com/.test(dentro), `no dice con qué cuenta se ha entrado: ${dentro.slice(0, 120)}`)
 await page.locator('.card').filter({ hasText: 'Tu cuenta' }).first().scrollIntoViewIfNeeded()
@@ -267,8 +273,7 @@ comprobar(
 console.log('  · tras borrar y sincronizar:', JSON.stringify(trasBorrar))
 
 // ── Cerrar sesión no borra nada de aquí ───────────────────
-await page.getByText('Yo', { exact: true }).first().click()
-await page.waitForTimeout(600)
+await irACuenta()
 const cuenta = page.locator('.card').filter({ hasText: 'Tu cuenta' }).first()
 await cuenta.scrollIntoViewIfNeeded()
 await cuenta.getByRole('button', { name: /Cerrar sesión/ }).click()
@@ -309,8 +314,7 @@ comprobar(
   !page.url().includes('error_code'),
   `el error se queda en la barra de direcciones: ${page.url()}`
 )
-await page.getByText('Yo', { exact: true }).first().click()
-await page.waitForTimeout(600)
+await irACuenta()
 const conFallo = page.locator('.card').filter({ hasText: 'Tu cuenta' }).first()
 await conFallo.scrollIntoViewIfNeeded()
 const textoFallo = await conFallo.innerText()
@@ -327,8 +331,7 @@ await page.screenshot({ path: `${OUT}/nube-5-caducado.png` })
 await page.evaluate(() => localStorage.removeItem('ritmo-sesion'))
 await page.reload()
 await page.waitForTimeout(900)
-await page.getByText('Yo', { exact: true }).first().click()
-await page.waitForTimeout(600)
+await irACuenta()
 
 const cuentaFuera = page.locator('.card').filter({ hasText: 'Tu cuenta' }).first()
 await cuentaFuera.scrollIntoViewIfNeeded()

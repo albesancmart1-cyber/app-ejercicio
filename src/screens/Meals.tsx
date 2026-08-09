@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   BASE_LABELS,
   DHA_BOOSTERS,
@@ -8,12 +8,11 @@ import {
   bestDhaTier,
   dhaLevel,
   filterMeals,
-  suggestMeal,
   type Meal,
   type MealBase,
   type MealEffort
 } from '../data/meals'
-import { proteinTarget } from '../domain/protocol'
+import { bandaDeProteina, platosParaElMinimo, tresIdeas } from '../domain/cocina'
 import { complementarConPastillas, esVerano, objetivoDhaDiario } from '../domain/dha'
 import { useAppData } from '../store/store'
 import { useToday } from '../store/clock'
@@ -22,7 +21,8 @@ import Icon from '../components/Icon'
 const BASES = Object.keys(BASE_LABELS) as MealBase[]
 const EFFORTS = Object.keys(EFFORT_LABELS) as MealEffort[]
 
-function MealCard({ meal, pillMg, today }: { meal: Meal; pillMg: number; today: string }) {
+/** La receta entera, cuando ya se ha elegido una de las tres. */
+function Receta({ meal, pillMg, today }: { meal: Meal; pillMg: number; today: string }) {
   const nivel = dhaLevel(meal)
   // Un plato que no puede ser alto en DHA por naturaleza al menos dice cómo serlo.
   const booster = nivel === 'alto' ? null : DHA_BOOSTERS[meal.name.length % DHA_BOOSTERS.length]
@@ -69,6 +69,30 @@ function MealCard({ meal, pillMg, today }: { meal: Meal; pillMg: number; today: 
   )
 }
 
+/**
+ * Una de las tres ideas: lo justo para decidir sin abrir nada —qué es, cuánto
+ * cuesta hacerlo y qué DHA trae—.
+ */
+function Idea({ meal, onAbrir }: { meal: Meal; onAbrir: () => void }) {
+  const nivel = dhaLevel(meal)
+  return (
+    <button className="idea" onClick={onAbrir}>
+      <span className="idea-cuerpo">
+        <span className="idea-nombre">{meal.name}</span>
+        <span className="idea-meta">
+          {EFFORT_LABELS[meal.effort]} · ≈ {meal.proteinG} g de proteína
+        </span>
+        <span className="tag-row">
+          <span className={`tag ${nivel === 'alto' ? 'accent' : ''}`}>
+            {DHA_LABELS[nivel]} · {meal.dhaMg} mg
+          </span>
+        </span>
+      </span>
+      <Icon name="chevron" />
+    </button>
+  )
+}
+
 export default function Meals() {
   const data = useAppData()
   const profile = data.profile!
@@ -76,43 +100,138 @@ export default function Meals() {
   const [effort, setEffort] = useState<MealEffort | null>(null)
   const [current, setCurrent] = useState<Meal | null>(null)
   const [browsing, setBrowsing] = useState(false)
+  /** Los identificadores de la tanda anterior, para que otras tres sean otras. */
+  const [vistas, setVistas] = useState<string[]>([])
+  const [tanda, setTanda] = useState(0)
 
   const today = useToday()
   const pillMg = profile.dhaPillMg ?? 0
   const objetivoDha = objetivoDhaDiario(today)
-  const protein = profile.weightKg ? proteinTarget(profile.weightKg, profile.goal) : null
+  const banda = profile.weightKg ? bandaDeProteina(profile.weightKg, profile.goal) : null
   const available = filterMeals(base, effort)
   // Qué DHA es capaz de dar el filtro elegido, para avisar antes de sugerir.
   const mejorNivel = available.length > 0 ? dhaLevel(bestDhaTier(available)[0]) : null
 
-  function roll() {
-    setCurrent(suggestMeal(base, effort, current?.id) ?? null)
+  /*
+   * Las tres ideas se calculan al vuelo y no se guardan en un estado: dependen
+   * del filtro, y guardarlas obligaría a acordarse de rehacerlas cada vez que
+   * se toca algo. `tanda` es lo único que las cambia a mano.
+   */
+  const ideas = useMemo(
+    () => tresIdeas(base, effort, vistas),
+    // `vistas` se queda fuera a propósito: cambia justo al pedir otra tanda, y
+    // ponerlo aquí volvería a barajar dos veces seguidas.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [base, effort, tanda]
+  )
+
+  function otrasTres() {
+    setVistas(ideas.map((m) => m.id))
+    setTanda((t) => t + 1)
+    setCurrent(null)
+  }
+
+  if (current) {
+    return (
+      <div className="fade-in">
+        <button className="btn-atras" onClick={() => setCurrent(null)}>
+          <Icon name="chevron" />
+          Volver a las ideas
+        </button>
+        <div className="card">
+          <Receta meal={current} pillMg={pillMg} today={today} />
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="fade-in cards-grid">
       <p className="eyebrow">Cuando no sabes qué comer</p>
-      <h1>Mesa</h1>
-      <p className="lede">
-        Platos completos, de base animal y sin frutos secos, priorizando siempre el DHA. Come hasta
-        saciarte de verdad: la proteína por delante y el resto se regula solo.
-      </p>
+      <h1>Cocina</h1>
 
-      <div className="card" style={{ marginTop: 28 }}>
-        <div className="row" style={{ alignItems: 'flex-end', marginBottom: 4 }}>
-          <span className="score">
-            {objetivoDha.toLocaleString('es-ES')}
-            <small> mg</small>
-          </span>
-          <span className="tag accent">{esVerano(today) ? 'objetivo de verano' : 'objetivo del día'}</span>
-        </div>
+      {/*
+        Antes esta pantalla pedía dos filtros y daba **una** idea al pulsar un
+        botón: elegir antes de ver nada y tirar de la palanca hasta que saliera
+        algo apetecible. Quien abre esto no quiere configurar un filtro, quiere
+        cenar; y elegir de verdad es comparar, que con una sola idea no se
+        puede. Tres delante, y los filtros esperan debajo por si acaso.
+      */}
+      <div className="ideas">
+        {ideas.map((m) => (
+          <Idea key={m.id} meal={m} onAbrir={() => setCurrent(m)} />
+        ))}
+        {ideas.length === 0 && (
+          <p className="faint">
+            Con esa combinación no tengo nada. Prueba a soltar uno de los dos filtros.
+          </p>
+        )}
+      </div>
+
+      {ideas.length > 0 && (
+        <button className="btn btn-secondary" onClick={otrasTres}>
+          Otras tres
+        </button>
+      )}
+
+      {mejorNivel && mejorNivel !== 'alto' && (
+        <p className="faint" style={{ margin: '0 4px 8px' }}>
+          Ojo: por aquí no hay nada con DHA alto — solo el pescado azul y el marisco lo tienen de
+          verdad. Te doy lo mejor que hay y cómo enriquecerlo.
+        </p>
+      )}
+
+      {/*
+        La proteína, como banda y no como barra que se llena: un depósito que
+        sube invita a contar, que es justo lo que aquí no se hace. La regla va
+        de poco a mucho para que se lea que el objetivo es una zona ancha y no
+        una diana.
+      */}
+      <div className="card">
+        <p className="eyebrow">Tu referencia del día</p>
+        {banda ? (
+          <>
+            <p className="banda-num">
+              {banda.min}–{banda.max}
+              <small> g de proteína</small>
+            </p>
+            <div className="banda">
+              <div className="banda-track" />
+              <div
+                className="banda-zona"
+                style={{ left: `${banda.inicio}%`, width: `${banda.ancho}%` }}
+              />
+            </div>
+            <div className="banda-pies">
+              <span className="faint">{banda.desde} g</span>
+              <span className="faint">{banda.hasta} g</span>
+            </div>
+            <p className="dim" style={{ marginTop: 14 }}>
+              Son {banda.porKilo.min}–{banda.porKilo.max} g por kilo de peso, y es una zona, no una
+              cifra que haya que clavar. Con {platosParaElMinimo(banda.min, ideas) || 3} platos como
+              estos sale sola: no hace falta que apuntes nada.
+            </p>
+          </>
+        ) : (
+          <p className="dim">
+            Añade tu peso en Yo y te digo la referencia de proteína del día. Del resto no lleves
+            cuentas: come hasta saciarte de verdad y deja que la leptina regule lo demás.
+          </p>
+        )}
+        <hr className="rule" />
+        <p className="eyebrow">DHA de hoy</p>
+        <p className="banda-num">
+          {objetivoDha.toLocaleString('es-ES')}
+          <small> mg</small>
+          {esVerano(today) && <span className="tag accent">verano</span>}
+        </p>
         <p className="faint" style={{ marginTop: 10 }}>
           {esVerano(today)
             ? 'En los meses de más sol subimos el DHA: es el material con el que se construyen las membranas.'
             : 'DHA a diario, que es el ácido graso estructural de tus membranas celulares.'}
           {pillMg > 0
             ? ` Tus pastillas son de ${pillMg.toLocaleString('es-ES')} mg y nunca te sugeriré pasar de 1.000 mg de suplemento al día.`
-            : ' Si tomas pastillas de DHA, dímelo en Ajustes y te calculo el complemento.'}
+            : ' Si tomas pastillas de DHA, dímelo en Yo y te calculo el complemento.'}
         </p>
       </div>
 
@@ -141,36 +260,7 @@ export default function Meals() {
             </button>
           ))}
         </div>
-
-        {available.length === 0 && (
-          <p className="faint" style={{ marginTop: 16 }}>
-            Con esa combinación no tengo nada. Prueba a soltar uno de los dos filtros.
-          </p>
-        )}
-        {mejorNivel && mejorNivel !== 'alto' && (
-          <p className="faint" style={{ marginTop: 16 }}>
-            Ojo: por aquí no hay nada con DHA alto — solo el pescado azul y el marisco lo tienen de
-            verdad. Te doy lo mejor que hay y cómo enriquecerlo.
-          </p>
-        )}
       </div>
-
-      <button className="btn btn-primary" disabled={available.length === 0} onClick={roll}>
-        {current ? 'Dame otra idea' : 'Dame una idea'}
-      </button>
-
-      {current && (
-        <div className="card fade-in" style={{ marginTop: 16 }} key={current.id}>
-          <MealCard meal={current} pillMg={pillMg} today={today} />
-        </div>
-      )}
-
-      {protein && (
-        <p className="faint" style={{ margin: '18px 4px' }}>
-          Referencia del día: {protein.min}–{protein.max} g de proteína. No hace falta que la
-          apuntes; con dos o tres platos como estos sale sola.
-        </p>
-      )}
 
       <button className="btn-quiet" onClick={() => setBrowsing(!browsing)}>
         {browsing ? 'Ocultar el recetario' : `Ver los ${MEALS.length} platos`}
@@ -188,10 +278,7 @@ export default function Meals() {
                     className="item"
                     key={m.id}
                     style={{ width: '100%', textAlign: 'left' }}
-                    onClick={() => {
-                      setCurrent(m)
-                      window.scrollTo({ top: 0, behavior: 'smooth' })
-                    }}
+                    onClick={() => setCurrent(m)}
                   >
                     <div className="item-body">
                       <div className="item-title">{m.name}</div>

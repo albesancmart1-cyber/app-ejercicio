@@ -559,75 +559,97 @@ await shot('13b-volumen-musculo')
 await page.locator('.card').filter({ hasText: 'Reparto por zonas' }).scrollIntoViewIfNeeded()
 await shot('13c-reparto')
 
-// ── Mesa: idea de comida ──────────────────────────────────
+// ── Cocina: tres ideas, sin pedir nada ────────────────────
 await page.locator('.tab', { hasText: 'Cocina' }).click()
 await shot('14-mesa')
-await byText('Dame una idea').click()
+
+const ideas = page.locator('.idea')
+if ((await ideas.count()) !== 3) {
+  console.error('ERROR: Cocina debería abrir con tres ideas; hay', await ideas.count())
+  process.exit(1)
+}
+const primeras = await ideas.locator('.idea-nombre').allInnerTexts()
+console.log('  → tres ideas de entrada:', primeras.join(' | '))
+
+// Abrir una lleva a su receta entera.
+await ideas.first().click()
+await page.waitForTimeout(400)
 const primera = await page.locator('.card h2').first().textContent()
 await shot('15-idea')
 // Con pastillas de 1000 mg configuradas, debe decir cómo completar el objetivo.
-const complemento = await page.getByText(/pastilla|cubre el objetivo/).count()
-if (!complemento) {
+if (!(await page.getByText(/pastilla|cubre el objetivo/).count())) {
   console.error('ERROR: no calcula el complemento con pastillas')
   process.exit(1)
 }
-await byText('Dame otra idea').click()
-const segunda = await page.locator('.card h2').first().textContent()
-console.log('  → primera idea:', primera)
-console.log('  → segunda idea:', segunda)
-if (primera === segunda) {
-  console.error('ERROR: la sugerencia repitió el mismo plato')
+await page.getByRole('button', { name: 'Volver a las ideas' }).click()
+await page.waitForTimeout(400)
+
+// Y pedir otras tres trae otras tres.
+await page.getByRole('button', { name: 'Otras tres' }).click()
+await page.waitForTimeout(400)
+const segundas = await ideas.locator('.idea-nombre').allInnerTexts()
+console.log('  → otras tres:', segundas.join(' | '))
+if (segundas.some((n) => primeras.includes(n))) {
+  console.error('ERROR: «otras tres» repitió alguna →', primeras.join(' | '), '→', segundas.join(' | '))
   process.exit(1)
 }
-// La tarjeta del plato es la única con h2: así no la confundimos con la del objetivo.
-const platoCard = page.locator('.card').filter({ has: page.locator('h2') })
 
-// El DHA manda: sin filtros, toda sugerencia debe ser de DHA alto.
-for (let i = 0; i < 6; i++) {
-  await byText('Dame otra idea').click()
-  await page.waitForTimeout(150)
-  const etiqueta = await platoCard.locator('.tag').first().textContent()
-  if (!etiqueta.includes('DHA alto')) {
-    console.error('ERROR: sugerencia sin DHA alto →', etiqueta)
+/** Las etiquetas de DHA de las tres ideas que hay ahora en pantalla. */
+const etiquetasDha = () => ideas.locator('.tag').allInnerTexts()
+
+// El DHA manda: sin filtros, toda idea debe ser de DHA alto.
+for (let i = 0; i < 3; i++) {
+  await page.getByRole('button', { name: 'Otras tres' }).click()
+  await page.waitForTimeout(200)
+  const etiquetas = await etiquetasDha()
+  if (!etiquetas.every((e) => e.includes('DHA alto'))) {
+    console.error('ERROR: idea sin DHA alto →', etiquetas.join(' | '))
     process.exit(1)
   }
 }
-console.log('  → seis sugerencias seguidas, todas de DHA alto')
+console.log('  → nueve ideas seguidas, todas de DHA alto')
 
-// Filtro por base y esfuerzo.
-await byText('Marisco').click()
-await byText('Sin cocinar').click()
-await byText('Dame otra idea').click()
+// Filtro por base y esfuerzo. Acotado a la tarjeta de filtros a propósito: las
+// propias ideas llevan escrito «Sin cocinar», y buscar por texto suelto abriría
+// una receta en vez de filtrar.
+const filtros = page.locator('.card').filter({ hasText: '¿Qué te apetece?' })
+const filtrar = (t) => filtros.getByRole('button', { name: t, exact: true }).click()
+
+await filtrar('Marisco')
+await filtrar('Sin cocinar')
+await page.waitForTimeout(300)
 await shot('16-idea-filtrada')
 
 // Aun pidiendo carne debe resolver el DHA, acompañándola de algo del mar.
-await byText('Carne').click()
-await byText('Da igual').click()
-await byText('Dame otra idea').click()
-await page.waitForTimeout(250)
-const etiquetaCarne = await platoCard.locator('.tag').first().textContent()
-if (!etiquetaCarne.includes('DHA alto')) {
-  console.error('ERROR: con carne debería resolver el DHA con un acompañamiento marino →', etiquetaCarne)
+await filtrar('Carne')
+await filtrar('Da igual')
+await page.waitForTimeout(300)
+const conCarne = await etiquetasDha()
+if (!conCarne.every((e) => e.includes('DHA alto'))) {
+  console.error('ERROR: con carne debería resolver el DHA con un acompañamiento marino →', conCarne.join(' | '))
   process.exit(1)
 }
-console.log('  → con carne resuelve el DHA:', await platoCard.locator('h2').textContent())
+console.log('  → con carne resuelve el DHA:', (await ideas.locator('.idea-nombre').allInnerTexts()).join(' | '))
 await shot('16b-carne-con-dha')
 
 // Los lácteos sí son un callejón sin salida para el DHA: ahí debe avisar.
-await byText('Lácteos').click()
-await byText('Dame otra idea').click()
-await page.waitForTimeout(250)
+await filtrar('Lácteos')
+await page.waitForTimeout(300)
 if (!(await page.getByText('no hay nada con DHA alto').count())) {
   console.error('ERROR: con lácteos debería avisar de que no hay DHA alto')
   process.exit(1)
 }
 console.log('  → con lácteos avisa honestamente de que no hay DHA alto')
 await shot('16c-lacteos-sin-dha')
-await byText('Lo que sea').click()
+await filtrar('Lo que sea')
 
-// El hígado de bacalao debe salir con su tope semanal por la vitamina A.
-await byText('Pescado').click()
+// El recetario completo, y desde él el hígado de bacalao con su tope semanal.
+await filtrar('Pescado')
 await byText('Ver los ').click()
+await page.waitForTimeout(400)
+await page.locator('.card').filter({ hasText: 'PESCADO' }).first().scrollIntoViewIfNeeded()
+await shot('17-recetario')
+
 await page.getByText('Hígado de bacalao en su aceite').first().click()
 await page.waitForTimeout(400)
 const tope = await page.getByText('Máximo 2 por semana').count()
@@ -636,21 +658,21 @@ if (!tope || !motivo) {
   console.error('ERROR: el hígado de bacalao debe avisar del tope por vitamina A')
   process.exit(1)
 }
-console.log('  → hígado de bacalao con su tope semanal y el motivo')
+console.log('  → hígado de bacalao con su tope semanal y el motivo; la primera idea fue', primera)
 await page.getByText('Máximo 2 por semana').scrollIntoViewIfNeeded()
 await shot('16d-higado-bacalao')
-
-// El recetario sigue abierto desde la comprobación anterior.
-await page.locator('.card').filter({ hasText: 'PESCADO' }).first().scrollIntoViewIfNeeded()
-await shot('17-recetario')
 
 await page.locator('.tab', { hasText: 'Yo' }).click()
 await shot('18-ajustes')
 
+// «Yo» abre por Perfil; lo de entrenar vive en su propio grupo.
+await page.getByRole('tab', { name: 'Entreno' }).click()
+await page.waitForTimeout(400)
+
 // Los favoritos marcados durante la sesión deben estar aquí, y poderse ampliar.
 const tarjetaFav = page.locator('.card').filter({ hasText: 'Ejercicios favoritos' })
 if (!(await tarjetaFav.count())) {
-  console.error('ERROR: falta la tarjeta de ejercicios favoritos en Ajustes')
+  console.error('ERROR: falta la tarjeta de ejercicios favoritos en Yo · Entreno')
   process.exit(1)
 }
 await tarjetaFav.scrollIntoViewIfNeeded()
@@ -665,7 +687,7 @@ await shot('18b-favoritos')
 await tarjetaFav.getByText('Elegir favoritos del catálogo').click()
 await page.waitForTimeout(400)
 if (!(await page.locator('.picker').count())) {
-  console.error('ERROR: Ajustes debería abrir el catálogo para marcar favoritos')
+  console.error('ERROR: Yo debería abrir el catálogo para marcar favoritos')
   process.exit(1)
 }
 const marcados = await page.locator('.picker-star[aria-pressed="true"]').count()

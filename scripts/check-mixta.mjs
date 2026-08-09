@@ -97,7 +97,11 @@ await page.waitForTimeout(250)
 await byText('Ver qué me conviene').click()
 await page.waitForTimeout(400)
 
-const tocaba = (await page.locator('.eyebrow').nth(1).textContent()).trim()
+// El titular de la decisión y el resumen del plan: lo que antes decía el
+// segundo `.eyebrow` vive ahora en la tarjeta de decisión.
+const tocaba = (
+  await page.locator('.decision-titulo, .decision-meta').allInnerTexts()
+).join(' · ').trim()
 if (!/cardio/i.test(tocaba)) fallar('el historial debería llevar a cardio; llevó a', tocaba)
 console.log('  → lo que tocaba:', tocaba)
 await page.screenshot({ path: `${OUT}/mix-01-tocaba-cardio.png` })
@@ -112,20 +116,34 @@ console.log('  → ofrece las dos: repartir, o cambiarlo del todo')
 // ── La mixta ──────────────────────────────────────────────
 await mixto.click()
 await page.waitForTimeout(350)
-const titulo = (await page.locator('.eyebrow').nth(1).textContent()).trim()
-if (!/pesas y cardio/i.test(titulo)) fallar('la opción mixta no cambió la recomendación →', titulo)
+const titulo = (await page.locator('.decision-titulo, .decision-meta').allInnerTexts()).join(' · ').trim()
+// La decisión ya no se rotula «pesas y cardio»: lo dice el propio plan, que
+// nombra las zonas de fuerza y los minutos que quedan de cardio. Se comprueba
+// eso, que además es más difícil de cumplir por accidente.
+const minutosAntes = Number(tocaba.match(/(\d+)\s*min de cardio/)?.[1] ?? 0)
+const minutosAhora = Number(titulo.match(/(\d+)\s*min de cardio/)?.[1] ?? 0)
+if (!(minutosAhora > 0)) fallar('la mixta debe conservar algo de cardio →', titulo)
+if (!(minutosAhora < minutosAntes)) {
+  fallar(`la mixta debe recortar el cardio (${minutosAntes} → ${minutosAhora}) →`, titulo)
+}
+if (!/pierna|pecho|espalda|hombro|brazo|core|femoral|gemelo|cuádriceps/i.test(titulo)) {
+  fallar('la mixta debe traer también trabajo de fuerza →', titulo)
+}
 
-// La propia app dice cuánto cardio conserva y de cuánto venía.
-const tarjeta = (await page.locator('.card').filter({ hasText: 'cardio tranquilo' }).first().textContent())
-  .replace(/\s+/g, ' ')
+// La propia app dice cuánto cardio conserva y de cuánto venía. El párrafo
+// largo vive dentro del detalle: la decisión de arriba es de una línea.
+await byText('Con todo el detalle').click()
+await page.waitForTimeout(300)
+const tarjeta = (await page.locator('.razones').first().textContent()).replace(/\s+/g, ' ')
 const minutosDespues = Number(tarjeta.match(/(\d+)\s*min de cardio/)?.[1] ?? 0)
 if (!(minutosDespues > 0)) fallar('la mixta no dice cuánto cardio conserva →', tarjeta)
-if (!/a petición tuya/i.test(tarjeta)) fallar('debería quedar claro que lo pediste tú')
+// Que fue decisión tuya se dice arriba, en la propia decisión, y no enterrado
+// en el detalle: es lo que separa «te lo propongo» de «me lo has pedido».
+const decision = (await page.locator('.decision').first().textContent()).replace(/\s+/g, ' ')
+if (!/a petición tuya/i.test(decision)) fallar('debería quedar claro que lo pediste tú →', decision)
 console.log('  → mixta:', titulo, `· conserva ${minutosDespues} min de cardio`)
 await page.screenshot({ path: `${OUT}/mix-02-mixta.png` })
 
-await byText('Por qué esto hoy').click()
-await page.waitForTimeout(250)
 // En esta pantalla hay varias listas «.reasons» —los cambios de volumen, la
 // evidencia y el porqué del día—: se miran todas juntas.
 const porQue = (await page.locator('.reasons').allTextContents()).join(' ').replace(/\s+/g, ' ')
@@ -146,7 +164,7 @@ await page.screenshot({ path: `${OUT}/mix-03-por-que.png` })
 // ── Se puede deshacer ─────────────────────────────────────
 await byText('Volver a lo que me tocaba').click()
 await page.waitForTimeout(300)
-const vuelto = (await page.locator('.eyebrow').nth(1).textContent()).trim()
+const vuelto = (await page.locator('.decision-titulo, .decision-meta').allInnerTexts()).join(' · ').trim()
 if (vuelto !== tocaba) fallar('volver atrás debería devolver la recomendación original →', vuelto)
 console.log('  → se puede deshacer: vuelve a', vuelto)
 await page.getByText('Pesas sin quitar el cardio').click()
@@ -232,8 +250,8 @@ await page.waitForTimeout(250)
 await byText('Ver qué me conviene').click()
 await page.waitForTimeout(400)
 
-const flojo = (await page.locator('.eyebrow').nth(1).textContent()).trim()
-console.log('  → con mala disposición toca:', flojo, '· disposición:', await page.locator('.score').first().textContent())
+const flojo = (await page.locator('.decision-titulo, .decision-meta').allInnerTexts()).join(' · ').trim()
+console.log('  → con mala disposición toca:', flojo, '· disposición:', await page.locator('.ring-num').first().textContent())
 if (!(await page.getByText('Prefiero algo con pesas').count())) {
   fallar('debería seguir ofreciendo el cambio completo')
 }
@@ -242,8 +260,7 @@ if (!(await page.getByText('Pesas sin quitar el cardio').count())) {
 }
 await page.getByText('Pesas sin quitar el cardio').click()
 await page.waitForTimeout(350)
-const suave = (await page.locator('.card').filter({ hasText: 'cardio tranquilo' }).first().textContent())
-  .replace(/\s+/g, ' ')
+const suave = (await page.locator('.decision').first().textContent()).replace(/\s+/g, ' ')
 if (!/intensidad suave/i.test(suave)) fallar('con mala disposición no debe pasar de suave →', suave)
 console.log('  → y en un día flojo la mixta sale suave, no media-alta')
 await page.screenshot({ path: `${OUT}/mix-05-dia-flojo.png` })

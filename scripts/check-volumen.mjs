@@ -116,6 +116,14 @@ async function verVolumen() {
     await page.waitForTimeout(400)
   }
 
+  // El nivel de volumen se pliega en la decisión: es de leer con calma, no de
+  // mirar antes de entrenar. Hay que abrirlo para ver qué cambia y en qué se basa.
+  const abrir = page.getByRole('button', { name: /Volumen · nivel/ })
+  if (await abrir.count()) {
+    await abrir.first().click()
+    await page.waitForTimeout(300)
+  }
+
   const bloque = page.locator('.card').filter({ hasText: 'Volumen · nivel' })
   if (!(await bloque.count())) {
     await page.screenshot({ path: `${OUT}/vol-sin-bloque.png`, fullPage: true })

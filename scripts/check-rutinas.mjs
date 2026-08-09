@@ -4,7 +4,7 @@
  * Comprueba que una sesión se guarda como rutina, que la rutina aparece al
  * preparar el día **debajo** de lo que propone la app —y diciendo por qué—,
  * que repetirla crea la sesión con los mismos ejercicios, y que se puede
- * borrar desde Ajustes.
+ * borrar desde Yo.
  *
  *   node scripts/check-rutinas.mjs
  */
@@ -154,11 +154,13 @@ comprobar(
 console.log('  · sesión desde la rutina:', JSON.stringify(sesion))
 await page.screenshot({ path: `${OUT}/rut-3-repetida.png`, fullPage: true })
 
-// ── Borrarla desde Ajustes ────────────────────────────────
+// ── Borrarla desde Yo · Entreno ───────────────────────────
 await page.getByRole('button', { name: 'Yo', exact: true }).click()
 await page.waitForTimeout(600)
+await page.getByRole('tab', { name: 'Entreno' }).click()
+await page.waitForTimeout(400)
 const ajustes = await page.locator('.fade-in').first().innerText()
-comprobar(/Tus rutinas/i.test(ajustes), 'las rutinas deberían gestionarse desde Ajustes')
+comprobar(/Tus rutinas/i.test(ajustes), 'las rutinas deberían gestionarse desde Yo · Entreno')
 await page.getByRole('button', { name: 'Borrar la rutina Empuje y tirón' }).click()
 await page.waitForTimeout(500)
 const tras = await page.evaluate(() => {

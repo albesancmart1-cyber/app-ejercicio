@@ -521,8 +521,8 @@ export default function SessionScreen({ session }: { session: Session }) {
     const fuera = quitar(ei)
     setAviso(
       fuera
-        ? `${actual.name} fuera de hoy y de las próximas sesiones. Puedes readmitirlo en Ajustes.`
-        : `${actual.name} no aparecerá en próximas sesiones, pero hoy se queda: es el único que hay. Puedes readmitirlo en Ajustes.`
+        ? `${actual.name} fuera de hoy y de las próximas sesiones. Puedes readmitirlo en Yo · Entreno.`
+        : `${actual.name} no aparecerá en próximas sesiones, pero hoy se queda: es el único que hay. Puedes readmitirlo en Yo · Entreno.`
     )
   }
 

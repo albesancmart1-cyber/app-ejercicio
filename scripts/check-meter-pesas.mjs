@@ -87,7 +87,11 @@ await byText('Empezar').click()
 await page.waitForTimeout(250)
 await byText('Ver qué me conviene').click()
 await page.waitForTimeout(350)
-const tocaba = (await page.locator('.eyebrow').nth(1).textContent()).trim()
+// El titular de la decisión y el resumen del plan: lo que antes decía el
+// segundo `.eyebrow` vive ahora en la tarjeta de decisión.
+const tocaba = (
+  await page.locator('.decision-titulo, .decision-meta').allInnerTexts()
+).join(' · ').trim()
 if (!/cardio/i.test(tocaba)) fallar('el historial debería llevar a cardio; llevó a', tocaba)
 await byText('Empezar entreno').click()
 await page.waitForTimeout(450)

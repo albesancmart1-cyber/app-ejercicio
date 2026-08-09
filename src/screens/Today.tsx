@@ -498,6 +498,11 @@ export default function Today() {
             </button>
             {showWhy && (
               <ul className="reasons">
+                {/* El párrafo largo de la recomendación. Fuera de la decisión,
+                    porque a las siete de la mañana estorba; pero dentro del
+                    detalle, porque es donde se dice cuánto cardio se conserva o
+                    con qué carga se va a trabajar. */}
+                <li>{recommendation.message}</li>
                 {recommendation.reasons.map((r, i) => (
                   <li key={i}>{r}</li>
                 ))}

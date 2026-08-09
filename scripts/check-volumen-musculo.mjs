@@ -122,6 +122,8 @@ await page.screenshot({ path: `${OUT}/vm-2-desglose.png` })
 // ── Los objetivos se ajustan y se guardan ─────────────────
 await page.getByText('Yo', { exact: true }).first().click()
 await page.waitForTimeout(600)
+await page.getByRole('tab', { name: 'Entreno' }).click()
+await page.waitForTimeout(400)
 comprobar(await page.getByText('Objetivos de volumen').count(), 'no está la tarjeta de objetivos')
 
 await page.getByRole('button', { name: /^Brazo/ }).first().click()
