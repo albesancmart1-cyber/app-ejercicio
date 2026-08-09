@@ -45,9 +45,13 @@
   --separator: rgba(255, 255, 255, 0.09);
   --separator-strong: rgba(255, 255, 255, 0.18);
 
-  /* Superficie de tarjeta: material translúcido, no un gris plano. */
-  --surface: rgba(28, 28, 30, 0.72);
-  --surface-strong: rgba(44, 44, 46, 0.82);
+  /*
+   * Superficie de tarjeta: **opaca**. El translúcido dejaba que el fondo se
+   * colara, y dos tarjetas iguales se veían distintas según lo que tuvieran
+   * detrás; con tres niveles opacos la jerarquía se sostiene siempre.
+   */
+  --surface: #141317;
+  --surface-strong: #1d1b21;
 
   /* Cristal líquido. */
   --glass-fill: rgba(30, 30, 34, 0.55);
@@ -61,6 +65,23 @@
   --accent-ink: #1a1005;
 
   /*
+   * Estado del cuerpo: cuatro colores que significan algo y no decoran nada.
+   *
+   * Hasta ahora el mismo ámbar hacía de botón, de enlace, de récord y de
+   * alarma; cuando un color lo dice todo, no dice nada. Estos cuatro solo
+   * aparecen en indicadores de estado, y **nunca solos**: siempre con su
+   * etiqueta de texto al lado, porque el color no es accesible por sí mismo.
+   */
+  --st-fresco: #86be94;
+  --st-fresco-soft: rgba(134, 190, 148, 0.16);
+  --st-tuyo: #ffc46b;
+  --st-tuyo-soft: rgba(255, 196, 107, 0.16);
+  --st-alto: #ff8a5b;
+  --st-alto-soft: rgba(255, 138, 91, 0.16);
+  --st-pasado: #e0685f;
+  --st-pasado-soft: rgba(224, 104, 95, 0.16);
+
+  /*
    * Radios: el radio marca la jerarquía. 24 para contenedores, 18 para todo lo
    * que se toca —botones, campos, etiquetas—, 10 para lo anidado y 6 para
    * detalles. Nada entre medias.
@@ -69,10 +90,10 @@
    * propósito: es lo que hace que la app se lea como app y no como página, y en
    * la referencia no hay ningún componente equivalente al que atenerse.
    */
-  --r-card: 24px;
-  --r-control: 18px;
-  --r-nested: 10px;
-  --r-small: 6px;
+  --r-card: 28px;
+  --r-control: 20px;
+  --r-nested: 14px;
+  --r-small: 8px;
   --r-pill: 980px;
 
   /* Escala de espaciado, base 4. */
@@ -92,31 +113,40 @@
    * En píxeles y no en rem a propósito: la escala está definida en píxeles y
    * media escalón de diferencia estropea la relación entre pasos.
    */
-  --text-caption: 12px;
-  --leading-caption: 1.33;
-  --tracking-caption: 0.05em;
-  --text-body: 14px;
-  --leading-body: 1.43;
+  --text-caption: 12.5px;
+  --leading-caption: 1.4;
+  /* El tracking se queda en cero. Apretar o abrir las letras cansa la vista, y
+     a tamaño de móvil no aporta nada: la calma viene del interlineado. */
+  --tracking-caption: 0;
+  --text-body: 15px;
+  --leading-body: 1.55;
   --text-body-lg: 16px;
-  --leading-body-lg: 1.5;
+  --leading-body-lg: 1.6;
   --text-subheading: 18px;
-  --leading-subheading: 1.56;
-  --text-heading-sm: 24px;
-  --leading-heading-sm: 1.33;
-  --tracking-heading-sm: -0.025em;
-  --text-heading: 30px;
+  --leading-subheading: 1.45;
+  --text-heading-sm: 22px;
+  --leading-heading-sm: 1.28;
+  --tracking-heading-sm: 0;
+  --text-heading: 28px;
   --leading-heading: 1.2;
-  --tracking-heading: -0.025em;
-  --text-heading-lg: 36px;
-  --leading-heading-lg: 1.11;
-  --tracking-heading-lg: -0.025em;
-  --text-display: 48px;
+  --tracking-heading: -0.005em;
+  --text-heading-lg: 34px;
+  --leading-heading-lg: 1.14;
+  --tracking-heading-lg: -0.008em;
+  --text-display: 44px;
   --leading-display: 1.1;
-  --tracking-display: -0.05em;
+  --tracking-display: -0.012em;
 
-  --w-regular: 400;
-  --w-medium: 500;
-  --w-semibold: 600;
+  /*
+   * Nunito Sans va más fina de lo que parece a estos tamaños, así que toda la
+   * escala sube un escalón de peso: el cuerpo en 500 y los títulos en 700. Es
+   * la letra «un poco más gordita» sin volver a la tensión de la negrita
+   * apretada: el tracking sigue en cero y el interlineado, largo.
+   */
+  --w-regular: 500;
+  --w-medium: 600;
+  --w-semibold: 700;
+  --w-bold: 800;
 
   /* Elevación: un pelo de borde y una sombra que apenas se nota. */
   --card-padding: 20px;
@@ -214,9 +244,34 @@ textarea,
   user-select: text;
 }
 
+/*
+ * Nunito Sans, empaquetada con la app.
+ *
+ * Es una sans humanista de terminales redondeados: las curvas suaves quitan
+ * tensión a la pantalla y las letras van anchas y abiertas, que es lo que se
+ * lee de un vistazo con el móvil apoyado en el banco.
+ *
+ * Va en el propio dominio y no en un servidor de fuentes: la app funciona sin
+ * conexión, y una letra que no carga descoloca la interfaz entera. Es la
+ * variable latina, 30 KB para todos los pesos.
+ */
+@font-face {
+  font-family: 'Nunito Sans';
+  /* Ruta relativa a propósito: así Vite la empaqueta con su huella y le pone la
+     base correcta al publicar en un subdirectorio como el de Pages. */
+  src: url('./fuentes/nunito-sans.woff2') format('woff2');
+  font-weight: 400 800;
+  font-style: normal;
+  font-display: swap;
+}
+
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display',
-    ui-sans-serif, system-ui, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Nunito Sans', -apple-system, BlinkMacSystemFont, ui-sans-serif, system-ui,
+    'Segoe UI', Roboto, sans-serif;
+  font-weight: var(--w-regular);
+  /* Cifras tabulares en toda la app: al pasar de 9 a 10 repeticiones nada se
+     mueve de sitio, y los kilos de una columna quedan alineados. */
+  font-variant-numeric: tabular-nums;
   /* Densidad compacta: el cuerpo es el paso «body» de la escala, y el tracking
      lo pone cada paso, no una regla global. */
   font-size: var(--text-body);
@@ -299,12 +354,17 @@ body::after {
  * densidad compacta sea legible a media serie, mirando el móvil de reojo.
  */
 
+/*
+ * Rótulo de sección. Antes iba en versalitas con tracking abierto: las
+ * mayúsculas sostenidas se leen letra a letra y ponen tenso el texto, y en una
+ * app que acompaña eso se nota. En minúscula el ojo reconoce la palabra entera
+ * de golpe.
+ */
 .eyebrow {
   font-size: var(--text-caption);
   line-height: var(--leading-caption);
   font-weight: var(--w-medium);
-  letter-spacing: var(--tracking-caption);
-  text-transform: uppercase;
+  letter-spacing: 0;
   color: var(--label-3);
   margin-bottom: var(--sp-2);
 }
@@ -365,8 +425,7 @@ p {
 .stat-label {
   font-size: var(--text-caption);
   line-height: var(--leading-caption);
-  letter-spacing: var(--tracking-caption);
-  text-transform: uppercase;
+  letter-spacing: 0;
   color: var(--label-3);
 }
 
@@ -1358,8 +1417,7 @@ textarea:focus {
 }
 
 .last-time-tag {
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-caption);
+  letter-spacing: 0;
   color: var(--label-3);
   font-size: var(--text-caption);
 }
