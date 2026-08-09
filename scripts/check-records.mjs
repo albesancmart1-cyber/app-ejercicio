@@ -113,7 +113,23 @@ if ((await tarjeta.count()) === 0) {
 
 // ── Una serie que bate el peso máximo ─────────────────────
 await tarjeta.getByRole('button', { name: /Marcar serie 1/ }).click()
-await page.waitForTimeout(600)
+await page.waitForTimeout(700)
+
+// Primero se celebra a pantalla completa: es lo único del entreno que uno
+// cuenta luego, y una línea de once píxeles no era celebrarlo.
+const fiesta = page.locator('.record-screen')
+comprobar(await fiesta.count(), 'un récord debería tomar la pantalla')
+const textoFiesta = (await fiesta.first().innerText()).toLowerCase()
+comprobar(/récord personal/.test(textoFiesta), `debería decirlo con todas las letras: ${textoFiesta.replace(/\n/g, ' · ')}`)
+comprobar(/16 kg × 10/.test(textoFiesta), 'con la serie conseguida')
+comprobar(/14 kg × \d+/.test(textoFiesta), `y contra qué se ha batido: ${textoFiesta.replace(/\n/g, ' · ')}`)
+console.log('  · celebración:', textoFiesta.replace(/\n/g, ' · ').slice(0, 120))
+await page.screenshot({ path: `${OUT}/rec-0-celebracion.png`, fullPage: true })
+await page.getByRole('button', { name: 'Seguir entrenando' }).click()
+await page.waitForTimeout(400)
+// Y detrás esperaba el descanso, que también toma la pantalla.
+await page.getByRole('button', { name: 'Saltar descanso' }).click()
+await page.waitForTimeout(400)
 
 const medalla = page.locator('.record-hint')
 comprobar(await medalla.count(), 'una serie que bate el récord debería llevar su medalla')
@@ -128,6 +144,10 @@ await page.screenshot({ path: `${OUT}/rec-1-medalla.png`, fullPage: true })
 // ── La misma serie otra vez no es otro récord ─────────────
 await tarjeta.getByRole('button', { name: /Marcar serie 2/ }).click()
 await page.waitForTimeout(600)
+comprobar(
+  (await page.locator('.record-screen').count()) === 0,
+  'repetir el mismo peso no debería volver a celebrarse'
+)
 comprobar(
   (await page.locator('.record-hint').count()) === 1,
   'repetir el mismo peso no es un récord nuevo: solo debería haber una medalla'

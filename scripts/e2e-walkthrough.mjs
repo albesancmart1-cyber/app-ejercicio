@@ -371,18 +371,19 @@ await byText('¿Cómo se hace?').click()
 await primeraFila.locator('.check').click()
 await page.waitForTimeout(400)
 
-// El temporizador debe aparecer solo tras completar una serie que no es la última.
-if (await page.locator('.rest-timer').count()) {
-  console.log('  → temporizador de descanso arrancado solo')
+// El descanso toma la pantalla entera tras completar una serie que no es la
+// última, y enseña lo que acabas de hacer y lo que viene.
+if (await page.locator('.rest-screen').count()) {
+  console.log('  → pantalla de descanso arrancada sola')
   await shot('10f-descanso-serie')
   await byText('Saltar descanso').click()
-  await page.waitForTimeout(200)
-  if (await page.locator('.rest-timer').count()) {
+  await page.waitForTimeout(300)
+  if (await page.locator('.rest-screen').count()) {
     console.error('ERROR: el descanso no se puede saltar')
     process.exit(1)
   }
 } else {
-  console.error('ERROR: el temporizador no arrancó al completar una serie')
+  console.error('ERROR: el descanso no arrancó al completar una serie')
   process.exit(1)
 }
 
@@ -400,13 +401,13 @@ for (let i = 1; i < nSeriesPrimero; i++) {
     if (await saltar.count()) await saltar.click()
   }
 }
-const anuncioSiguiente = await page.getByText('siguiente:').count()
+const anuncioSiguiente = await page.locator('.rest-siguiente').count()
 if (!anuncioSiguiente) {
-  console.error('ERROR: al terminar un ejercicio debe arrancar el descanso hacia el siguiente')
+  console.error('ERROR: al terminar un ejercicio el descanso debe anunciar el siguiente')
   process.exit(1)
 }
-const etiqueta = await page.locator('.rest-timer .eyebrow').first().textContent()
-console.log('  → descanso entre ejercicios:', etiqueta.trim())
+const etiqueta = await page.locator('.rest-siguiente .item-title').first().textContent()
+console.log('  → descanso entre ejercicios, viene:', etiqueta.trim())
 await shot('10d-descanso-entre-ejercicios')
 await byText('Saltar descanso').click()
 

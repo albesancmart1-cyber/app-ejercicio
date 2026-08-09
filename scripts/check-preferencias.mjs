@@ -119,7 +119,7 @@ await page.screenshot({ path: `${OUT}/prefs-2-nota.png` })
 // ── El temporizador respeta lo elegido ────────────────────
 await tarjeta.getByRole('button', { name: /Marcar serie 1/ }).click()
 await page.waitForTimeout(700)
-const timer = await page.locator('.rest-timer').first().innerText()
+const timer = await page.locator('.rest-screen').first().innerText()
 comprobar(/2:5\d|3:00/.test(timer), `el descanso debería arrancar en 3 minutos: ${timer}`)
 console.log('  · temporizador:', timer.split('\n')[0])
 

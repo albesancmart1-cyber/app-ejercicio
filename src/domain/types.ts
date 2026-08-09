@@ -163,6 +163,15 @@ export interface Profile {
    */
   keepAwake?: boolean
   /**
+   * Alarma sonora al terminar el descanso.
+   *
+   * Activada de partida, y a propósito: el móvil suele estar boca abajo en el
+   * banco o en el bolsillo, y la vibración sola no se oye. No es una
+   * notificación —no pide permiso, no puede llegar tarde y no la silencia el
+   * modo concentración—: es un pitido que sale del móvil ahí mismo.
+   */
+  alarmaDescanso?: boolean
+  /**
    * Nivel de volumen elegido a mano. La app decide sola por defecto —solo sube
    * cuando el cuerpo demuestra que asimila—, pero quien se nota preparado puede
    * adelantarlo —o quedarse por debajo—. Manda mientras diga algo distinto del

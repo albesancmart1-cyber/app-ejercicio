@@ -209,6 +209,42 @@ export function celebrar(marcas: TipoMarca[], l: SetLog, previos: Records): stri
   return `Récord: ${serie}.`
 }
 
+/**
+ * La serie que se acaba de hacer, en corto: «22 kg × 10».
+ * Sin peso —dominadas, fondos— se cuentan repeticiones y ya.
+ */
+export function describirSerieCorta(l: SetLog): string {
+  if (typeof l.weightKg === 'number' && l.weightKg > 0) {
+    return `${l.weightKg} kg × ${l.reps ?? '—'}`
+  }
+  return `${l.reps ?? '—'} reps`
+}
+
+/**
+ * Contra qué se ha batido el récord, para poder enseñar el antes y el después.
+ *
+ * Un récord sin referencia no emociona: «22 kg × 10» solo significa algo al
+ * lado de «20 kg × 10». Se elige la marca **más representativa** de las que se
+ * han batido, en el mismo orden en que se enseñan.
+ */
+export function marcaPrevia(tipos: TipoMarca[], previos: Records): string | undefined {
+  if (tipos.includes('pesoMaximo') && previos.pesoMaximo) {
+    const m = previos.pesoMaximo
+    return m.reps !== undefined ? `${m.pesoKg} kg × ${m.reps}` : `${m.valor} kg`
+  }
+  if (tipos.includes('masReps') && previos.masReps) {
+    const m = previos.masReps
+    return m.pesoKg !== undefined ? `${m.pesoKg} kg × ${m.valor}` : `${m.valor} reps`
+  }
+  if (tipos.includes('mejorSerie') && previos.mejorSerie) {
+    return origenDeMarca(previos.mejorSerie)
+  }
+  if (tipos.includes('unRM') && previos.unRM) {
+    return origenDeMarca(previos.unRM)
+  }
+  return undefined
+}
+
 /** Un día de este ejercicio, para pintar su historial y su curva. */
 export interface DiaDeEjercicio {
   fecha: string

@@ -3,7 +3,9 @@ import {
   SERIES_PARA_QUE_CUENTE,
   celebrar,
   conSerie,
+  describirSerieCorta,
   formatMarca,
+  marcaPrevia,
   historialDe,
   marcasDe,
   marcasDeSerie,
@@ -271,5 +273,32 @@ describe('cómo se leen', () => {
 describe('los decimales se leen en español', () => {
   it('el 1RM estimado va con coma, no con punto', () => {
     expect(formatMarca('unRM', { valor: 18.7, fecha: 'x' })).toBe('18,7 kg')
+  })
+})
+
+describe('el antes y el después de un récord', () => {
+  const historia = [sesion('2026-01-05', [s(40, 10), s(40, 9), s(40, 8)])]
+  const previos = recordsDe('press', historia)
+
+  it('la serie se lee en corto', () => {
+    expect(describirSerieCorta(s(45, 8))).toBe('45 kg × 8')
+    expect(describirSerieCorta(s(undefined, 12))).toBe('12 reps')
+  })
+
+  it('enseña contra qué se ha batido', () => {
+    expect(marcaPrevia(['pesoMaximo'], previos)).toBe('40 kg × 10')
+    expect(marcaPrevia(['mejorSerie'], previos)).toBe('40 kg × 10')
+  })
+
+  it('sin nada previo no se inventa una referencia', () => {
+    expect(marcaPrevia(['pesoMaximo'], recordsDe('press', []))).toBeUndefined()
+    expect(marcaPrevia([], previos)).toBeUndefined()
+  })
+
+  it('sin peso, la referencia son repeticiones', () => {
+    const sinPeso = recordsDe('fondos', [
+      sesion('2026-01-05', [s(undefined, 8)], { exerciseId: 'fondos' })
+    ])
+    expect(marcaPrevia(['masReps'], sinPeso)).toBe('8 reps')
   })
 })

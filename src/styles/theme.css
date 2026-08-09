@@ -2188,6 +2188,150 @@ textarea:focus {
 }
 
 
+/* ── Descanso y récord, a pantalla completa ─────────────── */
+
+/*
+ * Las dos pantallas del entreno que no existían. Ocupan el alto entero del
+ * área de contenido y empujan sus botones abajo, a la zona del pulgar: durante
+ * un descanso no hay nada más que hacer, así que no hay nada más que enseñar.
+ */
+.rest-screen,
+.record-screen {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100dvh - var(--tabbar-height) - 90px);
+  padding-bottom: var(--sp-4);
+}
+
+.spacer-flex {
+  flex: 1 1 auto;
+  min-height: var(--sp-4);
+}
+
+.rest-ring {
+  width: min(72vw, 280px);
+  height: auto;
+  display: block;
+  margin: var(--sp-3) auto var(--sp-2);
+}
+
+.rest-ring-num {
+  fill: var(--label);
+  font-size: 58px;
+  font-weight: var(--w-semibold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.rest-ring-cap {
+  fill: var(--label-3);
+  font-size: 14px;
+  font-weight: var(--w-regular);
+}
+
+.rest-hecho {
+  margin-top: var(--sp-3);
+}
+
+.rest-hecho-num {
+  font-size: var(--text-heading-sm);
+  font-weight: var(--w-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.rest-siguiente {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.rest-botones {
+  display: flex;
+  gap: var(--sp-3);
+}
+
+.rest-botones .btn {
+  flex: 1;
+  margin: 0;
+}
+
+/* La celebración. Centrada, corta y sin nada que tocar para seguir. */
+.record-screen {
+  align-items: center;
+  text-align: center;
+  padding-top: var(--sp-6);
+}
+
+.record-star {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--sp-5);
+}
+
+.record-star svg {
+  width: 42px;
+  height: 42px;
+}
+
+.record-num {
+  font-size: var(--text-display);
+  line-height: var(--leading-display);
+  letter-spacing: var(--tracking-display);
+  font-weight: var(--w-semibold);
+  font-variant-numeric: tabular-nums;
+  margin: var(--sp-2) 0 var(--sp-2);
+}
+
+.record-frase {
+  max-width: 280px;
+}
+
+.record-antes {
+  width: 100%;
+  margin-top: var(--sp-5);
+  text-align: left;
+}
+
+.record-antes .stat {
+  flex: 1;
+  min-width: 0;
+}
+
+/* La flecha entre el antes y el después: un icono, no un cartel. */
+.record-antes .row > svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  color: var(--accent);
+  transform: none;
+}
+
+.record-antes-num {
+  display: block;
+  font-size: var(--text-subheading);
+  font-weight: var(--w-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--label-2);
+  margin-top: 2px;
+  /* Sin partir: «14 kg × 9» en tres líneas no se compara con nada. */
+  white-space: nowrap;
+}
+
+.record-antes-num.accent {
+  color: var(--accent);
+}
+
+.record-screen .btn {
+  width: 100%;
+}
+
+
 /* ── Récords ────────────────────────────────────────────── */
 
 /*

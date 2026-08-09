@@ -129,7 +129,7 @@ await page.screenshot({ path: `${OUT}/ss-1-encadenado.png`, fullPage: true })
 await press.getByRole('button', { name: /Marcar serie 1/ }).click()
 await page.waitForTimeout(700)
 comprobar(
-  (await page.locator('.rest-timer').count()) === 0,
+  (await page.locator('.rest-screen').count()) === 0,
   'una superserie no descansa entre sus ejercicios: no debería salir el temporizador'
 )
 const ahora = await page.locator('.ahora-toca').allInnerTexts()
@@ -143,19 +143,23 @@ await page.screenshot({ path: `${OUT}/ss-2-salta.png`, fullPage: true })
 // ── Cerrar la vuelta: ahora sí, descanso y vuelta arriba ──
 await remo.getByRole('button', { name: /Marcar serie 1/ }).click()
 await page.waitForTimeout(700)
-const timer = await page.locator('.rest-timer').first().innerText()
-comprobar(/2:0\d|1:5\d/.test(timer), `al cerrar la vuelta toca descansar: ${timer}`)
+const timer = await page.locator('.rest-screen').first().innerText()
+comprobar(/2:0\d|1:5\d/.test(timer), `al cerrar la vuelta toca descansar: ${timer.replace(/\n/g, ' · ')}`)
 comprobar(
   // El rótulo va en versalitas por CSS, así que se compara sin distinguir caja.
   /press de banca/i.test(timer),
   `el descanso debería nombrar a dónde se vuelve: ${timer.replace(/\n/g, ' · ')}`
 )
+console.log('  · descanso de vuelta:', timer.replace(/\n/g, ' · '))
+await page.screenshot({ path: `${OUT}/ss-3-vuelta.png`, fullPage: true })
+
+// El descanso ocupa la pantalla entera, así que la lista vuelve al saltarlo.
+await page.getByRole('button', { name: 'Saltar descanso' }).click()
+await page.waitForTimeout(500)
 comprobar(
   await press.first().evaluate((n) => n.classList.contains('toca-ahora')),
   'tras la vuelta se señala otra vez el primero del grupo'
 )
-console.log('  · descanso de vuelta:', timer.replace(/\n/g, ' · '))
-await page.screenshot({ path: `${OUT}/ss-3-vuelta.png`, fullPage: true })
 
 // ── Reordenar mueve la pareja entera ──────────────────────
 // Por aria-label exacta: el nombre del press aparece también dentro del

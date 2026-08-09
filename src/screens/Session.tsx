@@ -13,8 +13,8 @@ import {
   type SideMode,
   type TipoSerie
 } from '../domain/types'
-import { initLogs, syncExercise, tipoDe, volumeLoad } from '../domain/setLogs'
-import { describirUltimaVez } from '../domain/ultimaVez'
+import { initLogs, rirDe, syncExercise, tipoDe, volumeLoad } from '../domain/setLogs'
+import { describirSerie as describirSerieUltimaVez, describirUltimaVez } from '../domain/ultimaVez'
 import { calentamientoPara, describirReparto, repartirDiscos } from '../domain/discos'
 import {
   DESCANSOS,
@@ -25,10 +25,13 @@ import {
   notaDe
 } from '../domain/preferencias'
 import { mantenerPantalla, soportaWakeLock } from '../store/wakeLock'
+import { prepararAlarma, sonarAlarma, soportaAlarma } from '../store/alarma'
 import {
   NOMBRE_MARCA,
   celebrar,
   conSerie,
+  describirSerieCorta,
+  marcaPrevia,
   marcasDeSerie,
   recordsDe,
   type Records,
@@ -63,7 +66,8 @@ import { useToday } from '../store/clock'
 import { weeklyMuscleVolume } from '../domain/volume'
 import { explicarEquivalencia, minutosEquivalentes, opcionesDeCardio } from '../domain/cardio'
 import Icon from '../components/Icon'
-import RestTimer from '../components/RestTimer'
+import RestScreen from '../components/RestScreen'
+import RecordScreen from '../components/RecordScreen'
 import Chrono, { elapsedSeconds } from '../components/Chrono'
 import ExerciseAnimation from '../components/ExerciseAnimation'
 import ExercisePicker from '../components/ExercisePicker'
@@ -161,6 +165,13 @@ export default function SessionScreen({ session }: { session: Session }) {
    * desaparezca al marcar la siguiente sería enterarse a medias.
    */
   const [marcas, setMarcas] = useState<Record<string, TipoMarca[]>>({})
+  /** El récord recién batido, mientras se enseña a pantalla completa. */
+  const [record, setRecord] = useState<{
+    serie: string
+    anterior?: string
+    ejercicio: string
+    tipos: TipoMarca[]
+  } | null>(null)
   /**
    * Contra qué se comparan las series de hoy. Se calcula una vez al abrir la
    * sesión —el historial no cambia mientras entrenas— y se va actualizando con
@@ -283,6 +294,10 @@ export default function SessionScreen({ session }: { session: Session }) {
   }
 
   function toggleSet(ei: number, si: number) {
+    // Aquí, y no en el temporizador: el navegador solo deja despertar el audio
+    // desde un gesto del usuario, y este toque es el último que hay antes de
+    // que la cuenta atrás llegue a cero ella sola.
+    if (profile.alarmaDescanso !== false) prepararAlarma()
     const ejercicio = exercises[ei]
     const marcando = ejercicio.logs?.[si]?.done !== true
     updateSet(ei, si, { done: marcando })
@@ -308,6 +323,14 @@ export default function SessionScreen({ session }: { session: Session }) {
     if (nuevas.length > 0) {
       setMarcas((m) => ({ ...m, [`${ejercicio.exerciseId}-${si}`]: nuevas }))
       setAviso(celebrar(nuevas, serie, previos) ?? null)
+      // Y se celebra en condiciones: a pantalla completa y un segundo. Es lo
+      // único del entreno que uno cuenta luego.
+      setRecord({
+        serie: describirSerieCorta(serie),
+        anterior: marcaPrevia(nuevas, previos),
+        ejercicio: ejercicio.name,
+        tipos: nuevas
+      })
     }
 
     // Quién va después —y si hay descanso de por medio— lo decide el recorrido,
@@ -599,6 +622,59 @@ export default function SessionScreen({ session }: { session: Session }) {
   }, [enMarcha, profile.keepAwake])
 
 
+  /*
+   * Los dos momentos del entreno toman la pantalla entera, y en este orden: el
+   * récord primero —dura cuatro segundos— y debajo espera el descanso, que es
+   * donde se cae al cerrarlo.
+   */
+  if (record) {
+    return (
+      <RecordScreen
+        serie={record.serie}
+        anterior={record.anterior}
+        ejercicio={record.ejercicio}
+        tipos={record.tipos}
+        onCerrar={() => setRecord(null)}
+      />
+    )
+  }
+
+  if (resting) {
+    const deDonde = exercises[resting.exercise]
+    const hecha = deDonde?.logs?.[resting.set]
+    const previa = deDonde?.previous?.series[resting.set]
+    const siguiente = ahora ? exercises[ahora.exercise] : undefined
+    return (
+      <RestScreen
+        seconds={resting.seconds}
+        hecho={
+          hecha
+            ? {
+                weightKg: hecha.weightKg,
+                reps: hecha.reps,
+                rir: rirDe(hecha, deDonde.plan.rir),
+                previo: previa ? describirSerieUltimaVez(previa) : undefined
+              }
+            : undefined
+        }
+        siguiente={
+          siguiente && ahora
+            ? {
+                etiqueta: etiquetaDe(exercises, ahora.exercise),
+                nombre: siguiente.name,
+                detalle: `Serie ${ahora.set + 1}${
+                  siguiente.plan.weightKg ? ` · ${siguiente.plan.weightKg} kg` : ''
+                } · ${siguiente.plan.reps}`
+              }
+            : undefined
+        }
+        conAlarma={profile.alarmaDescanso !== false}
+        onCorregir={() => setResting(null)}
+        onSkip={() => setResting(null)}
+      />
+    )
+  }
+
   if (ficha !== null && exercises[ficha]) {
     return (
       <ExerciseSheet
@@ -888,6 +964,41 @@ export default function SessionScreen({ session }: { session: Session }) {
                   </div>
                 </div>
               )}
+              {soportaAlarma() && (
+                <div className="row" style={{ marginTop: 14 }}>
+                  <span className="dim">Alarma al acabar el descanso</span>
+                  <div className="options">
+                    <button
+                      className="opt"
+                      aria-pressed={profile.alarmaDescanso !== false}
+                      onClick={() => {
+                        // Se prepara y se prueba en el mismo toque: así se oye
+                        // cómo suena y, de paso, queda el audio despierto.
+                        prepararAlarma()
+                        sonarAlarma()
+                        actions.saveProfile({ ...profile, alarmaDescanso: true })
+                      }}
+                      aria-label="Alarma sonora al acabar el descanso: sí"
+                    >
+                      Sí
+                    </button>
+                    <button
+                      className="opt"
+                      aria-pressed={profile.alarmaDescanso === false}
+                      onClick={() => actions.saveProfile({ ...profile, alarmaDescanso: false })}
+                      aria-label="Alarma sonora al acabar el descanso: no"
+                    >
+                      No
+                    </button>
+                  </div>
+                </div>
+              )}
+              {soportaAlarma() && profile.alarmaDescanso !== false && (
+                <p className="faint" style={{ marginTop: 8 }}>
+                  Suena en el propio móvil, sin notificaciones ni permisos. Con el timbre en
+                  silencio no se oye: el navegador usa el volumen de multimedia.
+                </p>
+              )}
             </div>
           )}
 
@@ -1023,13 +1134,6 @@ export default function SessionScreen({ session }: { session: Session }) {
                     <Icon name="spark" />
                     {marcas[`${e.exerciseId}-${si}`].map((t) => NOMBRE_MARCA[t]).join(' · ')}
                   </p>
-                )}
-                {resting && resting.exercise === ei && resting.set === si && (
-                  <RestTimer
-                    seconds={resting.seconds}
-                    label={resting.nextName ? `Descanso · siguiente: ${resting.nextName}` : undefined}
-                    onSkip={() => setResting(null)}
-                  />
                 )}
               </div>
             ))
