@@ -19,6 +19,14 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
+      /*
+       * Con `PWA=off` se construye sin service worker. Lo usa la cata que se
+       * publica en `/cata/`: dos service workers en el mismo origen, uno con
+       * ámbito `/app-ejercicio/` y otro dentro de él, se pisan —el de fuera
+       * atiende las navegaciones del de dentro y acabas viendo la app de verdad
+       * creyendo que miras la cata—. Sin service worker no hay ambigüedad.
+       */
+      disable: process.env.PWA === 'off',
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg'],
       manifest: {
