@@ -3396,3 +3396,25 @@ textarea:focus {
   line-height: var(--leading-body);
   color: var(--label-2);
 }
+
+
+/* ── La cinta de la cata ────────────────────────────────── */
+
+/*
+ * Solo aparece en la versión que se publica en `/cata/`. Existe porque el
+ * puente de tokens hace que Appica UI se parezca muchísimo a Ritmo —que era el
+ * objetivo—, y sin una marca visible no hay manera de saber cuál de las dos
+ * estás mirando. Fea a propósito: es un andamio, no una función.
+ */
+.cinta-cata {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  padding: 6px var(--sp-4);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: var(--text-caption);
+  line-height: var(--leading-caption);
+  font-weight: var(--w-semibold);
+  text-align: center;
+}

@@ -25,6 +25,21 @@ const TABS: { id: Tab; label: string; icon: 'horizon' | 'body' | 'plate' | 'leaf
   { id: 'yo', label: 'Yo', icon: 'leaf' }
 ]
 
+/**
+ * ¿Esto es la cata o la app de verdad?
+ *
+ * Las dos se publican en el mismo dominio —la app en `/app-ejercicio/` y la
+ * cata en `/app-ejercicio/cata/`— y el puente de tokens hace que se parezcan
+ * mucho a propósito: la gracia era que Appica UI vistiera la ropa de Ritmo. El
+ * problema es que entonces no hay forma de saber cuál estás mirando, y con un
+ * service worker de por medio que puede servirte una creyendo que pides la
+ * otra, «lo veo igual» es un diagnóstico imposible.
+ *
+ * Se mira la base con la que se construyó, así que no hace falta configurar
+ * nada: la cata es la única que se sirve bajo `/cata/`.
+ */
+const ES_CATA = import.meta.env.BASE_URL.includes('/cata/')
+
 export default function App() {
   const data = useAppData()
   const today = useToday()
@@ -33,14 +48,22 @@ export default function App() {
 
   if (!data.profile) {
     return (
-      <main className="app-main">
-        <Onboarding />
-      </main>
+      <>
+        {ES_CATA && <div className="cinta-cata">Cata · Appica UI</div>}
+        <main className="app-main">
+          <Onboarding />
+        </main>
+      </>
     )
   }
 
   return (
     <>
+      {ES_CATA && (
+        <div className="cinta-cata">
+          Cata · Appica UI · <b>Cocina</b> es la única pantalla convertida
+        </div>
+      )}
       <main className="app-main">
         {/* La clave por fecha rearranca las pantallas al cruzar la medianoche:
             el check-in del día nuevo empieza en blanco en vez de heredar las
