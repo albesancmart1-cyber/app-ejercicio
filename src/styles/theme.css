@@ -3449,3 +3449,16 @@ textarea:focus {
   margin-top: var(--sp-3);
   cursor: pointer;
 }
+
+/*
+ * El medidor de una zona, dentro de su carril.
+ *
+ * `Meter` de Appica trae su propia caja; aquí solo tiene que ocupar el carril
+ * entero para que la marca del mínimo —que va posicionada en porcentaje sobre
+ * el mismo carril— siga cuadrando con el relleno.
+ */
+.zona-medidor {
+  display: block;
+  width: 100%;
+  height: 100%;
+}

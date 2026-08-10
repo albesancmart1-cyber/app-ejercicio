@@ -3,6 +3,7 @@ import type { LandmarkOpts } from '../domain/landmarks'
 import type { Session } from '../domain/types'
 import WeekStrip from './WeekStrip'
 import { Etiqueta, Regla } from './ui'
+import { Meter, MeterProgress } from '@appica/ui-react/meter'
 
 /**
  * La semana, con lo que llevas y lo que falta.
@@ -75,14 +76,30 @@ export default function SemanaCard({
                 {z.series} / {z.minimo} series
               </span>
             </div>
-            <div className="zona-track" aria-hidden="true">
-              {/* El mínimo marcado sobre la barra: sin la referencia, una barra
-                  al 60 % no dice si vas bien o mal. */}
+            {/*
+              Sobre `Meter`, que es literalmente lo que esto es: un valor dentro
+              de un rango conocido. Se gana el rol de `meter` —un lector de
+              pantalla lo anuncia como medidor con su mínimo y su máximo— en vez
+              de dos divs invisibles.
+
+              El mínimo se sigue marcando encima: sin la referencia, una barra al
+              60 % no dice si vas bien o mal. Y el color va acompañado siempre de
+              la cifra de al lado, nunca solo.
+            */}
+            <div className="zona-track">
               <span className="zona-minimo" style={{ left: `${(z.minimo / masVale) * 100}%` }} />
-              <div
-                className={`zona-fill ${z.estado}`}
-                style={{ width: `${Math.min(100, (z.series / masVale) * 100)}%` }}
-              />
+              <Meter
+                className={`zona-medidor ${z.estado}`}
+                value={z.series}
+                min={0}
+                max={masVale}
+                low={z.minimo}
+                high={z.maximo}
+                optimum={z.minimo}
+                aria-label={`${z.nombre}: ${z.series} de ${z.minimo} series`}
+              >
+                <MeterProgress className={`zona-fill ${z.estado}`} />
+              </Meter>
             </div>
           </div>
         ))}
