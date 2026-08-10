@@ -21,16 +21,6 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg'],
-      workbox: {
-        /*
-         * El service worker de la app tiene ámbito `/app-ejercicio/`, que
-         * incluye `/app-ejercicio/cata/` —donde se publica la cata de interfaz
-         * para poder mirarla en el móvil—. Sin esta línea, cualquier navegación
-         * ahí dentro caería en el `index.html` de la app de verdad y verías la
-         * app creyendo que ves la cata.
-         */
-        navigateFallbackDenylist: [/\/cata\//]
-      },
       manifest: {
         name: 'Ritmo — entrena con tu cuerpo',
         short_name: 'Ritmo',
