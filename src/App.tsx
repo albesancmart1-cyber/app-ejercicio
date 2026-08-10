@@ -7,6 +7,7 @@ import Today from './screens/Today'
 import Progreso from './screens/Progreso'
 import Meals from './screens/Meals'
 import Settings from './screens/Settings'
+import { Navigation, NavigationItem, NavigationList } from '@appica/ui-react/navigation'
 
 type Tab = 'hoy' | 'progreso' | 'cocina' | 'yo'
 
@@ -74,29 +75,43 @@ export default function App() {
         {tab === 'yo' && <Settings />}
       </main>
       {/*
-        Cápsula de cristal líquido. El indicador va aparte y por debajo de los
-        botones: así se desliza de una pestaña a otra en vez de aparecer y
-        desaparecer, que es lo que hace que el cristal se lea como una pieza
-        física y no como cuatro botones sueltos.
+        La barra, sobre la estructura de `Navigation` de Appica —nav, lista y
+        elementos— pero conservando la cápsula de cristal líquido de Ritmo.
+        Y esto último es una decisión, no un olvido: `Navigation` resultó ser
+        **solo maquetación**, un `<ul>` con `display:flex` y un hueco entre
+        elementos; no trae ni forma ni estado activo, así que cambiar el cristal
+        por él no habría sido rediseñar, habría sido borrar. Lo que sí gana la
+        app es el marcado correcto —una lista de navegación de verdad en vez de
+        cuatro botones sueltos dentro de un div—, que es lo que leen los
+        lectores de pantalla.
+
+        El indicador va aparte y por debajo de los botones: así se desliza de una
+        pestaña a otra en vez de aparecer y desaparecer, que es lo que hace que
+        el cristal se lea como una pieza física.
       */}
-      <nav
+      <Navigation
         className="tabbar"
+        activeLink={indice}
+        aria-label="Secciones de la app"
         style={{ '--tab-count': TABS.length, '--tab-index': indice } as React.CSSProperties}
       >
         <span className="tab-indicator" aria-hidden="true" />
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            className="tab"
-            aria-current={tab === t.id ? 'page' : undefined}
-            aria-label={t.label}
-            onClick={() => setTab(t.id)}
-          >
-            <Icon name={t.icon} />
-            <span>{t.label}</span>
-          </button>
-        ))}
-      </nav>
+        <NavigationList className="tabbar-lista">
+          {TABS.map((t) => (
+            <NavigationItem key={t.id}>
+              <button
+                className="tab"
+                aria-current={tab === t.id ? 'page' : undefined}
+                aria-label={t.label}
+                onClick={() => setTab(t.id)}
+              >
+                <Icon name={t.icon} />
+                <span>{t.label}</span>
+              </button>
+            </NavigationItem>
+          ))}
+        </NavigationList>
+      </Navigation>
     </>
   )
 }

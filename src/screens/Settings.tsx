@@ -19,6 +19,7 @@ import { NIVEL_MAXIMO, volumePlan } from '../domain/progression'
 import { interpretTrend } from '../domain/trend'
 import { actions, todayIso, useAppData } from '../store/store'
 import { Boton, Opcion, Pastilla, Regla } from '../components/ui'
+import { Tabs, TabsList, TabsTrigger } from '@appica/ui-react/tabs'
 
 const ALL_EQUIPMENT = Object.keys(EQUIPMENT_LABELS) as Equipment[]
 
@@ -174,19 +175,15 @@ export default function Settings() {
         seguidas donde lo que se toca una vez al año —borrar los datos— estaba a
         la misma altura que lo que se mira cada mes.
       */}
-      <div className="segmentos" role="tablist" aria-label="Qué ajustar">
-        {SECCIONES.map((s) => (
-          <button
-            key={s.id}
-            role="tab"
-            aria-selected={seccion === s.id}
-            className={`segmento ${seccion === s.id ? 'on' : ''}`}
-            onClick={() => setSeccion(s.id)}
-          >
-            {s.label}
-          </button>
-        ))}
-      </div>
+      <Tabs variant="line" value={seccion} onValueChange={(v) => setSeccion(v as Seccion)}>
+        <TabsList className="segmentos" aria-label="Qué ajustar">
+          {SECCIONES.map((s) => (
+            <TabsTrigger key={s.id} value={s.id}>
+              {s.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       {seccion === 'perfil' && (
         <>

@@ -25,6 +25,7 @@ import { computeLeptinSignal } from '../domain/leptin'
 import { useAppData } from '../store/store'
 import { useToday } from '../store/clock'
 import { Boton, Etiqueta, Regla } from '../components/ui'
+import { Tabs, TabsList, TabsTrigger } from '@appica/ui-react/tabs'
 
 /** Los cinco destinos de Progreso, en el orden en que se miran. */
 type Seccion = 'semana' | 'mes' | 'ano' | 'cuerpo' | 'ejercicios'
@@ -304,19 +305,15 @@ export default function Progreso() {
         entre ello. Nadie llegaba abajo, y lo que se mira a diario —cómo va la
         semana— estaba enterrado.
       */}
-      <div className="segmentos" role="tablist" aria-label="Qué mirar">
-        {SECCIONES.map((s) => (
-          <button
-            key={s.id}
-            role="tab"
-            aria-selected={seccion === s.id}
-            className={`segmento ${seccion === s.id ? 'on' : ''}`}
-            onClick={() => setSeccion(s.id)}
-          >
-            {s.label}
-          </button>
-        ))}
-      </div>
+      <Tabs variant="line" value={seccion} onValueChange={(v) => setSeccion(v as Seccion)}>
+        <TabsList className="segmentos" aria-label="Qué mirar">
+          {SECCIONES.map((s) => (
+            <TabsTrigger key={s.id} value={s.id}>
+              {s.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       {seccion === 'semana' && (
         <SemanaCard

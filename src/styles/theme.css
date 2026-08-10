@@ -3418,3 +3418,28 @@ textarea:focus {
   font-weight: var(--w-semibold);
   text-align: center;
 }
+
+
+/*
+ * La lista de la barra, dentro de la cápsula.
+ *
+ * `Navigation` de Appica mete un `<ul>` entre la cápsula y los botones —que es
+ * el marcado correcto para una navegación—, así que la fila de cuatro columnas
+ * pasa a vivir en la lista y no en la cápsula. Los `<li>` reparten el ancho a
+ * partes iguales, que es lo que mantiene alineado el indicador deslizante: su
+ * posición se calcula por fracciones del ancho total.
+ */
+.tabbar-lista {
+  flex: 1;
+  align-items: stretch;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tabbar-lista > li {
+  flex: 1;
+  display: flex;
+  min-width: 0;
+}

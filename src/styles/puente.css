@@ -97,3 +97,25 @@ body {
   --shadow-color: rgb(0 0 0 / 45%);
   --selection-color: var(--accent-soft);
 }
+
+/*
+ * La marca de la pestaña activa, en ámbar.
+ *
+ * La variante `pill` de `Tabs` lleva `bg-white` **escrito a fuego** —no es un
+ * token, así que ningún tema lo cambia— y una cápsula blanca en una app negra y
+ * ámbar canta muchísimo. Con la variante de línea el indicador sí sale de un
+ * token, pero del de texto fuerte; aquí se lleva al acento, que es el idioma
+ * que ya habla el resto de la app para decir «esto es lo que está activo».
+ *
+ * Va en el puente y sin capa a propósito: las utilidades de Appica viven en
+ * `@layer components`, y solo el CSS sin capa las gana sin recurrir a
+ * `!important`.
+ */
+[data-slot='tabs-indicator'] {
+  background: var(--accent);
+}
+
+[data-slot='tabs-trigger'][data-selected] {
+  color: var(--accent);
+  font-weight: var(--w-medium);
+}
