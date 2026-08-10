@@ -2,6 +2,7 @@ import type { JSX } from 'react'
 import { TIPO_SERIE_CORTO, type PlannedExercise, type SetLog, type TipoSerie } from '../domain/types'
 import { tipoDe } from '../domain/setLogs'
 import Icon from './Icon'
+import { Boton } from './ui'
 
 /**
  * El modo foco: un ejercicio, una serie, un botón.
@@ -186,10 +187,10 @@ export default function FocusMode({
         </div>
       </div>
 
-      <button className="btn btn-primary focus-hecha" onClick={onHecha}>
+      <Boton tono="primario" className="focus-hecha" onClick={onHecha}>
         <Icon name="check" />
         Serie hecha
-      </button>
+      </Boton>
 
       {siguiente && (
         <div className="focus-siguiente">

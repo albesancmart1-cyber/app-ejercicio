@@ -22,6 +22,7 @@ import {
 import { allLandmarks, explicarLandmarks } from '../domain/landmarks'
 import type { LandmarkOpts } from '../domain/landmarks'
 import type { Session } from '../domain/types'
+import { Etiqueta } from './ui'
 
 /**
  * El volumen semanal músculo a músculo, con sus zonas.
@@ -79,7 +80,7 @@ export default function VolumeByMuscle({
           {enBanda.length}
           <small> / {total}</small>
         </span>
-        <span className="tag">en su banda</span>
+        <Etiqueta>en su banda</Etiqueta>
       </div>
       <p className="faint" style={{ marginTop: 10 }}>
         Últimos {VENTANA_DIAS} días. Una serie cuenta entera para el músculo que manda el

@@ -8,6 +8,8 @@ import {
   type EstadoEstres
 } from '../domain/estres'
 import type { Session } from '../domain/types'
+import { Etiqueta, Regla } from './ui'
+import { Badge } from '@appica/ui-react/badge'
 
 /**
  * Cómo está el cuerpo: la fatiga que arrastras frente a la base a la que estás
@@ -87,7 +89,16 @@ export default function EstresCard({
               <span className="stat-label">Fatiga frente a tu base</span>
               <span className="stat-value">{e.ratio.toFixed(2)}</span>
             </span>
-            <span className={`tag estres-tag estres-${e.nivel}`}>{TITULO_NIVEL[e.nivel]}</span>
+            {/* El nivel se dice con palabra **y** con color, nunca solo con
+                color: «pasado» en rojo y «en tu sitio» en verde serían
+                indistinguibles para quien no separa esos dos tonos. */}
+            <Badge
+              variant={
+                e.nivel === 'pasado' ? 'error' : e.nivel === 'subiendo' ? 'warning' : 'success'
+              }
+            >
+              {TITULO_NIVEL[e.nivel]}
+            </Badge>
           </div>
 
           {/* La escala, dicha con palabras: un número suelto entre 0 y 2 no se
@@ -116,14 +127,14 @@ export default function EstresCard({
         <p className="dim">{explicarEstres(e)}</p>
       )}
 
-      <hr className="rule" />
+      <Regla />
       <p className="eyebrow">Tu racha</p>
       <div className="row" style={{ alignItems: 'flex-end' }}>
         <span className="stat">
           <span className="stat-label">Días seguidos</span>
           <span className="stat-value">{r.dias}</span>
         </span>
-        {r.hoyEsDescanso && <span className="tag">Hoy, descanso ganado</span>}
+        {r.hoyEsDescanso && <Etiqueta>Hoy, descanso ganado</Etiqueta>}
       </div>
       <p className="dim" style={{ marginTop: 8 }}>
         {explicarRacha(r)}

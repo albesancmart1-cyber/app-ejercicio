@@ -10,6 +10,7 @@ import {
 import { actions } from '../store/store'
 import Icon from '../components/Icon'
 import Mark from '../components/Mark'
+import { Boton, Opcion, Regla } from '../components/ui'
 
 const ALL_EQUIPMENT = Object.keys(EQUIPMENT_LABELS) as Equipment[]
 
@@ -86,9 +87,9 @@ export default function Onboarding() {
               </label>
             </div>
           </div>
-          <button className="btn btn-primary" onClick={() => setStep(1)}>
+          <Boton tono="primario" onClick={() => setStep(1)}>
             Continuar
-          </button>
+          </Boton>
         </>
       )}
 
@@ -106,12 +107,12 @@ export default function Onboarding() {
             ))}
           </div>
           <div style={{ height: 20 }} />
-          <button className="btn btn-primary" disabled={!goal} onClick={() => setStep(2)}>
+          <Boton tono="primario" disabled={!goal} onClick={() => setStep(2)}>
             Continuar
-          </button>
-          <button className="btn-quiet" onClick={() => setStep(0)}>
+          </Boton>
+          <Boton tono="callado" onClick={() => setStep(0)}>
             Atrás
-          </button>
+          </Boton>
         </>
       )}
 
@@ -122,25 +123,24 @@ export default function Onboarding() {
           <p className="lede">Solo se te propondrán ejercicios que puedas hacer de verdad.</p>
           <div className="options" style={{ marginTop: 24 }}>
             {ALL_EQUIPMENT.map((eq) => (
-              <button
+              <Opcion
                 key={eq}
-                className="opt"
-                aria-pressed={equipment.includes(eq)}
-                onClick={() =>
+                activa={equipment.includes(eq)}
+                onElegir={() =>
                   setEquipment((prev) => (prev.includes(eq) ? prev.filter((e) => e !== eq) : [...prev, eq]))
                 }
               >
                 {EQUIPMENT_LABELS[eq]}
-              </button>
+              </Opcion>
             ))}
           </div>
           <div style={{ height: 20 }} />
-          <button className="btn btn-primary" onClick={() => setStep(ownedWeighted.length ? 3 : 4)}>
+          <Boton tono="primario" onClick={() => setStep(ownedWeighted.length ? 3 : 4)}>
             Continuar
-          </button>
-          <button className="btn-quiet" onClick={() => setStep(1)}>
+          </Boton>
+          <Boton tono="callado" onClick={() => setStep(1)}>
             Atrás
-          </button>
+          </Boton>
         </>
       )}
 
@@ -167,12 +167,12 @@ export default function Onboarding() {
               </label>
             ))}
           </div>
-          <button className="btn btn-primary" onClick={() => setStep(4)}>
+          <Boton tono="primario" onClick={() => setStep(4)}>
             Continuar
-          </button>
-          <button className="btn-quiet" onClick={() => setStep(2)}>
+          </Boton>
+          <Boton tono="callado" onClick={() => setStep(2)}>
             Atrás
-          </button>
+          </Boton>
         </>
       )}
 
@@ -192,7 +192,7 @@ export default function Onboarding() {
             <p className="faint" style={{ marginTop: 12 }}>
               Déjalo vacío si no la sigues o si ya llevas mucho tiempo adaptado.
             </p>
-            <hr className="rule" />
+            <Regla />
             <label className="field">
               <span>mg de DHA por pastilla, si tomas</span>
               <input
@@ -206,12 +206,12 @@ export default function Onboarding() {
               Con esto calculo cuánto te falta cada día, sin pasar nunca de 1.000 mg de suplemento.
             </p>
           </div>
-          <button className="btn btn-primary" onClick={finish}>
+          <Boton tono="primario" onClick={finish}>
             Empezar
-          </button>
-          <button className="btn-quiet" onClick={() => setStep(ownedWeighted.length ? 3 : 2)}>
+          </Boton>
+          <Boton tono="callado" onClick={() => setStep(ownedWeighted.length ? 3 : 2)}>
             Atrás
-          </button>
+          </Boton>
         </>
       )}
     </div>

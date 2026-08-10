@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { NOMBRE_MARCA, type TipoMarca } from '../domain/records'
 import Icon from './Icon'
+import { Boton } from './ui'
 
 /**
  * El récord, a pantalla completa y un segundo.
@@ -83,9 +84,9 @@ export default function RecordScreen({
 
       <div className="spacer-flex" />
 
-      <button className="btn btn-primary" onClick={onCerrar}>
+      <Boton tono="primario" onClick={onCerrar}>
         Seguir entrenando
-      </button>
+      </Boton>
       <p className="faint" style={{ textAlign: 'center', marginTop: 12 }}>
         Se guarda en tu ficha del ejercicio
       </p>

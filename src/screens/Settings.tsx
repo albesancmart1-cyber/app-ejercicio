@@ -18,6 +18,7 @@ import VolumeLevelChooser from '../components/VolumeLevelChooser'
 import { NIVEL_MAXIMO, volumePlan } from '../domain/progression'
 import { interpretTrend } from '../domain/trend'
 import { actions, todayIso, useAppData } from '../store/store'
+import { Boton, Opcion, Pastilla, Regla } from '../components/ui'
 
 const ALL_EQUIPMENT = Object.keys(EQUIPMENT_LABELS) as Equipment[]
 
@@ -193,9 +194,9 @@ export default function Settings() {
           <p className="eyebrow">Objetivo</p>
           <div className="options">
             {(Object.keys(GOAL_LABELS) as Goal[]).map((g) => (
-              <button key={g} className="opt" aria-pressed={profile.goal === g} onClick={() => update({ goal: g })}>
+              <Opcion key={g} activa={profile.goal === g} onElegir={() => update({ goal: g })}>
                 {GOAL_LABELS[g]}
-              </button>
+              </Opcion>
             ))}
           </div>
         </div>
@@ -231,11 +232,10 @@ export default function Settings() {
           <p className="eyebrow">Equipamiento</p>
           <div className="options">
             {ALL_EQUIPMENT.map((eq) => (
-              <button
+              <Opcion
                 key={eq}
-                className="opt"
-                aria-pressed={profile.equipment.includes(eq)}
-                onClick={() =>
+                activa={profile.equipment.includes(eq)}
+                onElegir={() =>
                   update({
                     equipment: profile.equipment.includes(eq)
                       ? profile.equipment.filter((e) => e !== eq)
@@ -244,12 +244,12 @@ export default function Settings() {
                 }
               >
                 {EQUIPMENT_LABELS[eq]}
-              </button>
+              </Opcion>
             ))}
           </div>
           {ownedWeighted.length > 0 && (
             <>
-              <hr className="rule" />
+              <Regla />
               <p className="eyebrow">Peso máximo disponible</p>
               {ownedWeighted.map((eq, i) => (
                 <label className="field" key={eq} style={{ marginTop: i ? 14 : 0 }}>
@@ -315,21 +315,20 @@ export default function Settings() {
                 <div className="item-body">
                   <div className="item-title">{exerciseById(id)?.name ?? id}</div>
                 </div>
-                <button
-                  className="opt"
+                <Pastilla
                   onClick={() =>
                     update({ favoriteExercises: (profile.favoriteExercises ?? []).filter((x) => x !== id) })
                   }
                 >
                   Quitar
-                </button>
+                </Pastilla>
               </div>
             ))
           )}
           <div style={{ height: 14 }} />
-          <button className="btn btn-secondary" onClick={() => setEligiendoFavorito(true)}>
+          <Boton tono="secundario" onClick={() => setEligiendoFavorito(true)}>
             Elegir favoritos del catálogo
-          </button>
+          </Boton>
         </div>
 
         {(data.routines ?? []).length > 0 && (
@@ -353,13 +352,12 @@ export default function Settings() {
                       <div className="item-title">{r.name}</div>
                       <div className="item-meta">{describirRutina(r)}</div>
                     </div>
-                    <button
-                      className="opt"
+                    <Pastilla
                       onClick={() => actions.deleteRoutine(r.id)}
                       aria-label={`Borrar la rutina ${r.name}`}
                     >
                       Borrar
-                    </button>
+                    </Pastilla>
                   </div>
                 ))}
               </div>
@@ -378,14 +376,13 @@ export default function Settings() {
                 <div className="item-body">
                   <div className="item-title">{exerciseById(id)?.name ?? id}</div>
                 </div>
-                <button
-                  className="opt"
+                <Pastilla
                   onClick={() =>
                     update({ dislikedExercises: (profile.dislikedExercises ?? []).filter((x) => x !== id) })
                   }
                 >
                   Readmitir
-                </button>
+                </Pastilla>
               </div>
             ))}
           </div>
@@ -411,7 +408,7 @@ export default function Settings() {
               intensidad por debajo del máximo.
             </p>
           )}
-          <hr className="rule" />
+          <Regla />
           <p className="eyebrow">DHA</p>
           <label className="field">
             <span>mg de DHA por pastilla</span>
@@ -427,7 +424,7 @@ export default function Settings() {
             {esVerano(todayIso()) ? ' (subido por ser verano)' : ''}. Nunca te sugeriré más de
             1.000 mg de suplemento al día: es el techo que la EFSA respalda para el DHA aislado.
           </p>
-          <hr className="rule" />
+          <Regla />
           <p className="dim">
             {protein ? (
               <>
@@ -460,9 +457,9 @@ export default function Settings() {
             Instalada en el móvil, la app guarda una copia para funcionar sin conexión y puede tardar
             en enterarse de que hay algo nuevo. Esta es de <b>{versionInstalada()}</b>.
           </p>
-          <button className="btn btn-secondary" onClick={buscarActualizacion}>
+          <Boton tono="secundario" onClick={buscarActualizacion}>
             {buscando ? 'Buscando…' : 'Buscar actualización'}
-          </button>
+          </Boton>
         </div>
 
         <div className="card">
@@ -470,13 +467,13 @@ export default function Settings() {
           <p className="dim" style={{ marginBottom: 16 }}>
             Todo vive solo en este dispositivo. Haz una copia de vez en cuando.
           </p>
-          <button className="btn btn-secondary" onClick={exportData}>
+          <Boton tono="secundario" onClick={exportData}>
             Exportar copia
-          </button>
+          </Boton>
           <div style={{ height: 8 }} />
-          <button className="btn-quiet" onClick={() => fileInput.current?.click()}>
+          <Boton tono="callado" onClick={() => fileInput.current?.click()}>
             Importar copia
-          </button>
+          </Boton>
           <input
             ref={fileInput}
             type="file"
@@ -489,7 +486,7 @@ export default function Settings() {
               })
             }
           />
-          <hr className="rule" />
+          <Regla />
           {/*
             El JSON de arriba sirve para hacer copia y volver a entrar; el CSV,
             para *mirarlo*: nadie abre un JSON en una hoja de cálculo para ver
@@ -500,13 +497,13 @@ export default function Settings() {
             Una fila por serie, con su peso, sus repeticiones y su RIR. Se abre en cualquier hoja de
             cálculo, y es también por donde entra el historial de Hevy o de Strong.
           </p>
-          <button className="btn btn-secondary" onClick={exportCsv}>
+          <Boton tono="secundario" onClick={exportCsv}>
             Exportar a CSV
-          </button>
+          </Boton>
           <div style={{ height: 8 }} />
-          <button className="btn-quiet" onClick={() => csvInput.current?.click()}>
+          <Boton tono="callado" onClick={() => csvInput.current?.click()}>
             Importar un CSV
-          </button>
+          </Boton>
           <input
             ref={csvInput}
             type="file"
@@ -536,8 +533,7 @@ export default function Settings() {
               {!previa.error && (
                 <>
                   <div style={{ height: 12 }} />
-                  <button
-                    className="btn btn-primary"
+                  <Boton tono="primario"
                     onClick={() => {
                       const traidas = actions.importSessions(previa.sesiones)
                       setPrevia(null)
@@ -549,12 +545,12 @@ export default function Settings() {
                     }}
                   >
                     Añadirlo a mi historial
-                  </button>
+                  </Boton>
                 </>
               )}
-              <button className="btn-quiet" onClick={() => setPrevia(null)}>
+              <Boton tono="callado" onClick={() => setPrevia(null)}>
                 {previa.error ? 'Entendido' : 'Ahora no'}
-              </button>
+              </Boton>
             </div>
           )}
           {importado && (
@@ -563,22 +559,22 @@ export default function Settings() {
             </p>
           )}
 
-          <hr className="rule" />
+          <Regla />
           {!confirmReset ? (
-            <button className="btn-quiet" onClick={() => setConfirmReset(true)}>
+            <Boton tono="callado" onClick={() => setConfirmReset(true)}>
               Borrar todos los datos
-            </button>
+            </Boton>
           ) : (
             <>
               <p className="dim" style={{ marginBottom: 14 }}>
                 Se borrará el perfil y todo el historial de este dispositivo. No hay vuelta atrás.
               </p>
-              <button className="btn btn-secondary" onClick={() => actions.reset()}>
+              <Boton tono="secundario" onClick={() => actions.reset()}>
                 Sí, borrar todo
-              </button>
-              <button className="btn-quiet" onClick={() => setConfirmReset(false)}>
+              </Boton>
+              <Boton tono="callado" onClick={() => setConfirmReset(false)}>
                 Cancelar
-              </button>
+              </Boton>
             </>
           )}
         </div>

@@ -9,6 +9,7 @@ import {
   sincronizar
 } from '../store/sync'
 import { actions } from '../store/store'
+import { Boton, Regla } from './ui'
 
 /**
  * Entrar con el correo para tener los datos en cualquier dispositivo.
@@ -167,13 +168,13 @@ export default function AccountCard() {
               onChange={(e) => setEmail(e.target.value)}
             />
           </label>
-          <button className="btn btn-primary" disabled={enviando} onClick={enviarCorreo}>
+          <Boton tono="primario" disabled={enviando} onClick={enviarCorreo}>
             {enviando ? 'Enviando…' : pedido ? 'Mandarme otro correo' : 'Mandarme el acceso'}
-          </button>
+          </Boton>
 
           {pedido && (
             <div className="fade-in" style={{ marginTop: 6 }}>
-              <hr className="rule" />
+              <Regla />
               <p className="eyebrow">
                 {instalada ? 'Entrar pegando el enlace' : '¿El enlace no te sirve?'}
               </p>
@@ -204,16 +205,15 @@ export default function AccountCard() {
                   onChange={(e) => setAcceso(e.target.value)}
                 />
               </label>
-              <button className="btn btn-secondary" onClick={pegar}>
+              <Boton tono="secundario" onClick={pegar}>
                 Pegar lo copiado
-              </button>
-              <button
-                className="btn btn-primary"
+              </Boton>
+              <Boton tono="primario"
                 disabled={validando || acceso.trim().length < 6}
                 onClick={validarAcceso}
               >
                 {validando ? 'Comprobando…' : 'Entrar'}
-              </button>
+              </Boton>
             </div>
           )}
         </>
@@ -243,16 +243,15 @@ export default function AccountCard() {
           )}
 
           <div style={{ marginTop: 14 }}>
-            <button
-              className="btn btn-primary"
+            <Boton tono="primario"
               disabled={estado.estado === 'sincronizando'}
               onClick={sincronizarAhora}
             >
               {estado.estado === 'sincronizando' ? 'Sincronizando…' : 'Sincronizar ahora'}
-            </button>
-            <button className="btn-quiet" onClick={salir}>
+            </Boton>
+            <Boton tono="callado" onClick={salir}>
               Cerrar sesión en este dispositivo
-            </button>
+            </Boton>
           </div>
           <p className="faint" style={{ marginTop: 10 }}>
             Cerrar sesión no borra nada de aquí: los datos siguen en este dispositivo.

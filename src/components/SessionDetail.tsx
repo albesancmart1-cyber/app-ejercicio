@@ -5,6 +5,7 @@ import { TIPO_SERIE_LABELS, type Session } from '../domain/types'
 import { esCalentamiento, tipoDe } from '../domain/setLogs'
 import { NOMBRE_MARCA, recordsDeLaSesion } from '../domain/records'
 import Icon from './Icon'
+import { Regla } from './ui'
 
 /**
  * Lo que se hizo en un entreno, abierto desde el historial.
@@ -114,7 +115,7 @@ export default function SessionDetail({
             que uno busca al volver a abrir un entreno. */}
         {records.length > 0 && (
           <>
-            <hr className="rule" />
+            <Regla />
             <p className="eyebrow">Récords de este día</p>
             {records.map((x) => (
               <p className="record-hint" key={x.exerciseId}>
@@ -125,11 +126,11 @@ export default function SessionDetail({
           </>
         )}
 
-        <hr className="rule" />
+        <Regla />
         <p className="eyebrow">Qué se movió</p>
         <BodyMap volumen={r.musculos} />
 
-        <hr className="rule" />
+        <Regla />
         <p className="eyebrow">Ejercicio a ejercicio</p>
 
         {r.ejercicios.length === 0 && cardio.length === 0 && (

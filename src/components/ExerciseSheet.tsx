@@ -13,6 +13,7 @@ import { variantLabel } from '../domain/variants'
 import { TIPO_SERIE_LABELS } from '../domain/types'
 import { tipoDe } from '../domain/setLogs'
 import type { Session } from '../domain/types'
+import { Regla } from './ui'
 
 /**
  * La ficha de un ejercicio: tus marcas y todo lo que has hecho en él.
@@ -149,7 +150,7 @@ export default function ExerciseSheet({
 
             {puntos.length >= 2 && (
               <>
-                <hr className="rule" />
+                <Regla />
                 <p className="eyebrow">Cómo va</p>
                 <Curva puntos={puntos} unidad={unidad} />
                 <p className="faint">
@@ -160,7 +161,7 @@ export default function ExerciseSheet({
               </>
             )}
 
-            <hr className="rule" />
+            <Regla />
             <p className="eyebrow">Vez por vez</p>
             {dias.map((d) => (
               <div className="detail-ex" key={`${d.sessionId}-${d.fecha}`}>

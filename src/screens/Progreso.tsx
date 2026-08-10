@@ -24,6 +24,7 @@ import VolumeByMuscle from '../components/VolumeByMuscle'
 import { computeLeptinSignal } from '../domain/leptin'
 import { useAppData } from '../store/store'
 import { useToday } from '../store/clock'
+import { Boton, Etiqueta, Regla } from '../components/ui'
 
 /** Los cinco destinos de Progreso, en el orden en que se miran. */
 type Seccion = 'semana' | 'mes' | 'ano' | 'cuerpo' | 'ejercicios'
@@ -147,7 +148,7 @@ function BodyCompositionCard({
               {actual.weightKg.toLocaleString('es-ES')}
               <small> kg</small>
             </span>
-            {actual.ffmi !== undefined && <span className="tag accent">FFMI {actual.ffmi}</span>}
+            {actual.ffmi !== undefined && <Etiqueta acento>FFMI {actual.ffmi}</Etiqueta>}
           </div>
 
           <div style={{ marginTop: 16 }}>
@@ -191,7 +192,7 @@ function BodyCompositionCard({
             </div>
           )}
 
-          <hr className="rule" />
+          <Regla />
           <Verdict reading={reading} />
 
           {vsPrimera && (
@@ -213,11 +214,11 @@ function BodyCompositionCard({
         </p>
       )}
 
-      <hr className="rule" />
+      <Regla />
       {!abierto ? (
-        <button className="btn-quiet" onClick={() => setAbierto(true)}>
+        <Boton tono="callado" onClick={() => setAbierto(true)}>
           Anotar una medición
-        </button>
+        </Boton>
       ) : (
         <div className="fade-in">
           <div className="field-row">
@@ -240,12 +241,12 @@ function BodyCompositionCard({
             </p>
           )}
           <div style={{ height: 14 }} />
-          <button className="btn btn-primary" disabled={!peso} onClick={guardar}>
+          <Boton tono="primario" disabled={!peso} onClick={guardar}>
             Guardar medición
-          </button>
-          <button className="btn-quiet" onClick={() => setAbierto(false)}>
+          </Boton>
+          <Boton tono="callado" onClick={() => setAbierto(false)}>
             Cancelar
-          </button>
+          </Boton>
         </div>
       )}
     </div>
@@ -364,7 +365,7 @@ export default function Progreso() {
                 {leptin.score}
                 <small> / 100</small>
               </span>
-              <span className="tag accent">{leptin.level}</span>
+              <Etiqueta acento>{leptin.level}</Etiqueta>
             </div>
             <div className="meter" aria-hidden="true">
               {Array.from({ length: 10 }, (_, i) => (
@@ -376,7 +377,7 @@ export default function Progreso() {
             </p>
             {leptin.hurting.length > 0 && (
               <>
-                <hr className="rule" />
+                <Regla />
                 <p className="eyebrow">Lo que resta</p>
                 <ul className="reasons">
                   {leptin.hurting.map((h, i) => (
@@ -387,7 +388,7 @@ export default function Progreso() {
             )}
             {leptin.helping.length > 0 && (
               <>
-                <hr className="rule" />
+                <Regla />
                 <p className="eyebrow">Lo que suma</p>
                 <ul className="reasons">
                   {leptin.helping.map((h, i) => (

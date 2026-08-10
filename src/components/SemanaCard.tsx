@@ -2,6 +2,7 @@ import { explicarSemana, resumenDeSemana } from '../domain/semana'
 import type { LandmarkOpts } from '../domain/landmarks'
 import type { Session } from '../domain/types'
 import WeekStrip from './WeekStrip'
+import { Etiqueta, Regla } from './ui'
 
 /**
  * La semana, con lo que llevas y lo que falta.
@@ -38,19 +39,33 @@ export default function SemanaCard({
             <span className="stat-label">Series de la semana</span>
             <span className="stat-value">{r.series}</span>
           </span>
+          {/*
+            Una comparación en dos palabras, no una etiqueta: «+3 frente a la
+            semana pasada» es una frase, y metida en una cápsula de color se
+            convertía en un bloque a dos líneas que le robaba el protagonismo al
+            número. La cápsula se queda con la cifra —que sí es corta— y el
+            resto se dice en voz baja debajo.
+          */}
           {r.seriesPrevias > 0 && (
-            <span className={`tag ${diferencia >= 0 ? 'accent' : ''}`}>
+            <Etiqueta acento={diferencia > 0}>
               {diferencia === 0
-                ? 'igual que la semana pasada'
-                : `${diferencia > 0 ? '+' : '−'}${Math.abs(diferencia)} frente a la semana pasada`}
-            </span>
+                ? 'igual'
+                : `${diferencia > 0 ? '+' : '−'}${Math.abs(diferencia)}`}
+            </Etiqueta>
           )}
         </div>
+        {r.seriesPrevias > 0 && (
+          <p className="faint" style={{ marginTop: 6 }}>
+            {diferencia === 0
+              ? 'Las mismas series que la semana pasada.'
+              : `${Math.abs(diferencia)} ${Math.abs(diferencia) === 1 ? 'serie' : 'series'} ${diferencia > 0 ? 'más' : 'menos'} que la semana pasada.`}
+          </p>
+        )}
         <p className="dim" style={{ marginTop: 12 }}>
           {explicarSemana(r)}
         </p>
 
-        <hr className="rule" />
+        <Regla />
         <p className="eyebrow">Qué falta por trabajar</p>
         {r.zonas.map((z) => (
           <div className="zona" key={z.grupo}>

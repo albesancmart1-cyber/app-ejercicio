@@ -17,6 +17,7 @@ import {
   type LandmarkOverrides
 } from '../domain/landmarks'
 import type { Profile } from '../domain/types'
+import { Boton, Regla } from './ui'
 
 /**
  * Los objetivos de volumen, ajustables a mano.
@@ -92,7 +93,7 @@ export default function LandmarkSettings({
 
       {nota && <p className="faint">{nota}</p>}
 
-      <hr className="rule" />
+      <Regla />
       <p className="eyebrow">
         Por músculo{ajustados > 0 ? ` · ${ajustados} ajustado${ajustados === 1 ? '' : 's'}` : ''}
       </p>
@@ -183,9 +184,9 @@ function LandmarkRow({
             ))}
           </div>
           {tocado && (
-            <button className="btn-quiet" onClick={onReset}>
+            <Boton tono="callado" onClick={onReset}>
               Volver a los valores de fábrica
-            </button>
+            </Boton>
           )}
         </>
       )}

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Opcion, Pastilla } from './ui'
 
 /**
  * Cuenta atrás del descanso entre series.
@@ -60,8 +61,7 @@ export default function RestTimer({
         <div className="rest-fill" style={{ width: `${progreso}%` }} />
       </div>
       <div className="rest-actions">
-        <button
-          className="opt"
+        <Pastilla
           onClick={() => {
             avisado.current = false
             setEndsAt((prev) => Math.max(Date.now(), prev) + 30_000)
@@ -69,10 +69,10 @@ export default function RestTimer({
           }}
         >
           +30 s
-        </button>
-        <button className="opt" onClick={onSkip}>
+        </Pastilla>
+        <Pastilla onClick={onSkip}>
           {terminado ? 'Seguir' : 'Saltar descanso'}
-        </button>
+        </Pastilla>
       </div>
     </div>
   )
