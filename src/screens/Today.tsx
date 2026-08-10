@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { Suspense, lazy, useMemo, useState } from 'react'
 import {
   MUSCLE_GROUPS,
   MUSCLE_LABELS,
@@ -20,7 +20,15 @@ import Icon from '../components/Icon'
 import VolumeLevelChooser from '../components/VolumeLevelChooser'
 import ReadinessRing from '../components/ReadinessRing'
 import WeekStrip from '../components/WeekStrip'
-import SessionScreen from './Session'
+/*
+ * La pantalla de entrenar, aparte.
+ *
+ * Es la más pesada de la app —se lleva el cajón de opciones y los contadores—
+ * y solo hace falta cuando de verdad se está entrenando. Quien abre «Hoy» para
+ * ver qué le toca y decide que hoy no, no descarga nada de eso.
+ */
+const SessionScreen = lazy(() => import('./Session'))
+import { Boton, Escala, Etiqueta, Opcion, Regla } from '../components/ui'
 
 type Scale = 1 | 2 | 3 | 4 | 5
 type YesNoKey =
@@ -66,13 +74,7 @@ function ScaleInput({
 }) {
   return (
     <>
-      <div className="scale">
-        {([1, 2, 3, 4, 5] as Scale[]).map((n) => (
-          <button key={n} aria-pressed={value === n} onClick={() => onChange(n)}>
-            {n}
-          </button>
-        ))}
-      </div>
+      <Escala valor={value} onElegir={onChange} aria-label={`${low} a ${high}`} />
       <div className="scale-legend">
         <span className="faint">{low}</span>
         <span className="faint">{high}</span>
@@ -161,20 +163,18 @@ export default function Today() {
       <div className="row">
         <span style={{ fontSize: '0.9rem' }}>{q}</span>
         <div className="options" style={{ flexWrap: 'nowrap' }}>
-          <button
-            className="opt"
-            aria-pressed={habits[key] === true}
-            onClick={() => setHabits((p) => ({ ...p, [key]: true }))}
+          <Opcion
+            activa={habits[key] === true}
+            onElegir={() => setHabits((p) => ({ ...p, [key]: true }))}
           >
             Sí
-          </button>
-          <button
-            className="opt"
-            aria-pressed={habits[key] === false}
-            onClick={() => setHabits((p) => ({ ...p, [key]: false }))}
+          </Opcion>
+          <Opcion
+            activa={habits[key] === false}
+            onElegir={() => setHabits((p) => ({ ...p, [key]: false }))}
           >
             No
-          </button>
+          </Opcion>
         </div>
       </div>
     </div>
@@ -224,7 +224,13 @@ export default function Today() {
     setPhase('inicio')
   }
 
-  if (activeSession) return <SessionScreen session={activeSession} />
+  if (activeSession) {
+    return (
+      <Suspense fallback={null}>
+        <SessionScreen session={activeSession} />
+      </Suspense>
+    )
+  }
 
   return (
     <div className="fade-in">
@@ -256,9 +262,9 @@ export default function Today() {
               </p>
             </div>
           )}
-          <button className="btn btn-primary" onClick={() => setPhase('checkin')}>
+          <Boton tono="primario" onClick={() => setPhase('checkin')}>
             {doneToday ? 'Preparar otra sesión' : 'Empezar'}
-          </button>
+          </Boton>
         </div>
       )}
 
@@ -268,7 +274,7 @@ export default function Today() {
             <p className="eyebrow">Descanso</p>
             <h2 style={{ marginBottom: 16 }}>¿Cómo has dormido?</h2>
             <ScaleInput value={sleep} onChange={setSleep} low="Muy mal" high="De maravilla" />
-            <hr className="rule" />
+            <Regla />
             <h2 style={{ marginBottom: 16 }}>¿Cuánta energía tienes?</h2>
             <ScaleInput value={energy} onChange={setEnergy} low="Agotado" high="A tope" />
           </div>
@@ -295,20 +301,19 @@ export default function Today() {
               tríceps cargados a la vez, y con una sola no se contaba bien.
             </p>
             <div className="options">
-              <button
-                className="opt"
-                aria-pressed={respondido && zonas.length === 0 && !leves}
-                onClick={sinMolestias}
+              <Opcion
+                activa={respondido && zonas.length === 0 && !leves}
+                onElegir={sinMolestias}
               >
                 Ninguna
-              </button>
+              </Opcion>
               {MUSCLE_GROUPS.filter((g) => g !== 'cardio').map((g: MuscleGroup) => (
-                <button key={g} className="opt" aria-pressed={zonas.includes(g)} onClick={() => alternarZona(g)}>
+                <Opcion key={g} activa={zonas.includes(g)} onElegir={() => alternarZona(g)}>
                   {MUSCLE_LABELS[g]}
-                </button>
+                </Opcion>
               ))}
             </div>
-            <hr className="rule" />
+            <Regla />
             <button
               className="opt opt-block"
               aria-pressed={leves}
@@ -332,8 +337,7 @@ export default function Today() {
             )}
           </div>
 
-          <button
-            className="btn btn-primary"
+          <Boton tono="primario"
             disabled={!complete}
             onClick={() => {
               if (checkIn) actions.saveCheckIn(checkIn)
@@ -341,10 +345,10 @@ export default function Today() {
             }}
           >
             Ver qué me conviene
-          </button>
-          <button className="btn-quiet" onClick={() => setPhase('inicio')}>
+          </Boton>
+          <Boton tono="callado" onClick={() => setPhase('inicio')}>
             Ahora no
-          </button>
+          </Boton>
         </div>
       )}
 
@@ -371,34 +375,34 @@ export default function Today() {
             </div>
 
             <div className="tag-row">
-              <span className="tag">Intensidad {recommendation.intensity}</span>
+              <Etiqueta>Intensidad {recommendation.intensity}</Etiqueta>
               {recommendation.kind !== 'descanso_activo' && recommendation.kind !== 'cardio_suave' && (
-                <span className="tag">{recommendation.rir} reps en reserva</span>
+                <Etiqueta>{recommendation.rir} reps en reserva</Etiqueta>
               )}
               {recommendation.reentry && (
-                <span className="tag">
+                <Etiqueta>
                   Vuelta {recommendation.reentry.step}/{recommendation.reentry.total}
-                </span>
+                </Etiqueta>
               )}
-              {recommendation.ketoAdapting && <span className="tag">Adaptación cetogénica</span>}
-              {recommendation.userOverride && <span className="tag accent">A petición tuya</span>}
+              {recommendation.ketoAdapting && <Etiqueta>Adaptación cetogénica</Etiqueta>}
+              {recommendation.userOverride && <Etiqueta acento>A petición tuya</Etiqueta>}
             </div>
 
-            <button className="btn btn-primary decision-cta" onClick={startSession}>
+            <Boton tono="primario" className="decision-cta" onClick={startSession}>
               <Icon name="spark" />
               {recommendation.kind === 'descanso_activo' || recommendation.kind === 'cardio_suave'
                 ? 'Empezar'
                 : 'Empezar entreno'}
-            </button>
+            </Boton>
 
             {override === 'ninguno' && canIntensify(recommendation) && (
               <>
-                <hr className="rule" />
+                <Regla />
                 {canMix(recommendation) && (
                   <>
-                    <button className="btn btn-secondary" onClick={() => setOverride('mixto')}>
+                    <Boton tono="secundario" onClick={() => setOverride('mixto')}>
                       Pesas sin quitar el cardio
-                    </button>
+                    </Boton>
                     <p className="faint" style={{ margin: '0 0 14px' }}>
                       Unos ejercicios de fuerza primero y el cardio a la mitad,{' '}
                       {Math.round((recommendation.cardioMinutes ?? 0) / 2)} min en vez de{' '}
@@ -406,9 +410,9 @@ export default function Today() {
                     </p>
                   </>
                 )}
-                <button className="btn btn-secondary" onClick={() => setOverride('pesas')}>
+                <Boton tono="secundario" onClick={() => setOverride('pesas')}>
                   Prefiero algo con pesas
-                </button>
+                </Boton>
                 <p className="faint" style={{ marginTop: 10 }}>
                   Te lo cambio por fuerza contenida, respetando igualmente tus molestias y las 48 h
                   de recuperación.
@@ -417,16 +421,16 @@ export default function Today() {
             )}
             {override !== 'ninguno' && (
               <>
-                <hr className="rule" />
-                <button className="btn-quiet" onClick={() => setOverride('ninguno')}>
+                <Regla />
+                <Boton tono="callado" onClick={() => setOverride('ninguno')}>
                   Volver a lo que me tocaba
-                </button>
+                </Boton>
               </>
             )}
 
             {recommendation.volume && recommendation.kind === 'fuerza' && (
               <>
-                <hr className="rule" />
+                <Regla />
                 {/* El nivel de volumen se pliega: es de leer con calma, no de
                     mirar antes de entrenar. Su sitio natural es Progreso. */}
                 <button
@@ -553,9 +557,9 @@ export default function Today() {
             </div>
           )}
 
-          <button className="btn-quiet" onClick={() => setPhase('checkin')}>
+          <Boton tono="callado" onClick={() => setPhase('checkin')}>
             Revisar mis respuestas
-          </button>
+          </Boton>
         </div>
       )}
     </div>

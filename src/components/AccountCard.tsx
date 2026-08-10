@@ -9,6 +9,9 @@ import {
   sincronizar
 } from '../store/sync'
 import { actions } from '../store/store'
+import { Boton, Regla } from './ui'
+import { Field, FieldLabel } from '@appica/ui-react/field'
+import { Input } from '@appica/ui-react/input'
 
 /**
  * Entrar con el correo para tener los datos en cualquier dispositivo.
@@ -156,9 +159,9 @@ export default function AccountCard() {
             </p>
           )}
 
-          <label className="field" style={{ marginTop: 14 }}>
-            <span>Tu correo</span>
-            <input
+          <Field className="field" style={{ marginTop: 14 }}>
+  <FieldLabel>Tu correo</FieldLabel>
+  <Input
               type="email"
               inputMode="email"
               autoComplete="email"
@@ -166,14 +169,14 @@ export default function AccountCard() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
-          </label>
-          <button className="btn btn-primary" disabled={enviando} onClick={enviarCorreo}>
+</Field>
+          <Boton tono="primario" disabled={enviando} onClick={enviarCorreo}>
             {enviando ? 'Enviando…' : pedido ? 'Mandarme otro correo' : 'Mandarme el acceso'}
-          </button>
+          </Boton>
 
           {pedido && (
             <div className="fade-in" style={{ marginTop: 6 }}>
-              <hr className="rule" />
+              <Regla />
               <p className="eyebrow">
                 {instalada ? 'Entrar pegando el enlace' : '¿El enlace no te sirve?'}
               </p>
@@ -191,9 +194,9 @@ export default function AccountCard() {
                 </li>
                 <li>Vuelve aquí y pégalo.</li>
               </ol>
-              <label className="field" style={{ marginTop: 12 }}>
-                <span>El enlace del correo</span>
-                <input
+              <Field className="field" style={{ marginTop: 12 }}>
+  <FieldLabel>El enlace del correo</FieldLabel>
+  <Input
                   type="text"
                   inputMode="url"
                   autoComplete="off"
@@ -203,17 +206,16 @@ export default function AccountCard() {
                   value={acceso}
                   onChange={(e) => setAcceso(e.target.value)}
                 />
-              </label>
-              <button className="btn btn-secondary" onClick={pegar}>
+</Field>
+              <Boton tono="secundario" onClick={pegar}>
                 Pegar lo copiado
-              </button>
-              <button
-                className="btn btn-primary"
+              </Boton>
+              <Boton tono="primario"
                 disabled={validando || acceso.trim().length < 6}
                 onClick={validarAcceso}
               >
                 {validando ? 'Comprobando…' : 'Entrar'}
-              </button>
+              </Boton>
             </div>
           )}
         </>
@@ -243,16 +245,15 @@ export default function AccountCard() {
           )}
 
           <div style={{ marginTop: 14 }}>
-            <button
-              className="btn btn-primary"
+            <Boton tono="primario"
               disabled={estado.estado === 'sincronizando'}
               onClick={sincronizarAhora}
             >
               {estado.estado === 'sincronizando' ? 'Sincronizando…' : 'Sincronizar ahora'}
-            </button>
-            <button className="btn-quiet" onClick={salir}>
+            </Boton>
+            <Boton tono="callado" onClick={salir}>
               Cerrar sesión en este dispositivo
-            </button>
+            </Boton>
           </div>
           <p className="faint" style={{ marginTop: 10 }}>
             Cerrar sesión no borra nada de aquí: los datos siguen en este dispositivo.

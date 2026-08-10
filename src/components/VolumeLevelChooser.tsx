@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { NIVEL_MAXIMO, resumenDeNivel, type VolumeLevel } from '../domain/progression'
+import { Boton } from './ui'
 
 const NIVELES: VolumeLevel[] = [1, 2, 3, 4]
 
@@ -46,13 +47,13 @@ export default function VolumeLevelChooser({
   if (!abierto) {
     return (
       <div className="level-actions">
-        <button className="btn-quiet" onClick={() => setAbierto(true)}>
+        <Boton tono="callado" onClick={() => setAbierto(true)}>
           {actual >= NIVEL_MAXIMO ? 'Cambiar de nivel' : 'Subir de nivel'}
-        </button>
+        </Boton>
         {elegidoPorTi && (
-          <button className="btn-quiet" onClick={onAutomatico}>
+          <Boton tono="callado" onClick={onAutomatico}>
             Volver a que decidas tú
-          </button>
+          </Boton>
         )}
       </div>
     )
@@ -87,13 +88,13 @@ export default function VolumeLevelChooser({
       </div>
       <div className="level-actions">
         {elegidoPorTi && (
-          <button className="btn-quiet" onClick={() => { onAutomatico(); setAbierto(false) }}>
+          <Boton tono="callado" onClick={() => { onAutomatico(); setAbierto(false) }}>
             Volver a que decidas tú
-          </button>
+          </Boton>
         )}
-        <button className="btn-quiet" onClick={() => setAbierto(false)}>
+        <Boton tono="callado" onClick={() => setAbierto(false)}>
           Cancelar
-        </button>
+        </Boton>
       </div>
     </div>
   )

@@ -75,6 +75,10 @@ import ExerciseAnimation from '../components/ExerciseAnimation'
 import ExercisePicker from '../components/ExercisePicker'
 import ExerciseSheet from '../components/ExerciseSheet'
 import { patternOf } from '../data/patterns'
+import { Boton, Escala, Interruptor, Opcion } from '../components/ui'
+import { Field, FieldLabel } from '@appica/ui-react/field'
+import { Input } from '@appica/ui-react/input'
+import { Drawer, DrawerBody, DrawerContent, DrawerHeader, DrawerTitle } from '@appica/ui-react/drawer'
 
 /** Los minutos que lleva puestos un ejercicio de cardio, si los dice. */
 function minutosDe(pe: PlannedExercise): number | undefined {
@@ -788,14 +792,8 @@ export default function SessionScreen({ session }: { session: Session }) {
                 }
               : undefined
           }
-          onCambiarPeso={(delta) => {
-            const base = serie.weightKg ?? e.plan.weightKg ?? 0
-            updateSet(ei, si, { weightKg: Math.max(0, Math.round((base + delta) * 4) / 4) })
-          }}
-          onCambiarReps={(delta) => {
-            const base = serie.reps ?? repsDelPlan(e)
-            updateSet(ei, si, { reps: Math.max(0, base + delta) })
-          }}
+          onFijarPeso={(kg) => updateSet(ei, si, { weightKg: Math.max(0, Math.round(kg * 4) / 4) })}
+          onFijarReps={(reps) => updateSet(ei, si, { reps: Math.max(0, Math.round(reps)) })}
           // Volver a tocar el que ya está puesto lo quita: anotar un RIR por
           // error y no poder desanotarlo falsearía la fatiga del día.
           onCambiarRir={(rir) => updateSet(ei, si, { rir: serie.rir === rir ? undefined : rir })}
@@ -807,15 +805,23 @@ export default function SessionScreen({ session }: { session: Session }) {
 
         {aviso && <p className="faint focus-aviso">{aviso}</p>}
 
-        {menu && (
-          <div className="hoja-fondo fade-in" onClick={() => setMenu(false)}>
-            <div
-              className="hoja"
-              role="dialog"
-              aria-label={`Opciones de ${e.name}`}
-              onClick={(ev) => ev.stopPropagation()}
-            >
-              <p className="eyebrow">{e.name}</p>
+        {/*
+          Lo secundario, en un cajón de verdad y no en un div con un fondo
+          oscuro detrás. `Drawer` trae lo que aquello no tenía: se cierra
+          arrastrando hacia abajo, atrapa el foco mientras está abierto y lo
+          devuelve al botón de los tres puntos al cerrarse.
+        */}
+        <Drawer open={menu} onOpenChange={setMenu}>
+          {/* `closeLabel` en castellano: por defecto la librería pone «Close»,
+              y esta app no habla inglés en ningún sitio. */}
+          <DrawerContent className="hoja" closeLabel="Cerrar el menú">
+            <DrawerHeader>
+              {/* Con el botón de cerrar a la derecha, un nombre largo se le
+                  metía debajo. Se corta con puntos suspensivos: el ejercicio ya
+                  se sabe cuál es, el título aquí solo confirma. */}
+              <DrawerTitle className="truncate pe-10">{e.name}</DrawerTitle>
+            </DrawerHeader>
+            <DrawerBody>
               <div className="hoja-acciones">
                 {patternOf(e.exerciseId) && (
                   <button
@@ -879,12 +885,9 @@ export default function SessionScreen({ session }: { session: Session }) {
                   Terminar el entreno
                 </button>
               </div>
-              <button className="btn-quiet" onClick={() => setMenu(false)}>
-                Cerrar
-              </button>
-            </div>
-          </div>
-        )}
+            </DrawerBody>
+          </DrawerContent>
+        </Drawer>
       </>
     )
   }
@@ -907,9 +910,9 @@ export default function SessionScreen({ session }: { session: Session }) {
       {/* La lista es la vista de los cambios de plan; la de entrenar es la
           otra. Por eso la puerta de vuelta va arriba y no al final. */}
       {enMarcha && puntoDeFoco && (
-        <button className="btn btn-secondary" onClick={() => setModo('foco')}>
+        <Boton tono="secundario" onClick={() => setModo('foco')}>
           Volver a la serie que toca
-        </button>
+        </Boton>
       )}
 
       {exercises.map((e, ei) => (
@@ -1050,9 +1053,9 @@ export default function SessionScreen({ session }: { session: Session }) {
               </button>
             )}
             {e.primary !== 'cardio' && (
-              <button className="btn-quiet btn-inline" onClick={() => noProponerMas(ei)}>
+              <Boton tono="callado" className="btn-inline" onClick={() => noProponerMas(ei)}>
                 No me lo propongas más
-              </button>
+              </Boton>
             )}
           </div>
           {comoSeHace === ei && (
@@ -1076,28 +1079,26 @@ export default function SessionScreen({ session }: { session: Session }) {
                 {materiales.length > 0 && (
                   <div className="variant-row">
                     {materiales.map((eq) => (
-                      <button
+                      <Opcion
                         key={eq}
-                        className="opt"
-                        aria-pressed={e.variant?.implement === eq}
-                        onClick={() => ajustarVariante(ei, { implement: eq })}
+                        activa={e.variant?.implement === eq}
+                        onElegir={() => ajustarVariante(ei, { implement: eq })}
                       >
                         {EQUIPMENT_LABELS[eq]}
-                      </button>
+                      </Opcion>
                     ))}
                   </div>
                 )}
                 {lados.length > 0 && (
                   <div className="variant-row">
                     {lados.map((s) => (
-                      <button
+                      <Opcion
                         key={s}
-                        className="opt"
-                        aria-pressed={e.variant?.side === s}
-                        onClick={() => ajustarVariante(ei, { side: s })}
+                        activa={e.variant?.side === s}
+                        onElegir={() => ajustarVariante(ei, { side: s })}
                       >
                         {SIDE_LABELS[s]}
-                      </button>
+                      </Opcion>
                     ))}
                   </div>
                 )}
@@ -1115,75 +1116,58 @@ export default function SessionScreen({ session }: { session: Session }) {
               <p className="eyebrow">Descanso entre series</p>
               <div className="options">
                 {DESCANSOS.map((seg) => (
-                  <button
+                  <Opcion
                     key={seg}
-                    className="opt"
-                    aria-pressed={descansoDe(profile, e.exerciseId, e.plan.restSeconds) === seg}
-                    onClick={() => actions.saveProfile(conDescanso(profile, e.exerciseId, seg))}
+                    activa={descansoDe(profile, e.exerciseId, e.plan.restSeconds) === seg}
+                    onElegir={() => actions.saveProfile(conDescanso(profile, e.exerciseId, seg))}
                   >
                     {formatDescanso(seg)}
-                  </button>
+                  </Opcion>
                 ))}
               </div>
-              <label className="field" style={{ marginTop: 14 }}>
-                <span>Tu nota para este ejercicio</span>
-                <input
+              <Field className="field" style={{ marginTop: 14 }}>
+  <FieldLabel>Tu nota para este ejercicio</FieldLabel>
+  <Input
                   type="text"
                   placeholder="El agujero del asiento, el agarre que no molesta…"
                   defaultValue={notaDe(profile, e.exerciseId)}
                   onBlur={(ev) => actions.saveProfile(conNota(profile, e.exerciseId, ev.target.value))}
                   aria-label={`Nota para ${e.name}`}
                 />
-              </label>
+</Field>
+              {/*
+                Un ajuste que solo puede estar puesto o quitado es un
+                interruptor, no dos botones. Con el par de «Sí»/«No» hacían falta
+                dos elementos y una lectura para saber cuál estaba activo; el
+                interruptor lo dice con su propia posición y ocupa la mitad.
+              */}
               {soportaWakeLock() && (
-                <div className="row" style={{ marginTop: 14 }}>
+                <label className="row ajuste-si-no">
                   <span className="dim">Que la pantalla no se apague</span>
-                  <div className="options">
-                    <button
-                      className="opt"
-                      aria-pressed={profile.keepAwake === true}
-                      onClick={() => actions.saveProfile({ ...profile, keepAwake: true })}
-                    >
-                      Sí
-                    </button>
-                    <button
-                      className="opt"
-                      aria-pressed={profile.keepAwake !== true}
-                      onClick={() => actions.saveProfile({ ...profile, keepAwake: false })}
-                    >
-                      No
-                    </button>
-                  </div>
-                </div>
+                  <Interruptor
+                    checked={profile.keepAwake === true}
+                    onCheckedChange={(v) => actions.saveProfile({ ...profile, keepAwake: v })}
+                  />
+                </label>
               )}
               {soportaAlarma() && (
-                <div className="row" style={{ marginTop: 14 }}>
+                <label className="row ajuste-si-no">
                   <span className="dim">Alarma al acabar el descanso</span>
-                  <div className="options">
-                    <button
-                      className="opt"
-                      aria-pressed={profile.alarmaDescanso !== false}
-                      onClick={() => {
-                        // Se prepara y se prueba en el mismo toque: así se oye
-                        // cómo suena y, de paso, queda el audio despierto.
+                  <Interruptor
+                    checked={profile.alarmaDescanso !== false}
+                    onCheckedChange={(v) => {
+                      // Al encenderla se prueba en el mismo toque: así se oye
+                      // cómo suena y, de paso, queda el audio despierto, que es
+                      // lo que el navegador solo permite desde un gesto.
+                      if (v) {
                         prepararAlarma()
                         sonarAlarma()
-                        actions.saveProfile({ ...profile, alarmaDescanso: true })
-                      }}
-                      aria-label="Alarma sonora al acabar el descanso: sí"
-                    >
-                      Sí
-                    </button>
-                    <button
-                      className="opt"
-                      aria-pressed={profile.alarmaDescanso === false}
-                      onClick={() => actions.saveProfile({ ...profile, alarmaDescanso: false })}
-                      aria-label="Alarma sonora al acabar el descanso: no"
-                    >
-                      No
-                    </button>
-                  </div>
-                </div>
+                      }
+                      actions.saveProfile({ ...profile, alarmaDescanso: v })
+                    }}
+                    aria-label="Alarma sonora al acabar el descanso"
+                  />
+                </label>
               )}
               {soportaAlarma() && profile.alarmaDescanso !== false && (
                 <p className="faint" style={{ marginTop: 8 }}>
@@ -1213,14 +1197,13 @@ export default function SessionScreen({ session }: { session: Session }) {
                   e.exerciseId,
                   minutosDe(e) ?? session.cardioMinutes ?? 25
                 ).map((o) => (
-                  <button
+                  <Opcion
                     key={o.exercise.id}
-                    className="opt"
-                    aria-pressed={o.actual}
-                    onClick={() => cambiarCardio(ei, o.exercise.id)}
+                    activa={o.actual}
+                    onElegir={() => cambiarCardio(ei, o.exercise.id)}
                   >
                     {nombreCorto(o.exercise.name)} · {o.minutos} min
-                  </button>
+                  </Opcion>
                 ))}
               </div>
             </div>
@@ -1338,9 +1321,9 @@ export default function SessionScreen({ session }: { session: Session }) {
           elegir nada: las pone la app. */}
       {pesas && (
         <>
-          <button className="btn btn-primary" onClick={anadirPesas}>
+          <Boton tono="primario" onClick={anadirPesas}>
             Añadir pesas · te las elijo yo
-          </button>
+          </Boton>
           <p className="faint" style={{ margin: '0 0 14px' }}>
             {pesas.exercises.length} ejercicios de las zonas que llevan más sin trabajarse, y el
             cardio baja a {pesas.cardioMinutes} min para no cargar el día de más.
@@ -1348,9 +1331,9 @@ export default function SessionScreen({ session }: { session: Session }) {
         </>
       )}
 
-      <button className="btn btn-secondary" onClick={() => setEligiendo({ modo: 'anadir' })}>
+      <Boton tono="secundario" onClick={() => setEligiendo({ modo: 'anadir' })}>
         Añadir un ejercicio de la lista
-      </button>
+      </Boton>
 
       {/*
         Guardar el entreno de hoy para repetirlo. Guarda la estructura y no los
@@ -1360,8 +1343,7 @@ export default function SessionScreen({ session }: { session: Session }) {
       {sePuedeGuardar({ ...session, exercises }) && (
         <>
           {!guardandoRutina ? (
-            <button
-              className="btn-quiet"
+            <Boton tono="callado"
               onClick={() => {
                 setNombreRutina(nombrePropuesto(session))
                 setCarpetaRutina('')
@@ -1369,7 +1351,7 @@ export default function SessionScreen({ session }: { session: Session }) {
               }}
             >
               Guardar esto como rutina
-            </button>
+            </Boton>
           ) : (
             <div className="card fade-in">
               <p className="eyebrow">Guardar como rutina</p>
@@ -1377,18 +1359,18 @@ export default function SessionScreen({ session }: { session: Session }) {
                 Se guardan los ejercicios, el orden y las series. Los pesos no: esos los pone la
                 progresión cada vez que la repitas, mirando lo que hiciste la última vez.
               </p>
-              <label className="field">
-                <span>Nombre</span>
-                <input
+              <Field className="field">
+  <FieldLabel>Nombre</FieldLabel>
+  <Input
                   type="text"
                   value={nombreRutina}
                   onChange={(ev) => setNombreRutina(ev.target.value)}
                   aria-label="Nombre de la rutina"
                 />
-              </label>
-              <label className="field" style={{ marginTop: 12 }}>
-                <span>Carpeta (opcional)</span>
-                <input
+</Field>
+              <Field className="field" style={{ marginTop: 12 }}>
+  <FieldLabel>Carpeta (opcional)</FieldLabel>
+  <Input
                   type="text"
                   list="carpetas-de-rutinas"
                   placeholder="Casa, gimnasio, torso…"
@@ -1396,19 +1378,19 @@ export default function SessionScreen({ session }: { session: Session }) {
                   onChange={(ev) => setCarpetaRutina(ev.target.value)}
                   aria-label="Carpeta de la rutina"
                 />
-              </label>
+</Field>
               <datalist id="carpetas-de-rutinas">
                 {nombresDeCarpeta(data.routines ?? []).map((c) => (
                   <option key={c} value={c} />
                 ))}
               </datalist>
               <div style={{ height: 14 }} />
-              <button className="btn btn-primary" disabled={!nombreRutina.trim()} onClick={guardarRutina}>
+              <Boton tono="primario" disabled={!nombreRutina.trim()} onClick={guardarRutina}>
                 Guardar rutina
-              </button>
-              <button className="btn-quiet" onClick={() => setGuardandoRutina(false)}>
+              </Boton>
+              <Boton tono="callado" onClick={() => setGuardandoRutina(false)}>
                 Ahora no
-              </button>
+              </Boton>
             </div>
           )}
         </>
@@ -1422,12 +1404,12 @@ export default function SessionScreen({ session }: { session: Session }) {
 
       {!enMarcha ? (
         <>
-          <button className="btn btn-primary" onClick={empezar}>
+          <Boton tono="primario" onClick={empezar}>
             Empezar entrenamiento
-          </button>
-          <button className="btn-quiet" onClick={() => descartar()}>
+          </Boton>
+          <Boton tono="callado" onClick={() => descartar()}>
             Hoy no puedo — descartar sin culpa
-          </button>
+          </Boton>
         </>
       ) : !finishing ? (
         <>
@@ -1436,24 +1418,18 @@ export default function SessionScreen({ session }: { session: Session }) {
               Volumen de hoy: {Math.round(volumen).toLocaleString('es-ES')} kg levantados.
             </p>
           )}
-          <button className="btn btn-primary" disabled={doneSets === 0} onClick={() => setFinishing(true)}>
+          <Boton tono="primario" disabled={doneSets === 0} onClick={() => setFinishing(true)}>
             Terminar
-          </button>
-          <button className="btn-quiet" onClick={() => descartar()}>
+          </Boton>
+          <Boton tono="callado" onClick={() => descartar()}>
             Hoy no puedo — descartar sin culpa
-          </button>
+          </Boton>
         </>
       ) : (
         <div className="card fade-in">
           <p className="eyebrow">Última pregunta</p>
           <h2 style={{ marginBottom: 16 }}>¿Cómo te has sentido?</h2>
-          <div className="scale">
-            {([1, 2, 3, 4, 5] as const).map((n) => (
-              <button key={n} aria-pressed={rpe === n} onClick={() => setRpe(n)}>
-                {n}
-              </button>
-            ))}
-          </div>
+          <Escala valor={rpe} onElegir={setRpe} aria-label="De muy duro a muy cómodo" />
           <div className="scale-legend">
             <span className="faint">Muy duro</span>
             <span className="faint">Muy cómodo</span>
@@ -1462,9 +1438,9 @@ export default function SessionScreen({ session }: { session: Session }) {
             Con las repeticiones que has anotado y esta sensación ajustamos las cargas de la próxima.
           </p>
           <div style={{ height: 20 }} />
-          <button className="btn btn-primary" onClick={guardar}>
+          <Boton tono="primario" onClick={guardar}>
             Guardar el entreno
-          </button>
+          </Boton>
         </div>
       )}
     </div>

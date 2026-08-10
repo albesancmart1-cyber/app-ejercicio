@@ -14,6 +14,10 @@ import {
 } from '../data/meals'
 import { bandaDeProteina, platosParaElMinimo, tresIdeas } from '../domain/cocina'
 import { complementarConPastillas, esVerano, objetivoDhaDiario } from '../domain/dha'
+import { Badge } from '@appica/ui-react/badge'
+import { Button } from '@appica/ui-react/button'
+import { Separator } from '@appica/ui-react/separator'
+import { Toggle } from '@appica/ui-react/toggle'
 import { useAppData } from '../store/store'
 import { useToday } from '../store/clock'
 import Icon from '../components/Icon'
@@ -32,13 +36,13 @@ function Receta({ meal, pillMg, today }: { meal: Meal; pillMg: number; today: st
     <>
       <h2>{meal.name}</h2>
       <div className="tag-row">
-        <span className={`tag ${nivel === 'alto' ? 'accent' : ''}`}>
+        <Badge className="dha-tag" variant={nivel === 'alto' ? 'primary' : 'soft'}>
           {DHA_LABELS[nivel]} · {meal.dhaMg} mg
-        </span>
-        <span className="tag">≈ {meal.proteinG} g de proteína</span>
-        <span className="tag">{EFFORT_LABELS[meal.effort]}</span>
+        </Badge>
+        <Badge variant="soft">≈ {meal.proteinG} g de proteína</Badge>
+        <Badge variant="soft">{EFFORT_LABELS[meal.effort]}</Badge>
       </div>
-      <hr className="rule" />
+      <Separator className="my-4" />
       <ul className="reasons">
         {meal.ingredients.map((ing, i) => (
           <li key={i}>{ing}</li>
@@ -60,7 +64,7 @@ function Receta({ meal, pillMg, today }: { meal: Meal; pillMg: number; today: st
       )}
       {meal.limit && (
         <>
-          <hr className="rule" />
+          <Separator className="my-4" />
           <p className="eyebrow">Máximo {meal.limit.maxPerWeek} por semana</p>
           <p className="faint">{meal.limit.reason}</p>
         </>
@@ -83,9 +87,9 @@ function Idea({ meal, onAbrir }: { meal: Meal; onAbrir: () => void }) {
           {EFFORT_LABELS[meal.effort]} · ≈ {meal.proteinG} g de proteína
         </span>
         <span className="tag-row">
-          <span className={`tag ${nivel === 'alto' ? 'accent' : ''}`}>
+          <Badge className="dha-tag" variant={nivel === 'alto' ? 'primary' : 'soft'}>
             {DHA_LABELS[nivel]} · {meal.dhaMg} mg
-          </span>
+          </Badge>
         </span>
       </span>
       <Icon name="chevron" />
@@ -134,10 +138,10 @@ export default function Meals() {
   if (current) {
     return (
       <div className="fade-in">
-        <button className="btn-atras" onClick={() => setCurrent(null)}>
+        <Button className="btn-atras" variant="ghost" size="sm" onClick={() => setCurrent(null)}>
           <Icon name="chevron" />
           Volver a las ideas
-        </button>
+        </Button>
         <div className="card">
           <Receta meal={current} pillMg={pillMg} today={today} />
         </div>
@@ -169,9 +173,9 @@ export default function Meals() {
       </div>
 
       {ideas.length > 0 && (
-        <button className="btn btn-secondary" onClick={otrasTres}>
+        <Button className="mb-2 w-full" variant="secondary" size="lg" onClick={otrasTres}>
           Otras tres
-        </button>
+        </Button>
       )}
 
       {mejorNivel && mejorNivel !== 'alto' && (
@@ -218,12 +222,12 @@ export default function Meals() {
             cuentas: come hasta saciarte de verdad y deja que la leptina regule lo demás.
           </p>
         )}
-        <hr className="rule" />
+        <Separator className="my-4" />
         <p className="eyebrow">DHA de hoy</p>
         <p className="banda-num">
           {objetivoDha.toLocaleString('es-ES')}
           <small> mg</small>
-          {esVerano(today) && <span className="tag accent">verano</span>}
+          {esVerano(today) && <Badge variant="primary">verano</Badge>}
         </p>
         <p className="faint" style={{ marginTop: 10 }}>
           {esVerano(today)
@@ -238,33 +242,33 @@ export default function Meals() {
       <div className="card">
         <p className="eyebrow">¿Qué te apetece?</p>
         <div className="options">
-          <button className="opt" aria-pressed={base === null} onClick={() => setBase(null)}>
+          <Toggle pressed={base === null} onPressedChange={() => setBase(null)}>
             Lo que sea
-          </button>
+          </Toggle>
           {BASES.map((b) => (
-            <button key={b} className="opt" aria-pressed={base === b} onClick={() => setBase(b)}>
+            <Toggle key={b} pressed={base === b} onPressedChange={() => setBase(b)}>
               {BASE_LABELS[b]}
-            </button>
+            </Toggle>
           ))}
         </div>
 
-        <hr className="rule" />
+        <Separator className="my-4" />
         <p className="eyebrow">¿Cuánto tiempo tienes?</p>
         <div className="options">
-          <button className="opt" aria-pressed={effort === null} onClick={() => setEffort(null)}>
+          <Toggle pressed={effort === null} onPressedChange={() => setEffort(null)}>
             Da igual
-          </button>
+          </Toggle>
           {EFFORTS.map((e) => (
-            <button key={e} className="opt" aria-pressed={effort === e} onClick={() => setEffort(e)}>
+            <Toggle key={e} pressed={effort === e} onPressedChange={() => setEffort(e)}>
               {EFFORT_LABELS[e]}
-            </button>
+            </Toggle>
           ))}
         </div>
       </div>
 
-      <button className="btn-quiet" onClick={() => setBrowsing(!browsing)}>
+      <Button className="w-full" variant="ghost" onClick={() => setBrowsing(!browsing)}>
         {browsing ? 'Ocultar el recetario' : `Ver los ${MEALS.length} platos`}
-      </button>
+      </Button>
 
       {browsing && (
         <div className="fade-in" style={{ marginTop: 16 }}>

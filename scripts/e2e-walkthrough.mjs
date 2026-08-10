@@ -594,8 +594,23 @@ if (segundas.some((n) => primeras.includes(n))) {
   process.exit(1)
 }
 
-/** Las etiquetas de DHA de las tres ideas que hay ahora en pantalla. */
-const etiquetasDha = () => ideas.locator('.tag').allInnerTexts()
+/**
+ * Las etiquetas de DHA de las tres ideas que hay ahora en pantalla.
+ *
+ * Aborta si no encuentra ninguna, y no por quisquillosidad: al cambiar la
+ * etiqueta a un componente de Appica esta función pasó a devolver `[]`, y como
+ * `[].every(...)` es `true`, las dos comprobaciones de DHA de más abajo
+ * siguieron dando verde sin comprobar nada. Una aserción que puede pasar sobre
+ * una lista vacía no es una aserción.
+ */
+async function etiquetasDha() {
+  const etiquetas = await ideas.locator('.dha-tag').allInnerTexts()
+  if (etiquetas.length === 0) {
+    console.error('ERROR: no se encuentran las etiquetas de DHA — el selector se ha quedado obsoleto')
+    process.exit(1)
+  }
+  return etiquetas
+}
 
 // El DHA manda: sin filtros, toda idea debe ser de DHA alto.
 for (let i = 0; i < 3; i++) {

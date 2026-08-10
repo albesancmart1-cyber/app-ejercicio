@@ -17,6 +17,9 @@ import {
   type LandmarkOverrides
 } from '../domain/landmarks'
 import type { Profile } from '../domain/types'
+import { Boton, Regla } from './ui'
+import { Field, FieldLabel } from '@appica/ui-react/field'
+import { Input } from '@appica/ui-react/input'
 
 /**
  * Los objetivos de volumen, ajustables a mano.
@@ -92,7 +95,7 @@ export default function LandmarkSettings({
 
       {nota && <p className="faint">{nota}</p>}
 
-      <hr className="rule" />
+      <Regla />
       <p className="eyebrow">
         Por músculo{ajustados > 0 ? ` · ${ajustados} ajustado${ajustados === 1 ? '' : 's'}` : ''}
       </p>
@@ -167,9 +170,9 @@ function LandmarkRow({
         <>
           <div className="landmark-fields">
             {CAMPOS.map(({ clave, label }) => (
-              <label className="field" key={clave}>
-                <span>{label}</span>
-                <input
+              <Field className="field" key={clave}>
+  <FieldLabel>{label}</FieldLabel>
+  <Input
                   type="number"
                   min={1}
                   max={60}
@@ -179,13 +182,13 @@ function LandmarkRow({
                     if (Number.isFinite(n) && n > 0) onSave({ [clave]: n })
                   }}
                 />
-              </label>
+</Field>
             ))}
           </div>
           {tocado && (
-            <button className="btn-quiet" onClick={onReset}>
+            <Boton tono="callado" onClick={onReset}>
               Volver a los valores de fábrica
-            </button>
+            </Boton>
           )}
         </>
       )}

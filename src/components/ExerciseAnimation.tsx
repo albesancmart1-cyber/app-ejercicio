@@ -1,3 +1,4 @@
+import type { JSX } from 'react'
 import { PATTERN_CUES, type MovementPattern } from '../data/patterns'
 
 /**

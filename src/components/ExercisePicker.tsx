@@ -19,6 +19,7 @@ import { formatSeries, impactoDeAnadir, type MuscleVolume } from '../domain/volu
 import { allLandmarks } from '../domain/landmarks'
 import type { LandmarkOpts } from '../domain/landmarks'
 import Icon from './Icon'
+import { Opcion } from './ui'
 
 const GRUPOS = MUSCLE_GROUPS.filter((g) => g !== 'cardio')
 
@@ -114,13 +115,13 @@ export default function ExercisePicker({
         />
 
         <div className="options picker-groups">
-          <button className="opt" aria-pressed={group === 'todos'} onClick={() => setGroup('todos')}>
+          <Opcion activa={group === 'todos'} onElegir={() => setGroup('todos')}>
             Todo
-          </button>
+          </Opcion>
           {GRUPOS.map((g) => (
-            <button key={g} className="opt" aria-pressed={group === g} onClick={() => setGroup(g)}>
+            <Opcion key={g} activa={group === g} onElegir={() => setGroup(g)}>
               {MUSCLE_LABELS[g]}
-            </button>
+            </Opcion>
           ))}
         </div>
       </div>
@@ -177,9 +178,9 @@ export default function ExercisePicker({
       </div>
 
       <div className="picker-foot">
-        <button className="opt" aria-pressed={todoElMaterial} onClick={() => setTodoElMaterial((v) => !v)}>
+        <Opcion activa={todoElMaterial} onElegir={() => setTodoElMaterial((v) => !v)}>
           {todoElMaterial ? 'Viendo todo el catálogo' : 'Solo lo que puedo hacer con mi material'}
-        </button>
+        </Opcion>
         <p className="faint" style={{ margin: '10px 2px 0' }}>
           La estrella marca favoritos: de esos tira la app cuando te propone la sesión.
         </p>

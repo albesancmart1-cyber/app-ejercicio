@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { sonarAlarma } from '../store/alarma'
+import { Boton, Etiqueta } from './ui'
 
 /**
  * El descanso, a pantalla completa.
@@ -119,7 +120,7 @@ export default function RestScreen({
             <span className="rest-hecho-num">
               {hecho.weightKg !== undefined ? `${hecho.weightKg} kg × ${hecho.reps ?? '—'}` : `${hecho.reps ?? '—'} reps`}
             </span>
-            {hecho.rir !== undefined && <span className="tag">RIR {hecho.rir}</span>}
+            {hecho.rir !== undefined && <Etiqueta>RIR {hecho.rir}</Etiqueta>}
           </div>
           {hecho.previo && (
             <p className="faint" style={{ marginTop: 8 }}>
@@ -127,9 +128,9 @@ export default function RestScreen({
             </p>
           )}
           {onCorregir && (
-            <button className="btn-quiet" style={{ marginTop: 10 }} onClick={onCorregir}>
+            <Boton tono="callado" style={{ marginTop: 10 }} onClick={onCorregir}>
               Corregir la serie
-            </button>
+            </Boton>
           )}
         </div>
       )}
@@ -150,8 +151,7 @@ export default function RestScreen({
       <div className="spacer-flex" />
 
       <div className="rest-botones">
-        <button
-          className="btn btn-secondary"
+        <Boton tono="secundario"
           onClick={() => {
             avisado.current = false
             setEndsAt((prev) => Math.max(Date.now(), prev) + 30_000)
@@ -159,7 +159,7 @@ export default function RestScreen({
           }}
         >
           +30 s
-        </button>
+        </Boton>
         <button className={terminado ? 'btn btn-primary' : 'btn btn-secondary'} onClick={onSkip}>
           {terminado ? 'Seguir' : 'Saltar descanso'}
         </button>

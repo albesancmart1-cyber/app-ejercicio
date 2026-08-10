@@ -1,0 +1,38 @@
+/*
+ * La hoja de entrada: Tailwind v4, los tokens de Appica UI y el sistema visual
+ * de Ritmo, en el orden correcto. Es el único CSS que importa `main.tsx`.
+ *
+ * ── Por qué esto es una cascada de capas y no tres imports seguidos ──────────
+ *
+ * Tailwind v4 emite sus utilidades dentro de `@layer`, y en la cascada de CSS
+ * **el estilo sin capa gana al estilo en capa**, pase lo que pase con la
+ * especificidad. Las 3.400 líneas de Ritmo estaban sin capa, así que su
+ * `button { background: none }` pisaba el `bg-secondary` de cada botón de
+ * Appica: el componente traía la clase puesta y el navegador la ignoraba. Medido
+ * antes de arreglarlo: `background-color: rgba(0, 0, 0, 0)` con `bg-secondary`
+ * aplicado, y `padding: 0px` con `px-2.5` aplicado.
+ *
+ * Declarando el orden abajo, cada uno manda donde debe:
+ *
+ *  - `theme` y `base`: los valores y el reinicio de Tailwind, lo primero.
+ *  - `ritmo`: el sistema visual de la app, que sí debe pisar ese reinicio.
+ *  - `components` y `utilities`: Appica, que debe pisar las reglas genéricas de
+ *    Ritmo —si no, un `<Button>` nunca se vería como un botón de Appica—.
+ *
+ * ── Por qué el `@source` va acotado ─────────────────────────────────────────
+ *
+ * Tailwind ignora `node_modules`, así que sin `@source` los componentes salen
+ * sin estilo. Pero es un escaneo de texto, no un análisis del grafo de imports:
+ * apuntándolo a `dist` entero genera las utilidades de los sesenta y seis
+ * componentes aunque no importes ninguno —236 kB de CSS con cero componentes
+ * usados, frente a 59 kB sin la línea—. Acotado a los cuatro que se usan de
+ * verdad, 105 kB. **Cada componente que se adopte hay que añadirlo a la lista.**
+ */
+@layer theme, base, ritmo, components, utilities;
+
+@import 'tailwindcss';
+@import '@appica/ui-react/styles.css';
+@import './theme.css' layer(ritmo);
+@import './puente.css';
+
+@source '../../node_modules/@appica/ui-react/dist/components/{button,badge,toggle,separator,navigation,tabs,field,input,toggle-group,drawer,meter,sparkline}/**/*.js';

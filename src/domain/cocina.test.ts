@@ -5,7 +5,7 @@ import {
   platosParaElMinimo,
   tresIdeas
 } from './cocina'
-import { MEALS, dhaLevel, filterMeals } from '../data/meals'
+import { MEALS, bestDhaTier, dhaLevel, filterMeals } from '../data/meals'
 
 /** Azar determinista: siempre el primero de la lista. */
 const primero = () => 0
@@ -43,6 +43,16 @@ describe('tres ideas a la vez', () => {
     )
     for (const m of otras)
       expect(primeras.map((x) => x.id)).not.toContain(m.id)
+  })
+
+  it('no baja de escalón de DHA para completar la terna', () => {
+    // Pidiendo carne solo hay dos platos que resuelvan el DHA. Antes se
+    // rellenaba con un tercero cualquiera y se colaba uno de 10 mg junto a dos
+    // de mil y pico: dos que sirven valen más que tres de los que uno sobra.
+    const ideas = tresIdeas('carne', null, [], primero)
+    const mejor = dhaLevel(bestDhaTier(filterMeals('carne', null))[0])
+    expect(ideas.length).toBeGreaterThan(0)
+    for (const m of ideas) expect(dhaLevel(m), m.name).toBe(mejor)
   })
 
   it('con un filtro estrecho devuelve lo que haya, sin inventar', () => {

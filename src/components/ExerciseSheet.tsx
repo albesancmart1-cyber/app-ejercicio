@@ -13,6 +13,8 @@ import { variantLabel } from '../domain/variants'
 import { TIPO_SERIE_LABELS } from '../domain/types'
 import { tipoDe } from '../domain/setLogs'
 import type { Session } from '../domain/types'
+import { Regla } from './ui'
+import { Sparkline, SparklineChart } from '@appica/ui-react/sparkline'
 
 /**
  * La ficha de un ejercicio: tus marcas y todo lo que has hecho en él.
@@ -28,39 +30,38 @@ import type { Session } from '../domain/types'
  * es lo que allí progresa.
  */
 
-const W = 320
-const H = 120
-const PAD = { top: 12, right: 10, bottom: 18, left: 10 }
-
 type Punto = { fecha: string; valor: number }
 
+/**
+ * La curva del ejercicio, sobre `Sparkline`.
+ *
+ * Sustituye a un SVG a mano con su propia escala. Además de la línea, la
+ * librería trae lo que aquello no tenía: un indicador que sigue al dedo y un
+ * globo con el valor de cada sesión, que es justo lo que uno quiere al mirar
+ * una progresión —«¿cuánto moví el 3 de marzo?»— y que en un dibujo plano no
+ * había forma de responder.
+ *
+ * Va en `line` y no en `area`: el relleno bajo la curva insinúa un volumen
+ * acumulado, y esto no acumula nada, es una serie de marcas sueltas.
+ */
 function Curva({ puntos, unidad }: { puntos: Punto[]; unidad: string }) {
-  const maximo = Math.max(...puntos.map((p) => p.valor))
-  const minimo = Math.min(...puntos.map((p) => p.valor))
-  // Un margen abajo para que la línea no se pegue al canto, y para que una
-  // progresión pequeña no parezca un despegue: la escala arranca por debajo del
-  // mínimo, no en él.
-  const suelo = minimo - Math.max(1, (maximo - minimo) * 0.35)
-  const techo = maximo + Math.max(1, (maximo - minimo) * 0.15)
-  const x = (i: number) =>
-    PAD.left + (i / Math.max(1, puntos.length - 1)) * (W - PAD.left - PAD.right)
-  const y = (v: number) =>
-    PAD.top + (1 - (v - suelo) / Math.max(0.001, techo - suelo)) * (H - PAD.top - PAD.bottom)
-
-  const linea = puntos.map((p, i) => `${x(i)},${y(p.valor)}`).join(' ')
-
   return (
-    <svg
-      viewBox={`0 0 ${W} ${H}`}
+    <Sparkline
       className="ficha-chart"
-      role="img"
-      aria-label={`Progresión en ${unidad}, de lo más antiguo a lo más reciente`}
+      data={puntos.map((p) => p.valor)}
+      labels={puntos.map((p) => p.fecha)}
+      locale="es-ES"
+      color="var(--accent)"
     >
-      <polyline points={linea} className="ficha-linea" fill="none" />
-      {puntos.map((p, i) => (
-        <circle key={p.fecha} cx={x(i)} cy={y(p.valor)} r={i === puntos.length - 1 ? 3.5 : 2} className="ficha-punto" />
-      ))}
-    </svg>
+      <SparklineChart
+        variant="line"
+        height={120}
+        strokeWidth={2}
+        indicator
+        tooltip
+        aria-label={`Progresión en ${unidad}, de lo más antiguo a lo más reciente`}
+      />
+    </Sparkline>
   )
 }
 
@@ -149,7 +150,7 @@ export default function ExerciseSheet({
 
             {puntos.length >= 2 && (
               <>
-                <hr className="rule" />
+                <Regla />
                 <p className="eyebrow">Cómo va</p>
                 <Curva puntos={puntos} unidad={unidad} />
                 <p className="faint">
@@ -160,7 +161,7 @@ export default function ExerciseSheet({
               </>
             )}
 
-            <hr className="rule" />
+            <Regla />
             <p className="eyebrow">Vez por vez</p>
             {dias.map((d) => (
               <div className="detail-ex" key={`${d.sessionId}-${d.fecha}`}>

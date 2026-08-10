@@ -24,6 +24,10 @@ import VolumeByMuscle from '../components/VolumeByMuscle'
 import { computeLeptinSignal } from '../domain/leptin'
 import { useAppData } from '../store/store'
 import { useToday } from '../store/clock'
+import { Boton, Etiqueta, Regla } from '../components/ui'
+import { Tabs, TabsList, TabsTrigger } from '@appica/ui-react/tabs'
+import { Field, FieldLabel } from '@appica/ui-react/field'
+import { Input } from '@appica/ui-react/input'
 
 /** Los cinco destinos de Progreso, en el orden en que se miran. */
 type Seccion = 'semana' | 'mes' | 'ano' | 'cuerpo' | 'ejercicios'
@@ -147,7 +151,7 @@ function BodyCompositionCard({
               {actual.weightKg.toLocaleString('es-ES')}
               <small> kg</small>
             </span>
-            {actual.ffmi !== undefined && <span className="tag accent">FFMI {actual.ffmi}</span>}
+            {actual.ffmi !== undefined && <Etiqueta acento>FFMI {actual.ffmi}</Etiqueta>}
           </div>
 
           <div style={{ marginTop: 16 }}>
@@ -191,7 +195,7 @@ function BodyCompositionCard({
             </div>
           )}
 
-          <hr className="rule" />
+          <Regla />
           <Verdict reading={reading} />
 
           {vsPrimera && (
@@ -213,26 +217,26 @@ function BodyCompositionCard({
         </p>
       )}
 
-      <hr className="rule" />
+      <Regla />
       {!abierto ? (
-        <button className="btn-quiet" onClick={() => setAbierto(true)}>
+        <Boton tono="callado" onClick={() => setAbierto(true)}>
           Anotar una medición
-        </button>
+        </Boton>
       ) : (
         <div className="fade-in">
           <div className="field-row">
-            <label className="field">
-              <span>Peso (kg)</span>
-              <input type="number" inputMode="decimal" value={peso} onChange={(e) => setPeso(e.target.value)} />
-            </label>
-            <label className="field">
-              <span>Grasa (%)</span>
-              <input type="number" inputMode="decimal" value={grasa} onChange={(e) => setGrasa(e.target.value)} />
-            </label>
-            <label className="field">
-              <span>Músculo (%)</span>
-              <input type="number" inputMode="decimal" value={musculo} onChange={(e) => setMusculo(e.target.value)} />
-            </label>
+            <Field className="field">
+  <FieldLabel>Peso (kg)</FieldLabel>
+  <Input type="number" inputMode="decimal" value={peso} onChange={(e) => setPeso(e.target.value)} />
+</Field>
+            <Field className="field">
+  <FieldLabel>Grasa (%)</FieldLabel>
+  <Input type="number" inputMode="decimal" value={grasa} onChange={(e) => setGrasa(e.target.value)} />
+</Field>
+            <Field className="field">
+  <FieldLabel>Músculo (%)</FieldLabel>
+  <Input type="number" inputMode="decimal" value={musculo} onChange={(e) => setMusculo(e.target.value)} />
+</Field>
           </div>
           {error && (
             <p className="faint" style={{ marginTop: 10 }}>
@@ -240,12 +244,12 @@ function BodyCompositionCard({
             </p>
           )}
           <div style={{ height: 14 }} />
-          <button className="btn btn-primary" disabled={!peso} onClick={guardar}>
+          <Boton tono="primario" disabled={!peso} onClick={guardar}>
             Guardar medición
-          </button>
-          <button className="btn-quiet" onClick={() => setAbierto(false)}>
+          </Boton>
+          <Boton tono="callado" onClick={() => setAbierto(false)}>
             Cancelar
-          </button>
+          </Boton>
         </div>
       )}
     </div>
@@ -303,19 +307,15 @@ export default function Progreso() {
         entre ello. Nadie llegaba abajo, y lo que se mira a diario —cómo va la
         semana— estaba enterrado.
       */}
-      <div className="segmentos" role="tablist" aria-label="Qué mirar">
-        {SECCIONES.map((s) => (
-          <button
-            key={s.id}
-            role="tab"
-            aria-selected={seccion === s.id}
-            className={`segmento ${seccion === s.id ? 'on' : ''}`}
-            onClick={() => setSeccion(s.id)}
-          >
-            {s.label}
-          </button>
-        ))}
-      </div>
+      <Tabs variant="line" value={seccion} onValueChange={(v) => setSeccion(v as Seccion)}>
+        <TabsList className="segmentos" aria-label="Qué mirar">
+          {SECCIONES.map((s) => (
+            <TabsTrigger key={s.id} value={s.id}>
+              {s.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       {seccion === 'semana' && (
         <SemanaCard
@@ -364,7 +364,7 @@ export default function Progreso() {
                 {leptin.score}
                 <small> / 100</small>
               </span>
-              <span className="tag accent">{leptin.level}</span>
+              <Etiqueta acento>{leptin.level}</Etiqueta>
             </div>
             <div className="meter" aria-hidden="true">
               {Array.from({ length: 10 }, (_, i) => (
@@ -376,7 +376,7 @@ export default function Progreso() {
             </p>
             {leptin.hurting.length > 0 && (
               <>
-                <hr className="rule" />
+                <Regla />
                 <p className="eyebrow">Lo que resta</p>
                 <ul className="reasons">
                   {leptin.hurting.map((h, i) => (
@@ -387,7 +387,7 @@ export default function Progreso() {
             )}
             {leptin.helping.length > 0 && (
               <>
-                <hr className="rule" />
+                <Regla />
                 <p className="eyebrow">Lo que suma</p>
                 <ul className="reasons">
                   {leptin.helping.map((h, i) => (

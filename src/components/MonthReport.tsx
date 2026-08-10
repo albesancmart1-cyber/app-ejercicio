@@ -13,6 +13,7 @@ import { formatDuration } from './Chrono'
 import BodyMap from './BodyMap'
 import Icon from './Icon'
 import type { Session } from '../domain/types'
+import { Regla } from './ui'
 
 /**
  * El informe del mes.
@@ -149,13 +150,13 @@ export default function MonthReport({
               : ''}
           </p>
 
-          <hr className="rule" />
+          <Regla />
           <p className="eyebrow">Qué se movió</p>
           <BodyMap volumen={e.porMusculo} />
 
           {e.records.length > 0 && (
             <>
-              <hr className="rule" />
+              <Regla />
               <p className="eyebrow">Récords del mes</p>
               {e.records.map((r, i) => (
                 <p className="record-hint" key={`${r.exerciseId}-${r.fecha}-${i}`}>
@@ -168,7 +169,7 @@ export default function MonthReport({
 
           {e.masHechos.length > 0 && (
             <>
-              <hr className="rule" />
+              <Regla />
               <p className="eyebrow">Lo que más has hecho</p>
               {e.masHechos.slice(0, 5).map((x) => (
                 <div className="row" style={{ padding: '6px 0' }} key={x.exerciseId}>

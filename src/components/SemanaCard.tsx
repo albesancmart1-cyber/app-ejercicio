@@ -2,6 +2,8 @@ import { explicarSemana, resumenDeSemana } from '../domain/semana'
 import type { LandmarkOpts } from '../domain/landmarks'
 import type { Session } from '../domain/types'
 import WeekStrip from './WeekStrip'
+import { Etiqueta, Regla } from './ui'
+import { Meter, MeterProgress } from '@appica/ui-react/meter'
 
 /**
  * La semana, con lo que llevas y lo que falta.
@@ -38,19 +40,33 @@ export default function SemanaCard({
             <span className="stat-label">Series de la semana</span>
             <span className="stat-value">{r.series}</span>
           </span>
+          {/*
+            Una comparación en dos palabras, no una etiqueta: «+3 frente a la
+            semana pasada» es una frase, y metida en una cápsula de color se
+            convertía en un bloque a dos líneas que le robaba el protagonismo al
+            número. La cápsula se queda con la cifra —que sí es corta— y el
+            resto se dice en voz baja debajo.
+          */}
           {r.seriesPrevias > 0 && (
-            <span className={`tag ${diferencia >= 0 ? 'accent' : ''}`}>
+            <Etiqueta acento={diferencia > 0}>
               {diferencia === 0
-                ? 'igual que la semana pasada'
-                : `${diferencia > 0 ? '+' : '−'}${Math.abs(diferencia)} frente a la semana pasada`}
-            </span>
+                ? 'igual'
+                : `${diferencia > 0 ? '+' : '−'}${Math.abs(diferencia)}`}
+            </Etiqueta>
           )}
         </div>
+        {r.seriesPrevias > 0 && (
+          <p className="faint" style={{ marginTop: 6 }}>
+            {diferencia === 0
+              ? 'Las mismas series que la semana pasada.'
+              : `${Math.abs(diferencia)} ${Math.abs(diferencia) === 1 ? 'serie' : 'series'} ${diferencia > 0 ? 'más' : 'menos'} que la semana pasada.`}
+          </p>
+        )}
         <p className="dim" style={{ marginTop: 12 }}>
           {explicarSemana(r)}
         </p>
 
-        <hr className="rule" />
+        <Regla />
         <p className="eyebrow">Qué falta por trabajar</p>
         {r.zonas.map((z) => (
           <div className="zona" key={z.grupo}>
@@ -60,14 +76,30 @@ export default function SemanaCard({
                 {z.series} / {z.minimo} series
               </span>
             </div>
-            <div className="zona-track" aria-hidden="true">
-              {/* El mínimo marcado sobre la barra: sin la referencia, una barra
-                  al 60 % no dice si vas bien o mal. */}
+            {/*
+              Sobre `Meter`, que es literalmente lo que esto es: un valor dentro
+              de un rango conocido. Se gana el rol de `meter` —un lector de
+              pantalla lo anuncia como medidor con su mínimo y su máximo— en vez
+              de dos divs invisibles.
+
+              El mínimo se sigue marcando encima: sin la referencia, una barra al
+              60 % no dice si vas bien o mal. Y el color va acompañado siempre de
+              la cifra de al lado, nunca solo.
+            */}
+            <div className="zona-track">
               <span className="zona-minimo" style={{ left: `${(z.minimo / masVale) * 100}%` }} />
-              <div
-                className={`zona-fill ${z.estado}`}
-                style={{ width: `${Math.min(100, (z.series / masVale) * 100)}%` }}
-              />
+              <Meter
+                className={`zona-medidor ${z.estado}`}
+                value={z.series}
+                min={0}
+                max={masVale}
+                low={z.minimo}
+                high={z.maximo}
+                optimum={z.minimo}
+                aria-label={`${z.nombre}: ${z.series} de ${z.minimo} series`}
+              >
+                <MeterProgress className={`zona-fill ${z.estado}`} />
+              </Meter>
             </div>
           </div>
         ))}

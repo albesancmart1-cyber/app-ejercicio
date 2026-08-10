@@ -1,6 +1,9 @@
+import type { JSX } from 'react'
 import { TIPO_SERIE_CORTO, type PlannedExercise, type SetLog, type TipoSerie } from '../domain/types'
 import { tipoDe } from '../domain/setLogs'
 import Icon from './Icon'
+import { Boton } from './ui'
+import { Contador } from './ui'
 
 /**
  * El modo foco: un ejercicio, una serie, un botón.
@@ -41,8 +44,8 @@ export default function FocusMode({
   ultimaVez,
   discos,
   siguiente,
-  onCambiarPeso,
-  onCambiarReps,
+  onFijarPeso,
+  onFijarReps,
   onCambiarRir,
   onCambiarTipo,
   onHecha,
@@ -67,8 +70,9 @@ export default function FocusMode({
   ultimaVez?: string
   discos?: string
   siguiente?: { etiqueta?: string; nombre: string; sinDescanso: boolean }
-  onCambiarPeso: (delta: number) => void
-  onCambiarReps: (delta: number) => void
+  /** El peso ya resuelto, no el salto: lo calcula el propio contador. */
+  onFijarPeso: (kg: number) => void
+  onFijarReps: (reps: number) => void
   onCambiarRir: (rir: number) => void
   onCambiarTipo: () => void
   onHecha: () => void
@@ -120,45 +124,38 @@ export default function FocusMode({
           </div>
         </div>
 
+        {/*
+          Los dos contadores del entreno, sobre `NumberField`.
+          Además de los botones de siempre se gana lo que a mano no había:
+          rol de `spinbutton` para los lectores de pantalla, teclado con flechas
+          y repetición al dejar el dedo puesto —que con quince kilos que subir de
+          dos y medio en dos y medio se agradece—.
+
+          Mientras no se haya anotado nada se enseña lo que propone el plan: es
+          el número desde el que van a contar los botones, y esconderlo tras un
+          guion obligaba a adivinarlo.
+        */}
         <div className="focus-campos">
           <div className="focus-campo">
             <p className="focus-label">Peso</p>
-            <div className="stepper">
-              <button
-                onClick={() => onCambiarPeso(-pasoDePeso(conBarra))}
-                aria-label="Bajar el peso"
-              >
-                −
-              </button>
-              {/* Mientras no se haya anotado nada se enseña lo que propone el
-                  plan, en gris: es el número desde el que van a contar los
-                  botones, y esconderlo tras un guion obligaba a adivinarlo. */}
-              <span className={`stepper-num ${set.weightKg === undefined ? 'sugerido' : ''}`}>
-                {set.weightKg ?? pesoSugerido ?? '—'}
-              </span>
-              <button
-                onClick={() => onCambiarPeso(pasoDePeso(conBarra))}
-                aria-label="Subir el peso"
-              >
-                +
-              </button>
-            </div>
+            <Contador
+              valor={set.weightKg ?? pesoSugerido ?? 0}
+              paso={pasoDePeso(conBarra)}
+              sugerido={set.weightKg === undefined}
+              onCambiar={onFijarPeso}
+              etiqueta="el peso de la serie, en kilos"
+            />
             <p className="focus-unidad">kg</p>
           </div>
 
           <div className="focus-campo">
             <p className="focus-label">Reps</p>
-            <div className="stepper">
-              <button onClick={() => onCambiarReps(-1)} aria-label="Bajar las repeticiones">
-                −
-              </button>
-              <span className={`stepper-num ${set.reps === undefined ? 'sugerido' : ''}`}>
-                {set.reps ?? repsSugeridas ?? '—'}
-              </span>
-              <button onClick={() => onCambiarReps(1)} aria-label="Subir las repeticiones">
-                +
-              </button>
-            </div>
+            <Contador
+              valor={set.reps ?? repsSugeridas ?? 0}
+              sugerido={set.reps === undefined}
+              onCambiar={onFijarReps}
+              etiqueta="las repeticiones de la serie"
+            />
             <p className="focus-unidad">repeticiones</p>
           </div>
         </div>
@@ -185,10 +182,10 @@ export default function FocusMode({
         </div>
       </div>
 
-      <button className="btn btn-primary focus-hecha" onClick={onHecha}>
+      <Boton tono="primario" className="focus-hecha" onClick={onHecha}>
         <Icon name="check" />
         Serie hecha
-      </button>
+      </Boton>
 
       {siguiente && (
         <div className="focus-siguiente">
