@@ -42,6 +42,43 @@ jobs:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
 
+      # ── La cata de interfaz, en /cata/ ──────────────────────────────────
+      #
+      # Se publica junto a la app para poder mirarla en el móvil sin desplegar
+      # una migración a medias en la app de verdad. Pages sirve un solo
+      # artefacto, así que la única forma de que convivan es meter una dentro de
+      # la otra.
+      #
+      # Los tres pasos van con `continue-on-error`: una rama de exploración rota
+      # no puede impedir que se publique la app. Si algo falla aquí, el
+      # despliegue sigue y en /cata/ simplemente no habrá nada.
+      - id: hay-cata
+        continue-on-error: true
+        run: |
+          if git ls-remote --exit-code --heads origin cata-appica >/dev/null 2>&1; then
+            echo "existe=si" >> "$GITHUB_OUTPUT"
+          else
+            echo "existe=no" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.hay-cata.outputs.existe == 'si'
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          ref: cata-appica
+          path: cata
+
+      - if: steps.hay-cata.outputs.existe == 'si'
+        continue-on-error: true
+        name: Construir la cata y colgarla de /cata/
+        run: |
+          cd cata
+          npm ci
+          # PWA=off: dos service workers anidados en el mismo origen se pisan.
+          PWA=off BASE_PATH=/app-ejercicio/cata/ npm run build
+          cd ..
+          cp -r cata/dist dist/cata
+
       # enablement activa Pages por API si aún no lo está, en vez de fallar con
       # un «Not Found» y dejar la URL en 404 esperando un clic manual.
       - uses: actions/configure-pages@v5
