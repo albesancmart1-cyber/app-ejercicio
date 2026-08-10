@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 // Evita traer @types/node entero solo por leer una variable de entorno.
@@ -16,6 +17,7 @@ export default defineConfig({
   base: process.env.BASE_PATH ?? '/',
   plugins: [
     react(),
+    tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg'],

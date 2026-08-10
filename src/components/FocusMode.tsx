@@ -1,3 +1,4 @@
+import type { JSX } from 'react'
 import { TIPO_SERIE_CORTO, type PlannedExercise, type SetLog, type TipoSerie } from '../domain/types'
 import { tipoDe } from '../domain/setLogs'
 import Icon from './Icon'

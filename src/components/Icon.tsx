@@ -4,6 +4,7 @@
  * completos, no siluetas dibujadas a mano—. A tamaño de barra de navegación es
  * lo que hace que se lean de un vistazo.
  */
+import type { JSX } from 'react'
 const paths: Record<string, JSX.Element> = {
   sun: (
     <>

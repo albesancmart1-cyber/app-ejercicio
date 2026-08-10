@@ -1,0 +1,99 @@
+/*
+ * El puente entre Ritmo y Appica UI.
+ *
+ * Appica trae su propia paleta —un gris azulado con el blanco de primario— y
+ * Ritmo tiene la suya, que no es decorativa: el acento **sigue la hora del día**
+ * y de noche se va al ámbar para no romper la higiene lumínica que la propia app
+ * predica. Aquí se le dice a la librería que use la de Ritmo.
+ *
+ * Va sobre `body` y no sobre `:root` a propósito. Las variables de la hora se
+ * escriben en `body[data-daytime='…']`, y una propiedad personalizada solo se
+ * hereda hacia abajo: desde `:root` no se puede leer lo que vale en `body`.
+ * Puestas aquí, `var(--accent)` resuelve al ámbar que toque en cada momento y
+ * los componentes de Appica cambian de color con el atardecer, gratis.
+ */
+body {
+  /* Fondos. Ritmo es negro puro, no un gris azulado. */
+  --background: var(--bg);
+  --background-subtle: var(--bg-raised);
+  --background-muted: var(--surface);
+  --background-strong: var(--surface-strong);
+  --background-inverse: var(--label);
+
+  /* Texto, en los cuatro niveles de siempre. */
+  --foreground: var(--label-2);
+  --foreground-subtle: var(--label-3);
+  --foreground-muted: var(--label-2);
+  --foreground-strong: var(--label);
+  --foreground-emphasis: var(--label);
+  --foreground-intense: var(--label);
+  --foreground-inverse: var(--accent-ink);
+
+  --border: var(--separator);
+  --border-muted: var(--separator);
+  --border-strong: var(--separator-strong);
+  --border-emphasis: var(--label-4);
+  --border-intense: var(--label-3);
+  --border-overlay: var(--separator);
+
+  /* El acento de la hora. Esta es la línea que salva la higiene lumínica. */
+  --primary: var(--accent);
+  --primary-subtle: var(--accent-soft);
+  --primary-soft: var(--accent-soft);
+  --primary-muted: var(--accent);
+  --primary-strong: var(--accent);
+  --primary-foreground: var(--accent-ink);
+
+  --secondary: var(--fill-1);
+  --secondary-subtle: var(--fill-3);
+  --secondary-soft: var(--fill-3);
+  --secondary-muted: var(--fill-2);
+  --secondary-strong: var(--fill-1);
+  --secondary-emphasis: var(--label-2);
+  --secondary-intense: var(--label);
+  --secondary-foreground: var(--label);
+
+  /*
+   * Los cuatro colores de estado de Ritmo, que significan algo y no decoran:
+   * fresco, en tu sitio, alto y pasado. Se enganchan a los canales semánticos
+   * de Appica para que un `Meter` o un `Badge` hablen el mismo idioma que el
+   * resto de la app.
+   */
+  --success: var(--st-fresco);
+  --success-soft: var(--st-fresco-soft);
+  --success-subtle: var(--st-fresco-soft);
+  --success-foreground: var(--accent-ink);
+
+  --warning: var(--st-tuyo);
+  --warning-soft: var(--st-tuyo-soft);
+  --warning-subtle: var(--st-tuyo-soft);
+  --warning-foreground: var(--accent-ink);
+
+  --info: var(--st-alto);
+  --info-soft: var(--st-alto-soft);
+  --info-subtle: var(--st-alto-soft);
+  --info-foreground: var(--accent-ink);
+
+  --error: var(--st-pasado);
+  --error-soft: var(--st-pasado-soft);
+  --error-subtle: var(--st-pasado-soft);
+  --error-foreground: var(--accent-ink);
+
+  /* El foco, en ámbar y no en el gris de fábrica. */
+  --focus-ring: var(--accent);
+  --focus-ring-primary: var(--accent);
+  --focus-ring-input: var(--separator-strong);
+
+  /*
+   * Los radios de Appica salen todos de `--radius` por proporciones. Puesto en
+   * 20 px, `--radius-md` cae exactamente en el radio de control de Ritmo —lo que
+   * usan botones y campos— y `--radius-xs` en el de lo anidado. La escala entera
+   * encaja sin tocar nada más.
+   */
+  --radius: 1.25rem;
+
+  --font-sans: 'Nunito Sans', ui-sans-serif, system-ui, sans-serif;
+
+  --shadow-color: rgb(0 0 0 / 45%);
+  --selection-color: var(--accent-soft);
+}

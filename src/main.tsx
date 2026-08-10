@@ -1,7 +1,9 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
-import './styles/theme.css'
+// Una sola hoja de entrada: ella orquesta Tailwind, Appica y el tema de Ritmo
+// en el orden de capas correcto, que es lo único que hace que convivan.
+import './styles/appica.css'
 import { actions } from './store/store'
 import { estadoDeSync, iniciarSync, sincronizar } from './store/sync'
 
