@@ -17,6 +17,7 @@ import { Badge } from '@appica/ui-react/badge'
 import { Button } from '@appica/ui-react/button'
 import { Separator } from '@appica/ui-react/separator'
 import { Toggle } from '@appica/ui-react/toggle'
+import { ToggleGroup } from '@appica/ui-react/toggle-group'
 import type { ComponentProps, ReactNode } from 'react'
 
 /**
@@ -142,5 +143,48 @@ export function Interruptor({
           data-[checked]:bg-primary-foreground"
       />
     </Switch.Root>
+  )
+}
+
+/**
+ * Una escala de uno a cinco: sueño, energía, cómo ha ido el entreno.
+ *
+ * Sobre `ToggleGroup`, que da lo que un puñado de botones sueltos no daba: foco
+ * itinerante y flechas del teclado. Se recorre con izquierda y derecha como un
+ * control único, en vez de tabular cinco veces.
+ */
+export function Escala({
+  valor,
+  onElegir,
+  'aria-label': etiqueta
+}: {
+  valor: number | null
+  onElegir: (n: 1 | 2 | 3 | 4 | 5) => void
+  'aria-label'?: string
+}) {
+  return (
+    <ToggleGroup
+      className="scale w-full"
+      aria-label={etiqueta}
+      value={valor === null ? [] : [String(valor)]}
+      onValueChange={(v) => {
+        const n = Number(v[v.length - 1])
+        if (n >= 1 && n <= 5) onElegir(n as 1 | 2 | 3 | 4 | 5)
+      }}
+    >
+      {[1, 2, 3, 4, 5].map((n) => (
+        <Toggle
+          key={n}
+          value={String(n)}
+          className={`flex-1 cursor-pointer rounded-xl border border-border
+            bg-background-muted py-3 text-center text-base tabular-nums
+            text-foreground transition select-none active:scale-[0.97]
+            data-pressed:border-primary/40 data-pressed:bg-primary-subtle
+            data-pressed:font-semibold data-pressed:text-primary`.replace(/\s+/g, ' ')}
+        >
+          {n}
+        </Toggle>
+      ))}
+    </ToggleGroup>
   )
 }

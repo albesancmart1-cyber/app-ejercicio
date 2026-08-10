@@ -75,7 +75,7 @@ import ExerciseAnimation from '../components/ExerciseAnimation'
 import ExercisePicker from '../components/ExercisePicker'
 import ExerciseSheet from '../components/ExerciseSheet'
 import { patternOf } from '../data/patterns'
-import { Boton, Interruptor, Opcion } from '../components/ui'
+import { Boton, Escala, Interruptor, Opcion } from '../components/ui'
 import { Field, FieldLabel } from '@appica/ui-react/field'
 import { Input } from '@appica/ui-react/input'
 
@@ -1429,13 +1429,7 @@ export default function SessionScreen({ session }: { session: Session }) {
         <div className="card fade-in">
           <p className="eyebrow">Última pregunta</p>
           <h2 style={{ marginBottom: 16 }}>¿Cómo te has sentido?</h2>
-          <div className="scale">
-            {([1, 2, 3, 4, 5] as const).map((n) => (
-              <button key={n} aria-pressed={rpe === n} onClick={() => setRpe(n)}>
-                {n}
-              </button>
-            ))}
-          </div>
+          <Escala valor={rpe} onElegir={setRpe} aria-label="De muy duro a muy cómodo" />
           <div className="scale-legend">
             <span className="faint">Muy duro</span>
             <span className="faint">Muy cómodo</span>

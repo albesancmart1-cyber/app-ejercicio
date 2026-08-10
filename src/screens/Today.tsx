@@ -21,7 +21,7 @@ import VolumeLevelChooser from '../components/VolumeLevelChooser'
 import ReadinessRing from '../components/ReadinessRing'
 import WeekStrip from '../components/WeekStrip'
 import SessionScreen from './Session'
-import { Boton, Etiqueta, Opcion, Regla } from '../components/ui'
+import { Boton, Escala, Etiqueta, Opcion, Regla } from '../components/ui'
 
 type Scale = 1 | 2 | 3 | 4 | 5
 type YesNoKey =
@@ -67,13 +67,7 @@ function ScaleInput({
 }) {
   return (
     <>
-      <div className="scale">
-        {([1, 2, 3, 4, 5] as Scale[]).map((n) => (
-          <button key={n} aria-pressed={value === n} onClick={() => onChange(n)}>
-            {n}
-          </button>
-        ))}
-      </div>
+      <Escala valor={value} onElegir={onChange} aria-label={`${low} a ${high}`} />
       <div className="scale-legend">
         <span className="faint">{low}</span>
         <span className="faint">{high}</span>
