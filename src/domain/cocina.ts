@@ -40,25 +40,34 @@ export function tresIdeas(
   const pool = filterMeals(base, effort)
   if (pool.length === 0) return []
 
-  const escalones = [bestDhaTier(pool), pool]
+  /*
+   * Solo el mejor escalón de DHA que exista dentro del filtro. **Nunca se baja
+   * de escalón para completar la terna**, y esto no es un detalle: pidiendo
+   * carne solo hay dos platos que resuelvan el DHA, y rellenando con un tercero
+   * cualquiera se colaba un plato de 10 mg junto a dos de 1.100. Con una sola
+   * sugerencia el problema no existía —siempre salía del mejor escalón—; al
+   * enseñar tres, completar el hueco a cualquier precio se cargaba justo la
+   * regla que sostiene esta pantalla.
+   *
+   * Así que si el escalón bueno da para dos, se enseñan dos. Dos platos que
+   * sirven valen más que tres de los que uno sobra.
+   */
+  const escalon = bestDhaTier(pool)
   const elegidas: Meal[] = []
   const puestas = new Set<string>()
 
   // Dos pasadas: primero sin repetir la tanda anterior, y solo si falta, con
-  // ella. Un catálogo pequeño no puede dejar la pantalla a medias.
+  // ella. Un catálogo pequeño no puede dejar la pantalla vacía.
   for (const evitando of [true, false]) {
-    for (const escalon of escalones) {
-      const candidatos = escalon.filter(
-        (m) => !puestas.has(m.id) && (!evitando || !evitar.includes(m.id))
-      )
-      const barajadas = barajar(candidatos, random)
-      for (const m of barajadas) {
-        if (elegidas.length >= cuantas) break
-        elegidas.push(m)
-        puestas.add(m.id)
-      }
-      if (elegidas.length >= cuantas) return elegidas
+    const candidatos = escalon.filter(
+      (m) => !puestas.has(m.id) && (!evitando || !evitar.includes(m.id))
+    )
+    for (const m of barajar(candidatos, random)) {
+      if (elegidas.length >= cuantas) break
+      elegidas.push(m)
+      puestas.add(m.id)
     }
+    if (elegidas.length >= cuantas) break
   }
   return elegidas
 }

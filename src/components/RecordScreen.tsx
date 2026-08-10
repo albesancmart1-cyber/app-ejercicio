@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { NOMBRE_MARCA, type TipoMarca } from '../domain/records'
 import Icon from './Icon'
-import { Boton } from './ui'
+import { Boton, Etiqueta } from './ui'
 
 /**
  * El récord, a pantalla completa y un segundo.
@@ -76,9 +76,7 @@ export default function RecordScreen({
 
       <div className="tag-row" style={{ justifyContent: 'center', marginTop: 18 }}>
         {tipos.map((t) => (
-          <span className="tag" key={t}>
-            {NOMBRE_MARCA[t]}
-          </span>
+          <Etiqueta key={t}>{NOMBRE_MARCA[t]}</Etiqueta>
         ))}
       </div>
 

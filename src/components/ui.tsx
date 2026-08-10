@@ -77,7 +77,7 @@ export function Opcion({
        * la librería para que siga el acento de la hora, y el estado se lee de
        * `data-pressed`, que es lo que Base UI escribe en el elemento.
        */
-      className={`inline-flex min-h-9 cursor-pointer items-center rounded-full border
+      className={`opt inline-flex min-h-9 cursor-pointer items-center rounded-full border
         border-border bg-background-muted px-3.5 text-sm text-foreground transition
         select-none active:scale-[0.97]
         data-pressed:border-primary/40 data-pressed:bg-primary-subtle

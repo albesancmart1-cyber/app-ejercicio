@@ -592,23 +592,12 @@ button:active {
   flex-direction: column;
 }
 
-/* Etiqueta: misma cápsula que los botones, en pequeño. */
-.opt {
-  border-radius: var(--r-control);
-  padding: var(--sp-2) var(--sp-3);
-  font-size: var(--text-body);
-  line-height: var(--leading-body);
-  font-weight: var(--w-medium);
-  color: var(--label-2);
-  background: var(--fill-3);
-  box-shadow: inset 0 0 0 1px var(--separator);
-}
-
-.opt[aria-pressed='true'] {
-  color: var(--accent);
-  background: var(--accent-soft);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
-}
+/*
+ * `.opt` ya no pinta nada: la forma de una opción la pone el componente
+ * `Opcion` con los tokens de Appica. La clase se conserva en el marcado
+ * como punto de enganche para los recorridos de navegador, que llevan
+ * veintitantos selectores apuntando a ella.
+ */
 
 .opt-block {
   width: 100%;
@@ -976,6 +965,22 @@ textarea:focus {
     gap: 4px;
     padding: 14px;
     border-radius: 26px;
+  }
+
+  /*
+   * La lista, en columna. Al pasar la barra a `Navigation` los botones dejaron
+   * de ser hijos directos de la cápsula y quedaron dentro de un `<ul>`, así que
+   * la dirección de la columna hay que ponerla aquí: en la cápsula ya no llega a
+   * ellos y la barra lateral volvía a salir en fila.
+   */
+  .tabbar-lista {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+
+  .tabbar-lista > li {
+    flex: 0 0 auto;
   }
 
   .tab {

@@ -1,13 +1,27 @@
-import { useState } from 'react'
+import { Suspense, lazy, useState } from 'react'
 import { useAppData } from './store/store'
 import { useToday } from './store/clock'
 import Icon from './components/Icon'
 import Onboarding from './screens/Onboarding'
 import Today from './screens/Today'
-import Progreso from './screens/Progreso'
-import Meals from './screens/Meals'
-import Settings from './screens/Settings'
 import { Navigation, NavigationItem, NavigationList } from '@appica/ui-react/navigation'
+
+/*
+ * Progreso, Cocina y Yo llegan aparte.
+ *
+ * «Hoy» es la pantalla que se abre siempre y la única que hace falta para
+ * decidir si hoy se entrena; las otras tres se visitan de vez en cuando y se
+ * llevan lo más pesado de la librería —el cajón de la sesión, los medidores, la
+ * curva—. Cargándolas a demanda, quien abre la app por la mañana para ver qué
+ * le toca no descarga nada de eso.
+ *
+ * Sin pantalla de carga a propósito: los trozos se sirven desde la caché del
+ * service worker y el cambio es inmediato; un destello de «cargando…» sería peor
+ * que el parpadeo que evita.
+ */
+const Progreso = lazy(() => import('./screens/Progreso'))
+const Meals = lazy(() => import('./screens/Meals'))
+const Settings = lazy(() => import('./screens/Settings'))
 
 type Tab = 'hoy' | 'progreso' | 'cocina' | 'yo'
 
@@ -69,10 +83,12 @@ export default function App() {
         {/* La clave por fecha rearranca las pantallas al cruzar la medianoche:
             el check-in del día nuevo empieza en blanco en vez de heredar las
             respuestas de ayer, que viven en el estado local del componente. */}
-        {tab === 'hoy' && <Today key={today} />}
-        {tab === 'progreso' && <Progreso key={today} />}
-        {tab === 'cocina' && <Meals key={today} />}
-        {tab === 'yo' && <Settings />}
+        <Suspense fallback={null}>
+          {tab === 'hoy' && <Today key={today} />}
+          {tab === 'progreso' && <Progreso key={today} />}
+          {tab === 'cocina' && <Meals key={today} />}
+          {tab === 'yo' && <Settings />}
+        </Suspense>
       </main>
       {/*
         La barra, sobre la estructura de `Navigation` de Appica —nav, lista y

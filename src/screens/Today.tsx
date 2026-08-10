@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { Suspense, lazy, useMemo, useState } from 'react'
 import {
   MUSCLE_GROUPS,
   MUSCLE_LABELS,
@@ -20,7 +20,14 @@ import Icon from '../components/Icon'
 import VolumeLevelChooser from '../components/VolumeLevelChooser'
 import ReadinessRing from '../components/ReadinessRing'
 import WeekStrip from '../components/WeekStrip'
-import SessionScreen from './Session'
+/*
+ * La pantalla de entrenar, aparte.
+ *
+ * Es la más pesada de la app —se lleva el cajón de opciones y los contadores—
+ * y solo hace falta cuando de verdad se está entrenando. Quien abre «Hoy» para
+ * ver qué le toca y decide que hoy no, no descarga nada de eso.
+ */
+const SessionScreen = lazy(() => import('./Session'))
 import { Boton, Escala, Etiqueta, Opcion, Regla } from '../components/ui'
 
 type Scale = 1 | 2 | 3 | 4 | 5
@@ -217,7 +224,13 @@ export default function Today() {
     setPhase('inicio')
   }
 
-  if (activeSession) return <SessionScreen session={activeSession} />
+  if (activeSession) {
+    return (
+      <Suspense fallback={null}>
+        <SessionScreen session={activeSession} />
+      </Suspense>
+    )
+  }
 
   return (
     <div className="fade-in">
