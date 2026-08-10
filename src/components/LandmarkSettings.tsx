@@ -18,6 +18,8 @@ import {
 } from '../domain/landmarks'
 import type { Profile } from '../domain/types'
 import { Boton, Regla } from './ui'
+import { Field, FieldLabel } from '@appica/ui-react/field'
+import { Input } from '@appica/ui-react/input'
 
 /**
  * Los objetivos de volumen, ajustables a mano.
@@ -168,9 +170,9 @@ function LandmarkRow({
         <>
           <div className="landmark-fields">
             {CAMPOS.map(({ clave, label }) => (
-              <label className="field" key={clave}>
-                <span>{label}</span>
-                <input
+              <Field className="field" key={clave}>
+  <FieldLabel>{label}</FieldLabel>
+  <Input
                   type="number"
                   min={1}
                   max={60}
@@ -180,7 +182,7 @@ function LandmarkRow({
                     if (Number.isFinite(n) && n > 0) onSave({ [clave]: n })
                   }}
                 />
-              </label>
+</Field>
             ))}
           </div>
           {tocado && (

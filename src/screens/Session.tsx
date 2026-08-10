@@ -75,7 +75,9 @@ import ExerciseAnimation from '../components/ExerciseAnimation'
 import ExercisePicker from '../components/ExercisePicker'
 import ExerciseSheet from '../components/ExerciseSheet'
 import { patternOf } from '../data/patterns'
-import { Boton, Opcion } from '../components/ui'
+import { Boton, Interruptor, Opcion } from '../components/ui'
+import { Field, FieldLabel } from '@appica/ui-react/field'
+import { Input } from '@appica/ui-react/input'
 
 /** Los minutos que lleva puestos un ejercicio de cardio, si los dice. */
 function minutosDe(pe: PlannedExercise): number | undefined {
@@ -1123,61 +1125,49 @@ export default function SessionScreen({ session }: { session: Session }) {
                   </Opcion>
                 ))}
               </div>
-              <label className="field" style={{ marginTop: 14 }}>
-                <span>Tu nota para este ejercicio</span>
-                <input
+              <Field className="field" style={{ marginTop: 14 }}>
+  <FieldLabel>Tu nota para este ejercicio</FieldLabel>
+  <Input
                   type="text"
                   placeholder="El agujero del asiento, el agarre que no molesta…"
                   defaultValue={notaDe(profile, e.exerciseId)}
                   onBlur={(ev) => actions.saveProfile(conNota(profile, e.exerciseId, ev.target.value))}
                   aria-label={`Nota para ${e.name}`}
                 />
-              </label>
+</Field>
+              {/*
+                Un ajuste que solo puede estar puesto o quitado es un
+                interruptor, no dos botones. Con el par de «Sí»/«No» hacían falta
+                dos elementos y una lectura para saber cuál estaba activo; el
+                interruptor lo dice con su propia posición y ocupa la mitad.
+              */}
               {soportaWakeLock() && (
-                <div className="row" style={{ marginTop: 14 }}>
+                <label className="row ajuste-si-no">
                   <span className="dim">Que la pantalla no se apague</span>
-                  <div className="options">
-                    <Opcion
-                      activa={profile.keepAwake === true}
-                      onElegir={() => actions.saveProfile({ ...profile, keepAwake: true })}
-                    >
-                      Sí
-                    </Opcion>
-                    <Opcion
-                      activa={profile.keepAwake !== true}
-                      onElegir={() => actions.saveProfile({ ...profile, keepAwake: false })}
-                    >
-                      No
-                    </Opcion>
-                  </div>
-                </div>
+                  <Interruptor
+                    checked={profile.keepAwake === true}
+                    onCheckedChange={(v) => actions.saveProfile({ ...profile, keepAwake: v })}
+                  />
+                </label>
               )}
               {soportaAlarma() && (
-                <div className="row" style={{ marginTop: 14 }}>
+                <label className="row ajuste-si-no">
                   <span className="dim">Alarma al acabar el descanso</span>
-                  <div className="options">
-                    <Opcion
-                      activa={profile.alarmaDescanso !== false}
-                      onElegir={() => {
-                        // Se prepara y se prueba en el mismo toque: así se oye
-                        // cómo suena y, de paso, queda el audio despierto.
+                  <Interruptor
+                    checked={profile.alarmaDescanso !== false}
+                    onCheckedChange={(v) => {
+                      // Al encenderla se prueba en el mismo toque: así se oye
+                      // cómo suena y, de paso, queda el audio despierto, que es
+                      // lo que el navegador solo permite desde un gesto.
+                      if (v) {
                         prepararAlarma()
                         sonarAlarma()
-                        actions.saveProfile({ ...profile, alarmaDescanso: true })
-                      }}
-                      aria-label="Alarma sonora al acabar el descanso: sí"
-                    >
-                      Sí
-                    </Opcion>
-                    <Opcion
-                      activa={profile.alarmaDescanso === false}
-                      onElegir={() => actions.saveProfile({ ...profile, alarmaDescanso: false })}
-                      aria-label="Alarma sonora al acabar el descanso: no"
-                    >
-                      No
-                    </Opcion>
-                  </div>
-                </div>
+                      }
+                      actions.saveProfile({ ...profile, alarmaDescanso: v })
+                    }}
+                    aria-label="Alarma sonora al acabar el descanso"
+                  />
+                </label>
               )}
               {soportaAlarma() && profile.alarmaDescanso !== false && (
                 <p className="faint" style={{ marginTop: 8 }}>
@@ -1369,18 +1359,18 @@ export default function SessionScreen({ session }: { session: Session }) {
                 Se guardan los ejercicios, el orden y las series. Los pesos no: esos los pone la
                 progresión cada vez que la repitas, mirando lo que hiciste la última vez.
               </p>
-              <label className="field">
-                <span>Nombre</span>
-                <input
+              <Field className="field">
+  <FieldLabel>Nombre</FieldLabel>
+  <Input
                   type="text"
                   value={nombreRutina}
                   onChange={(ev) => setNombreRutina(ev.target.value)}
                   aria-label="Nombre de la rutina"
                 />
-              </label>
-              <label className="field" style={{ marginTop: 12 }}>
-                <span>Carpeta (opcional)</span>
-                <input
+</Field>
+              <Field className="field" style={{ marginTop: 12 }}>
+  <FieldLabel>Carpeta (opcional)</FieldLabel>
+  <Input
                   type="text"
                   list="carpetas-de-rutinas"
                   placeholder="Casa, gimnasio, torso…"
@@ -1388,7 +1378,7 @@ export default function SessionScreen({ session }: { session: Session }) {
                   onChange={(ev) => setCarpetaRutina(ev.target.value)}
                   aria-label="Carpeta de la rutina"
                 />
-              </label>
+</Field>
               <datalist id="carpetas-de-rutinas">
                 {nombresDeCarpeta(data.routines ?? []).map((c) => (
                   <option key={c} value={c} />

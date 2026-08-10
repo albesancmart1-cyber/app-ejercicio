@@ -12,6 +12,7 @@
  * confundir de un vistazo lo que es de la librería —`Button`— y lo que es
  * nuestro —`Boton`—.
  */
+import { Switch } from '@base-ui/react/switch'
 import { Badge } from '@appica/ui-react/badge'
 import { Button } from '@appica/ui-react/button'
 import { Separator } from '@appica/ui-react/separator'
@@ -112,4 +113,34 @@ export function Etiqueta({
 /** La regla que separa bloques dentro de una tarjeta. */
 export function Regla({ className = '', ...props }: ComponentProps<typeof Separator>) {
   return <Separator className={`my-4 ${className}`.trim()} {...props} />
+}
+
+/**
+ * Un interruptor de sí o no.
+ *
+ * Sobre el primitivo de Base UI y **no** sobre el `Switch` de Appica, por peso:
+ * el de la librería importa `motion/react` entero para animar el pulgar, y en
+ * esta app eso salía a 90 kB de JavaScript —33 comprimidos— por dos ajustes
+ * enterrados en un panel. Base UI ya está instalado como dependencia de Appica,
+ * da el mismo comportamiento y los mismos roles, y la animación de 150 ms la
+ * hace una transición de CSS.
+ */
+export function Interruptor({
+  className = '',
+  ...props
+}: ComponentProps<typeof Switch.Root>) {
+  return (
+    <Switch.Root
+      className={`relative inline-flex h-6 w-11 flex-none cursor-pointer items-center
+        rounded-full border border-border bg-background-muted transition-colors
+        data-[checked]:border-primary data-[checked]:bg-primary ${className}`.replace(/\s+/g, ' ')}
+      {...props}
+    >
+      <Switch.Thumb
+        className="block size-5 translate-x-0.5 rounded-full bg-foreground-strong
+          transition-transform duration-150 data-[checked]:translate-x-[22px]
+          data-[checked]:bg-primary-foreground"
+      />
+    </Switch.Root>
+  )
 }

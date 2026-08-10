@@ -3,6 +3,8 @@ import { historialDe, recordsDe } from '../domain/records'
 import { cuandoFue } from '../domain/ultimaVez'
 import { MUSCLE_LABELS } from '../domain/types'
 import type { MuscleGroup, Session } from '../domain/types'
+import { Field, FieldLabel } from '@appica/ui-react/field'
+import { Input } from '@appica/ui-react/input'
 
 /**
  * Tus ejercicios, como sección con nombre.
@@ -98,16 +100,16 @@ export default function ExerciseList({
   return (
     <div className="card">
       <p className="eyebrow">Tus ejercicios</p>
-      <label className="field">
-        <span>Buscar</span>
-        <input
+      <Field className="field">
+  <FieldLabel>Buscar</FieldLabel>
+  <Input
           type="search"
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
           placeholder="Press, espalda, curl…"
           aria-label="Buscar un ejercicio"
         />
-      </label>
+</Field>
 
       <p className="faint" style={{ margin: '12px 0 4px' }}>
         {filtradas.length} de {todas.length}, del más reciente al más antiguo.

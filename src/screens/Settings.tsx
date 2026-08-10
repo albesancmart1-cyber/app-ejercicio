@@ -20,6 +20,8 @@ import { interpretTrend } from '../domain/trend'
 import { actions, todayIso, useAppData } from '../store/store'
 import { Boton, Opcion, Pastilla, Regla } from '../components/ui'
 import { Tabs, TabsList, TabsTrigger } from '@appica/ui-react/tabs'
+import { Field, FieldLabel } from '@appica/ui-react/field'
+import { Input } from '@appica/ui-react/input'
 
 const ALL_EQUIPMENT = Object.keys(EQUIPMENT_LABELS) as Equipment[]
 
@@ -201,24 +203,24 @@ export default function Settings() {
         <div className="card">
           <p className="eyebrow">Tus medidas</p>
           <div className="field-row">
-            <label className="field">
-              <span>Peso (kg)</span>
-              <input
+            <Field className="field">
+  <FieldLabel>Peso (kg)</FieldLabel>
+  <Input
                 type="number"
                 placeholder="—"
                 value={profile.weightKg ?? ''}
                 onChange={(e) => update({ weightKg: e.target.value ? Number(e.target.value) : undefined })}
               />
-            </label>
-            <label className="field">
-              <span>Altura (cm)</span>
-              <input
+</Field>
+            <Field className="field">
+  <FieldLabel>Altura (cm)</FieldLabel>
+  <Input
                 type="number"
                 placeholder="—"
                 value={profile.heightCm ?? ''}
                 onChange={(e) => update({ heightCm: e.target.value ? Number(e.target.value) : undefined })}
               />
-            </label>
+</Field>
           </div>
           <p className="faint" style={{ marginTop: 10 }}>
             La altura solo se usa para calcular el FFMI en la pestaña Cuerpo.
@@ -249,9 +251,9 @@ export default function Settings() {
               <Regla />
               <p className="eyebrow">Peso máximo disponible</p>
               {ownedWeighted.map((eq, i) => (
-                <label className="field" key={eq} style={{ marginTop: i ? 14 : 0 }}>
-                  <span>{EQUIPMENT_LABELS[eq]}</span>
-                  <input
+                <Field className="field" key={eq} style={{ marginTop: i ? 14 : 0 }}>
+  <FieldLabel>{EQUIPMENT_LABELS[eq]}</FieldLabel>
+  <Input
                     type="number"
                     placeholder="kg"
                     value={profile.maxWeights[eq] ?? ''}
@@ -264,7 +266,7 @@ export default function Settings() {
                       })
                     }
                   />
-                </label>
+</Field>
               ))}
             </>
           )}
@@ -391,14 +393,14 @@ export default function Settings() {
         <>
         <div className="card">
           <p className="eyebrow">Cetosis y descanso</p>
-          <label className="field">
-            <span>Dieta cetogénica desde</span>
-            <input
+          <Field className="field">
+  <FieldLabel>Dieta cetogénica desde</FieldLabel>
+  <Input
               type="date"
               value={profile.ketoSince ?? ''}
               onChange={(e) => update({ ketoSince: e.target.value || undefined })}
             />
-          </label>
+</Field>
           {ketoWeeks > 0 && (
             <p className="faint" style={{ marginTop: 10 }}>
               Quedan unas {ketoWeeks} semanas de adaptación: durante este periodo la app mantiene la
@@ -407,15 +409,15 @@ export default function Settings() {
           )}
           <Regla />
           <p className="eyebrow">DHA</p>
-          <label className="field">
-            <span>mg de DHA por pastilla</span>
-            <input
+          <Field className="field">
+  <FieldLabel>mg de DHA por pastilla</FieldLabel>
+  <Input
               type="number"
               placeholder="p. ej. 1000"
               value={profile.dhaPillMg ?? ''}
               onChange={(e) => update({ dhaPillMg: e.target.value ? Number(e.target.value) : undefined })}
             />
-          </label>
+</Field>
           <p className="faint" style={{ marginTop: 10 }}>
             Objetivo de hoy: {objetivoDha.toLocaleString('es-ES')} mg
             {esVerano(todayIso()) ? ' (subido por ser verano)' : ''}. Nunca te sugeriré más de

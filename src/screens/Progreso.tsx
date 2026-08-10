@@ -26,6 +26,8 @@ import { useAppData } from '../store/store'
 import { useToday } from '../store/clock'
 import { Boton, Etiqueta, Regla } from '../components/ui'
 import { Tabs, TabsList, TabsTrigger } from '@appica/ui-react/tabs'
+import { Field, FieldLabel } from '@appica/ui-react/field'
+import { Input } from '@appica/ui-react/input'
 
 /** Los cinco destinos de Progreso, en el orden en que se miran. */
 type Seccion = 'semana' | 'mes' | 'ano' | 'cuerpo' | 'ejercicios'
@@ -223,18 +225,18 @@ function BodyCompositionCard({
       ) : (
         <div className="fade-in">
           <div className="field-row">
-            <label className="field">
-              <span>Peso (kg)</span>
-              <input type="number" inputMode="decimal" value={peso} onChange={(e) => setPeso(e.target.value)} />
-            </label>
-            <label className="field">
-              <span>Grasa (%)</span>
-              <input type="number" inputMode="decimal" value={grasa} onChange={(e) => setGrasa(e.target.value)} />
-            </label>
-            <label className="field">
-              <span>Músculo (%)</span>
-              <input type="number" inputMode="decimal" value={musculo} onChange={(e) => setMusculo(e.target.value)} />
-            </label>
+            <Field className="field">
+  <FieldLabel>Peso (kg)</FieldLabel>
+  <Input type="number" inputMode="decimal" value={peso} onChange={(e) => setPeso(e.target.value)} />
+</Field>
+            <Field className="field">
+  <FieldLabel>Grasa (%)</FieldLabel>
+  <Input type="number" inputMode="decimal" value={grasa} onChange={(e) => setGrasa(e.target.value)} />
+</Field>
+            <Field className="field">
+  <FieldLabel>Músculo (%)</FieldLabel>
+  <Input type="number" inputMode="decimal" value={musculo} onChange={(e) => setMusculo(e.target.value)} />
+</Field>
           </div>
           {error && (
             <p className="faint" style={{ marginTop: 10 }}>

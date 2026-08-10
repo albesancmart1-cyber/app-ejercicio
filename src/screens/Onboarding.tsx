@@ -11,6 +11,8 @@ import { actions } from '../store/store'
 import Icon from '../components/Icon'
 import Mark from '../components/Mark'
 import { Boton, Opcion, Regla } from '../components/ui'
+import { Field, FieldLabel } from '@appica/ui-react/field'
+import { Input } from '@appica/ui-react/input'
 
 const ALL_EQUIPMENT = Object.keys(EQUIPMENT_LABELS) as Equipment[]
 
@@ -68,23 +70,23 @@ export default function Onboarding() {
             cómo estás, qué has trabajado y cuánto llevas parado, y decide por ti.
           </p>
           <div className="card" style={{ marginTop: 28 }}>
-            <label className="field">
-              <span>¿Cómo te llamas?</span>
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre" />
-            </label>
+            <Field className="field">
+  <FieldLabel>¿Cómo te llamas?</FieldLabel>
+  <Input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre" />
+</Field>
             <div className="field-row" style={{ marginTop: 16 }}>
-              <label className="field">
-                <span>Edad</span>
-                <input type="number" value={age} onChange={(e) => setAge(e.target.value)} placeholder="Opcional" />
-              </label>
-              <label className="field">
-                <span>Peso (kg)</span>
-                <input type="number" value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="Opcional" />
-              </label>
-              <label className="field">
-                <span>Altura (cm)</span>
-                <input type="number" value={height} onChange={(e) => setHeight(e.target.value)} placeholder="Opcional" />
-              </label>
+              <Field className="field">
+  <FieldLabel>Edad</FieldLabel>
+  <Input type="number" value={age} onChange={(e) => setAge(e.target.value)} placeholder="Opcional" />
+</Field>
+              <Field className="field">
+  <FieldLabel>Peso (kg)</FieldLabel>
+  <Input type="number" value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="Opcional" />
+</Field>
+              <Field className="field">
+  <FieldLabel>Altura (cm)</FieldLabel>
+  <Input type="number" value={height} onChange={(e) => setHeight(e.target.value)} placeholder="Opcional" />
+</Field>
             </div>
           </div>
           <Boton tono="primario" onClick={() => setStep(1)}>
@@ -151,9 +153,9 @@ export default function Onboarding() {
           <p className="lede">El máximo del que dispones en cada equipo, para que las cargas sean realistas.</p>
           <div className="card" style={{ marginTop: 24 }}>
             {ownedWeighted.map((eq, i) => (
-              <label className="field" key={eq} style={{ marginTop: i ? 16 : 0 }}>
-                <span>{EQUIPMENT_LABELS[eq]}</span>
-                <input
+              <Field className="field" key={eq} style={{ marginTop: i ? 16 : 0 }}>
+  <FieldLabel>{EQUIPMENT_LABELS[eq]}</FieldLabel>
+  <Input
                   type="number"
                   placeholder="kg"
                   value={maxWeights[eq] ?? ''}
@@ -164,7 +166,7 @@ export default function Onboarding() {
                     }))
                   }
                 />
-              </label>
+</Field>
             ))}
           </div>
           <Boton tono="primario" onClick={() => setStep(4)}>
@@ -185,23 +187,23 @@ export default function Onboarding() {
             Si me dices desde cuándo, bajo la exigencia durante ese periodo.
           </p>
           <div className="card" style={{ marginTop: 24 }}>
-            <label className="field">
-              <span>Desde cuándo llevas dieta cetogénica</span>
-              <input type="date" value={ketoSince} onChange={(e) => setKetoSince(e.target.value)} />
-            </label>
+            <Field className="field">
+  <FieldLabel>Desde cuándo llevas dieta cetogénica</FieldLabel>
+  <Input type="date" value={ketoSince} onChange={(e) => setKetoSince(e.target.value)} />
+</Field>
             <p className="faint" style={{ marginTop: 12 }}>
               Déjalo vacío si no la sigues o si ya llevas mucho tiempo adaptado.
             </p>
             <Regla />
-            <label className="field">
-              <span>mg de DHA por pastilla, si tomas</span>
-              <input
+            <Field className="field">
+  <FieldLabel>mg de DHA por pastilla, si tomas</FieldLabel>
+  <Input
                 type="number"
                 placeholder="p. ej. 1000"
                 value={dhaPillMg}
                 onChange={(e) => setDhaPillMg(e.target.value)}
               />
-            </label>
+</Field>
             <p className="faint" style={{ marginTop: 12 }}>
               Con esto calculo cuánto te falta cada día, sin pasar nunca de 1.000 mg de suplemento.
             </p>
