@@ -78,6 +78,7 @@ import { patternOf } from '../data/patterns'
 import { Boton, Escala, Interruptor, Opcion } from '../components/ui'
 import { Field, FieldLabel } from '@appica/ui-react/field'
 import { Input } from '@appica/ui-react/input'
+import { Drawer, DrawerBody, DrawerContent, DrawerHeader, DrawerTitle } from '@appica/ui-react/drawer'
 
 /** Los minutos que lleva puestos un ejercicio de cardio, si los dice. */
 function minutosDe(pe: PlannedExercise): number | undefined {
@@ -791,14 +792,8 @@ export default function SessionScreen({ session }: { session: Session }) {
                 }
               : undefined
           }
-          onCambiarPeso={(delta) => {
-            const base = serie.weightKg ?? e.plan.weightKg ?? 0
-            updateSet(ei, si, { weightKg: Math.max(0, Math.round((base + delta) * 4) / 4) })
-          }}
-          onCambiarReps={(delta) => {
-            const base = serie.reps ?? repsDelPlan(e)
-            updateSet(ei, si, { reps: Math.max(0, base + delta) })
-          }}
+          onFijarPeso={(kg) => updateSet(ei, si, { weightKg: Math.max(0, Math.round(kg * 4) / 4) })}
+          onFijarReps={(reps) => updateSet(ei, si, { reps: Math.max(0, Math.round(reps)) })}
           // Volver a tocar el que ya está puesto lo quita: anotar un RIR por
           // error y no poder desanotarlo falsearía la fatiga del día.
           onCambiarRir={(rir) => updateSet(ei, si, { rir: serie.rir === rir ? undefined : rir })}
@@ -810,15 +805,23 @@ export default function SessionScreen({ session }: { session: Session }) {
 
         {aviso && <p className="faint focus-aviso">{aviso}</p>}
 
-        {menu && (
-          <div className="hoja-fondo fade-in" onClick={() => setMenu(false)}>
-            <div
-              className="hoja"
-              role="dialog"
-              aria-label={`Opciones de ${e.name}`}
-              onClick={(ev) => ev.stopPropagation()}
-            >
-              <p className="eyebrow">{e.name}</p>
+        {/*
+          Lo secundario, en un cajón de verdad y no en un div con un fondo
+          oscuro detrás. `Drawer` trae lo que aquello no tenía: se cierra
+          arrastrando hacia abajo, atrapa el foco mientras está abierto y lo
+          devuelve al botón de los tres puntos al cerrarse.
+        */}
+        <Drawer open={menu} onOpenChange={setMenu}>
+          {/* `closeLabel` en castellano: por defecto la librería pone «Close»,
+              y esta app no habla inglés en ningún sitio. */}
+          <DrawerContent className="hoja" closeLabel="Cerrar el menú">
+            <DrawerHeader>
+              {/* Con el botón de cerrar a la derecha, un nombre largo se le
+                  metía debajo. Se corta con puntos suspensivos: el ejercicio ya
+                  se sabe cuál es, el título aquí solo confirma. */}
+              <DrawerTitle className="truncate pe-10">{e.name}</DrawerTitle>
+            </DrawerHeader>
+            <DrawerBody>
               <div className="hoja-acciones">
                 {patternOf(e.exerciseId) && (
                   <button
@@ -882,12 +885,9 @@ export default function SessionScreen({ session }: { session: Session }) {
                   Terminar el entreno
                 </button>
               </div>
-              <Boton tono="callado" onClick={() => setMenu(false)}>
-                Cerrar
-              </Boton>
-            </div>
-          </div>
-        )}
+            </DrawerBody>
+          </DrawerContent>
+        </Drawer>
       </>
     )
   }

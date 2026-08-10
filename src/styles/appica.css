@@ -35,4 +35,4 @@
 @import './theme.css' layer(ritmo);
 @import './puente.css';
 
-@source '../../node_modules/@appica/ui-react/dist/components/{button,badge,toggle,separator,navigation,tabs,field,input,toggle-group}/**/*.js';
+@source '../../node_modules/@appica/ui-react/dist/components/{button,badge,toggle,separator,navigation,tabs,field,input,toggle-group,drawer}/**/*.js';

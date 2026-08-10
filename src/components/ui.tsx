@@ -12,6 +12,7 @@
  * confundir de un vistazo lo que es de la librería —`Button`— y lo que es
  * nuestro —`Boton`—.
  */
+import { NumberField } from '@base-ui/react/number-field'
 import { Switch } from '@base-ui/react/switch'
 import { Badge } from '@appica/ui-react/badge'
 import { Button } from '@appica/ui-react/button'
@@ -186,5 +187,72 @@ export function Escala({
         </Toggle>
       ))}
     </ToggleGroup>
+  )
+}
+
+/**
+ * El contador de peso y repeticiones del entreno.
+ *
+ * Sobre el primitivo de Base UI y **no** sobre el `NumberField` de Appica, por
+ * dos motivos y ninguno es estético:
+ *
+ *  - **El idioma.** Appica escribe `aria-label="Increase value"` y
+ *    `"Decrease value"` a fuego, sin prop para cambiarlos. En una app
+ *    íntegramente en castellano, el control que más se toca —cada serie de cada
+ *    entreno— le diría «Increase value» a un lector de pantalla.
+ *  - **El peso.** Su versión importa `motion/react` para animar el número, y
+ *    aquí eso eran 101 kB de JavaScript por dos contadores.
+ *
+ * Lo que sí se conserva es lo que hacía falta y a mano no había: rol de
+ * `spinbutton`, flechas del teclado y repetición al dejar el dedo puesto, que
+ * con quince kilos que subir de dos y medio en dos y medio se agradece.
+ */
+export function Contador({
+  valor,
+  onCambiar,
+  paso = 1,
+  etiqueta,
+  sugerido = false
+}: {
+  valor: number
+  onCambiar: (n: number) => void
+  paso?: number
+  etiqueta: string
+  /** Cuando el número todavía es la propuesta del plan y no lo anotado. */
+  sugerido?: boolean
+}) {
+  return (
+    <NumberField.Root
+      className="stepper"
+      value={valor}
+      step={paso}
+      min={0}
+      locale="es-ES"
+      onValueChange={(n) => onCambiar(n ?? 0)}
+      aria-label={etiqueta}
+    >
+      <NumberField.Group className="flex w-full items-center justify-between gap-1">
+        <NumberField.Decrement
+          className="flex size-11 flex-none cursor-pointer items-center justify-center
+            rounded-[--radius-xs] text-2xl leading-none text-foreground transition
+            active:scale-[0.97] active:bg-secondary"
+          aria-label={`Bajar: ${etiqueta}`}
+        >
+          −
+        </NumberField.Decrement>
+        <NumberField.Input
+          className={`min-w-0 flex-1 bg-transparent text-center text-2xl font-semibold
+            tabular-nums outline-none ${sugerido ? 'text-foreground-subtle' : 'text-foreground-intense'}`}
+        />
+        <NumberField.Increment
+          className="flex size-11 flex-none cursor-pointer items-center justify-center
+            rounded-[--radius-xs] text-2xl leading-none text-foreground transition
+            active:scale-[0.97] active:bg-secondary"
+          aria-label={`Subir: ${etiqueta}`}
+        >
+          +
+        </NumberField.Increment>
+      </NumberField.Group>
+    </NumberField.Root>
   )
 }

@@ -114,15 +114,16 @@ console.log('  · toca:', nombre)
 await page.screenshot({ path: `${OUT}/entreno-1-foco.png` })
 
 // ── Los steppers escriben de verdad, y con el paso del material ──
-const peso = page.locator('.focus-campo').first().locator('.stepper-num')
-const reps = page.locator('.focus-campo').nth(1).locator('.stepper-num')
-const num = async (loc) => Number((await loc.innerText()).replace(',', '.'))
+// Los contadores son `NumberField` de Base UI: el número vive en un <input> de
+// verdad, así que se lee su `value` y no su texto. Se apunta al de texto porque
+// Base UI añade además uno `type="number"` oculto para el envío de formularios.
+const peso = page.locator('.focus-campo').first().locator('input[type="text"]')
+const reps = page.locator('.focus-campo').nth(1).locator('input[type="text"]')
+const num = async (loc) => Number((await loc.inputValue()).replace(',', '.'))
 
-// Sin peso propuesto —peso corporal— el contador arranca en cero, y ahí el
-// guion es lo correcto: no hay kilos que enseñar.
 const pesoAntes = await num(peso)
 const base = Number.isNaN(pesoAntes) ? 0 : pesoAntes
-await page.getByRole('button', { name: 'Subir el peso' }).click()
+await page.getByRole('button', { name: /^Subir: el peso/ }).click()
 await page.waitForTimeout(250)
 const pesoDespues = await num(peso)
 const paso = Math.round((pesoDespues - base) * 100) / 100
@@ -130,11 +131,24 @@ comprobar(paso === 1 || paso === 2.5, `el paso del peso no es de 1 ni de 2,5 kg:
 console.log('  · peso:', pesoAntes, '→', pesoDespues, `(paso ${paso})`)
 
 const repsAntes = await num(reps)
-await page.getByRole('button', { name: 'Subir las repeticiones' }).click()
+await page.getByRole('button', { name: /^Subir: las repeticiones/ }).click()
 await page.waitForTimeout(250)
 comprobar(
   (await num(reps)) === repsAntes + 1,
   `las repeticiones no suben de una en una: ${repsAntes} → ${await num(reps)}`
+)
+
+// Los contadores hablan en castellano. No es cosmético: el `NumberField` de la
+// librería lleva «Increase value» escrito a fuego y sin prop para cambiarlo, y
+// por eso esta app usa el primitivo de Base UI. Si alguien vuelve al de Appica,
+// esto lo caza.
+for (const etiqueta of ['Subir', 'Bajar']) {
+  const botones = await page.getByRole('button', { name: new RegExp(`^${etiqueta}: `) }).count()
+  comprobar(botones >= 2, `los contadores deberían decir «${etiqueta}: …» en castellano; hay ${botones}`)
+}
+comprobar(
+  (await page.getByRole('button', { name: /Increase value|Decrease value/ }).count()) === 0,
+  'los contadores están anunciándose en inglés'
 )
 
 // Y lo escrito llega al almacén: si no, se pierde al cambiar de pestaña.
@@ -171,8 +185,13 @@ for (const accion of ['Cambiar ejercicio', 'Mis marcas', 'Descanso y notas', 'Te
   )
 }
 await page.screenshot({ path: `${OUT}/entreno-3-menu.png` })
-await page.locator('.hoja').getByText('Cerrar').click()
-await page.waitForTimeout(300)
+// El cajón se cierra con su propio botón, que debe hablar en castellano.
+comprobar(
+  (await page.getByRole('button', { name: /Close/ }).count()) === 0,
+  'el cajón se está cerrando con un botón que dice «Close»'
+)
+await page.getByRole('button', { name: 'Cerrar el menú' }).click()
+await page.waitForTimeout(500)
 comprobar((await page.locator('.hoja').count()) === 0, 'el menú no se cierra')
 
 // ── «Serie hecha» marca y avanza ──────────────────────────
