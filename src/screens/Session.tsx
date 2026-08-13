@@ -79,6 +79,7 @@ import { Boton, Escala, Interruptor, Opcion } from '../components/ui'
 import { Field, FieldLabel } from '@appica/ui-react/field'
 import { Input } from '@appica/ui-react/input'
 import { Drawer, DrawerBody, DrawerContent, DrawerHeader, DrawerTitle } from '@appica/ui-react/drawer'
+import { cargaCorporal, explicarCargaCorporal } from '../domain/pesoCorporal'
 
 /** Los minutos que lleva puestos un ejercicio de cardio, si los dice. */
 function minutosDe(pe: PlannedExercise): number | undefined {
@@ -250,6 +251,31 @@ export default function SessionScreen({ session }: { session: Session }) {
         return syncExercise({ ...e, logs })
       })
     )
+  }
+
+  /**
+   * Marca una serie como hecha a peso corporal y le pone los kilos que toca.
+   *
+   * Se calculan **al marcarla** y se quedan escritos en la serie: es lo que
+   * levantaste ese día, y que dentro de tres meses peses otra cosa no cambia lo
+   * que hiciste. Al desmarcar se borra el peso, porque ese número lo había
+   * puesto la app y no tú.
+   */
+  function marcarPesoCorporal(ei: number, si: number, marcado: boolean) {
+    const e = exercises[ei]
+    if (!marcado) {
+      updateSet(ei, si, { pesoCorporal: false, weightKg: undefined })
+      return
+    }
+    const kg = cargaCorporal(e.exerciseId, profile.weightKg)
+    if (kg === undefined) {
+      setAviso(
+        'Para contar tu peso corporal necesito saber cuánto pesas. Lo pones en Yo · Perfil, y a partir de ahí estas series dejan de valer cero.'
+      )
+      return
+    }
+    updateSet(ei, si, { pesoCorporal: true, weightKg: kg })
+    setAviso(explicarCargaCorporal(e.exerciseId, profile.weightKg) ?? null)
   }
 
   /**
@@ -798,6 +824,7 @@ export default function SessionScreen({ session }: { session: Session }) {
           // error y no poder desanotarlo falsearía la fatiga del día.
           onCambiarRir={(rir) => updateSet(ei, si, { rir: serie.rir === rir ? undefined : rir })}
           onCambiarTipo={() => ciclarTipo(ei, si)}
+          onPesoCorporal={(m) => marcarPesoCorporal(ei, si, m)}
           onHecha={() => toggleSet(ei, si)}
           onMenu={() => setMenu(true)}
           onVerTodo={() => setModo('lista')}
@@ -906,6 +933,19 @@ export default function SessionScreen({ session }: { session: Session }) {
           ? `${doneSets} de ${totalSets} series. A tu ritmo: quedarte con ganas de más es la idea.`
           : 'Revisa el plan con calma: cambia lo que no encaje y ordénalo como quieras. Cuando estés, empezamos.'}
       </p>
+
+      {/*
+        Por qué el plan viene así. Sin esto uno abre el entreno y se encuentra
+        superseries que no ha pedido: la app tomó una decisión por ti y lo
+        mínimo es decir cuál y por qué.
+      */}
+      {session.minutosPedidos !== undefined && !enMarcha && (
+        <p className="faint" style={{ margin: '0 4px 14px' }}>
+          Ajustado a los {session.minutosPedidos} minutos que pediste: primero he encadenado lo que
+          no compite entre sí, y las series que faltan se las he quitado a lo que más trabajado
+          llevas esta semana.
+        </p>
+      )}
 
       {/* La lista es la vista de los cambios de plan; la de entrenar es la
           otra. Por eso la puerta de vuelta va arriba y no al final. */}

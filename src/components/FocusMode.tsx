@@ -3,7 +3,7 @@ import { TIPO_SERIE_CORTO, type PlannedExercise, type SetLog, type TipoSerie } f
 import { tipoDe } from '../domain/setLogs'
 import Icon from './Icon'
 import { Boton } from './ui'
-import { Contador } from './ui'
+import { Contador, Opcion } from './ui'
 
 /**
  * El modo foco: un ejercicio, una serie, un botón.
@@ -48,6 +48,7 @@ export default function FocusMode({
   onFijarReps,
   onCambiarRir,
   onCambiarTipo,
+  onPesoCorporal,
   onHecha,
   onMenu,
   onVerTodo
@@ -75,6 +76,8 @@ export default function FocusMode({
   onFijarReps: (reps: number) => void
   onCambiarRir: (rir: number) => void
   onCambiarTipo: () => void
+  /** Marcar o desmarcar que la serie va con el propio cuerpo. */
+  onPesoCorporal?: (marcado: boolean) => void
   onHecha: () => void
   onMenu: () => void
   onVerTodo: () => void
@@ -146,6 +149,22 @@ export default function FocusMode({
               etiqueta="el peso de la serie, en kilos"
             />
             <p className="focus-unidad">kg</p>
+            {/*
+              Una serie a peso corporal no es una serie sin peso: una sentadilla
+              búlgara sin mancuernas lleva encima el cuerpo entero. Marcándolo,
+              el contador se rellena con los kilos que este ejercicio mueve de ti
+              y la serie deja de valer cero en el volumen y en los récords.
+            */}
+            {onPesoCorporal && (
+              <Opcion
+                className="focus-corporal"
+                activa={set.pesoCorporal === true}
+                onElegir={() => onPesoCorporal(set.pesoCorporal !== true)}
+                aria-label="Esta serie va con mi peso corporal"
+              >
+                Peso corporal
+              </Opcion>
+            )}
           </div>
 
           <div className="focus-campo">

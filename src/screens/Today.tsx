@@ -29,6 +29,17 @@ import WeekStrip from '../components/WeekStrip'
  */
 const SessionScreen = lazy(() => import('./Session'))
 import { Boton, Escala, Etiqueta, Opcion, Regla } from '../components/ui'
+import {
+  MI_MATERIAL,
+  describirLocalizacion,
+  localizacionPorId,
+  localizacionesDe,
+  perfilEn
+} from '../domain/localizaciones'
+import { MINUTOS_DISPONIBLES, ajustarATiempo, type MinutosDisponibles } from '../domain/tiempo'
+import { ordenarGrupos } from '../domain/superseries'
+import { descansoDe } from '../domain/preferencias'
+import { weeklyMuscleVolume } from '../domain/volume'
 
 type Scale = 1 | 2 | 3 | 4 | 5
 type YesNoKey =
@@ -100,6 +111,9 @@ export default function Today() {
   // Qué ha pedido el usuario por encima de lo que tocaba: nada, pesas en vez
   // del cardio, o pesas sin renunciar al cardio.
   const [override, setOverride] = useState<'ninguno' | 'pesas' | 'mixto'>('ninguno')
+  /** Dónde se entrena hoy y de cuánto tiempo se dispone. */
+  const [sitio, setSitio] = useState<string>(profile.lastLocationId ?? MI_MATERIAL)
+  const [minutos, setMinutos] = useState<MinutosDisponibles | null>(null)
   const [sleep, setSleep] = useState<Scale | null>(saved?.sleep ?? null)
   const [energy, setEnergy] = useState<Scale | null>(saved?.energy ?? null)
   const [habits, setHabits] = useState<Record<YesNoKey, boolean | null>>({
@@ -180,6 +194,7 @@ export default function Today() {
     </div>
   )
 
+  const sitios = localizacionesDe(profile)
   const readiness = checkIn ? computeReadiness(checkIn) : null
 
   // Cuánto volumen toca hoy, según lo que el cuerpo viene demostrando y si la
@@ -202,9 +217,45 @@ export default function Today() {
         ? withSomeStrength(suggested, profile, readiness, data.sessions, today)
         : suggested
 
+  /**
+   * Prepara la sesión con el sitio y el tiempo que se hayan elegido.
+   *
+   * El sitio entra como un perfil con otro material, así que todo lo que ya
+   * sabía filtrar por equipo sigue funcionando sin enterarse. El tiempo se
+   * aplica **después** de construir: primero se decide el mejor entreno posible
+   * y luego se recorta con criterio, que es distinto —y mucho mejor— que pedirle
+   * al motor que construya uno pequeño desde el principio.
+   */
   function startSession() {
     if (!recommendation) return
-    actions.saveSession(buildSession(recommendation, profile, data.sessions, today, checkIn?.keto ?? false))
+    const loc = localizacionPorId(profile, sitio)
+    const perfilDelSitio = perfilEn(profile, loc)
+    const sesion = buildSession(
+      recommendation,
+      perfilDelSitio,
+      data.sessions,
+      today,
+      checkIn?.keto ?? false
+    )
+
+    const recorte =
+      minutos === null
+        ? null
+        : ajustarATiempo(sesion.exercises, minutos, {
+            descanso: (pe) => descansoDe(profile, pe.exerciseId, pe.plan.restSeconds),
+            cardioMinutos: sesion.cardioMinutes,
+            volumenSemanal: weeklyMuscleVolume(data.sessions, today)
+          })
+
+    actions.saveSession(
+      recorte
+        ? { ...sesion, exercises: ordenarGrupos(recorte.exercises), minutosPedidos: minutos ?? undefined }
+        : sesion
+    )
+    // El sitio elegido se recuerda: mañana vendrá puesto.
+    if (sitio !== profile.lastLocationId) {
+      actions.saveProfile({ ...profile, lastLocationId: sitio })
+    }
     setPhase('inicio')
   }
 
@@ -387,6 +438,53 @@ export default function Today() {
               {recommendation.ketoAdapting && <Etiqueta>Adaptación cetogénica</Etiqueta>}
               {recommendation.userOverride && <Etiqueta acento>A petición tuya</Etiqueta>}
             </div>
+
+            {/*
+              Antes de generar: dónde estás y de cuánto tiempo dispones.
+              Va aquí y no en los ajustes porque las dos cosas cambian **cada
+              día** —hoy en casa con media hora, mañana en el gimnasio con una—,
+              y preguntarlo justo antes de construir es lo que permite construir
+              bien a la primera en vez de dar un plan que no cabe.
+            */}
+            {recommendation.kind !== 'descanso_activo' && (
+              <div className="antes-de-empezar">
+                {sitios.length > 1 && (
+                  <>
+                    <p className="eyebrow">¿Dónde entrenas?</p>
+                    <div className="options">
+                      {sitios.map((l) => (
+                        <Opcion key={l.id} activa={sitio === l.id} onElegir={() => setSitio(l.id)}>
+                          {l.nombre}
+                        </Opcion>
+                      ))}
+                    </div>
+                    <p className="faint" style={{ margin: '6px 0 0' }}>
+                      {describirLocalizacion(localizacionPorId(profile, sitio))}
+                    </p>
+                  </>
+                )}
+
+                <p className="eyebrow" style={{ marginTop: 14 }}>
+                  ¿Cuánto tiempo tienes?
+                </p>
+                <div className="options">
+                  <Opcion activa={minutos === null} onElegir={() => setMinutos(null)}>
+                    El que haga falta
+                  </Opcion>
+                  {MINUTOS_DISPONIBLES.map((m) => (
+                    <Opcion key={m} activa={minutos === m} onElegir={() => setMinutos(m)}>
+                      {m} min
+                    </Opcion>
+                  ))}
+                </div>
+                {minutos !== null && (
+                  <p className="faint" style={{ margin: '6px 0 0' }}>
+                    Si no cabe, primero encadeno ejercicios en superseries y solo después quito
+                    series, empezando por lo que más trabajado llevas esta semana.
+                  </p>
+                )}
+              </div>
+            )}
 
             <Boton tono="primario" className="decision-cta" onClick={startSession}>
               <Icon name="spark" />

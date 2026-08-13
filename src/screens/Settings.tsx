@@ -22,6 +22,7 @@ import { Boton, Opcion, Pastilla, Regla } from '../components/ui'
 import { Tabs, TabsList, TabsTrigger } from '@appica/ui-react/tabs'
 import { Field, FieldLabel } from '@appica/ui-react/field'
 import { Input } from '@appica/ui-react/input'
+import Localizaciones from '../components/Localizaciones'
 
 const ALL_EQUIPMENT = Object.keys(EQUIPMENT_LABELS) as Equipment[]
 
@@ -271,6 +272,8 @@ export default function Settings() {
             </>
           )}
         </div>
+          <Localizaciones profile={profile} onChange={update} />
+
         </>
       )}
 

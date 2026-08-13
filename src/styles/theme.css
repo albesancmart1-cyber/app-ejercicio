@@ -3447,3 +3447,20 @@ textarea:focus {
   width: 100%;
   height: 100%;
 }
+
+/* La casilla de peso corporal, bajo el contador de kilos del modo foco. */
+.focus-corporal {
+  margin-top: var(--sp-2);
+  font-size: var(--text-caption);
+}
+
+/*
+ * Lo que se pregunta justo antes de generar el entreno: dónde estás y cuánto
+ * tiempo tienes. Separado del resto de la decisión por una línea, porque no es
+ * información —es lo único de esa tarjeta que hay que contestar.
+ */
+.antes-de-empezar {
+  margin: var(--sp-4) 0;
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--separator);
+}

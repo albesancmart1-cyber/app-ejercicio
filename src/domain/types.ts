@@ -420,6 +420,14 @@ export interface PlannedExercise {
 }
 
 export interface Session {
+  /**
+   * Los minutos que se pidieron al prepararla, si se pidió un tope.
+   *
+   * Se guarda para poder decir en la propia sesión por qué está recortada: sin
+   * esto, uno abre el entreno tres horas después y no entiende por qué el plan
+   * lleva superseries que no pidió.
+   */
+  minutosPedidos?: number
   id: string
   date: string // ISO yyyy-mm-dd
   /** Cuándo se guardó por última vez. Lo usa la fusión entre dispositivos. */
