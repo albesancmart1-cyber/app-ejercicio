@@ -1,3 +1,4 @@
+import type { Localizacion } from './localizaciones'
 import type { LandmarkOverrides } from './landmarks'
 import type { Lapida } from './merge'
 import type { UltimaVez } from './ultimaVez'
@@ -118,6 +119,16 @@ export interface Profile {
   equipment: Equipment[]
   /** Peso máximo disponible por equipo (kg). */
   maxWeights: Partial<Record<Equipment, number>>
+  /**
+   * Los sitios donde entrenas, cada uno con su material y sus topes.
+   *
+   * El perfil daba por hecho que uno entrena siempre en el mismo sitio, y
+   * cambiar significaba marcar y desmarcar una docena de botones —y acordarse
+   * de deshacerlo—. Ver `src/domain/localizaciones.ts`.
+   */
+  locations?: Localizacion[]
+  /** El último sitio elegido, para que la próxima vez venga puesto. */
+  lastLocationId?: string
   /** Fecha (ISO) en que empezó la alimentación cetogénica, si la sigue. */
   ketoSince?: string
   /** mg de DHA por pastilla de suplemento, si tiene. */
@@ -315,8 +326,20 @@ export const TIPO_SERIE_CORTO: Record<TipoSerie, string> = {
 }
 
 export interface SetLog {
-  /** Peso real usado, en kg. Ausente en ejercicios de peso corporal. */
+  /** Peso real usado, en kg. Ausente si no se ha anotado nada. */
   weightKg?: number
+  /**
+   * La serie se hizo con el propio cuerpo.
+   *
+   * Cuando está marcada, `weightKg` lleva **los kilos que ese ejercicio mueve de
+   * tu cuerpo** —no el campo vacío de antes—, calculados al marcarla y
+   * congelados ahí: es lo que levantaste ese día, y que mañana peses otra cosa
+   * no cambia lo que hiciste. Así el volumen, los récords y la progresión de
+   * carga funcionan sin enterarse de que no había mancuernas de por medio.
+   *
+   * Ver `src/domain/pesoCorporal.ts`.
+   */
+  pesoCorporal?: boolean
   /** Repeticiones realmente completadas. */
   reps?: number
   /**
