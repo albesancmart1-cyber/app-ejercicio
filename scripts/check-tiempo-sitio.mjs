@@ -224,11 +224,39 @@ if (await corporal.count()) {
 }
 await page.screenshot({ path: `${OUT}/tiempo-4-peso-corporal.png` })
 
+// Y también desde la lista, que es donde se corrige lo de antes y se rellenan
+// varias series seguidas. Estuvo solo en el modo foco y la función quedaba a
+// medias: quien anota desde la lista no tenía forma de decirlo.
+await page.getByRole('button', { name: 'Ver todos los ejercicios' }).click()
+await page.waitForTimeout(500)
+const enLaLista = page.getByRole('button', { name: /con mi peso corporal$/ })
+comprobar(await enLaLista.count(), 'no está la casilla de peso corporal en la lista de series')
+if (await enLaLista.count()) {
+  const antes = await page.evaluate(() => {
+    const d = JSON.parse(localStorage.getItem('ritmo-data-v1'))
+    const s = d.sessions.find((x) => !x.completed)
+    return s.exercises.flatMap((e) => e.logs ?? []).filter((l) => l.pesoCorporal).length
+  })
+  await enLaLista.last().click()
+  await page.waitForTimeout(600)
+  const despues = await page.evaluate(() => {
+    const d = JSON.parse(localStorage.getItem('ritmo-data-v1'))
+    const s = d.sessions.find((x) => !x.completed)
+    return s.exercises
+      .flatMap((e) => e.logs ?? [])
+      .filter((l) => l.pesoCorporal && (l.weightKg ?? 0) > 0).length
+  })
+  comprobar(
+    despues > antes,
+    `marcarlo desde la lista no ha anotado kilos: ${antes} → ${despues} series con peso corporal`
+  )
+  console.log('  · desde la lista:', antes, '→', despues, 'series con peso corporal y kilos')
+}
+await page.screenshot({ path: `${OUT}/tiempo-4b-lista-corporal.png` })
+
 // ── 5. Un sitio creado en Yo aparece al preparar el día ───
 // La sesión de arriba sigue en marcha: si no se descarta, «Hoy» enseña el
 // entreno y no la decisión, y esta comprobación miraría la pantalla que no es.
-await page.getByRole('button', { name: 'Ver todos los ejercicios' }).click()
-await page.waitForTimeout(400)
 await descartar()
 
 await page.locator('.tab', { hasText: 'Yo' }).click()

@@ -1334,6 +1334,21 @@ export default function SessionScreen({ session }: { session: Session }) {
                   </button>
                 </div>
                 {/*
+                  La misma casilla que en el modo foco. Estaba solo allí, y eso
+                  dejaba la función a medias: quien anota desde la lista —que es
+                  donde se corrige lo de antes y se rellenan varias series
+                  seguidas— no tenía forma de decir que la serie iba con su
+                  propio cuerpo.
+                */}
+                <Opcion
+                  className="serie-corporal"
+                  activa={serie.pesoCorporal === true}
+                  onElegir={() => marcarPesoCorporal(ei, si, serie.pesoCorporal !== true)}
+                  aria-label={`Serie ${si + 1} de ${e.name} con mi peso corporal`}
+                >
+                  Peso corporal
+                </Opcion>
+                {/*
                   Qué discos poner, solo cuando hay barra de por medio: con
                   mancuernas no hay nada que repartir. Se calcula sobre el peso
                   que hay escrito en esa serie, no sobre el del plan, porque lo

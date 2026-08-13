@@ -3464,3 +3464,11 @@ textarea:focus {
   padding-top: var(--sp-4);
   border-top: 1px solid var(--separator);
 }
+
+/* La casilla de peso corporal en una fila de la lista: sangrada como la nota
+   de los discos, para que se lea como parte de esa serie y no como otra fila. */
+.serie-corporal {
+  margin: 0 0 var(--sp-2) 30px;
+  font-size: var(--text-caption);
+  min-height: 30px;
+}
