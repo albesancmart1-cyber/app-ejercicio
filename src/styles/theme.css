@@ -3472,3 +3472,91 @@ textarea:focus {
   font-size: var(--text-caption);
   min-height: 30px;
 }
+
+/* ── El juego de la pirámide ────────────────────────────── */
+
+/*
+ * La pirámide se dibuja como está en la mesa: la cúspide arriba y la fila de
+ * cinco abajo. Las cartas se solapan un poco en vertical porque a 390 px la
+ * fila de cinco ya va justa de ancho, y ganar alto con el solape es lo que
+ * permite que la pirámide entera y la carta grande quepan sin scroll.
+ */
+.piramide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin: var(--sp-3) 0;
+}
+
+.piramide-fila {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.piramide-carta {
+  width: 42px;
+  height: 63px;
+  border-radius: 6px;
+  transition: transform 160ms ease, filter 160ms ease;
+}
+
+/* La recién levantada se levanta de verdad: sube y coge sombra. */
+.piramide-carta.recien {
+  transform: translateY(-5px) scale(1.06);
+  filter: drop-shadow(0 6px 10px rgb(0 0 0 / 0.28));
+}
+
+.piramide-cuenta {
+  margin-top: var(--sp-1);
+}
+
+/*
+ * La copia grande de la carta que se acaba de levantar: la que se mira.
+ *
+ * Las medidas de aquí y las de la pirámide están ajustadas para que en un móvil
+ * de 390 × 844 quepan cabecera, pirámide, carta grande y el botón de levantar
+ * **sin scroll**. Es un juego de un toque repetido; si el botón queda por
+ * debajo de la barra hay que arrastrar antes de cada carta.
+ */
+.piramide-actual {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+
+.carta-grande {
+  width: 118px;
+  height: 177px;
+  border-radius: 12px;
+  filter: drop-shadow(0 8px 16px rgb(0 0 0 / 0.24));
+}
+
+.piramide-nombre {
+  font-size: var(--text-subheading);
+  font-weight: var(--w-semibold);
+  text-align: center;
+}
+
+.piramide-fin {
+  text-align: center;
+  color: var(--label-2);
+  margin-bottom: var(--sp-3);
+}
+
+/* El número de la esquina y el nombre de la figura, dentro del SVG. */
+.carta-num {
+  font-family: 'Nunito Sans', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.carta-figura {
+  font-family: 'Nunito Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}

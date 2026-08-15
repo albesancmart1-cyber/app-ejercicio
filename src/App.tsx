@@ -22,8 +22,9 @@ import { Navigation, NavigationItem, NavigationList } from '@appica/ui-react/nav
 const Progreso = lazy(() => import('./screens/Progreso'))
 const Meals = lazy(() => import('./screens/Meals'))
 const Settings = lazy(() => import('./screens/Settings'))
+const Piramide = lazy(() => import('./screens/Piramide'))
 
-type Tab = 'hoy' | 'progreso' | 'cocina' | 'yo'
+type Tab = 'hoy' | 'progreso' | 'cocina' | 'piramide' | 'yo'
 
 /*
  * Cuatro destinos con nombre, no cuatro cajones.
@@ -33,10 +34,11 @@ type Tab = 'hoy' | 'progreso' | 'cocina' | 'yo'
  * hay ajustes: hay perfil, material, rutinas y cuenta, y con el nombre viejo
  * mucha gente no entraba a configurar lo que más cambia sus entrenos.
  */
-const TABS: { id: Tab; label: string; icon: 'horizon' | 'body' | 'plate' | 'leaf' }[] = [
+const TABS: { id: Tab; label: string; icon: 'horizon' | 'body' | 'plate' | 'cards' | 'leaf' }[] = [
   { id: 'hoy', label: 'Hoy', icon: 'horizon' },
   { id: 'progreso', label: 'Progreso', icon: 'body' },
   { id: 'cocina', label: 'Cocina', icon: 'plate' },
+  { id: 'piramide', label: 'Pirámide', icon: 'cards' },
   { id: 'yo', label: 'Yo', icon: 'leaf' }
 ]
 
@@ -64,6 +66,7 @@ export default function App() {
           {tab === 'hoy' && <Today key={today} />}
           {tab === 'progreso' && <Progreso key={today} />}
           {tab === 'cocina' && <Meals key={today} />}
+          {tab === 'piramide' && <Piramide />}
           {tab === 'yo' && <Settings />}
         </Suspense>
       </main>
