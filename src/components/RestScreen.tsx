@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
-import { sonarAlarma } from '../store/alarma'
+import { useEffect, useState } from 'react'
+import { SALTO_SEGUNDOS, haTerminado, proporcionRestante, reloj, segundosRestantes } from '../domain/descanso'
+import { escribirNumero } from '../domain/numeros'
+import type { DescansoEnCurso } from '../domain/types'
 import { Boton, Etiqueta } from './ui'
 
 /**
@@ -15,9 +17,10 @@ import { Boton, Etiqueta } from './ui'
  *    10; por eso se puede volver a la serie de un toque.
  *  - Qué viene después, para ir montando la barra mientras esperas.
  *
- * La cuenta va contra una marca de tiempo y no restando un contador: si el
- * móvil suspende la pestaña o se bloquea la pantalla, al volver el tiempo
- * restante sigue siendo el correcto.
+ * Esta pantalla **solo pinta**. La cuenta atrás vive en la sesión (ver
+ * `src/domain/descanso.ts`), y esa es la diferencia que se nota entrenando:
+ * salirse de aquí ya no mata el descanso, y el aviso de los cero segundos suena
+ * estés donde estés. Lo único que queda dentro es el latido que redibuja.
  */
 export interface HechoAhora {
   weightKg?: number
@@ -31,65 +34,42 @@ const RADIO = 104
 const PERIMETRO = 2 * Math.PI * RADIO
 
 export default function RestScreen({
-  seconds,
+  descanso,
   hecho,
   siguiente,
-  conAlarma = true,
+  onAjustar,
   onCorregir,
   onSkip
 }: {
-  seconds: number
+  descanso: DescansoEnCurso
   hecho?: HechoAhora
   /** Qué toca después: etiqueta de superserie, nombre y detalle. */
   siguiente?: { etiqueta?: string; nombre: string; detalle?: string }
-  /** Sonar al llegar a cero. Se puede apagar desde el perfil. */
-  conAlarma?: boolean
+  /** Sumar o restar segundos. Lo aplica la sesión, que es de quien es el reloj. */
+  onAjustar: (delta: number) => void
   onCorregir?: () => void
   onSkip: () => void
 }) {
-  const [endsAt, setEndsAt] = useState(() => Date.now() + seconds * 1000)
-  const [restante, setRestante] = useState(seconds)
-  const [total, setTotal] = useState(seconds)
-  const avisado = useRef(false)
-
+  /* Solo para redibujar: el dato de verdad es `descanso.endsAt`. */
+  const [, latir] = useState(0)
   useEffect(() => {
-    const tick = () => {
-      const queda = Math.max(0, Math.round((endsAt - Date.now()) / 1000))
-      setRestante(queda)
-      if (queda === 0 && !avisado.current) {
-        avisado.current = true
-        // Los dos avisos, y en este orden: el sonido es el que se oye con el
-        // móvil boca abajo en el banco; la vibración es el respaldo para
-        // cuando lo llevas encima o el audio está bloqueado.
-        if (conAlarma) sonarAlarma()
-        // En iOS no existe: el encadenamiento opcional evita que reviente.
-        navigator.vibrate?.([120, 60, 120])
-      }
-    }
-    tick()
-    const id = setInterval(tick, 250)
+    const id = setInterval(() => latir((n) => n + 1), 250)
     return () => clearInterval(id)
-  }, [endsAt, conAlarma])
+  }, [])
 
-  const minutos = Math.floor(restante / 60)
-  const segundos = restante % 60
-  const terminado = restante === 0
-  const proporcion = Math.max(0, Math.min(1, restante / Math.max(1, total)))
-
-  const totalMin = Math.floor(total / 60)
-  const totalSeg = total % 60
+  const restante = segundosRestantes(descanso)
+  const terminado = haTerminado(descanso)
+  const proporcion = proporcionRestante(descanso)
 
   return (
     <div className="rest-screen fade-in">
-      <p className="eyebrow" style={{ color: 'var(--accent)', textAlign: 'center' }}>
-        {terminado ? 'Descanso terminado' : 'Descanso'}
-      </p>
+      <p className="eyebrow rest-titulo">{terminado ? 'Descanso terminado' : 'Descanso'}</p>
 
       <svg
         viewBox="0 0 240 240"
         className="rest-ring"
         role="img"
-        aria-label={`Quedan ${minutos} minutos y ${segundos} segundos de descanso`}
+        aria-label={`Quedan ${Math.floor(restante / 60)} minutos y ${restante % 60} segundos de descanso`}
       >
         <circle cx="120" cy="120" r={RADIO} fill="none" stroke="var(--fill-3)" strokeWidth="12" />
         <circle
@@ -106,10 +86,10 @@ export default function RestScreen({
           style={{ transition: 'stroke-dashoffset .25s linear' }}
         />
         <text x="120" y="130" textAnchor="middle" className="rest-ring-num">
-          {minutos}:{String(segundos).padStart(2, '0')}
+          {reloj(restante)}
         </text>
         <text x="120" y="158" textAnchor="middle" className="rest-ring-cap">
-          de {totalMin}:{String(totalSeg).padStart(2, '0')}
+          de {reloj(descanso.totalSeconds)}
         </text>
       </svg>
 
@@ -118,7 +98,9 @@ export default function RestScreen({
           <p className="eyebrow">Acabas de hacer</p>
           <div className="row" style={{ alignItems: 'center' }}>
             <span className="rest-hecho-num">
-              {hecho.weightKg !== undefined ? `${hecho.weightKg} kg × ${hecho.reps ?? '—'}` : `${hecho.reps ?? '—'} reps`}
+              {hecho.weightKg !== undefined
+                ? `${escribirNumero(hecho.weightKg)} kg × ${hecho.reps ?? '—'}`
+                : `${hecho.reps ?? '—'} reps`}
             </span>
             {hecho.rir !== undefined && <Etiqueta>RIR {hecho.rir}</Etiqueta>}
           </div>
@@ -128,7 +110,7 @@ export default function RestScreen({
             </p>
           )}
           {onCorregir && (
-            <Boton tono="callado" style={{ marginTop: 10 }} onClick={onCorregir}>
+            <Boton tono="secundario" className="rest-corregir" onClick={onCorregir}>
               Corregir la serie
             </Boton>
           )}
@@ -136,7 +118,7 @@ export default function RestScreen({
       )}
 
       {siguiente && (
-        <div style={{ marginTop: 16 }}>
+        <div className="rest-despues">
           <p className="eyebrow">Después</p>
           <div className="card rest-siguiente">
             {siguiente.etiqueta && <span className="ss-tag">{siguiente.etiqueta}</span>}
@@ -150,19 +132,34 @@ export default function RestScreen({
 
       <div className="spacer-flex" />
 
+      {/*
+        La acción de seguir va **arriba y sola**, y los dos ajustes debajo
+        compartiendo fila. Antes iban los tres en línea y el de seguir se salía
+        de la pantalla por la derecha: solo se veían ocho píxeles de él. Lo que
+        más se toca es «seguir», así que es lo que ocupa el ancho entero y lo que
+        cae bajo el pulgar.
+      */}
       <div className="rest-botones">
-        <Boton tono="secundario"
-          onClick={() => {
-            avisado.current = false
-            setEndsAt((prev) => Math.max(Date.now(), prev) + 30_000)
-            setTotal((prev) => prev + 30)
-          }}
-        >
-          +30 s
-        </Boton>
-        <button className={terminado ? 'btn btn-primary' : 'btn btn-secondary'} onClick={onSkip}>
+        <Boton tono="primario" onClick={onSkip}>
           {terminado ? 'Seguir' : 'Saltar descanso'}
-        </button>
+        </Boton>
+        <div className="rest-ajustes">
+          <Boton
+            tono="secundario"
+            disabled={terminado}
+            onClick={() => onAjustar(-SALTO_SEGUNDOS)}
+            aria-label="Quitar treinta segundos de descanso"
+          >
+            −{SALTO_SEGUNDOS} s
+          </Boton>
+          <Boton
+            tono="secundario"
+            onClick={() => onAjustar(SALTO_SEGUNDOS)}
+            aria-label="Añadir treinta segundos de descanso"
+          >
+            +{SALTO_SEGUNDOS} s
+          </Boton>
+        </div>
       </div>
     </div>
   )

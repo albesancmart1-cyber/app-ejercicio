@@ -149,7 +149,9 @@ comprobar(
 
 const pesos = await sentadilla
   .locator('input[aria-label*="Peso de la serie"]')
-  .evaluateAll((ns) => ns.map((n) => Number(n.value)))
+  // Con coma, que es como se escriben los kilos aquí: `Number('47,5')` es NaN,
+  // y leerlos así fue justo el fallo que se arregló en la app.
+  .evaluateAll((ns) => ns.map((n) => Number(n.value.replace(',', '.'))))
 const calentamiento = pesos.slice(0, despues - antes)
 // 40 %, 60 % y 80 % de 60 = 24, 36, 48 → redondeados a 2,5: 25, 35, 47,5.
 comprobar(

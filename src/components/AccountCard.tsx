@@ -160,8 +160,8 @@ export default function AccountCard() {
           )}
 
           <Field className="field" style={{ marginTop: 14 }}>
-  <FieldLabel>Tu correo</FieldLabel>
-  <Input
+            <FieldLabel>Tu correo</FieldLabel>
+            <Input
               type="email"
               inputMode="email"
               autoComplete="email"
@@ -169,7 +169,7 @@ export default function AccountCard() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
-</Field>
+          </Field>
           <Boton tono="primario" disabled={enviando} onClick={enviarCorreo}>
             {enviando ? 'Enviando…' : pedido ? 'Mandarme otro correo' : 'Mandarme el acceso'}
           </Boton>

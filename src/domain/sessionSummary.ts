@@ -15,6 +15,7 @@ import { esCalentamiento, tipoDe } from './setLogs'
 import { etiquetaDe } from './superseries'
 import type { Muscle } from './muscles'
 import type { ExerciseVariant, PlannedExercise, Session, SetLog } from './types'
+import { escribirNumero } from './numeros'
 
 export interface ResumenEjercicio {
   exerciseId: string
@@ -136,7 +137,7 @@ export function resumirSesion(session: Session): ResumenSesion {
  */
 export function describirSerie(l: SetLog): string {
   const reps = l.reps !== undefined ? `× ${l.reps}` : '× —'
-  const base = l.weightKg !== undefined ? `${l.weightKg} kg ${reps}` : reps
+  const base = l.weightKg !== undefined ? `${escribirNumero(l.weightKg)} kg ${reps}` : reps
   // Una serie al fallo no necesita que le escriban el RIR: ya lo dice su tipo.
   if (l.rir !== undefined) return `${base} · RIR ${l.rir}`
   return tipoDe(l) === 'fallo' ? `${base} · al fallo` : base

@@ -25,6 +25,7 @@
 import { sameVariant } from './variants'
 import { esCalentamiento, tipoDe } from './setLogs'
 import type { ExerciseVariant, Session, SetLog } from './types'
+import { escribirNumero } from './numeros'
 
 /**
  * Repetición máxima estimada, por la fórmula de Epley: `peso × (1 + reps/30)`.
@@ -185,12 +186,12 @@ export function marcasDeSerie(l: SetLog, previos: Records): TipoMarca[] {
 export function celebrar(marcas: TipoMarca[], l: SetLog, previos: Records): string | undefined {
   if (marcas.length === 0) return undefined
   const serie =
-    l.weightKg !== undefined ? `${l.weightKg} kg × ${l.reps}` : `${l.reps} repeticiones`
+    l.weightKg !== undefined ? `${escribirNumero(l.weightKg)} kg × ${l.reps}` : `${l.reps} repeticiones`
 
   if (marcas.includes('pesoMaximo')) {
     const antes = previos.pesoMaximo?.valor
     return antes
-      ? `Récord: ${serie}. Nunca habías movido tanto aquí — lo anterior eran ${antes} kg.`
+      ? `Récord: ${serie}. Nunca habías movido tanto aquí — lo anterior eran ${escribirNumero(antes)} kg.`
       : `Récord: ${serie}. Es el peso más alto que te consta en este ejercicio.`
   }
   if (marcas.includes('masReps') && l.weightKg === undefined) {
@@ -204,7 +205,9 @@ export function celebrar(marcas: TipoMarca[], l: SetLog, previos: Records): stri
   }
   if (marcas.includes('unRM')) {
     const estimado = unaRepMaxima(l.weightKg!, l.reps!)
-    return `Récord: ${serie} sale a ${estimado} kg a una repetición, tu mejor estimación hasta hoy.`
+    if (estimado !== undefined) {
+      return `Récord: ${serie} sale a ${escribirNumero(estimado)} kg a una repetición, tu mejor estimación hasta hoy.`
+    }
   }
   return `Récord: ${serie}.`
 }
@@ -215,7 +218,7 @@ export function celebrar(marcas: TipoMarca[], l: SetLog, previos: Records): stri
  */
 export function describirSerieCorta(l: SetLog): string {
   if (typeof l.weightKg === 'number' && l.weightKg > 0) {
-    return `${l.weightKg} kg × ${l.reps ?? '—'}`
+    return `${escribirNumero(l.weightKg)} kg × ${l.reps ?? '—'}`
   }
   return `${l.reps ?? '—'} reps`
 }
@@ -230,11 +233,13 @@ export function describirSerieCorta(l: SetLog): string {
 export function marcaPrevia(tipos: TipoMarca[], previos: Records): string | undefined {
   if (tipos.includes('pesoMaximo') && previos.pesoMaximo) {
     const m = previos.pesoMaximo
-    return m.reps !== undefined ? `${m.pesoKg} kg × ${m.reps}` : `${m.valor} kg`
+    return m.reps !== undefined && m.pesoKg !== undefined
+      ? `${escribirNumero(m.pesoKg)} kg × ${m.reps}`
+      : `${escribirNumero(m.valor)} kg`
   }
   if (tipos.includes('masReps') && previos.masReps) {
     const m = previos.masReps
-    return m.pesoKg !== undefined ? `${m.pesoKg} kg × ${m.valor}` : `${m.valor} reps`
+    return m.pesoKg !== undefined ? `${escribirNumero(m.pesoKg)} kg × ${m.valor}` : `${m.valor} reps`
   }
   if (tipos.includes('mejorSerie') && previos.mejorSerie) {
     return origenDeMarca(previos.mejorSerie)
@@ -312,7 +317,7 @@ export function formatMarca(tipo: TipoMarca, m: Marca): string {
 /** De dónde salió: «42 kg × 8», para no tener que fiarse de la cifra a ciegas. */
 export function origenDeMarca(m: Marca): string | undefined {
   if (m.pesoKg === undefined || m.reps === undefined) return undefined
-  return `${m.pesoKg} kg × ${m.reps}`
+  return `${escribirNumero(m.pesoKg)} kg × ${m.reps}`
 }
 
 /** Las marcas que existen, en el orden en que se enseñan. */

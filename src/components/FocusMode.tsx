@@ -44,6 +44,8 @@ export default function FocusMode({
   ultimaVez,
   discos,
   siguiente,
+  corrigiendo,
+  onVolverAlDescanso,
   onFijarPeso,
   onFijarReps,
   onCambiarRir,
@@ -71,6 +73,13 @@ export default function FocusMode({
   ultimaVez?: string
   discos?: string
   siguiente?: { etiqueta?: string; nombre: string; sinDescanso: boolean }
+  /**
+   * Se está corrigiendo una serie ya hecha, con el descanso corriendo por
+   * debajo. Cambia lo único que cambia: el rótulo, y que la acción principal
+   * pasa de «serie hecha» a volver al anillo.
+   */
+  corrigiendo?: { volverEn: string }
+  onVolverAlDescanso?: () => void
   /** El peso ya resuelto, no el salto: lo calcula el propio contador. */
   onFijarPeso: (kg: number) => void
   onFijarReps: (reps: number) => void
@@ -108,6 +117,7 @@ export default function FocusMode({
         <div className="focus-fill" style={{ width: `${progreso}%` }} />
       </div>
 
+      {corrigiendo && <span className="ss-tag focus-corrigiendo">Corrigiendo la serie {serieN}</span>}
       {etiqueta && <span className="ss-tag focus-ss">{etiqueta} · superserie</span>}
       <h1 className="focus-nombre">{ejercicio.name}</h1>
       {ultimaVez && <p className="focus-ultima">{ultimaVez}</p>}
@@ -201,10 +211,16 @@ export default function FocusMode({
         </div>
       </div>
 
-      <Boton tono="primario" className="focus-hecha" onClick={onHecha}>
-        <Icon name="check" />
-        Serie hecha
-      </Boton>
+      {corrigiendo && onVolverAlDescanso ? (
+        <Boton tono="primario" className="focus-hecha" onClick={onVolverAlDescanso}>
+          Volver al descanso · {corrigiendo.volverEn}
+        </Boton>
+      ) : (
+        <Boton tono="primario" className="focus-hecha" onClick={onHecha}>
+          <Icon name="check" />
+          Serie hecha
+        </Boton>
+      )}
 
       {siguiente && (
         <div className="focus-siguiente">

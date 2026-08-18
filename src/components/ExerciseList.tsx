@@ -5,6 +5,7 @@ import { MUSCLE_LABELS } from '../domain/types'
 import type { MuscleGroup, Session } from '../domain/types'
 import { Field, FieldLabel } from '@appica/ui-react/field'
 import { Input } from '@appica/ui-react/input'
+import { escribirNumero } from '../domain/numeros'
 
 /**
  * Tus ejercicios, como sección con nombre.
@@ -126,7 +127,7 @@ export default function ExerciseList({
             <div className="item-meta">
               {MUSCLE_LABELS[f.primary]} · {f.veces} {f.veces === 1 ? 'vez' : 'veces'} ·{' '}
               {f.ultima}
-              {f.tope ? ` · tope ${f.tope} kg` : ''}
+              {f.tope ? ` · tope ${escribirNumero(f.tope)} kg` : ''}
             </div>
           </div>
           <span className="chev" aria-hidden="true" />

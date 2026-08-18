@@ -443,6 +443,30 @@ export interface Session {
   startedAt?: number
   /** Duración total en segundos, guardada al terminar. */
   durationSec?: number
+  /**
+   * El descanso que está corriendo ahora mismo, si lo hay.
+   *
+   * Va aquí y no en el estado de la pantalla porque un descanso de dos minutos
+   * es justo el rato en que uno se sale a mirar otra cosa, y antes eso lo
+   * mataba: al volver, ni cuenta atrás ni aviso, y la app ya te había pasado a
+   * la serie siguiente. Guardado con la sesión, cerrar la app y volver tampoco
+   * lo pierde. Es la misma idea que `startedAt`: una marca de tiempo absoluta,
+   * no un contador que haya que ir restando.
+   */
+  descanso?: DescansoEnCurso
+}
+
+/** Un descanso corriendo: contra el reloj, no contra un contador. */
+export interface DescansoEnCurso {
+  /** Qué serie se acaba de hacer, para poder volver a corregirla. */
+  exercise: number
+  set: number
+  /** Cuándo termina, en época ms. */
+  endsAt: number
+  /** Cuánto dura en total, en segundos. Cambia con los ±30 s. */
+  totalSeconds: number
+  /** El ejercicio que viene, cuando el descanso es entre ejercicios. */
+  nextName?: string
 }
 
 /**

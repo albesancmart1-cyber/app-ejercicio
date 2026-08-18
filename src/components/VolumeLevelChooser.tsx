@@ -47,11 +47,11 @@ export default function VolumeLevelChooser({
   if (!abierto) {
     return (
       <div className="level-actions">
-        <Boton tono="callado" onClick={() => setAbierto(true)}>
+        <Boton tono="callado" suelto onClick={() => setAbierto(true)}>
           {actual >= NIVEL_MAXIMO ? 'Cambiar de nivel' : 'Subir de nivel'}
         </Boton>
         {elegidoPorTi && (
-          <Boton tono="callado" onClick={onAutomatico}>
+          <Boton tono="callado" suelto onClick={onAutomatico}>
             Volver a que decidas tú
           </Boton>
         )}
@@ -88,11 +88,11 @@ export default function VolumeLevelChooser({
       </div>
       <div className="level-actions">
         {elegidoPorTi && (
-          <Boton tono="callado" onClick={() => { onAutomatico(); setAbierto(false) }}>
+          <Boton tono="callado" suelto onClick={() => { onAutomatico(); setAbierto(false) }}>
             Volver a que decidas tú
           </Boton>
         )}
-        <Boton tono="callado" onClick={() => setAbierto(false)}>
+        <Boton tono="callado" suelto onClick={() => setAbierto(false)}>
           Cancelar
         </Boton>
       </div>

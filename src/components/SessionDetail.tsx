@@ -6,6 +6,7 @@ import { esCalentamiento, tipoDe } from '../domain/setLogs'
 import { NOMBRE_MARCA, recordsDeLaSesion } from '../domain/records'
 import Icon from './Icon'
 import { Regla } from './ui'
+import { escribirNumero } from '../domain/numeros'
 
 /**
  * Lo que se hizo en un entreno, abierto desde el historial.
@@ -160,7 +161,7 @@ export default function SessionDetail({
               {[
                 e.variante?.side === 'unilateral' ? 'a un lado cada vez' : null,
                 e.anadido ? 'añadido a mano' : null,
-                e.pesoMaximo !== undefined ? `tope ${e.pesoMaximo} kg` : null,
+                e.pesoMaximo !== undefined ? `tope ${escribirNumero(e.pesoMaximo)} kg` : null,
                 e.cargaTotal !== undefined ? formatCarga(e.cargaTotal) : null,
                 e.rirMedio !== undefined ? `RIR ${e.rirMedio}` : null
               ]

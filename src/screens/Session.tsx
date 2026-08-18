@@ -8,6 +8,7 @@ import {
   type Equipment,
   type Exercise,
   type PlannedExercise,
+  type DescansoEnCurso,
   type Session,
   type SetLog,
   type SideMode,
@@ -75,7 +76,16 @@ import ExerciseAnimation from '../components/ExerciseAnimation'
 import ExercisePicker from '../components/ExercisePicker'
 import ExerciseSheet from '../components/ExerciseSheet'
 import { patternOf } from '../data/patterns'
-import { Boton, Escala, Interruptor, Opcion } from '../components/ui'
+import { Boton, CampoNumero, Escala, Interruptor, Opcion } from '../components/ui'
+import { escribirNumero } from '../domain/numeros'
+import {
+  ajustar as ajustarDescanso,
+  empezarDescanso,
+  haTerminado,
+  recuperarDescanso,
+  reloj,
+  segundosRestantes
+} from '../domain/descanso'
 import { Field, FieldLabel } from '@appica/ui-react/field'
 import { Input } from '@appica/ui-react/input'
 import { Drawer, DrawerBody, DrawerContent, DrawerHeader, DrawerTitle } from '@appica/ui-react/drawer'
@@ -107,7 +117,9 @@ function describirDiscos(objetivoKg: number): string {
   const r = repartirDiscos(objetivoKg)
   if (r.imposible) return describirReparto(r)
   const base = `${describirReparto(r)} por lado`
-  return r.desvioKg === 0 ? base : `${base} → ${r.totalKg} kg (${r.desvioKg} respecto a lo pedido)`
+  return r.desvioKg === 0
+    ? base
+    : `${base} → ${escribirNumero(r.totalKg)} kg (${escribirNumero(r.desvioKg)} respecto a lo pedido)`
 }
 
 function planLabel(pe: PlannedExercise, descansoSeg?: number, enSuperserie = false): string {
@@ -140,15 +152,6 @@ function repsDelPlan(pe: PlannedExercise): number {
   return m ? Number(m[0]) : 8
 }
 
-/** Dónde está el descanso activo y de qué tipo. */
-interface Resting {
-  exercise: number
-  set: number
-  seconds: number
-  /** Nombre del ejercicio que viene, cuando el descanso es entre ejercicios. */
-  nextName?: string
-}
-
 export default function SessionScreen({ session }: { session: Session }) {
   const data = useAppData()
   const today = useToday()
@@ -159,7 +162,35 @@ export default function SessionScreen({ session }: { session: Session }) {
   const [startedAt, setStartedAt] = useState<number | undefined>(session.startedAt)
   const [rpe, setRpe] = useState<1 | 2 | 3 | 4 | 5 | null>(null)
   const [finishing, setFinishing] = useState(false)
-  const [resting, setResting] = useState<Resting | null>(null)
+  /*
+   * El descanso se recupera de la sesión guardada. Antes vivía solo aquí, y
+   * salirse de la pantalla —o cambiar de pestaña— lo borraba: al volver no
+   * había ni cuenta atrás ni forma de recuperarla, y la app ya te había pasado
+   * a la serie siguiente.
+   */
+  const [resting, setResting] = useState<DescansoEnCurso | null>(
+    () => recuperarDescanso(session.descanso) ?? null
+  )
+  /**
+   * La serie que se está corrigiendo desde el descanso.
+   *
+   * Es lo que distingue «corregir» de «saltar»: los dos abandonaban la pantalla
+   * del descanso, así que corregir te dejaba en la serie **siguiente** en vez de
+   * en la que acabas de hacer. Aquí se dice en voz alta cuál se está tocando, y
+   * el descanso sigue corriendo por debajo.
+   */
+  const [corrigiendo, setCorrigiendo] = useState<{ exercise: number; set: number } | null>(null)
+  /*
+   * Un latido de un segundo mientras se corrige con el descanso corriendo: es
+   * lo único que hace falta para que el botón de volver enseñe el tiempo que
+   * queda de verdad y no el de cuando se abrió la corrección.
+   */
+  const [, latido] = useState(0)
+  useEffect(() => {
+    if (!resting || !corrigiendo) return
+    const id = setInterval(() => latido((n) => n + 1), 1000)
+    return () => clearInterval(id)
+  }, [resting, corrigiendo])
   const [comoSeHace, setComoSeHace] = useState<number | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
   const [eligiendo, setEligiendo] = useState<Eligiendo | null>(null)
@@ -221,18 +252,18 @@ export default function SessionScreen({ session }: { session: Session }) {
    * según se escribe —con un pequeño retardo para no guardar en cada tecla— y
    * se vuelca sí o sí al salir de la pantalla.
    */
-  const ultimo = useRef({ exercises, startedAt })
-  ultimo.current = { exercises, startedAt }
+  const ultimo = useRef({ exercises, startedAt, descanso: resting ?? undefined })
+  ultimo.current = { exercises, startedAt, descanso: resting ?? undefined }
   // Una vez terminada o descartada, no debe resucitarla el volcado de salida.
   const cerrada = useRef(false)
 
   useEffect(() => {
     if (cerrada.current) return
     const id = setTimeout(() => {
-      actions.saveSession({ ...session, exercises, startedAt })
+      actions.saveSession({ ...session, exercises, startedAt, descanso: resting ?? undefined })
     }, 300)
     return () => clearTimeout(id)
-  }, [exercises, startedAt])
+  }, [exercises, startedAt, resting])
 
   useEffect(
     () => () => {
@@ -242,6 +273,35 @@ export default function SessionScreen({ session }: { session: Session }) {
     },
     []
   )
+
+  /**
+   * Cierra el descanso. Y con él la corrección, que solo existe mientras hay un
+   * descanso al que volver: dejarla suelta plantaría al usuario editando una
+   * serie ya hecha sin nada que la devuelva al recorrido.
+   */
+  function cerrarDescanso() {
+    setResting(null)
+    setCorrigiendo(null)
+  }
+
+  /*
+   * El aviso de los cero segundos vive aquí y no en la pantalla del descanso.
+   * Dentro de ella solo sonaba si estabas mirándola, que es justo cuando menos
+   * falta hace: el caso de verdad es dejar el móvil en el banco y esperar a que
+   * te avise. Se programa contra el final absoluto, así que un «+30 s» o un
+   * «−30 s» lo reprograman solos.
+   */
+  useEffect(() => {
+    if (!resting) return
+    const faltan = resting.endsAt - Date.now()
+    if (faltan <= 0) return
+    const id = setTimeout(() => {
+      if (profile.alarmaDescanso !== false) sonarAlarma()
+      // En iOS no existe: el encadenamiento opcional evita que reviente.
+      navigator.vibrate?.([120, 60, 120])
+    }, faltan)
+    return () => clearTimeout(id)
+  }, [resting?.endsAt, profile.alarmaDescanso])
 
   function updateSet(ei: number, si: number, patch: Partial<SetLog>) {
     setExercises((prev) =>
@@ -352,7 +412,7 @@ export default function SessionScreen({ session }: { session: Session }) {
     updateSet(ei, si, { done: marcando })
 
     if (!marcando) {
-      setResting(null)
+      cerrarDescanso()
       setAhora(null)
       // Desmarcar una serie retira su medalla: si no se hizo, no hay récord.
       setMarcas((m) => {
@@ -390,7 +450,7 @@ export default function SessionScreen({ session }: { session: Session }) {
     })
 
     if (!paso) {
-      setResting(null)
+      cerrarDescanso()
       setAhora(null)
       return
     }
@@ -398,19 +458,19 @@ export default function SessionScreen({ session }: { session: Session }) {
     if (paso.tipo === 'encadena') {
       // Lo que hace que una superserie sea una superserie: nada de descanso, y
       // la siguiente tarjeta delante de los ojos.
-      setResting(null)
+      cerrarDescanso()
       setAhora({ exercise: paso.exercise, set: paso.set })
       irA(paso.exercise)
       return
     }
 
-    setResting({ exercise: ei, set: si, seconds: paso.seconds, nextName: paso.nombre })
+    setResting(empezarDescanso(ei, si, paso.seconds, paso.nombre))
     setAhora(paso.exercise !== undefined ? { exercise: paso.exercise, set: paso.set ?? 0 } : null)
   }
 
   function encadenar(ei: number) {
     setExercises((prev) => encadenarConSiguiente(prev, ei))
-    setResting(null)
+    cerrarDescanso()
     setAhora(null)
     setAviso(
       `${exercises[ei].name} y ${exercises[ei + 1].name}, encadenados: una serie de cada uno seguida y el descanso al cerrar la vuelta.`
@@ -419,7 +479,7 @@ export default function SessionScreen({ session }: { session: Session }) {
 
   function soltar(ei: number) {
     setExercises((prev) => desencadenar(prev, ei))
-    setResting(null)
+    cerrarDescanso()
     setAhora(null)
     setAviso(`${exercises[ei].name} vuelve a ir por su cuenta, con su descanso entre series.`)
   }
@@ -454,7 +514,7 @@ export default function SessionScreen({ session }: { session: Session }) {
       setAviso(`Añadido: ${exercise.name}.`)
     }
     setEligiendo(null)
-    setResting(null)
+    cerrarDescanso()
     setComoSeHace(null)
   }
 
@@ -484,7 +544,7 @@ export default function SessionScreen({ session }: { session: Session }) {
       exerciseAffinity: trasCambiar(profile, actual.exerciseId, siguiente.id)
     })
     setAviso(`${actual.name} → ${siguiente.name}. Toca otra vez si tampoco encaja.`)
-    setResting(null)
+    cerrarDescanso()
     setComoSeHace(null)
   }
 
@@ -531,7 +591,7 @@ export default function SessionScreen({ session }: { session: Session }) {
     }
     const actual = exercises[ei]
     setExercises((prev) => prev.filter((_, i) => i !== ei))
-    setResting(null)
+    cerrarDescanso()
     setComoSeHace(null)
     setAviso(`Quitado: ${actual.name}. Si te arrepientes, lo tienes en la lista de añadir.`)
     return true
@@ -572,7 +632,7 @@ export default function SessionScreen({ session }: { session: Session }) {
   function anadirPesas() {
     if (!pesas) return
     setExercises((prev) => meterPesas(prev, pesas))
-    setResting(null)
+    cerrarDescanso()
     setComoSeHace(null)
     const zonas = pesas.zonas.map((z) => MUSCLE_LABELS[z].toLowerCase()).join(', ')
     setAviso(
@@ -610,7 +670,7 @@ export default function SessionScreen({ session }: { session: Session }) {
    */
   function mover(ei: number, delta: number) {
     setExercises((prev) => moverBloque(prev, ei, delta))
-    setResting(null)
+    cerrarDescanso()
     setAhora(null)
     setComoSeHace(null)
   }
@@ -688,14 +748,19 @@ export default function SessionScreen({ session }: { session: Session }) {
     )
   }
 
-  if (resting) {
+  /*
+   * Con una corrección abierta el descanso sigue corriendo, pero enseña la
+   * serie: es lo que se pidió al tocar «corregir». Se vuelve al anillo desde el
+   * propio modo foco.
+   */
+  if (resting && !corrigiendo) {
     const deDonde = exercises[resting.exercise]
     const hecha = deDonde?.logs?.[resting.set]
     const previa = deDonde?.previous?.series[resting.set]
     const siguiente = ahora ? exercises[ahora.exercise] : undefined
     return (
       <RestScreen
-        seconds={resting.seconds}
+        descanso={resting}
         hecho={
           hecha
             ? {
@@ -712,14 +777,17 @@ export default function SessionScreen({ session }: { session: Session }) {
                 etiqueta: etiquetaDe(exercises, ahora.exercise),
                 nombre: siguiente.name,
                 detalle: `Serie ${ahora.set + 1}${
-                  siguiente.plan.weightKg ? ` · ${siguiente.plan.weightKg} kg` : ''
+                  siguiente.plan.weightKg ? ` · ${escribirNumero(siguiente.plan.weightKg)} kg` : ''
                 } · ${siguiente.plan.reps}`
               }
             : undefined
         }
-        conAlarma={profile.alarmaDescanso !== false}
-        onCorregir={() => setResting(null)}
-        onSkip={() => setResting(null)}
+        onAjustar={(delta) => setResting((d) => (d ? ajustarDescanso(d, delta) : d))}
+        onCorregir={() => {
+          setModo('foco')
+          setCorrigiendo({ exercise: resting.exercise, set: resting.set })
+        }}
+        onSkip={() => cerrarDescanso()}
       />
     )
   }
@@ -760,6 +828,11 @@ export default function SessionScreen({ session }: { session: Session }) {
    * no sirve se recalcula mirando la lista.
    */
   const puntoDeFoco = (() => {
+    // Corregir manda sobre todo lo demás, y a propósito acepta una serie ya
+    // hecha: es justo la que se quiere tocar. Sin esta salida, el filtro de
+    // «que no esté marcada» de abajo la rechazaba y devolvía la siguiente, que
+    // es lo que hacía que «corregir» y «saltar» acabasen en el mismo sitio.
+    if (corrigiendo && exercises[corrigiendo.exercise]?.logs?.[corrigiendo.set]) return corrigiendo
     if (ahora) {
       const pe = exercises[ahora.exercise]
       const log = pe?.logs?.[ahora.set]
@@ -818,6 +891,12 @@ export default function SessionScreen({ session }: { session: Session }) {
                 }
               : undefined
           }
+          corrigiendo={
+            corrigiendo && resting
+              ? { volverEn: haTerminado(resting) ? 'ya' : reloj(segundosRestantes(resting)) }
+              : undefined
+          }
+          onVolverAlDescanso={() => setCorrigiendo(null)}
           onFijarPeso={(kg) => updateSet(ei, si, { weightKg: Math.max(0, Math.round(kg * 4) / 4) })}
           onFijarReps={(reps) => updateSet(ei, si, { reps: Math.max(0, Math.round(reps)) })}
           // Volver a tocar el que ya está puesto lo quita: anotar un RIR por
@@ -1282,27 +1361,20 @@ export default function SessionScreen({ session }: { session: Session }) {
                     {TIPO_SERIE_CORTO[tipoDe(serie)] || si + 1}
                   </button>
                   <label className="set-field">
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      placeholder={e.plan.weightKg ? `${e.plan.weightKg}` : '—'}
-                      value={serie.weightKg ?? ''}
-                      onChange={(ev) =>
-                        updateSet(ei, si, { weightKg: ev.target.value ? Number(ev.target.value) : undefined })
-                      }
+                    <CampoNumero
+                      decimales
+                      placeholder={e.plan.weightKg ? escribirNumero(e.plan.weightKg) : '—'}
+                      valor={serie.weightKg}
+                      onCambiar={(n) => updateSet(ei, si, { weightKg: n })}
                       aria-label={`Peso de la serie ${si + 1} de ${e.name}`}
                     />
                     <span>kg</span>
                   </label>
                   <label className="set-field">
-                    <input
-                      type="number"
-                      inputMode="numeric"
+                    <CampoNumero
                       placeholder={e.plan.reps.split('-')[0]}
-                      value={serie.reps ?? ''}
-                      onChange={(ev) =>
-                        updateSet(ei, si, { reps: ev.target.value ? Number(ev.target.value) : undefined })
-                      }
+                      valor={serie.reps}
+                      onCambiar={(n) => updateSet(ei, si, { reps: n })}
                       aria-label={`Repeticiones de la serie ${si + 1} de ${e.name}`}
                     />
                     <span>reps</span>
@@ -1310,16 +1382,10 @@ export default function SessionScreen({ session }: { session: Session }) {
                   {/* El RIR al que se fue de verdad. El plan pide uno, pero el
                       que cuenta para el estrés es este. */}
                   <label className="set-field set-field-rir">
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      min={0}
-                      max={10}
+                    <CampoNumero
                       placeholder={e.plan.rir !== undefined ? `${e.plan.rir}` : '—'}
-                      value={serie.rir ?? ''}
-                      onChange={(ev) =>
-                        updateSet(ei, si, { rir: ev.target.value ? Number(ev.target.value) : undefined })
-                      }
+                      valor={serie.rir}
+                      onCambiar={(n) => updateSet(ei, si, { rir: n === undefined ? undefined : Math.min(10, Math.max(0, n)) })}
                       aria-label={`Repeticiones en reserva reales de la serie ${si + 1} de ${e.name}`}
                     />
                     <span>RIR</span>

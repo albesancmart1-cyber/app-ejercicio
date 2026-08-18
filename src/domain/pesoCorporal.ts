@@ -21,6 +21,7 @@
  * es que la serie deje de valer cero y que dos sesiones se puedan comparar.
  */
 import { patternOf, type MovementPattern } from '../data/patterns'
+import { escribirNumero } from './numeros'
 
 /**
  * Qué fracción del peso corporal mueve cada patrón.
@@ -84,7 +85,8 @@ export function explicarCargaCorporal(
   pesoUsuarioKg: number | undefined
 ): string | undefined {
   const carga = cargaCorporal(exerciseId, pesoUsuarioKg)
-  if (carga === undefined) return undefined
+  // Sin carga no hay nada que explicar, y si la hay es que había peso.
+  if (carga === undefined || pesoUsuarioKg === undefined) return undefined
   const pct = Math.round(fraccionCorporal(exerciseId) * 100)
-  return `Cuentan ${carga} kg: el ${pct} % de tus ${pesoUsuarioKg} kg, que es lo que mueve este ejercicio.`
+  return `Cuentan ${escribirNumero(carga)} kg: el ${pct} % de tus ${escribirNumero(pesoUsuarioKg)} kg, que es lo que mueve este ejercicio.`
 }

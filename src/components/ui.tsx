@@ -19,7 +19,8 @@ import { Button } from '@appica/ui-react/button'
 import { Separator } from '@appica/ui-react/separator'
 import { Toggle } from '@appica/ui-react/toggle'
 import { ToggleGroup } from '@appica/ui-react/toggle-group'
-import type { ComponentProps, ReactNode } from 'react'
+import { useState, type ComponentProps, type ReactNode } from 'react'
+import { escribirNumero, leerNumero, textoEnCurso } from '../domain/numeros'
 
 /**
  * El botón de la app: ancho completo y alto de pulgar.
@@ -77,7 +78,7 @@ export function Opcion({
        * la librería para que siga el acento de la hora, y el estado se lee de
        * `data-pressed`, que es lo que Base UI escribe en el elemento.
        */
-      className={`opt inline-flex min-h-9 cursor-pointer items-center rounded-full border
+      className={`opt inline-flex min-h-11 cursor-pointer items-center rounded-full border
         border-border bg-background-muted px-3.5 text-sm text-foreground transition
         select-none active:scale-[0.97]
         data-pressed:border-primary/40 data-pressed:bg-primary-subtle
@@ -221,6 +222,18 @@ export function Contador({
   /** Cuando el número todavía es la propuesta del plan y no lo anotado. */
   sugerido?: boolean
 }) {
+  /*
+   * El cuerpo del número se elige por lo largo que sea.
+   *
+   * Con un tamaño fijo, los dos botones de 44 px dejaban 45 px para la cifra y
+   * **hasta «40» se cortaba por la mitad**: en pantalla se leía «4(». Encoger
+   * siempre habría sido peor —lo que más se mira en todo el entreno es este
+   * número— así que se encoge solo cuando hace falta: «12» y «40» siguen
+   * grandes, y «102,5» entra entero.
+   */
+  const texto = escribirNumero(valor)
+  const cuerpo = texto.length <= 3 ? 'corto' : texto.length === 4 ? 'medio' : 'largo'
+
   return (
     <NumberField.Root
       className="stepper"
@@ -231,28 +244,63 @@ export function Contador({
       onValueChange={(n) => onCambiar(n ?? 0)}
       aria-label={etiqueta}
     >
-      <NumberField.Group className="flex w-full items-center justify-between gap-1">
-        <NumberField.Decrement
-          className="flex size-11 flex-none cursor-pointer items-center justify-center
-            rounded-[--radius-xs] text-2xl leading-none text-foreground transition
-            active:scale-[0.97] active:bg-secondary"
-          aria-label={`Bajar: ${etiqueta}`}
-        >
+      <NumberField.Group className="stepper-grupo">
+        <NumberField.Decrement className="stepper-boton" aria-label={`Bajar: ${etiqueta}`}>
           −
         </NumberField.Decrement>
         <NumberField.Input
-          className={`min-w-0 flex-1 bg-transparent text-center text-2xl font-semibold
-            tabular-nums outline-none ${sugerido ? 'text-foreground-subtle' : 'text-foreground-intense'}`}
+          className={`stepper-num stepper-${cuerpo} ${sugerido ? 'sugerido' : ''}`}
         />
-        <NumberField.Increment
-          className="flex size-11 flex-none cursor-pointer items-center justify-center
-            rounded-[--radius-xs] text-2xl leading-none text-foreground transition
-            active:scale-[0.97] active:bg-secondary"
-          aria-label={`Subir: ${etiqueta}`}
-        >
+        <NumberField.Increment className="stepper-boton" aria-label={`Subir: ${etiqueta}`}>
           +
         </NumberField.Increment>
       </NumberField.Group>
     </NumberField.Root>
+  )
+}
+
+/**
+ * Una casilla donde se escribe un número.
+ *
+ * No usa `type="number"`. Parece la elección obvia y es la equivocada: con el
+ * teclado español, escribir «102,5» en un campo numérico hacía que el navegador
+ * tirase la coma por su cuenta y guardase **1025**. Aquí el campo es de texto
+ * —con `inputMode` para que el móvil siga sacando el teclado de cifras— y quien
+ * interpreta lo escrito es `leerNumero`, que entiende las dos comas.
+ *
+ * El texto a medias vive en un estado local para poder teclear «102,» sin que
+ * el valor ya guardado reescriba la casilla y se coma la coma antes del decimal.
+ */
+export function CampoNumero({
+  valor,
+  onCambiar,
+  decimales = false,
+  placeholder,
+  className = '',
+  ...props
+}: Omit<ComponentProps<'input'>, 'value' | 'onChange' | 'type'> & {
+  valor: number | undefined
+  onCambiar: (n: number | undefined) => void
+  /** Los kilos llevan decimales; las repeticiones y el RIR, no. */
+  decimales?: boolean
+}) {
+  const [escrito, setEscrito] = useState('')
+  const mostrado = textoEnCurso(escrito, valor)
+  return (
+    <input
+      {...props}
+      type="text"
+      inputMode={decimales ? 'decimal' : 'numeric'}
+      className={className}
+      placeholder={placeholder}
+      value={mostrado}
+      onChange={(ev) => {
+        const texto = ev.target.value
+        setEscrito(texto)
+        const n = leerNumero(texto)
+        onCambiar(texto.trim() === '' ? undefined : n)
+      }}
+      onBlur={() => setEscrito('')}
+    />
   )
 }

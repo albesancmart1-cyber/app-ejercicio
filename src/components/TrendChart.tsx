@@ -12,6 +12,7 @@ import {
 } from '../domain/trendRange'
 import { computeComposition } from '../domain/body'
 import type { BodyMeasurement } from '../domain/types'
+import { escribirNumero } from '../domain/numeros'
 
 /**
  * Tendencia del cuerpo: peso, grasa, músculo y masa libre de grasa.
@@ -171,7 +172,7 @@ export default function TrendChart({
     return null
   }
 
-  const fmt = (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(1)}`
+  const fmt = (v: number) => `${v > 0 ? '+' : ''}${escribirNumero(Math.round(v * 10) / 10)}`
   const casillas = casillasDe(rango, todayIso)
 
   const alternar = (clave: Clave) =>
@@ -193,10 +194,10 @@ export default function TrendChart({
           0
         </text>
         <text x={PAD.left - 6} y={y(maxAbs) + 3} textAnchor="end" className="trend-axis-label">
-          {`+${maxAbs.toFixed(1)}`}
+          {`+${escribirNumero(Math.round(maxAbs * 10) / 10)}`}
         </text>
         <text x={PAD.left - 6} y={y(-maxAbs) + 3} textAnchor="end" className="trend-axis-label">
-          {`-${maxAbs.toFixed(1)}`}
+          {`−${escribirNumero(Math.round(maxAbs * 10) / 10)}`}
         </text>
 
         {visibles.map((s) => (

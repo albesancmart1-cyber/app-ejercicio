@@ -146,11 +146,14 @@ async function planDeCurl({ veces, peso, topeMancuernas }) {
   const tarjeta = page.locator('.card').filter({ hasText: 'Curl de bíceps' }).first()
   if ((await tarjeta.count()) === 0) return null
   await tarjeta.scrollIntoViewIfNeeded()
-  const kg = await tarjeta.locator('input[type="number"]').first().inputValue()
+  // Las casillas de la serie son de texto y no de número: es lo que permite
+  // escribir «102,5» con la coma del teclado español sin que se pierda.
+  const kg = await tarjeta.locator('.set-field input').first().inputValue()
   const nota = (await tarjeta.locator('.progress-note').count())
     ? await tarjeta.locator('.progress-note').innerText()
     : ''
-  return { peso: Number(kg), nota }
+  // Con coma, como se escriben aquí los kilos.
+  return { peso: Number(kg.replace(',', '.')), nota }
 }
 
 // ── Una sesión al tope no basta ───────────────────────────

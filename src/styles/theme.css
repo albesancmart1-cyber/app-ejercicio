@@ -445,13 +445,6 @@ p {
   letter-spacing: var(--tracking-display);
 }
 
-.stat-note {
-  font-size: var(--text-body);
-  line-height: var(--leading-body);
-  color: var(--label-3);
-  margin-top: var(--sp-1);
-}
-
 .accent {
   color: var(--accent);
 }
@@ -484,13 +477,6 @@ p {
   margin-top: 16px;
 }
 
-.rule {
-  height: 0.5px;
-  background: var(--separator);
-  border: none;
-  margin: 18px 0;
-}
-
 .row {
   display: flex;
   align-items: center;
@@ -515,63 +501,7 @@ button:active {
   transform: scale(0.97);
 }
 
-/*
- * Botones: misma forma y mismo tipo para todos; lo único que los distingue es
- * la claridad del relleno. El radio de 18 sobre una altura de unos 44 da la
- * cápsula del sistema sin llegar a ser un óvalo.
- */
-.btn {
-  display: block;
-  width: 100%;
-  border-radius: var(--r-control);
-  padding: var(--sp-3) var(--sp-4);
-  font-size: var(--text-body);
-  line-height: var(--leading-body);
-  font-weight: var(--w-medium);
-  text-align: center;
-  margin-bottom: var(--sp-2);
-  min-height: 44px;
-}
-
-.btn-primary {
-  background: var(--accent);
-  color: var(--accent-ink);
-}
-
-.btn-primary:active {
-  filter: brightness(0.93);
-}
-
-.btn-primary:disabled {
-  opacity: 0.32;
-  cursor: default;
-  transform: none;
-}
-
-.btn-secondary {
-  background: var(--fill-1);
-  color: var(--label);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-.btn-secondary:active {
-  background: var(--fill-2);
-}
-
-.btn-quiet {
-  color: var(--label-2);
-  font-size: var(--text-body);
-  padding: var(--sp-3);
-  width: 100%;
-}
-
-.btn-quiet:active {
-  color: var(--label);
-}
-
-/* Dentro de una tarjeta, junto a otras acciones del ejercicio. */
-.btn-quiet.btn-inline {
+/* Dentro de una tarjeta{
   width: auto;
   min-height: 0;
   padding: 2px 0;
@@ -1240,8 +1170,20 @@ textarea:focus {
   margin-top: 6px;
 }
 
-.level-actions .btn-quiet {
-  width: auto;
+/*
+ * Dos enlaces en fila, no dos bloques apilados.
+ *
+ * Al migrar, estos botones pasaron a ser los de la librería —que vienen a todo
+ * lo ancho— y la regla que los devolvía a su tamaño natural apuntaba a la clase
+ * vieja, así que dejó de aplicarse sin que se viera en ningún sitio.
+ *
+ * El ancho no se arregla desde aquí a propósito: `w-full` es una utilidad de
+ * Tailwind y vive en una capa por encima de esta, así que ganaría igual por
+ * mucha especificidad que se le eche. Se arregla en el origen, con el `suelto`
+ * de `Boton`, que es quien decide si el botón va a todo lo ancho.
+ */
+.level-actions > * {
+  margin: 0;
   padding-left: 0;
   padding-right: 0;
 }
@@ -1350,14 +1292,6 @@ textarea:focus {
   letter-spacing: -0.004em;
 }
 
-.weight-input {
-  width: 68px !important;
-  flex: 0 0 auto;
-  text-align: center;
-  padding: 9px 4px !important;
-  font-size: 0.86rem !important;
-}
-
 /* ── Registro de series ─────────────────────────────────── */
 
 .set-row {
@@ -1427,55 +1361,6 @@ textarea:focus {
   font-size: var(--text-caption);
 }
 
-/* ── Temporizador de descanso ───────────────────────────── */
-
-.rest-timer {
-  border-radius: var(--r-control);
-  padding: 14px 16px;
-  margin: 6px 0 10px 28px;
-  background: var(--accent-soft);
-  box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--accent) 30%, transparent);
-}
-
-.rest-clock {
-  font-size: 1.75rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-  color: var(--accent);
-}
-
-.rest-clock.done {
-  color: var(--text);
-}
-
-.rest-track {
-  height: 5px;
-  border-radius: var(--r-pill);
-  background: var(--fill-2);
-  overflow: hidden;
-  margin: 10px 0;
-}
-
-.rest-fill {
-  height: 100%;
-  border-radius: var(--r-pill);
-  background: var(--accent);
-  transition: width 0.25s linear;
-}
-
-.rest-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.rest-actions .opt {
-  flex: 1;
-  padding: 8px 10px;
-  font-size: 0.8rem;
-  text-align: center;
-}
-
 /* ── Gráfica de tendencia ───────────────────────────────── */
 
 .trend-chart {
@@ -1530,10 +1415,13 @@ textarea:focus {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-2);
+  /* Encender y apagar series es de lo que más se toca en esta pantalla: 26 px
+     de alto obligaban a apuntar. */
+  min-height: 36px;
   font-size: var(--text-caption);
   line-height: var(--leading-caption);
   color: var(--text-dim);
-  padding: var(--sp-1) var(--sp-2);
+  padding: var(--sp-1) var(--sp-3);
   border-radius: var(--r-control);
   background: var(--fill-3);
 }
@@ -1606,7 +1494,14 @@ textarea:focus {
   flex: 0 0 auto;
 }
 
+/*
+ * El dibujo sigue siendo de 32 px —dos flechas grandes al lado de un título
+ * quedarían mal— pero la zona que responde al dedo es de 44, que es el mínimo
+ * con el que se acierta a la primera. Se estira con un pseudoelemento para no
+ * mover nada de sitio.
+ */
 .reorder button {
+  position: relative;
   width: 32px;
   height: 32px;
   border-radius: var(--r-small);
@@ -1615,6 +1510,12 @@ textarea:focus {
   color: var(--label-2);
   font-size: 0.9375rem;
   line-height: 1;
+}
+
+.reorder button::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
 }
 
 .reorder button:disabled {
@@ -1672,14 +1573,6 @@ textarea:focus {
   .exercise-anim animateTransform {
     display: none;
   }
-}
-
-/* ── Calendario ─────────────────────────────────────────── */
-
-.calendar {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 5px;
 }
 
 .day {
@@ -1746,27 +1639,6 @@ textarea:focus {
 
 .disclose[aria-expanded='true'] svg {
   transform: rotate(90deg);
-}
-
-/* ── Etiquetas ──────────────────────────────────────────── */
-
-.tag {
-  display: inline-flex;
-  align-items: center;
-  border-radius: var(--r-pill);
-  padding: 5px 12px;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  letter-spacing: -0.006em;
-  color: var(--label-2);
-  background: var(--fill-3);
-  box-shadow: inset 0 0 0 0.5px var(--separator);
-}
-
-.tag.accent {
-  color: var(--accent);
-  background: var(--accent-soft);
-  box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 .tag-row {
@@ -2216,26 +2088,6 @@ textarea:focus {
   display: none;
 }
 
-.segmento {
-  flex: none;
-  padding: 9px 16px;
-  border-radius: var(--r-pill);
-  border: 1px solid var(--separator);
-  background: var(--fill-3);
-  color: var(--label-2);
-  font-size: var(--text-body);
-  font-weight: var(--w-regular);
-  font-family: inherit;
-  cursor: pointer;
-}
-
-.segmento.on {
-  background: var(--accent-soft);
-  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
-  color: var(--accent);
-  font-weight: var(--w-medium);
-}
-
 /* ── Lo que falta por trabajar, por zona ────────────────── */
 
 .zona {
@@ -2571,14 +2423,82 @@ textarea:focus {
   gap: var(--sp-3);
 }
 
+/*
+ * Los botones del descanso: la acción principal arriba, sola y a todo lo ancho,
+ * y los dos ajustes debajo compartiendo fila.
+ *
+ * Antes iban los tres en línea, y **el de seguir se salía de la pantalla**: se
+ * veían ocho de sus noventa y cinco píxeles. El motivo era una migración a
+ * medias —uno de los botones era ya el de la librería, con `width: 100 %`, que era el único al que llegaba el
+ * `flex: 1` de aquí—. Con los dos iguales y en columna no hay reparto que se
+ * pueda romper.
+ */
 .rest-botones {
   display: flex;
-  gap: var(--sp-3);
+  flex-direction: column;
+  gap: var(--sp-2);
 }
 
-.rest-botones .btn {
-  flex: 1;
+.rest-botones > * {
   margin: 0;
+}
+
+/* Menos treinta y más treinta, a partes iguales. */
+.rest-ajustes {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.rest-ajustes > * {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+}
+
+/* Quitar tiempo de un descanso ya terminado no significa nada. */
+.rest-ajustes > *:disabled {
+  opacity: 0.4;
+}
+
+.rest-titulo {
+  color: var(--accent);
+  text-align: center;
+}
+
+.rest-corregir {
+  margin-top: var(--sp-3);
+}
+
+.rest-despues {
+  margin-top: var(--sp-4);
+}
+
+/*
+ * El anillo se limita también por altura, no solo por ancho.
+ *
+ * A 390 × 844 la pantalla pedía 894 px: los botones nacían por debajo del borde
+ * y quedaban bajo la barra flotante. Un descanso es la pantalla en la que menos
+ * se debería tener que arrastrar.
+ */
+@media (max-height: 900px) {
+  .rest-ring {
+    width: min(54vw, 38vh, 216px);
+    margin-top: var(--sp-2);
+    margin-bottom: 0;
+  }
+
+  .rest-ring-num {
+    font-size: 46px;
+  }
+
+  .rest-hecho,
+  .rest-despues {
+    margin-top: var(--sp-2);
+  }
+
+  .rest-titulo {
+    margin-bottom: 0;
+  }
 }
 
 /* La celebración. Centrada, corta y sin nada que tocar para seguir. */
@@ -2653,10 +2573,6 @@ textarea:focus {
   color: var(--accent);
 }
 
-.record-screen .btn {
-  width: 100%;
-}
-
 
 /* ── Récords ────────────────────────────────────────────── */
 
@@ -2709,17 +2625,6 @@ textarea:focus {
   display: block;
   margin: var(--sp-3) 0 var(--sp-2);
   overflow: visible;
-}
-
-.ficha-linea {
-  stroke: var(--accent);
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.ficha-punto {
-  fill: var(--accent);
 }
 
 
@@ -2868,17 +2773,8 @@ textarea:focus {
 }
 
 /*
- * El nivel se dice con palabra y con color, nunca solo con color: «pasado» en
- * rojo y «en tu sitio» en verde serían indistinguibles para quien no separa
- * esos dos tonos.
- */
-.estres-tag {
+ * El nivel se dice con palabra y con color{
   font-size: var(--text-caption);
-}
-
-.estres-pasado {
-  color: var(--accent);
-  background: var(--accent-soft);
 }
 
 
@@ -2988,6 +2884,20 @@ textarea:focus {
 
 .focus-card {
   margin-top: var(--sp-4);
+  /* Menos relleno lateral que una tarjeta corriente: son los ocho píxeles de
+     cada lado que le faltaban a la cifra del peso para caber. */
+  padding-left: var(--sp-4);
+  padding-right: var(--sp-4);
+}
+
+/* El rótulo de que se está tocando una serie ya hecha, no la que toca. */
+.focus-corrigiendo {
+  display: inline-block;
+  align-self: flex-start;
+  width: auto;
+  margin-bottom: var(--sp-2);
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 /* El tipo de serie, tocable: normal, calentamiento, al fallo, drop. */
@@ -3030,7 +2940,7 @@ textarea:focus {
 
 .focus-campos {
   display: flex;
-  gap: var(--sp-3);
+  gap: var(--sp-2);
 }
 
 .focus-campo {
@@ -3060,18 +2970,34 @@ textarea:focus {
  * repetido de la app. Los botones son de 44 px, que es la medida a partir de la
  * cual un dedo acierta sin mirar.
  */
+/*
+ * El contador de peso y de repeticiones.
+ *
+ * El reparto del ancho es lo importante aquí, y antes estaba mal: con dos
+ * botones de 44 px, huecos entre ellos y relleno a los lados, a la cifra le
+ * quedaban 45 px con letra de 24 —y «40» ya no cabía—. Ahora los botones son de
+ * 40, no hay huecos ni relleno lateral, y el número se queda con todo lo demás.
+ * El tamaño de letra lo elige `Contador` según lo larga que sea la cifra.
+ */
 .stepper {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-1);
   background: var(--surface-strong);
   border-radius: var(--r-control);
-  padding: var(--sp-1);
+  padding: var(--sp-1) 0;
 }
 
-.stepper > button {
-  width: 44px;
+.stepper-grupo {
+  display: flex;
+  width: 100%;
+  align-items: center;
+}
+
+.stepper-boton {
+  /* Estrechos pero altos: el dedo cae en vertical sobre una fila de 44 px, y
+     los 8 px que se le quitan a cada botón son los que hacen que «102,5» quepa
+     en una pantalla de 360. */
+  width: 36px;
   height: 44px;
   flex: none;
   border-radius: var(--r-nested);
@@ -3079,22 +3005,33 @@ textarea:focus {
   line-height: 1;
   font-weight: var(--w-medium);
   color: var(--label-2);
+  cursor: pointer;
+  transition: background 0.18s var(--ease);
 }
 
-.stepper > button:active {
+.stepper-boton:active {
   background: var(--fill-2);
   color: var(--label);
 }
 
 .stepper-num {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
-  font-size: var(--text-heading-sm);
-  line-height: var(--leading-heading-sm);
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: var(--label);
+  font-family: inherit;
   font-weight: var(--w-semibold);
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
   text-align: center;
 }
+
+/* Tres cuerpos, según lo que haya que enseñar. Ver `Contador`. */
+.stepper-corto { font-size: 26px; }
+.stepper-medio { font-size: 21px; }
+.stepper-largo { font-size: 17px; }
 
 /* Lo que propone el plan, todavía sin confirmar. */
 .stepper-num.sugerido {
@@ -3200,9 +3137,7 @@ textarea:focus {
 
 /*
  * Todo lo que no es marcar la serie: cambiar el ejercicio, encadenarlo, mirar
- * las marcas, terminar. Sale de abajo y se va tocando fuera.
- */
-.hoja-fondo {
+ * las marcas{
   position: fixed;
   inset: 0;
   z-index: 40;
@@ -3393,16 +3328,12 @@ textarea:focus {
  * Los ajustes eran quinientas líneas en un solo scroll: objetivo, material,
  * medidas, volumen, umbrales, cetosis, DHA, favoritos, descartados, rutinas,
  * versión, copias, CSV y borrarlo todo, seguidos y sin relación entre ellos.
- * Cuatro grupos con nombre, y dentro de cada uno lo que de verdad va junto.
- */
-.yo-nota {
+ * Cuatro grupos con nombre{
   margin: 0 var(--sp-1) var(--sp-4);
   font-size: var(--text-body);
   line-height: var(--leading-body);
   color: var(--label-2);
 }
-
-
 
 
 /*

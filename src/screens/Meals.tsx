@@ -17,10 +17,10 @@ import { complementarConPastillas, esVerano, objetivoDhaDiario } from '../domain
 import { Badge } from '@appica/ui-react/badge'
 import { Button } from '@appica/ui-react/button'
 import { Separator } from '@appica/ui-react/separator'
-import { Toggle } from '@appica/ui-react/toggle'
 import { useAppData } from '../store/store'
 import { useToday } from '../store/clock'
 import Icon from '../components/Icon'
+import { Opcion } from '../components/ui'
 
 const BASES = Object.keys(BASE_LABELS) as MealBase[]
 const EFFORTS = Object.keys(EFFORT_LABELS) as MealEffort[]
@@ -242,26 +242,26 @@ export default function Meals() {
       <div className="card">
         <p className="eyebrow">¿Qué te apetece?</p>
         <div className="options">
-          <Toggle pressed={base === null} onPressedChange={() => setBase(null)}>
+          <Opcion activa={base === null} onElegir={() => setBase(null)}>
             Lo que sea
-          </Toggle>
+          </Opcion>
           {BASES.map((b) => (
-            <Toggle key={b} pressed={base === b} onPressedChange={() => setBase(b)}>
+            <Opcion key={b} activa={base === b} onElegir={() => setBase(b)}>
               {BASE_LABELS[b]}
-            </Toggle>
+            </Opcion>
           ))}
         </div>
 
         <Separator className="my-4" />
         <p className="eyebrow">¿Cuánto tiempo tienes?</p>
         <div className="options">
-          <Toggle pressed={effort === null} onPressedChange={() => setEffort(null)}>
+          <Opcion activa={effort === null} onElegir={() => setEffort(null)}>
             Da igual
-          </Toggle>
+          </Opcion>
           {EFFORTS.map((e) => (
-            <Toggle key={e} pressed={effort === e} onPressedChange={() => setEffort(e)}>
+            <Opcion key={e} activa={effort === e} onElegir={() => setEffort(e)}>
               {EFFORT_LABELS[e]}
-            </Toggle>
+            </Opcion>
           ))}
         </div>
       </div>

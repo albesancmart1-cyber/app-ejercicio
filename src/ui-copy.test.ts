@@ -55,3 +55,35 @@ describe('la app no habla de calorías en ninguna pantalla', () => {
     expect(sinComentarios('const deficitPhase = true')).not.toMatch(PROHIBIDO)
   })
 })
+
+/**
+ * Y los números se escriben como se escriben en español.
+ *
+ * `toFixed` devuelve siempre punto decimal, venga el idioma que venga. Así se
+ * coló que el contador del peso enseñara «102,5» y la pantalla del descanso
+ * «102.5» a la vez, y que la fatiga saliera como «0.94». No es una manía
+ * tipográfica: en castellano el punto es el separador de millares, así que un
+ * «1.300» leído a la carrera son mil trescientos y no uno coma tres.
+ *
+ * Para escribir un número en pantalla está `escribirNumero`.
+ */
+describe('los números se escriben con coma decimal', () => {
+  const PERMITIDO = new Set([
+    // Coordenadas de SVG y cálculos de trazado: no los lee nadie.
+    'src/components/BodyMap.tsx'
+  ])
+
+  it('ninguna pantalla imprime un decimal con toFixed', () => {
+    const culpables = PANTALLAS.filter(
+      (f) => !PERMITIDO.has(f) && /\.toFixed\(/.test(sinComentarios(readFileSync(f, 'utf8')))
+    )
+    expect(
+      culpables,
+      `estos usan toFixed, que siempre pone punto: ${culpables.join(', ')}. Usa escribirNumero.`
+    ).toEqual([])
+  })
+
+  it('la comprobación mira ficheros de verdad', () => {
+    expect(PANTALLAS.some((f) => f.endsWith('RestScreen.tsx'))).toBe(true)
+  })
+})

@@ -10,6 +10,7 @@ import {
 import type { Session } from '../domain/types'
 import { Etiqueta, Regla } from './ui'
 import { Badge } from '@appica/ui-react/badge'
+import { escribirNumero } from '../domain/numeros'
 
 /**
  * Cómo está el cuerpo: la fatiga que arrastras frente a la base a la que estás
@@ -87,7 +88,7 @@ export default function EstresCard({
                   etiqueta de al lado. Repetirlo en los dos sitios solo ocupa
                   espacio. */}
               <span className="stat-label">Fatiga frente a tu base</span>
-              <span className="stat-value">{e.ratio.toFixed(2)}</span>
+              <span className="stat-value">{escribirNumero(Math.round(e.ratio * 100) / 100)}</span>
             </span>
             {/* El nivel se dice con palabra **y** con color, nunca solo con
                 color: «pasado» en rojo y «en tu sitio» en verde serían
@@ -104,8 +105,9 @@ export default function EstresCard({
           {/* La escala, dicha con palabras: un número suelto entre 0 y 2 no se
               interpreta solo. */}
           <p className="faint" style={{ marginTop: 6 }}>
-            Por debajo de {UMBRALES.bajo} vienes tranquilo; hasta {UMBRALES.subiendo} estás en lo
-            tuyo; por encima de {UMBRALES.pasado}, cargando más de lo acostumbrado.
+            Por debajo de {escribirNumero(UMBRALES.bajo)} vienes tranquilo; hasta{' '}
+            {escribirNumero(UMBRALES.subiendo)} estás en lo tuyo; por encima de{' '}
+            {escribirNumero(UMBRALES.pasado)}, cargando más de lo acostumbrado.
           </p>
 
           <Curvas e={e} />
