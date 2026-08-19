@@ -357,6 +357,7 @@ export default function Today() {
             checkIns={data.checkIns}
             sessions={data.sessions}
             comidas={data.comidas}
+            alimentosEditados={data.alimentosEditados}
             todayIso={today}
           />
           <SolDeHoy sol={data.sol} todayIso={today} />
@@ -718,6 +719,7 @@ export default function Today() {
             checkIns={data.checkIns}
             sessions={data.sessions}
             comidas={data.comidas}
+            alimentosEditados={data.alimentosEditados}
             todayIso={today}
           />
 

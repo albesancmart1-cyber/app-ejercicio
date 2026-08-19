@@ -18,15 +18,17 @@ export default function PesoDeHoy({
   checkIns,
   sessions,
   comidas,
+  alimentosEditados,
   todayIso
 }: {
   measurements: BodyMeasurement[]
   checkIns: CheckIn[]
   sessions: Session[]
   comidas?: DiaDeComidas[]
+  alimentosEditados?: import('../domain/types').EdicionAlimento[]
   todayIso: string
 }) {
-  const e = explicarPeso({ measurements, checkIns, sessions, comidas }, todayIso)
+  const e = explicarPeso({ measurements, checkIns, sessions, comidas, alimentosEditados }, todayIso)
   if (!e) return null
   const deHoy = measurements.find((m) => m.date === todayIso)
 

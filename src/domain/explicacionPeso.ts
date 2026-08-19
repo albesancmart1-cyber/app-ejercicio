@@ -26,8 +26,8 @@
  */
 import { cargaDeSesion } from './estres'
 import { escribirNumero } from './numeros'
-import { cenaTardia, diaDe, llevaEtiqueta, saleDeCetosis } from './crononutricion'
-import type { BodyMeasurement, CheckIn, DiaDeComidas, Session } from './types'
+import { CETOSIS_G, cenaTardia, diaDe, estadoDeCetosis, llevaEtiqueta } from './crononutricion'
+import type { BodyMeasurement, CheckIn, DiaDeComidas, EdicionAlimento, Session } from './types'
 
 /** Techo de tejido graso real que se mueve en un día, en gramos. */
 export const TECHO_GRASA_DIA_G = 100
@@ -36,6 +36,7 @@ export const TECHO_GRASA_DIA_G = 100
 export interface FactorPeso {
   id:
     | 'glucogeno-entra'
+    | 'glucogeno-parcial'
     | 'glucogeno-sale'
     | 'entreno-duro'
     | 'sal'
@@ -136,7 +137,8 @@ export function factoresDeHoy(
   checkIns: CheckIn[],
   sessions: Session[],
   todayIso: string,
-  comidas?: DiaDeComidas[]
+  comidas?: DiaDeComidas[],
+  ediciones?: EdicionAlimento[]
 ): FactorPeso[] {
   const hoy = checkIns.find((c) => c.date === todayIso)
   const ayer = sumarDias(todayIso, -1)
@@ -149,18 +151,36 @@ export function factoresDeHoy(
   const diarioAyer = diaDe(comidas, ayer)
   const f: FactorPeso[] = []
 
-  // Glucógeno: el estado de cetosis de hoy frente al de los días anteriores.
-  // Con diario, la etiqueta «carbohidrato» de ayer decide; sin él, el test.
-  const salioAyer = saleDeCetosis(diarioAyer)
+  /*
+   * Glucógeno: la cetosis se cuenta **en gramos** cuando el diario los trae.
+   * Hasta 30 g al día se mantiene con holgura y hasta 50 aguanta según la
+   * persona; solo por encima —o con carbohidrato sin gramos, donde asumir poco
+   * sería inventar a favor— se considera salida. Sin diario, decide el test.
+   */
+  const cetosisAyer = estadoDeCetosis(diarioAyer, ediciones)
+  const salioAyer = cetosisAyer.estado === 'desconocido' ? undefined : cetosisAyer.estado === 'fuera'
   const ketoHoy = salioAyer !== undefined ? !salioAyer : hoy?.keto
   const ketoAntes = checkinAyer?.keto
   if (ketoHoy === false && ketoAntes === true) {
+    const cuanto =
+      cetosisAyer.estado === 'fuera' && !cetosisAyer.conCarboSinGramos
+        ? `Los ≈ ${cetosisAyer.carbosG} g de carbohidrato de ayer te sacaron del margen de cetosis (${CETOSIS_G.holgura}–${CETOSIS_G.limite} g)`
+        : 'Saliste de cetosis'
     f.push({
       id: 'glucogeno-entra',
-      texto:
-        'Saliste de cetosis: rellenar el glucógeno arrastra unos 3 g de agua por gramo. Es la subida más grande que existe y no es grasa — se va sola al volver.',
+      texto: `${cuanto}: rellenar el glucógeno arrastra unos 3 g de agua por gramo. Es la subida más grande que existe y no es grasa — se va sola al volver.`,
       minG: 500,
       maxG: 2000
+    })
+  }
+  // Al límite pero dentro: se dice sin drama, porque el glucógeno parcial
+  // también pesa algo — y saberlo evita el susto de mañana.
+  if (cetosisAyer.estado === 'al_limite' && ketoAntes === true) {
+    f.push({
+      id: 'glucogeno-parcial',
+      texto: `Ayer rozaste el margen de cetosis (≈ ${cetosisAyer.carbosG} g de los ${CETOSIS_G.limite} que aguanta): sigues dentro, pero ese carbohidrato repone algo de glucógeno y su agua.`,
+      minG: 100,
+      maxG: 500
     })
   }
   if (ketoHoy === true && ketoAntes === false) {
@@ -250,6 +270,7 @@ export function explicarPeso(
     checkIns: CheckIn[]
     sessions: Session[]
     comidas?: DiaDeComidas[]
+    alimentosEditados?: EdicionAlimento[]
   },
   todayIso: string
 ): ExplicacionPeso | null {
@@ -260,7 +281,7 @@ export function explicarPeso(
 
   const anteriores = ordenadas.filter((m) => m.date < todayIso)
   const anterior = anteriores[anteriores.length - 1]
-  const factores = factoresDeHoy(datos.checkIns, datos.sessions, todayIso, datos.comidas)
+  const factores = factoresDeHoy(datos.checkIns, datos.sessions, todayIso, datos.comidas, datos.alimentosEditados)
   const pendiente = pendienteSemanalG(datos.measurements, todayIso)
   const tendencia =
     pendiente === undefined

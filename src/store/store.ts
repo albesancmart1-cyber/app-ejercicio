@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { todayIsoAt } from './clock'
 import { VERSION_ACTUAL, migrar } from './migrate'
-import type { DiaDeComidas, DiaDeSol, AppData, BodyMeasurement, CheckIn, Profile, Routine, Session } from '../domain/types'
+import type { DiaDeComidas, DiaDeSol, EdicionAlimento, AppData, BodyMeasurement, CheckIn, Profile, Routine, Session } from '../domain/types'
 import { claveDeMedicion, claveDeRutina, claveDeSesion, type Lapida } from '../domain/merge'
 
 const STORAGE_KEY = 'ritmo-data-v1'
@@ -166,6 +166,16 @@ export const actions = {
         ...(s.sol ?? []).filter((d) => d.date !== dia.date),
         { ...dia, updatedAt: Date.now() }
       ].sort((a, b) => (a.date < b.date ? -1 : 1))
+    }))
+  },
+  /** Guarda la corrección de un alimento del catálogo. */
+  saveEdicionAlimento(ed: EdicionAlimento) {
+    setState((s) => ({
+      ...s,
+      alimentosEditados: [
+        ...(s.alimentosEditados ?? []).filter((x) => x.id !== ed.id),
+        { ...ed, updatedAt: Date.now() }
+      ]
     }))
   },
   saveMeasurement(measurement: BodyMeasurement) {

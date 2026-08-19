@@ -177,7 +177,7 @@ export default function Meals() {
       <p className="eyebrow">Cuando no sabes qué comer</p>
       <h1>Cocina</h1>
 
-      <DiarioDeComidas comidas={data.comidas} todayIso={today} checkIn={checkinDeHoy} />
+      <DiarioDeComidas comidas={data.comidas} todayIso={today} checkIn={checkinDeHoy} ediciones={data.alimentosEditados} />
 
       {/*
         Antes esta pantalla pedía dos filtros y daba **una** idea al pulsar un

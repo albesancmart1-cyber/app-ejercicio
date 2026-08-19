@@ -608,6 +608,27 @@ export const ETIQUETAS_COMIDA: Record<EtiquetaComida, string> = {
 }
 
 /**
+ * La calidad de un carbohidrato: el de una fruta o la miel («bueno») no es el
+ * de un plato de macarrones («malo» = refinado, de pico rápido). No es un
+ * juicio moral, es fisiología: distinta velocidad, distinta compañía de fibra.
+ */
+export type CalidadCarbo = 'bueno' | 'malo'
+
+/**
+ * Una corrección del usuario sobre un alimento del catálogo. Solo guarda los
+ * campos que cambió: lo demás sigue viniendo de fábrica, y el catálogo puede
+ * mejorar de versión en versión sin machacar sus correcciones.
+ */
+export interface EdicionAlimento {
+  /** El id del alimento del catálogo (`src/data/alimentos.ts`). */
+  id: string
+  updatedAt?: number
+  etiquetas?: EtiquetaComida[]
+  carbosPor100?: number
+  carbo?: CalidadCarbo
+}
+
+/**
  * Un alimento dentro de una comida: su nombre, su peso si se quiere apuntar, y
  * sus propias etiquetas. El peso va en gramos y es **peso**, no una cuenta de
  * energía: sirve para saber qué cantidad de qué, nada más.
@@ -615,6 +636,12 @@ export const ETIQUETAS_COMIDA: Record<EtiquetaComida, string> = {
 export interface AlimentoRegistrado {
   nombre: string
   gramos?: number
+  /**
+   * El alimento del catálogo del que salió, si salió de él. Con el enlace y
+   * los gramos, la app cuenta los carbohidratos del día contra el margen de
+   * cetosis (30–50 g) en vez de tratar cualquier carbohidrato como salida.
+   */
+  alimentoId?: string
   etiquetas?: EtiquetaComida[]
 }
 
@@ -690,6 +717,8 @@ export interface AppData {
   comidas?: DiaDeComidas[]
   /** El sol de cada día. Se apunta cuando ocurre, no en el test de la mañana. */
   sol?: DiaDeSol[]
+  /** Las correcciones del usuario sobre alimentos del catálogo. */
+  alimentosEditados?: EdicionAlimento[]
   /** Entrenos guardados para repetir. Ausente hasta que se guarda el primero. */
   routines?: Routine[]
   /**

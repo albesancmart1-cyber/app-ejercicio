@@ -14,7 +14,15 @@
  *
  * Nada de calorías: se registra qué, cuándo y de qué tipo.
  */
-import type { AlimentoRegistrado, CheckIn, ComidaRegistrada, DiaDeComidas, EtiquetaComida } from './types'
+import { alimentoResuelto } from '../data/alimentos'
+import type {
+  AlimentoRegistrado,
+  CheckIn,
+  ComidaRegistrada,
+  DiaDeComidas,
+  EdicionAlimento,
+  EtiquetaComida
+} from './types'
 
 /** A menos de estas horas de acostarse, una cena es tardía. */
 export const HORAS_CENA_TARDIA = 3
@@ -116,10 +124,104 @@ export function describirComida(c: ComidaRegistrada): string {
   return partes.length > 0 ? partes.join(' · ') : c.texto
 }
 
+/**
+ * El margen de cetosis, en gramos de carbohidrato al día.
+ *
+ * La cetosis no se rompe por un carbohidrato: se mantiene hasta unos 30 g al
+ * día con holgura, y según la persona aguanta hasta los 50. Por eso contar
+ * gramos cambia la respuesta: un melocotón no es un plato de macarrones.
+ */
+export const CETOSIS_G = { holgura: 30, limite: 50 }
+
+export interface EstadoCetosis {
+  /** Los gramos contables del día: alimentos del catálogo con peso apuntado. */
+  carbosG: number
+  /** Hubo carbohidrato sin gramos contables: la cuenta se queda corta. */
+  conCarboSinGramos: boolean
+  estado: 'dentro' | 'al_limite' | 'fuera' | 'desconocido'
+}
+
+/** Los gramos de carbohidrato de una comida que se pueden contar. */
+function carbosDeComida(c: ComidaRegistrada, ediciones?: EdicionAlimento[]): { g: number; ciegos: boolean } {
+  let g = 0
+  let ciegos = false
+  const alimentos = c.alimentos ?? []
+  for (const al of alimentos) {
+    const res = al.alimentoId ? alimentoResuelto(al.alimentoId, ediciones) : undefined
+    const porCien = res?.carbosPor100
+    const esCarbo =
+      al.etiquetas?.includes('carbohidrato') || res?.etiquetas.includes('carbohidrato') || false
+    if (porCien !== undefined && al.gramos !== undefined) {
+      g += (porCien * al.gramos) / 100
+    } else if (esCarbo) {
+      ciegos = true
+    }
+  }
+  // Una comida vieja etiquetada entera, sin alimentos: carbohidrato sin gramos.
+  if (alimentos.length === 0 && c.etiquetas?.includes('carbohidrato')) ciegos = true
+  return { g, ciegos }
+}
+
+/** Los gramos de carbohidrato contables del día entero. */
+export function carbosDelDia(dia: DiaDeComidas | undefined, ediciones?: EdicionAlimento[]): number {
+  return Math.round((dia?.comidas ?? []).reduce((a, c) => a + carbosDeComida(c, ediciones).g, 0))
+}
+
+/**
+ * ¿Dónde está el día respecto a la cetosis?
+ *
+ * Con gramos contables se cuenta de verdad: hasta 30 g, dentro con holgura;
+ * de 30 a 50, al límite pero dentro; por encima de 50, fuera. Un carbohidrato
+ * **sin gramos** vuelve a la regla antigua —se asume fuera—, porque asumir que
+ * era poco sería inventar a favor.
+ */
+export function estadoDeCetosis(
+  dia: DiaDeComidas | undefined,
+  ediciones?: EdicionAlimento[]
+): EstadoCetosis {
+  if (!dia || dia.comidas.length === 0) {
+    return { carbosG: 0, conCarboSinGramos: false, estado: 'desconocido' }
+  }
+  let carbosG = 0
+  let ciegos = false
+  for (const c of dia.comidas) {
+    const r = carbosDeComida(c, ediciones)
+    carbosG += r.g
+    ciegos = ciegos || r.ciegos
+  }
+  carbosG = Math.round(carbosG)
+  if (ciegos) return { carbosG, conCarboSinGramos: true, estado: 'fuera' }
+  const estado = carbosG > CETOSIS_G.limite ? 'fuera' : carbosG > CETOSIS_G.holgura ? 'al_limite' : 'dentro'
+  return { carbosG, conCarboSinGramos: false, estado }
+}
+
 /** ¿El día salió de cetosis? Solo se afirma si hay diario: sin comidas no se sabe. */
-export function saleDeCetosis(dia: DiaDeComidas | undefined): boolean | undefined {
-  if (!dia || dia.comidas.length === 0) return undefined
-  return llevaEtiqueta(dia, 'carbohidrato')
+export function saleDeCetosis(
+  dia: DiaDeComidas | undefined,
+  ediciones?: EdicionAlimento[]
+): boolean | undefined {
+  const e = estadoDeCetosis(dia, ediciones)
+  if (e.estado === 'desconocido') return undefined
+  return e.estado === 'fuera'
+}
+
+/** La cuenta de cetosis del día, dicha: para la tarjeta del diario. */
+export function resumenDeCetosis(
+  dia: DiaDeComidas | undefined,
+  ediciones?: EdicionAlimento[]
+): string | undefined {
+  const e = estadoDeCetosis(dia, ediciones)
+  if (e.estado === 'desconocido') return undefined
+  if (e.conCarboSinGramos) {
+    return `Hay carbohidrato apuntado sin gramos: no puedo contarlo contra el margen de cetosis (hasta ${CETOSIS_G.holgura}–${CETOSIS_G.limite} g al día). Elígelo del catálogo con su peso y te lo cuento.`
+  }
+  if (e.estado === 'dentro') {
+    return `≈ ${e.carbosG} g de carbohidrato hoy: dentro de cetosis con holgura (el margen va de ${CETOSIS_G.holgura} a ${CETOSIS_G.limite} g).`
+  }
+  if (e.estado === 'al_limite') {
+    return `≈ ${e.carbosG} g de carbohidrato hoy: al límite del margen de cetosis (${CETOSIS_G.holgura}–${CETOSIS_G.limite} g). Según el día y la persona, aquí se aguanta — pero sin sitio para más.`
+  }
+  return `≈ ${e.carbosG} g de carbohidrato hoy: por encima de los ${CETOSIS_G.limite} g, fuera de cetosis. El glucógeno que se rellene se notará en la báscula de mañana, y no será grasa.`
 }
 
 /**
