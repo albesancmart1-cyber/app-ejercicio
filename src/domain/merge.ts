@@ -16,7 +16,7 @@
  * eso lo borrado deja una **lápida** —qué era y cuándo se borró— y la unión la
  * respeta mientras nadie haya vuelto a crear esa misma cosa después.
  */
-import type { AppData, BodyMeasurement, CheckIn, Routine, Session } from './types'
+import type { DiaDeComidas, AppData, BodyMeasurement, CheckIn, Routine, Session } from './types'
 
 /** Qué se borró y cuándo, para que la fusión no lo resucite. */
 export interface Lapida {
@@ -36,6 +36,9 @@ export function claveDeCheckIn(fecha: string): string {
 }
 export function claveDeRutina(id: string): string {
   return `rutina:${id}`
+}
+export function claveDeComidas(fecha: string): string {
+  return `comidas:${fecha}`
 }
 
 /** Cuándo se tocó por última vez. Lo que no lo lleva es de antes de sincronizar. */
@@ -75,6 +78,7 @@ export function unirLapidas(a: Lapida[] = [], b: Lapida[] = []): Lapida[] {
 export interface ResumenFusion {
   sesionesAnadidas: number
   checkInsAnadidos: number
+  diasDeComidasAnadidos: number
   medicionesAnadidas: number
   /** El perfil que ha ganado: el de aquí o el de la nube. */
   perfilDe: 'local' | 'remoto' | 'igual'
@@ -102,6 +106,7 @@ export function fusionar(local: AppData, remoto: AppData): { data: AppData; resu
   const claveMedicion = (m: BodyMeasurement) => claveDeMedicion(m.date)
 
   const claveRutina = (r: Routine) => claveDeRutina(r.id)
+  const claveComidas = (d: DiaDeComidas) => claveDeComidas(d.date)
 
   const sessions = unir(local.sessions, remoto.sessions, claveSesion).filter(vivo(claveSesion))
   const routines = unir(local.routines ?? [], remoto.routines ?? [], claveRutina).filter(
@@ -110,6 +115,9 @@ export function fusionar(local: AppData, remoto: AppData): { data: AppData; resu
   const checkIns = unir(local.checkIns, remoto.checkIns, claveCheckIn).filter(vivo(claveCheckIn))
   const measurements = unir(local.measurements, remoto.measurements, claveMedicion).filter(
     vivo(claveMedicion)
+  )
+  const comidas = unir(local.comidas ?? [], remoto.comidas ?? [], claveComidas).filter(
+    vivo(claveComidas)
   )
 
   // El perfil es uno solo: no se puede unir por partes sin inventarse cosas, así
@@ -123,7 +131,8 @@ export function fusionar(local: AppData, remoto: AppData): { data: AppData; resu
   const habia = {
     sesiones: new Set(local.sessions.map(claveSesion)),
     checkIns: new Set(local.checkIns.map(claveCheckIn)),
-    mediciones: new Set(local.measurements.map(claveMedicion))
+    mediciones: new Set(local.measurements.map(claveMedicion)),
+    comidas: new Set((local.comidas ?? []).map(claveComidas))
   }
 
   return {
@@ -138,12 +147,14 @@ export function fusionar(local: AppData, remoto: AppData): { data: AppData; resu
       checkIns: [...checkIns].sort((a, b) => (a.date < b.date ? -1 : 1)),
       measurements: [...measurements].sort((a, b) => (a.date < b.date ? -1 : 1)),
       routines: routines.length > 0 ? routines : undefined,
+      comidas: comidas.length > 0 ? [...comidas].sort((a, b) => (a.date < b.date ? -1 : 1)) : undefined,
       deleted: lapidas.length > 0 ? lapidas : undefined
     },
     resumen: {
       sesionesAnadidas: sessions.filter((s) => !habia.sesiones.has(claveSesion(s))).length,
       checkInsAnadidos: checkIns.filter((c) => !habia.checkIns.has(claveCheckIn(c))).length,
       medicionesAnadidas: measurements.filter((m) => !habia.mediciones.has(claveMedicion(m))).length,
+      diasDeComidasAnadidos: comidas.filter((d) => !habia.comidas.has(claveComidas(d))).length,
       perfilDe
     }
   }
@@ -160,6 +171,11 @@ export function resumirFusion(r: ResumenFusion): string | null {
   }
   if (r.checkInsAnadidos > 0) {
     partes.push(`${r.checkInsAnadidos} ${r.checkInsAnadidos === 1 ? 'check-in' : 'check-ins'}`)
+  }
+  if (r.diasDeComidasAnadidos > 0) {
+    partes.push(
+      `${r.diasDeComidasAnadidos} ${r.diasDeComidasAnadidos === 1 ? 'día de comidas' : 'días de comidas'}`
+    )
   }
   if (partes.length === 0) return r.perfilDe === 'remoto' ? 'Traído tu perfil desde la nube.' : null
   const lista =

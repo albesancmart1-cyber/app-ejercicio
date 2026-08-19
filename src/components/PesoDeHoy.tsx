@@ -1,5 +1,5 @@
 import { escribirGramos, explicarPeso } from '../domain/explicacionPeso'
-import type { BodyMeasurement, CheckIn, Session } from '../domain/types'
+import type { BodyMeasurement, CheckIn, DiaDeComidas, Session } from '../domain/types'
 import { escribirNumero } from '../domain/numeros'
 
 /**
@@ -17,14 +17,16 @@ export default function PesoDeHoy({
   measurements,
   checkIns,
   sessions,
+  comidas,
   todayIso
 }: {
   measurements: BodyMeasurement[]
   checkIns: CheckIn[]
   sessions: Session[]
+  comidas?: DiaDeComidas[]
   todayIso: string
 }) {
-  const e = explicarPeso({ measurements, checkIns, sessions }, todayIso)
+  const e = explicarPeso({ measurements, checkIns, sessions, comidas }, todayIso)
   if (!e) return null
   const deHoy = measurements.find((m) => m.date === todayIso)
 

@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { todayIsoAt } from './clock'
 import { VERSION_ACTUAL, migrar } from './migrate'
-import type { AppData, BodyMeasurement, CheckIn, Profile, Routine, Session } from '../domain/types'
+import type { DiaDeComidas, AppData, BodyMeasurement, CheckIn, Profile, Routine, Session } from '../domain/types'
 import { claveDeMedicion, claveDeRutina, claveDeSesion, type Lapida } from '../domain/merge'
 
 const STORAGE_KEY = 'ritmo-data-v1'
@@ -146,6 +146,16 @@ export const actions = {
       ...s,
       routines: (s.routines ?? []).filter((r) => r.id !== id),
       deleted: conLapida(s, claveDeRutina(id))
+    }))
+  },
+  /** Guarda el día de comidas entero, con su marca para la fusión. */
+  saveComidas(dia: DiaDeComidas) {
+    setState((s) => ({
+      ...s,
+      comidas: [
+        ...(s.comidas ?? []).filter((d) => d.date !== dia.date),
+        { ...dia, updatedAt: Date.now() }
+      ].sort((a, b) => (a.date < b.date ? -1 : 1))
     }))
   },
   saveMeasurement(measurement: BodyMeasurement) {

@@ -353,6 +353,7 @@ export default function Today() {
             measurements={data.measurements}
             checkIns={data.checkIns}
             sessions={data.sessions}
+            comidas={data.comidas}
             todayIso={today}
           />
         </div>
@@ -712,6 +713,7 @@ export default function Today() {
             measurements={data.measurements}
             checkIns={data.checkIns}
             sessions={data.sessions}
+            comidas={data.comidas}
             todayIso={today}
           />
 

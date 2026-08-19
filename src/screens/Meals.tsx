@@ -17,10 +17,12 @@ import { complementarConPastillas, esVerano, objetivoDhaDiario } from '../domain
 import { Badge } from '@appica/ui-react/badge'
 import { Button } from '@appica/ui-react/button'
 import { Separator } from '@appica/ui-react/separator'
-import { useAppData } from '../store/store'
+import { actions, useAppData } from '../store/store'
 import { useToday } from '../store/clock'
 import Icon from '../components/Icon'
-import { Opcion } from '../components/ui'
+import DiarioDeComidas from '../components/DiarioDeComidas'
+import { conComida, diaDe } from '../domain/crononutricion'
+import { Boton, Opcion } from '../components/ui'
 import { escribirNumero } from '../domain/numeros'
 
 const BASES = Object.keys(BASE_LABELS) as MealBase[]
@@ -110,6 +112,7 @@ export default function Meals() {
   const [tanda, setTanda] = useState(0)
 
   const today = useToday()
+  const checkinDeHoy = data.checkIns.find((c) => c.date === today)
   const pillMg = profile.dhaPillMg ?? 0
   const objetivoDha = objetivoDhaDiario(today)
   const banda = profile.weightKg ? bandaDeProteina(profile.weightKg, profile.goal) : null
@@ -145,6 +148,25 @@ export default function Meals() {
         </Button>
         <div className="card">
           <Receta meal={current} pillMg={pillMg} today={today} />
+          <Boton
+            tono="secundario"
+            style={{ marginTop: 14 }}
+            onClick={() => {
+              const d = new Date()
+              const hora = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+              actions.saveComidas(
+                conComida(diaDe(data.comidas, today), today, {
+                  hora,
+                  texto: current.name,
+                  mealId: current.id,
+                  etiquetas: ['proteina']
+                })
+              )
+              setCurrent(null)
+            }}
+          >
+            La he comido · al diario
+          </Boton>
         </div>
       </div>
     )
@@ -154,6 +176,8 @@ export default function Meals() {
     <div className="fade-in cards-grid">
       <p className="eyebrow">Cuando no sabes qué comer</p>
       <h1>Cocina</h1>
+
+      <DiarioDeComidas comidas={data.comidas} todayIso={today} checkIn={checkinDeHoy} />
 
       {/*
         Antes esta pantalla pedía dos filtros y daba **una** idea al pulsar un

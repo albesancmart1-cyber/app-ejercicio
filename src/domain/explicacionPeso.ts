@@ -26,7 +26,8 @@
  */
 import { cargaDeSesion } from './estres'
 import { escribirNumero } from './numeros'
-import type { BodyMeasurement, CheckIn, Session } from './types'
+import { cenaTardia, diaDe, llevaEtiqueta, saleDeCetosis } from './crononutricion'
+import type { BodyMeasurement, CheckIn, DiaDeComidas, Session } from './types'
 
 /** Techo de tejido graso real que se mueve en un día, en gramos. */
 export const TECHO_GRASA_DIA_G = 100
@@ -134,15 +135,24 @@ function cargaDelDia(sessions: Session[], iso: string): number {
 export function factoresDeHoy(
   checkIns: CheckIn[],
   sessions: Session[],
-  todayIso: string
+  todayIso: string,
+  comidas?: DiaDeComidas[]
 ): FactorPeso[] {
   const hoy = checkIns.find((c) => c.date === todayIso)
   const ayer = sumarDias(todayIso, -1)
   const checkinAyer = checkIns.find((c) => c.date === ayer)
+  /*
+   * El diario de comidas de ayer manda sobre las preguntas del test: lo que se
+   * apuntó al comer es mejor dato que lo que se recuerda a la mañana siguiente,
+   * y lo que el diario ya sabe no hay que volver a preguntarlo.
+   */
+  const diarioAyer = diaDe(comidas, ayer)
   const f: FactorPeso[] = []
 
   // Glucógeno: el estado de cetosis de hoy frente al de los días anteriores.
-  const ketoHoy = hoy?.keto
+  // Con diario, la etiqueta «carbohidrato» de ayer decide; sin él, el test.
+  const salioAyer = saleDeCetosis(diarioAyer)
+  const ketoHoy = salioAyer !== undefined ? !salioAyer : hoy?.keto
   const ketoAntes = checkinAyer?.keto
   if (ketoHoy === false && ketoAntes === true) {
     f.push({
@@ -175,7 +185,11 @@ export function factoresDeHoy(
     })
   }
 
-  if (hoy?.comidaSalada === true) {
+  const salada = llevaEtiqueta(diarioAyer, 'salada') || hoy?.comidaSalada === true
+  const alcohol = llevaEtiqueta(diarioAyer, 'alcohol') || hoy?.alcohol === true
+  const cenoTarde = cenaTardia(diarioAyer, hoy) ?? hoy?.cenaTarde
+
+  if (salada) {
     f.push({
       id: 'sal',
       texto: 'Comida muy salada ayer: el sodio retiene agua, hasta cerca del kilo, y se va en uno o dos días.',
@@ -183,7 +197,7 @@ export function factoresDeHoy(
       maxG: 900
     })
   }
-  if (hoy?.alcohol === true) {
+  if (alcohol) {
     f.push({
       id: 'alcohol',
       texto: 'Alcohol ayer: deshidrata primero y retiene después, y encima estropea el sueño.',
@@ -191,7 +205,7 @@ export function factoresDeHoy(
       maxG: 700
     })
   }
-  if (hoy?.cenaTarde === true) {
+  if (cenoTarde === true) {
     f.push({
       id: 'cena-tarde',
       texto: 'Cenaste tarde: por la mañana la digestión sigue en marcha y su contenido pesa. Además desalinea los relojes de la noche.',
@@ -231,7 +245,12 @@ function aFavorDe(deltaG: number, factores: FactorPeso[]): FactorPeso[] {
 }
 
 export function explicarPeso(
-  datos: { measurements: BodyMeasurement[]; checkIns: CheckIn[]; sessions: Session[] },
+  datos: {
+    measurements: BodyMeasurement[]
+    checkIns: CheckIn[]
+    sessions: Session[]
+    comidas?: DiaDeComidas[]
+  },
   todayIso: string
 ): ExplicacionPeso | null {
   const ordenadas = cronologicas(datos.measurements).filter((m) => m.date <= todayIso)
@@ -241,7 +260,7 @@ export function explicarPeso(
 
   const anteriores = ordenadas.filter((m) => m.date < todayIso)
   const anterior = anteriores[anteriores.length - 1]
-  const factores = factoresDeHoy(datos.checkIns, datos.sessions, todayIso)
+  const factores = factoresDeHoy(datos.checkIns, datos.sessions, todayIso, datos.comidas)
   const pendiente = pendienteSemanalG(datos.measurements, todayIso)
   const tendencia =
     pendiente === undefined

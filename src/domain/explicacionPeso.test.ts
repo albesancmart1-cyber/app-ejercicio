@@ -225,3 +225,42 @@ describe('cómo se escriben los gramos', () => {
     expect(escribirGramos(-380)).toBe('−400 g')
   })
 })
+
+describe('el diario de comidas manda sobre el test', () => {
+  const diario = (etiquetas: import('./types').EtiquetaComida[], hora = '22:30') => [
+    { date: menos(1), comidas: [{ hora, texto: 'cena', etiquetas }] }
+  ]
+
+  it('un carbohidrato apuntado ayer activa el glucógeno sin preguntar nada', () => {
+    const f = factoresDeHoy(
+      [checkin(0), checkin(1, { keto: true })],
+      [],
+      HOY,
+      diario(['carbohidrato'])
+    )
+    expect(f.some((x) => x.id === 'glucogeno-entra')).toBe(true)
+  })
+
+  it('la sal y el alcohol del diario cuentan aunque el test no se contestara', () => {
+    const f = factoresDeHoy([checkin(0)], [], HOY, diario(['salada', 'alcohol'], '14:00'))
+    expect(f.some((x) => x.id === 'sal')).toBe(true)
+    expect(f.some((x) => x.id === 'alcohol')).toBe(true)
+  })
+
+  it('una cena a las 22:30 del diario es cena tardía sin preguntarlo', () => {
+    const f = factoresDeHoy([checkin(0)], [], HOY, diario([]))
+    expect(f.some((x) => x.id === 'cena-tarde')).toBe(true)
+  })
+
+  it('el diario dice «sin carbohidrato» y gana al recuerdo del test', () => {
+    // El test de hoy dice que se salió de cetosis, pero el diario de ayer no
+    // tiene ni un carbohidrato: manda lo apuntado al comer.
+    const f = factoresDeHoy(
+      [checkin(0, { keto: false }), checkin(1, { keto: true })],
+      [],
+      HOY,
+      diario([], '14:00')
+    )
+    expect(f.some((x) => x.id === 'glucogeno-entra')).toBe(false)
+  })
+})

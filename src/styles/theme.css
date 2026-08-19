@@ -3513,3 +3513,81 @@ textarea:focus {
   line-height: var(--leading-caption);
   color: var(--label-2);
 }
+
+/* ── El diario de comidas ───────────────────────────────── */
+
+.comida-fila {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-2) 0;
+  border-bottom: 1px solid var(--separator);
+}
+
+.comida-fila:last-of-type {
+  border-bottom: 0;
+}
+
+.comida-hora {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--w-semibold);
+  color: var(--label-2);
+  min-width: 46px;
+}
+
+.comida-cuerpo {
+  flex: 1;
+  min-width: 0;
+}
+
+.comida-texto {
+  display: block;
+}
+
+.comida-etiquetas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+  margin-top: var(--sp-1);
+}
+
+/* La ventana del día, con la misma voz que la explicación del peso. */
+.comida-resumen {
+  margin-top: var(--sp-3);
+  padding-left: var(--sp-3);
+  border-left: 2px solid var(--accent-soft);
+  font-size: var(--text-caption);
+  line-height: var(--leading-caption);
+  color: var(--label-2);
+}
+
+.comida-form-fila {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.comida-form-fila input[type='time'] {
+  flex: none;
+  width: 104px;
+  padding: 10px 8px;
+  border-radius: var(--r-control);
+  background: var(--surface-strong);
+  border: 0;
+  color: var(--label);
+  font-variant-numeric: tabular-nums;
+  outline: none;
+  color-scheme: dark;
+}
+
+.comida-form-fila input[type='text'] {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: var(--r-control);
+  background: var(--surface-strong);
+  border: 0;
+  color: var(--label);
+  font-size: var(--text-body);
+  outline: none;
+}

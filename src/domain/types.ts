@@ -580,6 +580,51 @@ export interface BodyMeasurement {
   musclePercent?: number
 }
 
+/**
+ * Etiquetas rápidas de una comida: un toque cada una, cero tecleo obligatorio.
+ *
+ * No hay caloría ni gramo por ninguna parte a propósito: lo que se registra es
+ * **qué, cuándo y de qué tipo**. «carbohidrato» existe porque en cetogénica es
+ * el dato que explica el peso del día siguiente (glucógeno + su agua), no para
+ * contar nada.
+ */
+export type EtiquetaComida =
+  | 'proteina'
+  | 'pescado_azul'
+  | 'huevos'
+  | 'verdura'
+  | 'carbohidrato'
+  | 'salada'
+  | 'alcohol'
+
+export const ETIQUETAS_COMIDA: Record<EtiquetaComida, string> = {
+  proteina: 'Proteína animal',
+  pescado_azul: 'Pescado azul',
+  huevos: 'Huevos',
+  verdura: 'Verdura',
+  carbohidrato: 'Carbohidrato',
+  salada: 'Muy salada',
+  alcohol: 'Alcohol'
+}
+
+/** Una comida del día. Sin desayuno/comida/cena: comida 1, comida 2, las que sean. */
+export interface ComidaRegistrada {
+  /** «HH:MM». La hora es el dato central: crononutrición. */
+  hora: string
+  /** Qué fue, en texto libre o el nombre de un plato del recetario. */
+  texto: string
+  /** El plato del recetario del que vino, si vino de ahí: suma DHA y proteína solas. */
+  mealId?: string
+  etiquetas?: EtiquetaComida[]
+}
+
+/** Las comidas de un día, con su marca para la fusión entre dispositivos. */
+export interface DiaDeComidas {
+  date: string
+  updatedAt?: number
+  comidas: ComidaRegistrada[]
+}
+
 export interface AppData {
   /** 1 = taxonomía de grupos gruesos. 2 = taxonomía muscular con conteo fraccional. */
   version: 1 | 2
@@ -590,6 +635,8 @@ export interface AppData {
   checkIns: CheckIn[]
   sessions: Session[]
   measurements: BodyMeasurement[]
+  /** El diario de comidas, día a día. Ausente hasta que se apunta la primera. */
+  comidas?: DiaDeComidas[]
   /** Entrenos guardados para repetir. Ausente hasta que se guarda el primero. */
   routines?: Routine[]
   /**
