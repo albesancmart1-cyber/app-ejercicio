@@ -8,6 +8,7 @@ import {
 } from '../domain/types'
 import PesoDeHoy from '../components/PesoDeHoy'
 import SolDeHoy from '../components/SolDeHoy'
+import ResumenComparado from '../components/ResumenComparado'
 import { computeReadiness, tieneLevesRepartidas, zonasConMolestias } from '../domain/readiness'
 import { canIntensify, canMix, recommend, withMoreIntensity, withSomeStrength } from '../domain/recommender'
 import { NIVEL_MAXIMO, volumePlan } from '../domain/progression'
@@ -336,6 +337,7 @@ export default function Today() {
                 «{doneToday.title}» queda registrada. Ahora el descanso es la parte que construye:
                 nos vemos cuando tu cuerpo quiera.
               </p>
+              <ResumenComparado session={doneToday} sessions={data.sessions} />
             </div>
           ) : (
             <div className="card">
