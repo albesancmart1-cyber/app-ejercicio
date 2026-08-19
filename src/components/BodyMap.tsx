@@ -1,5 +1,6 @@
 import { MUSCLES } from '../domain/muscles'
 import type { Muscle } from '../domain/muscles'
+import { escribirNumero } from '../domain/numeros'
 
 /**
  * Figura humana con lo trabajado encendido.
@@ -114,7 +115,7 @@ function Figura({
           return m.formas.map((d, i) => (
             <g key={`${m.muscle}-${i}`}>
               <path d={d} className="bodymap-on" style={{ opacity: fuerza }}>
-                <title>{`${MUSCLES[m.muscle].label}: ${series} series`}</title>
+                <title>{`${MUSCLES[m.muscle].label}: ${escribirNumero(series)} series`}</title>
               </path>
               {/* La mitad derecha es la izquierda espejada respecto al eje. */}
               <path
@@ -159,7 +160,7 @@ export default function BodyMap({ volumen, conLeyenda = true }: BodyMapProps) {
                 aria-hidden="true"
               />
               <span className="bodymap-name">{MUSCLES[m].label}</span>
-              <span className="bodymap-series">{series} {series === 1 ? 'serie' : 'series'}</span>
+              <span className="bodymap-series">{escribirNumero(series)} {series === 1 ? 'serie' : 'series'}</span>
             </li>
           ))}
         </ul>

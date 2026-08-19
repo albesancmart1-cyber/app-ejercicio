@@ -4,6 +4,7 @@ import type { Session } from '../domain/types'
 import WeekStrip from './WeekStrip'
 import { Etiqueta, Regla } from './ui'
 import { Meter, MeterProgress } from '@appica/ui-react/meter'
+import { escribirNumero } from '../domain/numeros'
 
 /**
  * La semana, con lo que llevas y lo que falta.
@@ -38,7 +39,7 @@ export default function SemanaCard({
         <div className="row" style={{ alignItems: 'flex-end' }}>
           <span className="stat">
             <span className="stat-label">Series de la semana</span>
-            <span className="stat-value">{r.series}</span>
+            <span className="stat-value">{escribirNumero(r.series)}</span>
           </span>
           {/*
             Una comparación en dos palabras, no una etiqueta: «+3 frente a la
@@ -51,7 +52,7 @@ export default function SemanaCard({
             <Etiqueta acento={diferencia > 0}>
               {diferencia === 0
                 ? 'igual'
-                : `${diferencia > 0 ? '+' : '−'}${Math.abs(diferencia)}`}
+                : `${diferencia > 0 ? '+' : '−'}${escribirNumero(Math.abs(diferencia))}`}
             </Etiqueta>
           )}
         </div>
@@ -59,7 +60,7 @@ export default function SemanaCard({
           <p className="faint" style={{ marginTop: 6 }}>
             {diferencia === 0
               ? 'Las mismas series que la semana pasada.'
-              : `${Math.abs(diferencia)} ${Math.abs(diferencia) === 1 ? 'serie' : 'series'} ${diferencia > 0 ? 'más' : 'menos'} que la semana pasada.`}
+              : `${escribirNumero(Math.abs(diferencia))} ${Math.abs(diferencia) === 1 ? 'serie' : 'series'} ${diferencia > 0 ? 'más' : 'menos'} que la semana pasada.`}
           </p>
         )}
         <p className="dim" style={{ marginTop: 12 }}>
@@ -73,7 +74,7 @@ export default function SemanaCard({
             <div className="row">
               <span className="zona-nombre">{z.nombre}</span>
               <span className="faint">
-                {z.series} / {z.minimo} series
+                {escribirNumero(z.series)} / {z.minimo} series
               </span>
             </div>
             {/*
@@ -96,7 +97,7 @@ export default function SemanaCard({
                 low={z.minimo}
                 high={z.maximo}
                 optimum={z.minimo}
-                aria-label={`${z.nombre}: ${z.series} de ${z.minimo} series`}
+                aria-label={`${z.nombre}: ${escribirNumero(z.series)} de ${z.minimo} series`}
               >
                 <MeterProgress className={`zona-fill ${z.estado}`} />
               </Meter>

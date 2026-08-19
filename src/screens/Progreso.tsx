@@ -28,6 +28,7 @@ import { Boton, Etiqueta, Regla } from '../components/ui'
 import { Tabs, TabsList, TabsTrigger } from '@appica/ui-react/tabs'
 import { Field, FieldLabel } from '@appica/ui-react/field'
 import { Input } from '@appica/ui-react/input'
+import { escribirNumero } from '../domain/numeros'
 
 /** Los cinco destinos de Progreso, en el orden en que se miran. */
 type Seccion = 'semana' | 'mes' | 'ano' | 'cuerpo' | 'ejercicios'
@@ -151,7 +152,7 @@ function BodyCompositionCard({
               {actual.weightKg.toLocaleString('es-ES')}
               <small> kg</small>
             </span>
-            {actual.ffmi !== undefined && <Etiqueta acento>FFMI {actual.ffmi}</Etiqueta>}
+            {actual.ffmi !== undefined && <Etiqueta acento>FFMI {escribirNumero(actual.ffmi)}</Etiqueta>}
           </div>
 
           <div style={{ marginTop: 16 }}>
@@ -159,7 +160,7 @@ function BodyCompositionCard({
               <div className="row" style={{ padding: '7px 0' }}>
                 <span className="dim">Grasa</span>
                 <span>
-                  {actual.fatKg} kg{' '}
+                  {escribirNumero(actual.fatKg)} kg{' '}
                   {vsAnterior?.fatKg !== undefined && (
                     <span className={vsAnterior.fatKg <= 0 ? 'accent' : 'faint'}>
                       ({formatDelta(vsAnterior.fatKg)})
@@ -172,7 +173,7 @@ function BodyCompositionCard({
               <div className="row" style={{ padding: '7px 0' }}>
                 <span className="dim">Músculo</span>
                 <span>
-                  {actual.muscleKg} kg{' '}
+                  {escribirNumero(actual.muscleKg)} kg{' '}
                   {vsAnterior?.muscleKg !== undefined && (
                     <span className={vsAnterior.muscleKg >= 0 ? 'accent' : 'faint'}>
                       ({formatDelta(vsAnterior.muscleKg)})
@@ -184,7 +185,7 @@ function BodyCompositionCard({
             {actual.leanKg !== undefined && (
               <div className="row" style={{ padding: '7px 0' }}>
                 <span className="dim">Masa libre de grasa</span>
-                <span>{actual.leanKg} kg</span>
+                <span>{actual.leanKg !== undefined ? escribirNumero(actual.leanKg) : '—'} kg</span>
               </div>
             )}
           </div>

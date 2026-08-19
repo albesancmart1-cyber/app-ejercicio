@@ -15,6 +15,7 @@ import { seriesEfectivas, volumenDe, type MuscleVolume } from './volume'
 import { recordsDeLaSesion, seriesQueCuentan, type TipoMarca } from './records'
 import type { Muscle } from './muscles'
 import type { Session } from './types'
+import { escribirNumero } from './numeros'
 
 export interface Periodo {
   /** ISO yyyy-mm-dd, incluido. */
@@ -252,9 +253,9 @@ export function resumirMes(e: Estadisticas, previo?: Estadisticas): string {
   const partes: string[] = [
     `${e.entrenos} ${e.entrenos === 1 ? 'entreno' : 'entrenos'} en ${e.diasEntrenados} ${
       e.diasEntrenados === 1 ? 'día' : 'días'
-    }, ${e.porSemana} por semana de media`
+    }, ${escribirNumero(e.porSemana)} por semana de media`
   ]
-  if (e.series > 0) partes.push(`${e.series} series`)
+  if (e.series > 0) partes.push(`${escribirNumero(e.series)} series`)
   if (e.cargaTotal > 0) partes.push(`${e.cargaTotal.toLocaleString('es-ES')} kg movidos`)
 
   const frase = `${partes.join(' · ')}.`

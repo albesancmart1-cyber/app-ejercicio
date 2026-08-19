@@ -21,6 +21,7 @@ import { useAppData } from '../store/store'
 import { useToday } from '../store/clock'
 import Icon from '../components/Icon'
 import { Opcion } from '../components/ui'
+import { escribirNumero } from '../domain/numeros'
 
 const BASES = Object.keys(BASE_LABELS) as MealBase[]
 const EFFORTS = Object.keys(EFFORT_LABELS) as MealEffort[]
@@ -211,7 +212,7 @@ export default function Meals() {
               <span className="faint">{banda.hasta} g</span>
             </div>
             <p className="dim" style={{ marginTop: 14 }}>
-              Son {banda.porKilo.min}–{banda.porKilo.max} g por kilo de peso, y es una zona, no una
+              Son {escribirNumero(banda.porKilo.min)}–{escribirNumero(banda.porKilo.max)} g por kilo de peso, y es una zona, no una
               cifra que haya que clavar. Con {platosParaElMinimo(banda.min, ideas) || 3} platos como
               estos sale sola: no hace falta que apuntes nada.
             </p>

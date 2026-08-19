@@ -5,6 +5,7 @@ import { formatDuration } from './Chrono'
 import SessionDetail from './SessionDetail'
 import Icon from './Icon'
 import type { Session } from '../domain/types'
+import { escribirNumero } from '../domain/numeros'
 
 /**
  * El año: los doce meses de un vistazo y lo que has conseguido.
@@ -68,7 +69,7 @@ export default function AnoCard({
           </span>
           <span className="stat">
             <span className="stat-label">Series</span>
-            <span className="stat-value">{total.series}</span>
+            <span className="stat-value">{escribirNumero(total.series)}</span>
           </span>
           {total.cargaTotal > 0 && (
             <span className="stat">

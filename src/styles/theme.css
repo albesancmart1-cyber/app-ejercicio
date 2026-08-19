@@ -1495,18 +1495,19 @@ textarea:focus {
 }
 
 /*
- * El dibujo sigue siendo de 32 px —dos flechas grandes al lado de un título
- * quedarían mal— pero la zona que responde al dedo es de 44, que es el mínimo
- * con el que se acierta a la primera. Se estira con un pseudoelemento para no
- * mover nada de sitio.
+ * El dibujo es de 32 px —dos flechas grandes al lado de un título quedarían
+ * mal— pero el botón entero mide 44, que es el mínimo con el que el dedo
+ * acierta a la primera. El pastilleo de 32 lo pinta un pseudoelemento centrado
+ * **dentro** del botón: la primera versión estiraba la zona de toque hacia
+ * fuera con un `inset` negativo, y eso desbordaba el contenedor por la derecha.
  */
 .reorder button {
   position: relative;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--r-small);
-  background: var(--fill-3);
-  box-shadow: inset 0 0 0 0.5px var(--separator);
+  /* Aisla el apilamiento: sin esto, el z-index negativo del pseudoelemento lo
+     mandaba detrás del fondo de la tarjeta y la pastilla desaparecía. */
+  isolation: isolate;
+  width: 44px;
+  height: 44px;
   color: var(--label-2);
   font-size: 0.9375rem;
   line-height: 1;
@@ -1515,7 +1516,11 @@ textarea:focus {
 .reorder button::before {
   content: '';
   position: absolute;
-  inset: -6px;
+  inset: 6px;
+  border-radius: var(--r-small);
+  background: var(--fill-3);
+  box-shadow: inset 0 0 0 0.5px var(--separator);
+  z-index: -1;
 }
 
 .reorder button:disabled {

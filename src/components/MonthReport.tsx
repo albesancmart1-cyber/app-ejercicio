@@ -14,6 +14,7 @@ import BodyMap from './BodyMap'
 import Icon from './Icon'
 import type { Session } from '../domain/types'
 import { Regla } from './ui'
+import { escribirNumero } from '../domain/numeros'
 
 /**
  * El informe del mes.
@@ -120,7 +121,7 @@ export default function MonthReport({
                 cambio={cambio(e.minutos, previo.minutos)}
               />
             )}
-            <Cifra etiqueta="Series" valor={`${e.series}`} cambio={cambio(e.series, previo.series)} />
+            <Cifra etiqueta="Series" valor={escribirNumero(e.series)} cambio={cambio(e.series, previo.series)} />
             {e.cargaTotal > 0 && (
               <Cifra
                 etiqueta="Levantado"
@@ -175,7 +176,7 @@ export default function MonthReport({
                 <div className="row" style={{ padding: '6px 0' }} key={x.exerciseId}>
                   <span className="dim">{x.name}</span>
                   <span className="faint">
-                    {x.dias} {x.dias === 1 ? 'día' : 'días'} · {x.series} series
+                    {x.dias} {x.dias === 1 ? 'día' : 'días'} · {escribirNumero(x.series)} series
                   </span>
                 </div>
               ))}
