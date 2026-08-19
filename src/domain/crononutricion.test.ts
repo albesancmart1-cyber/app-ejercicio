@@ -7,9 +7,14 @@ import {
   cenaTardia,
   conComida,
   diaDe,
+  diasRegistrados,
   llevaEtiqueta,
+  nombreDeDia,
   ordenadas,
+  reemplazarComida,
+  resumenDeCetosis,
   resumenDelDia,
+  sumarDias,
   saleDeCetosis,
   sinComida,
   ventanaDe
@@ -201,5 +206,107 @@ describe('los alimentos dentro de una comida', () => {
     const vieja: import('./types').ComidaRegistrada = { hora: '14:00', texto: 'arroz', etiquetas: ['carbohidrato'] }
     expect(etiquetasDe(vieja)).toEqual(['carbohidrato'])
     expect(saleDeCetosis({ date: F, comidas: [vieja] })).toBe(true)
+  })
+})
+
+describe('corregir una comida ya apuntada', () => {
+  const dia: DiaDeComidas = {
+    date: F,
+    comidas: [
+      { hora: '09:00', texto: '', alimentos: [{ nombre: 'Café solo' }] },
+      { hora: '14:00', texto: '', alimentos: [{ nombre: 'Huevo cocido', unidades: 1, unidad: 'huevo', gramos: 55 }] }
+    ]
+  }
+
+  it('cambia la comida en su sitio y deja las demás intactas', () => {
+    const r = reemplazarComida(dia, 1, {
+      hora: '14:00',
+      texto: '',
+      alimentos: [{ nombre: 'Huevo cocido', unidades: 3, unidad: 'huevo', gramos: 165 }]
+    })
+    expect(r.comidas).toHaveLength(2)
+    expect(r.comidas[0].alimentos![0].nombre).toBe('Café solo')
+    expect(r.comidas[1].alimentos![0].unidades).toBe(3)
+  })
+
+  it('corregir la hora reordena el día: lo que era la última pasa a ser la primera', () => {
+    const r = reemplazarComida(dia, 1, { hora: '07:30', texto: '', alimentos: [{ nombre: 'Tortilla' }] })
+    expect(r.comidas.map((c) => c.hora)).toEqual(['07:30', '09:00'])
+  })
+
+  it('un índice que no existe no rompe nada ni inventa comidas', () => {
+    expect(reemplazarComida(dia, 7, { hora: '20:00', texto: 'x' })).toEqual(dia)
+    expect(reemplazarComida(dia, -1, { hora: '20:00', texto: 'x' })).toEqual(dia)
+  })
+})
+
+describe('mirar los días de antes', () => {
+  it('los días apuntados salen del más reciente al más viejo, y los vacíos no salen', () => {
+    const todos: DiaDeComidas[] = [
+      { date: '2026-08-17', comidas: [{ hora: '14:00', texto: 'x' }] },
+      { date: '2026-08-19', comidas: [{ hora: '14:00', texto: 'y' }] },
+      { date: '2026-08-18', comidas: [] }
+    ]
+    expect(diasRegistrados(todos).map((d) => d.date)).toEqual(['2026-08-19', '2026-08-17'])
+    expect(diasRegistrados(undefined)).toEqual([])
+  })
+
+  it('sumar días cruza meses y años sin descuadrarse', () => {
+    expect(sumarDias('2026-08-19', -1)).toBe('2026-08-18')
+    expect(sumarDias('2026-03-01', -1)).toBe('2026-02-28')
+    expect(sumarDias('2026-01-01', -1)).toBe('2025-12-31')
+    expect(sumarDias('2024-02-28', 1)).toBe('2024-02-29')
+  })
+
+  it('los días se llaman por su nombre, y los de al lado por el suyo', () => {
+    expect(nombreDeDia(F, F)).toBe('Hoy')
+    expect(nombreDeDia('2026-08-18', F)).toBe('Ayer')
+    expect(nombreDeDia('2026-08-12', F)).toBe('Miércoles 12 de agosto')
+  })
+
+  it('el año solo se dice cuando no es el corriente', () => {
+    expect(nombreDeDia('2025-12-31', F)).toMatch(/de diciembre de 2025$/)
+    expect(nombreDeDia('2026-08-12', F)).not.toMatch(/2026/)
+  })
+})
+
+describe('un día pasado no se cuenta en futuro', () => {
+  const conPasta: DiaDeComidas = {
+    date: '2026-08-12',
+    comidas: [{ hora: '14:00', texto: '', alimentos: [{ nombre: 'Pasta', gramos: 250, alimentoId: 'pasta', etiquetas: ['carbohidrato'] }] }]
+  }
+
+  it('de hoy se avisa de lo que va a pasar; de aquel día, de lo que pasó', () => {
+    const hoy = resumenDeCetosis(conPasta)!
+    const antes = resumenDeCetosis(conPasta, undefined, 'aquel_dia')!
+    expect(hoy).toMatch(/carbohidrato hoy/)
+    expect(hoy).toMatch(/báscula de mañana/)
+    expect(antes).toMatch(/carbohidrato ese día/)
+    expect(antes).toMatch(/báscula del día siguiente/)
+    expect(antes).not.toMatch(/mañana/)
+  })
+
+  it('la cena tardía de un día pasado tampoco se avisa en futuro', () => {
+    const tarde: DiaDeComidas = {
+      date: '2026-08-12',
+      comidas: [
+        { hora: '14:00', texto: 'comida' },
+        { hora: '23:00', texto: 'cena' }
+      ]
+    }
+    const checkIn: CheckIn = {
+      date: '2026-08-12',
+      sleep: 4,
+      lightHygiene: true,
+      sunrise: true,
+      sunsetYesterday: true,
+      sunExposure: true,
+      keto: true,
+      energy: 4,
+      discomfort: 'ninguna',
+      horaAcostarse: '00:30'
+    }
+    expect(resumenDelDia(tarde, checkIn)).toMatch(/se nota en la báscula de mañana/)
+    expect(resumenDelDia(tarde, checkIn, 'aquel_dia')).toMatch(/se notó en la báscula del día siguiente/)
   })
 })

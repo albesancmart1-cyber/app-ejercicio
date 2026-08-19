@@ -112,7 +112,6 @@ export default function Meals() {
   const [tanda, setTanda] = useState(0)
 
   const today = useToday()
-  const checkinDeHoy = data.checkIns.find((c) => c.date === today)
   const pillMg = profile.dhaPillMg ?? 0
   const objetivoDha = objetivoDhaDiario(today)
   const banda = profile.weightKg ? bandaDeProteina(profile.weightKg, profile.goal) : null
@@ -177,7 +176,12 @@ export default function Meals() {
       <p className="eyebrow">Cuando no sabes qué comer</p>
       <h1>Cocina</h1>
 
-      <DiarioDeComidas comidas={data.comidas} todayIso={today} checkIn={checkinDeHoy} ediciones={data.alimentosEditados} />
+      <DiarioDeComidas
+        comidas={data.comidas}
+        todayIso={today}
+        checkIns={data.checkIns}
+        ediciones={data.alimentosEditados}
+      />
 
       {/*
         Antes esta pantalla pedía dos filtros y daba **una** idea al pulsar un

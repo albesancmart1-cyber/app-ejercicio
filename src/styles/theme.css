@@ -3516,6 +3516,59 @@ textarea:focus {
 
 /* ── El diario de comidas ───────────────────────────────── */
 
+/*
+  La cabecera con el día que se está mirando. El nombre en medio y las flechas
+  a los lados, a 40 px cada una para que se acierte con el pulgar.
+*/
+.diario-dias {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.diario-dia-nombre {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.diario-dias .icon-btn:disabled {
+  opacity: 0.3;
+}
+
+/* La flecha de ir hacia atrás es la misma, del revés. */
+.gira-180 {
+  transform: rotate(180deg);
+}
+
+/* La lista de días ya apuntados, para saltar a cualquiera. */
+.dias-anteriores {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.dia-anterior {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-2);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-control);
+  background: var(--fill-3);
+  text-align: left;
+}
+
+.dia-anterior:active {
+  background: var(--fill-2);
+}
+
+.dia-anterior-nombre {
+  font-weight: var(--w-semibold);
+}
+
 .comida-fila {
   display: flex;
   align-items: flex-start;
@@ -3724,6 +3777,22 @@ textarea:focus {
 
 .alimento-resultado:active {
   background: var(--fill-2);
+}
+
+/*
+  Un alimento del borrador se toca para retocarlo, así que se comporta como
+  botón: alineado a la izquierda como el texto que era y con su propio realce
+  al pulsar, para que se note que hay algo que tocar.
+*/
+.alimento-editable {
+  text-align: left;
+  padding: var(--sp-1) var(--sp-2);
+  margin: calc(var(--sp-1) * -1) calc(var(--sp-2) * -1);
+  border-radius: var(--r-control);
+}
+
+.alimento-editable:active {
+  background: var(--fill-3);
 }
 
 /* La ficha del alimento elegido, con la puerta a corregirlo. */

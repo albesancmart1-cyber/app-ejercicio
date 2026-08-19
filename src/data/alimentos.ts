@@ -366,6 +366,10 @@ export const ALIMENTOS: AlimentoBasico[] = [
   // ── Grasas ────────────────────────────────────────────────
   a('aceite_oliva', 'Aceite de oliva virgen extra', 'grasas', []),
   a('aceite_coco', 'Aceite de coco', 'grasas', []),
+  // La de verdad: yema y aceite de oliva, no aceite de soja. La industrial de
+  // aceite de semillas es otra cosa y no entra en este catálogo. Su gramo de
+  // carbohidrato por cada 100 es despreciable, pero se cuenta igual.
+  a('mayonesa_oliva', 'Mayonesa de aceite de oliva', 'grasas', [], 1),
 
   // ── Dulces naturales ──────────────────────────────────────
   a('miel', 'Miel', 'dulce_natural', ['carbohidrato'], 80, 'bueno'),

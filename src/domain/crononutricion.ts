@@ -25,6 +25,14 @@ import type {
   EtiquetaComida
 } from './types'
 
+/**
+ * Si lo que se está mirando es el día de hoy o uno ya cerrado.
+ *
+ * Cambia el tiempo verbal de los avisos: de un día pasado no se dice «se
+ * notará en la báscula de mañana», porque ya se notó y no hay nada que evitar.
+ */
+export type Cuando = 'hoy' | 'aquel_dia'
+
 /** A menos de estas horas de acostarse, una cena es tardía. */
 export const HORAS_CENA_TARDIA = 3
 
@@ -216,27 +224,39 @@ export function saleDeCetosis(
 /** La cuenta de cetosis del día, dicha: para la tarjeta del diario. */
 export function resumenDeCetosis(
   dia: DiaDeComidas | undefined,
-  ediciones?: EdicionAlimento[]
+  ediciones?: EdicionAlimento[],
+  cuando: Cuando = 'hoy'
 ): string | undefined {
   const e = estadoDeCetosis(dia, ediciones)
   if (e.estado === 'desconocido') return undefined
   if (e.conCarboSinGramos) {
     return `Hay carbohidrato apuntado sin gramos: no puedo contarlo contra el margen de cetosis (hasta ${CETOSIS_G.holgura}–${CETOSIS_G.limite} g al día). Elígelo del catálogo con su peso y te lo cuento.`
   }
+  // Mirando un día pasado, hablar en futuro sonaría a que aún puede evitarse.
+  const dia_ = cuando === 'hoy' ? 'hoy' : 'ese día'
+  const cabeza = `≈ ${e.carbosG} g de carbohidrato ${dia_}`
   if (e.estado === 'dentro') {
-    return `≈ ${e.carbosG} g de carbohidrato hoy: dentro de cetosis con holgura (el margen va de ${CETOSIS_G.holgura} a ${CETOSIS_G.limite} g).`
+    return `${cabeza}: dentro de cetosis con holgura (el margen va de ${CETOSIS_G.holgura} a ${CETOSIS_G.limite} g).`
   }
   if (e.estado === 'al_limite') {
-    return `≈ ${e.carbosG} g de carbohidrato hoy: al límite del margen de cetosis (${CETOSIS_G.holgura}–${CETOSIS_G.limite} g). Según el día y la persona, aquí se aguanta — pero sin sitio para más.`
+    return `${cabeza}: al límite del margen de cetosis (${CETOSIS_G.holgura}–${CETOSIS_G.limite} g). Según el día y la persona, aquí se aguanta — pero sin sitio para más.`
   }
-  return `≈ ${e.carbosG} g de carbohidrato hoy: por encima de los ${CETOSIS_G.limite} g, fuera de cetosis. El glucógeno que se rellene se notará en la báscula de mañana, y no será grasa.`
+  const glucogeno =
+    cuando === 'hoy'
+      ? 'El glucógeno que se rellene se notará en la báscula de mañana, y no será grasa.'
+      : 'El glucógeno que se rellenara se notó en la báscula del día siguiente, y no era grasa.'
+  return `${cabeza}: por encima de los ${CETOSIS_G.limite} g, fuera de cetosis. ${glucogeno}`
 }
 
 /**
  * El resumen del día en una frase, para la tarjeta del diario.
  * Dice la ventana, y solo avisa cuando hay algo que avisar.
  */
-export function resumenDelDia(dia: DiaDeComidas | undefined, checkIn?: CheckIn): string | undefined {
+export function resumenDelDia(
+  dia: DiaDeComidas | undefined,
+  checkIn?: CheckIn,
+  cuando: Cuando = 'hoy'
+): string | undefined {
   const v = ventanaDe(dia)
   if (!v) return undefined
   const n = dia!.comidas.length
@@ -244,7 +264,9 @@ export function resumenDelDia(dia: DiaDeComidas | undefined, checkIn?: CheckIn):
   if (n === 1) return `${cuenta}, a las ${v.primera}.`
   const base = `${cuenta} en una ventana de ${v.horas === Math.round(v.horas) ? v.horas : v.horas.toLocaleString('es-ES')} h, de ${v.primera} a ${v.ultima}.`
   if (cenaTardia(dia, checkIn)) {
-    return `${base} La última cae tarde: comer cerca de acostarte desalinea los relojes de la noche y se nota en la báscula de mañana.`
+    const bascula =
+      cuando === 'hoy' ? 'se nota en la báscula de mañana' : 'se notó en la báscula del día siguiente'
+    return `${base} La última cae tarde: comer cerca de acostarte desalinea los relojes de la noche y ${bascula}.`
   }
   return base
 }
@@ -262,6 +284,66 @@ export function conComida(
 /** Quita la comida en la posición dada. */
 export function sinComida(dia: DiaDeComidas, indice: number): DiaDeComidas {
   return { ...dia, comidas: dia.comidas.filter((_, i) => i !== indice) }
+}
+
+/**
+ * Cambiar una comida ya apuntada por otra.
+ *
+ * Se apunta a toda prisa y luego se recuerda el detalle —«eran dos huevos, no
+ * uno»—, así que corregir tiene que costar lo mismo que apuntar. Se reordena
+ * después de cambiar porque la corrección puede ser justo la hora.
+ */
+export function reemplazarComida(
+  dia: DiaDeComidas,
+  indice: number,
+  comida: ComidaRegistrada
+): DiaDeComidas {
+  if (indice < 0 || indice >= dia.comidas.length) return dia
+  return { ...dia, comidas: ordenadas(dia.comidas.map((c, i) => (i === indice ? comida : c))) }
+}
+
+/** Los días con algo apuntado, del más reciente al más viejo. */
+export function diasRegistrados(comidas: DiaDeComidas[] | undefined): DiaDeComidas[] {
+  return (comidas ?? [])
+    .filter((d) => d.comidas.length > 0)
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+}
+
+/** El día de al lado en ISO: `sumarDias('2026-08-19', -1)` es el 18. */
+export function sumarDias(iso: string, dias: number): string {
+  const d = new Date(`${iso}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + dias)
+  return d.toISOString().slice(0, 10)
+}
+
+const DIAS_SEMANA = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
+const MESES = [
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre'
+]
+
+/**
+ * Cómo se llama un día por su nombre: «Hoy», «Ayer», «Martes 12 de agosto».
+ *
+ * El año solo se dice cuando no es el corriente: repetirlo cada día es ruido.
+ */
+export function nombreDeDia(iso: string, todayIso: string): string {
+  if (iso === todayIso) return 'Hoy'
+  if (iso === sumarDias(todayIso, -1)) return 'Ayer'
+  const [a, m, d] = iso.split('-').map(Number)
+  const semana = DIAS_SEMANA[new Date(`${iso}T00:00:00Z`).getUTCDay()]
+  const base = `${semana[0].toUpperCase()}${semana.slice(1)} ${d} de ${MESES[m - 1]}`
+  return a === Number(todayIso.slice(0, 4)) ? base : `${base} de ${a}`
 }
 
 /** Las comidas de una fecha, del diario completo. */

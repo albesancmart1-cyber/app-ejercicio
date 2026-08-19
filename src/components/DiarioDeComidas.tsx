@@ -3,13 +3,20 @@ import { MEALS, type Meal } from '../data/meals'
 import {
   conComida,
   diaDe,
+  diasRegistrados,
+  estadoDeCetosis,
+  nombreDeDia,
   ordenadas,
+  reemplazarComida,
   resumenDeCetosis,
   resumenDelDia,
-  sinComida
+  sinComida,
+  sumarDias,
+  type Cuando
 } from '../domain/crononutricion'
 import {
   CATEGORIA_LABELS,
+  alimentoResuelto,
   buscarAlimentos,
   escribirUnidades,
   type AlimentoBasico
@@ -71,25 +78,47 @@ function cantidadDe(a: AlimentoRegistrado): string | undefined {
 }
 
 /** Un alimento en una línea: «Pollo · 250 g» y sus etiquetas debajo. */
-function FilaDeAlimento({ a, onQuitar }: { a: AlimentoRegistrado; onQuitar?: () => void }) {
+function FilaDeAlimento({
+  a,
+  onQuitar,
+  onEditar
+}: {
+  a: AlimentoRegistrado
+  onQuitar?: () => void
+  /** Devolverlo a los campos para tocarlo, en vez de borrarlo y repetirlo. */
+  onEditar?: () => void
+}) {
   const cantidad = cantidadDe(a)
+  const cuerpo = (
+    <>
+      <span className="comida-texto">
+        {a.nombre}
+        {cantidad !== undefined && <span className="alimento-gramos"> · {cantidad}</span>}
+      </span>
+      {(a.etiquetas ?? []).length > 0 && (
+        <span className="comida-etiquetas">
+          {(a.etiquetas ?? []).map((e) => (
+            <Etiqueta key={e} acento={e === 'carbohidrato' || e === 'alcohol'}>
+              {ETIQUETAS_COMIDA[e]}
+            </Etiqueta>
+          ))}
+        </span>
+      )}
+    </>
+  )
   return (
     <div className="alimento-fila">
-      <div className="comida-cuerpo">
-        <span className="comida-texto">
-          {a.nombre}
-          {cantidad !== undefined && <span className="alimento-gramos"> · {cantidad}</span>}
-        </span>
-        {(a.etiquetas ?? []).length > 0 && (
-          <span className="comida-etiquetas">
-            {(a.etiquetas ?? []).map((e) => (
-              <Etiqueta key={e} acento={e === 'carbohidrato' || e === 'alcohol'}>
-                {ETIQUETAS_COMIDA[e]}
-              </Etiqueta>
-            ))}
-          </span>
-        )}
-      </div>
+      {onEditar ? (
+        <button
+          className="comida-cuerpo alimento-editable"
+          aria-label={`Cambiar ${a.nombre}`}
+          onClick={onEditar}
+        >
+          {cuerpo}
+        </button>
+      ) : (
+        <div className="comida-cuerpo">{cuerpo}</div>
+      )}
       {onQuitar && (
         <button className="icon-btn" aria-label={`Quitar ${a.nombre}`} onClick={onQuitar}>
           <Icon name="close" />
@@ -102,16 +131,38 @@ function FilaDeAlimento({ a, onQuitar }: { a: AlimentoRegistrado; onQuitar?: () 
 export default function DiarioDeComidas({
   comidas,
   todayIso,
-  checkIn,
+  checkIns,
   ediciones
 }: {
   comidas: DiaDeComidas[] | undefined
   todayIso: string
-  checkIn?: CheckIn
+  /** Todos los tests de la mañana: cada día mirado usa el suyo. */
+  checkIns?: CheckIn[]
   /** Las correcciones del usuario sobre el catálogo de alimentos. */
   ediciones?: EdicionAlimento[]
 }) {
-  const dia = diaDe(comidas, todayIso)
+  /**
+   * El día que se está mirando, o `null` para hoy.
+   *
+   * Se guarda como «null» y no como la fecha de hoy a propósito: así, si la
+   * app se queda abierta y pasa la medianoche, el diario sigue estando en el
+   * día de hoy y no se queda anclado al de ayer sin avisar.
+   */
+  const [otroDia, setOtroDia] = useState<string | null>(null)
+  const fecha = otroDia ?? todayIso
+  const esHoy = fecha === todayIso
+  const cuando: Cuando = esHoy ? 'hoy' : 'aquel_dia'
+  const dia = diaDe(comidas, fecha)
+  const checkIn = (checkIns ?? []).find((c) => c.date === fecha)
+  const anteriores = diasRegistrados(comidas).filter((d) => d.date !== fecha)
+  const [verAnteriores, setVerAnteriores] = useState(false)
+  /**
+   * La comida que se está corrigiendo, por su sitio en el día guardado — o
+   * `null` si lo que se está haciendo es apuntar una nueva.
+   */
+  const [editando, setEditando] = useState<number | null>(null)
+  /** El plato del recetario de la comida en corrección, para no perder el enlace. */
+  const [mealIdEnEdicion, setMealIdEnEdicion] = useState<string | undefined>(undefined)
   const [abierto, setAbierto] = useState(false)
   const [hora, setHora] = useState(ahora())
   /** Los alimentos ya añadidos a la comida que se está componiendo. */
@@ -162,8 +213,8 @@ export default function DiarioDeComidas({
   }
 
   const lista = ordenadas(dia?.comidas ?? [])
-  const resumen = resumenDelDia(dia, checkIn)
-  const cetosis = resumenDeCetosis(dia, ediciones)
+  const resumen = resumenDelDia(dia, checkIn, cuando)
+  const cetosis = resumenDeCetosis(dia, ediciones, cuando)
 
   // La proteína y el DHA de los platos del recetario que se hayan enlazado.
   const enlazados = lista
@@ -213,6 +264,30 @@ export default function DiarioDeComidas({
     limpiarCampos()
   }
 
+  /**
+   * Devuelve un alimento de la comida a los campos para retocarlo.
+   *
+   * «Eran tres huevos, no uno» tiene que costar un toque y un número; borrarlo
+   * y volver a buscarlo en el catálogo es rehacer el trabajo entero. Si venía
+   * del catálogo se recupera su ficha, para que siga contándose por unidades y
+   * con sus carbohidratos.
+   */
+  function retocarAlimento(i: number) {
+    const a = alimentos[i]
+    if (!a) return
+    setAlimentos((prev) => prev.filter((_, j) => j !== i))
+    const ficha = a.alimentoId ? alimentoResuelto(a.alimentoId, ediciones) : undefined
+    setElegido(ficha ?? null)
+    setNombre(a.nombre)
+    setEtiquetas(a.etiquetas ?? [])
+    setUnidades(a.unidades)
+    setGramos(a.unidades === undefined ? a.gramos : undefined)
+    setEdCarbos(ficha?.carbosPor100)
+    setEdCarbo(ficha?.carbo)
+    setEdPorUnidad(ficha?.gramosPorUnidad)
+    setCorrigiendo(false)
+  }
+
   /** Guarda la corrección del alimento del catálogo, para este y para siempre. */
   function guardarCorreccion() {
     if (!elegido) return
@@ -233,30 +308,99 @@ export default function DiarioDeComidas({
     setCorrigiendo(false)
   }
 
+  function cerrarFormulario() {
+    setAlimentos([])
+    limpiarCampos()
+    setHora(ahora())
+    setEditando(null)
+    setMealIdEnEdicion(undefined)
+    setAbierto(false)
+  }
+
+  /** Abre el formulario ya relleno con una comida apuntada, para corregirla. */
+  function editarComida(c: ComidaRegistrada) {
+    if (!dia) return
+    setEditando(dia.comidas.indexOf(c))
+    setMealIdEnEdicion(c.mealId)
+    setHora(c.hora)
+    // Un plato del recetario o una comida vieja de texto no tienen alimentos
+    // sueltos: entra tal cual como un alimento, con sus etiquetas, y desde ahí
+    // ya se le pueden añadir los acompañamientos.
+    setAlimentos(
+      (c.alimentos ?? []).length > 0
+        ? [...c.alimentos!]
+        : c.texto.trim()
+          ? [{ nombre: c.texto, ...(c.etiquetas?.length ? { etiquetas: c.etiquetas } : {}) }]
+          : []
+    )
+    limpiarCampos()
+    setAbierto(true)
+  }
+
   function guardar() {
     // Lo que esté a medio escribir también entra: obligar a pulsar «añadir»
     // antes de guardar perdería el último alimento sin que nadie lo note.
     const enCurso = alimentoEnCurso()
     const todos = enCurso ? [...alimentos, enCurso] : alimentos
     if (todos.length === 0) return
-    const comida: ComidaRegistrada = { hora, texto: '', alimentos: todos }
-    actions.saveComidas(conComida(dia, todayIso, comida))
-    setAlimentos([])
-    limpiarCampos()
-    setHora(ahora())
-    setAbierto(false)
+    const comida: ComidaRegistrada = {
+      hora,
+      texto: '',
+      alimentos: todos,
+      // El enlace al plato del recetario se conserva al corregir: de él salen
+      // la proteína y el DHA del día, y perderlo al tocar la hora sería un
+      // agujero silencioso en la cuenta.
+      ...(mealIdEnEdicion ? { mealId: mealIdEnEdicion } : {})
+    }
+    actions.saveComidas(
+      editando !== null && dia
+        ? reemplazarComida(dia, editando, comida)
+        : conComida(dia, fecha, comida)
+    )
+    cerrarFormulario()
   }
 
   const sePuedeGuardar = alimentos.length > 0 || nombre.trim() !== ''
 
   return (
     <div className="card diario-comidas">
-      <p className="eyebrow">Hoy has comido</p>
+      {/*
+        El diario no es solo el de hoy: se puede ir a cualquier día para ver lo
+        que se comió, corregirlo o rellenar lo que se quedó sin apuntar.
+      */}
+      <div className="diario-dias">
+        <button
+          className="icon-btn"
+          aria-label="Ver el día anterior"
+          onClick={() => {
+            setOtroDia(sumarDias(fecha, -1))
+            cerrarFormulario()
+          }}
+        >
+          <Icon name="chevron" className="gira-180" />
+        </button>
+        <p className="eyebrow diario-dia-nombre">
+          {esHoy ? 'Hoy has comido' : `${nombreDeDia(fecha, todayIso)} comiste`}
+        </p>
+        <button
+          className="icon-btn"
+          aria-label="Ver el día siguiente"
+          disabled={esHoy}
+          onClick={() => {
+            const siguiente = sumarDias(fecha, 1)
+            setOtroDia(siguiente === todayIso ? null : siguiente)
+            cerrarFormulario()
+          }}
+        >
+          <Icon name="chevron" />
+        </button>
+      </div>
 
       {lista.length === 0 && !abierto && (
         <p className="dim">
-          Apunta cada comida con su hora y sus alimentos — cada uno con su peso y lo que es. Con las
-          horas te digo tu ventana de alimentación, y mañana la báscula tendrá explicación.
+          {esHoy
+            ? 'Apunta cada comida con su hora y sus alimentos — cada uno con su peso y lo que es. Con las horas te digo tu ventana de alimentación, y mañana la báscula tendrá explicación.'
+            : 'Ese día no quedó nada apuntado. Todavía lo puedes rellenar, si te acuerdas.'}
         </p>
       )}
 
@@ -283,6 +427,13 @@ export default function DiarioDeComidas({
           </div>
           <button
             className="icon-btn"
+            aria-label={`Corregir la comida de las ${c.hora}`}
+            onClick={() => editarComida(c)}
+          >
+            <Icon name="pencil" />
+          </button>
+          <button
+            className="icon-btn"
             aria-label={`Quitar la comida de las ${c.hora}`}
             onClick={() => actions.saveComidas(sinComida(dia!, dia!.comidas.indexOf(c)))}
           >
@@ -295,7 +446,7 @@ export default function DiarioDeComidas({
       {cetosis && <p className="comida-resumen">{cetosis}</p>}
       {proteinaG > 0 && (
         <p className="faint" style={{ marginTop: 6 }}>
-          De los platos del recetario llevas ≈ {proteinaG} g de proteína
+          De los platos del recetario {esHoy ? 'llevas' : 'llevabas'} ≈ {proteinaG} g de proteína
           {dhaMg > 0 ? ` y ${dhaMg} mg de DHA` : ''}.
         </p>
       )}
@@ -319,6 +470,7 @@ export default function DiarioDeComidas({
                 <FilaDeAlimento
                   key={i}
                   a={a}
+                  onEditar={() => retocarAlimento(i)}
                   onQuitar={() => setAlimentos((prev) => prev.filter((_, j) => j !== i))}
                 />
               ))}
@@ -475,16 +627,67 @@ export default function DiarioDeComidas({
             Añadir otro alimento
           </Boton>
           <Boton tono="primario" onClick={guardar} disabled={!sePuedeGuardar}>
-            Guardar comida
+            {editando !== null ? 'Guardar los cambios' : 'Guardar comida'}
           </Boton>
-          <Boton tono="callado" onClick={() => setAbierto(false)}>
+          <Boton tono="callado" onClick={cerrarFormulario}>
             Cancelar
           </Boton>
         </div>
       ) : (
-        <Boton tono="secundario" style={{ marginTop: 12 }} onClick={() => { setHora(ahora()); setAbierto(true) }}>
-          Añadir comida
+        <Boton
+          tono="secundario"
+          style={{ marginTop: 12 }}
+          onClick={() => {
+            setHora(ahora())
+            setEditando(null)
+            setMealIdEnEdicion(undefined)
+            setAbierto(true)
+          }}
+        >
+          {esHoy ? 'Añadir comida' : 'Añadir una comida de ese día'}
         </Boton>
+      )}
+
+      {/*
+        Todo lo que se ha apuntado alguna vez, a un toque. Es la memoria del
+        diario: sin ella, mirar atrás significaría ir día a día con la flecha
+        sin saber siquiera en cuáles hay algo.
+      */}
+      {anteriores.length > 0 && (
+        <>
+          <Regla />
+          {verAnteriores ? (
+            <div className="dias-anteriores fade-in">
+              {anteriores.map((d) => {
+                const e = estadoDeCetosis(d, ediciones)
+                return (
+                  <button
+                    key={d.date}
+                    className="dia-anterior"
+                    onClick={() => {
+                      setOtroDia(d.date === todayIso ? null : d.date)
+                      cerrarFormulario()
+                      setVerAnteriores(false)
+                    }}
+                  >
+                    <span className="dia-anterior-nombre">{nombreDeDia(d.date, todayIso)}</span>
+                    <span className="faint">
+                      {d.comidas.length} {d.comidas.length === 1 ? 'comida' : 'comidas'}
+                      {e.estado !== 'desconocido' && !e.conCarboSinGramos
+                        ? ` · ≈ ${e.carbosG} g de carbohidrato`
+                        : ''}
+                    </span>
+                    {e.estado === 'fuera' && <Etiqueta acento>Fuera de cetosis</Etiqueta>}
+                  </button>
+                )
+              })}
+            </div>
+          ) : (
+            <button className="disclose" onClick={() => setVerAnteriores(true)}>
+              Ver los otros {anteriores.length} {anteriores.length === 1 ? 'día' : 'días'} apuntados
+            </button>
+          )}
+        </>
       )}
     </div>
   )

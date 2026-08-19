@@ -55,6 +55,13 @@ const paths: Record<string, JSX.Element> = {
   moon: <path d="M20.2 14.6A8.4 8.4 0 1 1 9.6 4.1a6.9 6.9 0 0 0 10.6 10.5z" />,
   /* Cerrar: para la hoja del catálogo de ejercicios. */
   close: <path d="M6.4 6.4l11.2 11.2M17.6 6.4L6.4 17.6" />,
+  /* Lápiz: corregir algo ya apuntado, sin tener que borrarlo y repetirlo. */
+  pencil: (
+    <>
+      <path d="M15.5 4.9l3.6 3.6L8.4 19.2l-4.3.7.7-4.3z" />
+      <path d="M13.4 7l3.6 3.6" />
+    </>
+  ),
   /* Tres puntos: todo lo que no es la acción principal del momento. */
   dots: (
     <>

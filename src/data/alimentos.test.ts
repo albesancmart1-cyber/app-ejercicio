@@ -210,6 +210,17 @@ describe('lo que se cuenta por unidades', () => {
     expect(e.estado).toBe('dentro')
   })
 
+  it('la mayonesa es la de aceite de oliva, no la de semillas', () => {
+    const m = alimentoResuelto('mayonesa_oliva')!
+    expect(m.nombre).toBe('Mayonesa de aceite de oliva')
+    expect(m.categoria).toBe('grasas')
+    // Un gramo por cada 100: no mueve el margen de cetosis y no lleva etiqueta.
+    expect(m.etiquetas).not.toContain('carbohidrato')
+    expect(buscarAlimentos('mayonesa')[0]?.id).toBe('mayonesa_oliva')
+    // Y no hay ninguna de aceite de soja rondando el catálogo.
+    expect(ALIMENTOS.some((x) => /soja/i.test(x.nombre) && x.categoria === 'grasas')).toBe(false)
+  })
+
   it('el fuet está, y lleva su sal', () => {
     const f = alimentoResuelto('fuet')!
     expect(f.nombre).toBe('Fuet')
