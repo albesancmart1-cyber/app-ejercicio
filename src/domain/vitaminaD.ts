@@ -90,9 +90,15 @@ export function uiDeExposicion(e: ExposicionSolar, mes: number): RangoUI {
   }
 }
 
-/** Las UI del día entero, sumando exposiciones y con el techo puesto. */
+/**
+ * Las UI del día. La cifra manual manda: si el usuario la trae de una app que
+ * la calcula con más datos que nosotros, estimar por encima sería empeorarla.
+ * Sin cifra manual, se estima de las exposiciones.
+ */
 export function uiDelDia(dia: DiaDeSol | undefined): RangoUI | undefined {
-  if (!dia || dia.exposiciones.length === 0) return undefined
+  if (!dia) return undefined
+  if (dia.ui !== undefined) return { min: dia.ui, max: dia.ui }
+  if (dia.exposiciones.length === 0) return undefined
   const mes = mesDe(dia.date)
   const suma = dia.exposiciones.reduce(
     (a, e) => {
@@ -104,16 +110,21 @@ export function uiDelDia(dia: DiaDeSol | undefined): RangoUI | undefined {
   return { min: Math.min(suma.min, TOPE_UI_DIA), max: Math.min(suma.max, TOPE_UI_DIA) }
 }
 
-/** Los minutos totales de sol del día, sin ponderar. */
+/** Los minutos totales de sol del día: los manuales si están, si no la suma. */
 export function minutosDelDia(dia: DiaDeSol | undefined): number {
+  if (dia?.minutos !== undefined) return Math.max(0, dia.minutos)
   return (dia?.exposiciones ?? []).reduce((a, e) => a + Math.max(0, e.minutos), 0)
 }
 
-/** «unas 4.000–8.000 UI», redondeado a centenas: la precisión sería mentira. */
+/**
+ * Cómo se escriben las UI. Un rango estimado va redondeado y con «unas» —la
+ * precisión sería mentira—; una cifra exacta (min = max: la trajo el usuario)
+ * se escribe tal cual, sin redondear lo que no es nuestro.
+ */
 export function escribirUI(r: RangoUI): string {
+  if (r.min === r.max) return `${r.min.toLocaleString('es-ES')} UI`
   const red = (n: number) => (Math.round(n / 100) * 100).toLocaleString('es-ES')
   if (r.max < 100) return 'una síntesis mínima'
-  if (r.min === r.max) return `unas ${red(r.min)} UI`
   return `unas ${red(r.min)}–${red(r.max)} UI`
 }
 
@@ -122,13 +133,27 @@ export function solDe(sol: DiaDeSol[] | undefined, fecha: string): DiaDeSol | un
   return sol?.find((d) => d.date === fecha)
 }
 
+/** Fija los minutos y las UI manuales del día, conservando lo demás. */
+export function conManual(
+  dia: DiaDeSol | undefined,
+  fecha: string,
+  manual: { minutos?: number; ui?: number }
+): DiaDeSol {
+  return {
+    date: fecha,
+    exposiciones: dia?.exposiciones ?? [],
+    ...(manual.minutos !== undefined ? { minutos: manual.minutos } : {}),
+    ...(manual.ui !== undefined ? { ui: manual.ui } : {})
+  }
+}
+
 /** Añade una exposición al día. */
 export function conExposicion(
   dia: DiaDeSol | undefined,
   fecha: string,
   e: ExposicionSolar
 ): DiaDeSol {
-  return { date: fecha, exposiciones: [...(dia?.exposiciones ?? []), e] }
+  return { ...(dia ?? {}), date: fecha, exposiciones: [...(dia?.exposiciones ?? []), e] }
 }
 
 /** Quita la exposición en esa posición. */

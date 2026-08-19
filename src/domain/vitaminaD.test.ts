@@ -10,6 +10,7 @@ import {
   solDe,
   uiDeExposicion,
   uiDelDia
+  , conManual
 } from './vitaminaD'
 import type { DiaDeSol, ExposicionSolar } from './types'
 
@@ -129,5 +130,53 @@ describe('editar el día', () => {
   it('solDe encuentra la fecha', () => {
     expect(solDe([dia(VERANO, exp(15))], VERANO)?.exposiciones).toHaveLength(1)
     expect(solDe(undefined, VERANO)).toBeUndefined()
+  })
+})
+
+describe('lo apuntado a mano manda', () => {
+  it('los minutos manuales pisan a la suma de ratos', () => {
+    const d: DiaDeSol = { date: VERANO, minutos: 45, exposiciones: [exp(15), exp(10)] }
+    expect(minutosDelDia(d)).toBe(45)
+  })
+
+  it('las UI traídas de fuera se usan tal cual, sin estimar por encima', () => {
+    const d: DiaDeSol = { date: VERANO, minutos: 40, ui: 6400, exposiciones: [] }
+    expect(uiDelDia(d)).toEqual({ min: 6400, max: 6400 })
+  })
+
+  it('una cifra exacta se escribe exacta, sin «unas» y sin redondear', () => {
+    expect(escribirUI({ min: 6400, max: 6400 })).toBe('6400 UI')
+    expect(escribirUI({ min: 12345, max: 12345 })).toBe('12.345 UI')
+  })
+
+  it('sin cifra manual, la estimación por ratos sigue funcionando', () => {
+    const d = dia(VERANO, exp(30))
+    const r = uiDelDia(d)!
+    expect(r.min).toBeLessThan(r.max)
+  })
+
+  it('conManual conserva las exposiciones y fija minutos y UI', () => {
+    const base = dia(VERANO, exp(15))
+    const con = conManual(base, VERANO, { minutos: 50, ui: 8000 })
+    expect(con.minutos).toBe(50)
+    expect(con.ui).toBe(8000)
+    expect(con.exposiciones).toHaveLength(1)
+    expect(base.minutos).toBeUndefined()
+  })
+
+  it('la semana suma las UI manuales exactas junto a las estimadas', () => {
+    const sol: DiaDeSol[] = [
+      { date: '2026-07-14', minutos: 40, ui: 6000, exposiciones: [] },
+      dia('2026-07-15', exp(20))
+    ]
+    const r = resumenSemanal(sol, VERANO)
+    expect(r.diasConSol).toBe(2)
+    expect(r.ui.min).toBeGreaterThan(6000)
+  })
+
+  it('los 15 minutos manuales anclan la leptina igual que los de los ratos', () => {
+    // La palanca de sol usa minutosDelDia, así que basta con que este los lea.
+    expect(minutosDelDia({ date: VERANO, minutos: 15, exposiciones: [] })).toBe(15)
+    expect(minutosDelDia({ date: VERANO, minutos: 0, exposiciones: [exp(30)] })).toBe(0)
   })
 })

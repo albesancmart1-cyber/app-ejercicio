@@ -649,10 +649,23 @@ export interface ExposicionSolar {
   piel: PielExpuesta
 }
 
-/** El sol de un día, con su marca para la fusión entre dispositivos. */
+/**
+ * El sol de un día, con su marca para la fusión entre dispositivos.
+ *
+ * Dos maneras de apuntarlo, y la manual manda:
+ *
+ *  - **Manual**: minutos totales y las UI de vitamina D que diga la app que el
+ *    usuario ya usa para calcularlas. Cifra exacta, sin estimar nada.
+ *  - **Por ratos** (`exposiciones`): el detalle de franja y piel, del que la
+ *    app estima un rango de UI. Queda para quien no traiga la cifra de fuera.
+ */
 export interface DiaDeSol {
   date: string
   updatedAt?: number
+  /** Minutos totales al sol, apuntados a mano. Manda sobre las exposiciones. */
+  minutos?: number
+  /** UI de vitamina D del día, traídas de fuera. Cifra exacta, no estimación. */
+  ui?: number
   exposiciones: ExposicionSolar[]
 }
 

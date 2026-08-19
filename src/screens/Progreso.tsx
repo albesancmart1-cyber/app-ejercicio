@@ -424,16 +424,12 @@ export default function Progreso() {
         ) : (
           <>
             <p className="dim">
-              {solSemana.diasConSol} de {solSemana.dias} días con sol, {solSemana.diasDeMediodia} de
-              ellos al mediodía — que es el que sintetiza. Acumuladas {escribirUI(solSemana.ui)} de
-              vitamina D estimadas.
+              {solSemana.diasConSol} de {solSemana.dias} días con sol
+              {solSemana.diasDeMediodia > 0
+                ? `, ${solSemana.diasDeMediodia} de ellos al mediodía — que es el que sintetiza`
+                : ''}
+              . Acumuladas {escribirUI(solSemana.ui)} de vitamina D.
             </p>
-            {solSemana.diasDeMediodia < 3 && !notaDeTemporada(today) && (
-              <p className="faint" style={{ marginTop: 8 }}>
-                Un cuarto de hora al mediodía, con brazos al aire, vale más que una hora a última
-                hora: el UVB solo llega con el sol alto.
-              </p>
-            )}
           </>
         )}
         {notaDeTemporada(today) && (
