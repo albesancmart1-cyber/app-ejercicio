@@ -120,23 +120,41 @@ await page.waitForTimeout(700)
 const diario = page.locator('.diario-comidas')
 comprobar((await diario.count()) > 0, 'no está la tarjeta del diario en Cocina')
 
-async function apuntar(hora, texto, etiquetas = []) {
+/** Apunta una comida de uno o varios alimentos: [nombre, gramos?, etiquetas?]. */
+async function apuntar(hora, alimentos) {
   await diario.getByRole('button', { name: 'Añadir comida' }).click()
   await page.waitForTimeout(250)
   await diario.getByLabel('Hora de la comida').fill(hora)
-  await diario.getByLabel('Qué has comido').fill(texto)
-  for (const e of etiquetas) {
-    await diario.getByRole('button', { name: e, exact: true }).click()
+  for (let i = 0; i < alimentos.length; i++) {
+    const [nombre, gramos, etiquetas = []] = alimentos[i]
+    await diario.getByLabel('Nombre del alimento').fill(nombre)
+    if (gramos) await diario.getByLabel('Peso del alimento en gramos').fill(String(gramos))
+    for (const e of etiquetas) {
+      await diario.getByRole('button', { name: e, exact: true }).click()
+    }
+    // El último no necesita «añadir»: guardar se lo lleva también.
+    if (i < alimentos.length - 1) {
+      await diario.getByRole('button', { name: 'Añadir otro alimento' }).click()
+      await page.waitForTimeout(150)
+    }
   }
   await diario.getByRole('button', { name: 'Guardar comida' }).click()
   await page.waitForTimeout(350)
 }
 
-await apuntar('10:30', 'Huevos con jamón', ['Huevos', 'Proteína animal'])
-await apuntar('19:30', 'Salmón a la plancha', ['Pescado azul'])
+await apuntar('10:30', [['Huevos con jamón', 0, ['Huevos', 'Proteína animal']]])
+// Una comida de varios alimentos, cada uno con su peso y sus etiquetas.
+await apuntar('19:30', [
+  ['Salmón', 200, ['Pescado azul']],
+  ['Aguacate', 100, []],
+  ['Ensalada', 0, ['Verdura']]
+])
 
 const texto1 = await diario.innerText()
 comprobar(/10:30/.test(texto1) && /19:30/.test(texto1), 'las comidas apuntadas no se ven')
+comprobar(/Salmón · 200 g/.test(texto1), `el alimento no sale con su peso: ${texto1.slice(0, 260)}`)
+comprobar(/Aguacate · 100 g/.test(texto1), 'el segundo alimento de la misma comida no sale')
+comprobar(/Pescado azul/.test(texto1) && /Verdura/.test(texto1), 'las etiquetas por alimento no salen')
 comprobar(
   /ventana de 9 h, de 10:30 a 19:30/.test(texto1),
   `no dice la ventana de alimentación: ${texto1.slice(0, 240)}`
@@ -146,7 +164,7 @@ comprobar(!/calor[ií]a|kcal/i.test(texto1), 'el diario habla de calorías')
 await diario.screenshot({ path: `${OUT}/diario-ventana.png` })
 
 // Una cena tardía sí avisa.
-await apuntar('22:30', 'Picoteo')
+await apuntar('22:30', [['Picoteo']])
 comprobar(/tarde/i.test(await diario.innerText()), 'una comida a las 22:30 no avisa de cena tardía')
 
 // Y se puede quitar.
@@ -179,6 +197,13 @@ const guardado = await page.evaluate(() => {
   return d.comidas?.find((x) => x.date === hoy)
 })
 comprobar(guardado?.comidas?.length === 3, `deberían quedar 3 comidas hoy y hay ${guardado?.comidas?.length}`)
+const multi = guardado?.comidas?.find((c) => c.hora === '19:30')
+comprobar(multi?.alimentos?.length === 3, `la comida de las 19:30 debería guardar 3 alimentos y tiene ${multi?.alimentos?.length}`)
+comprobar(multi?.alimentos?.[0]?.gramos === 200, 'el peso del alimento no se guarda')
+comprobar(
+  multi?.alimentos?.[0]?.etiquetas?.includes('pescado_azul'),
+  'la etiqueta del alimento no se guarda'
+)
 comprobar(
   guardado?.comidas?.some((c) => c.mealId),
   'la comida del recetario no guarda su enlace'

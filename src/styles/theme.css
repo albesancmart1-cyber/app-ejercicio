@@ -3641,3 +3641,57 @@ textarea:focus {
   flex-direction: column;
   min-width: 0;
 }
+
+/* Los alimentos de una comida, cada uno con su peso y sus etiquetas. */
+.alimento-fila {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  padding: 3px 0;
+}
+
+.alimento-gramos {
+  color: var(--label-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* El borrador de la comida que se está componiendo, antes de guardarla. */
+.comida-borrador {
+  margin-top: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-control);
+  background: var(--fill-3);
+}
+
+.comida-form-hora {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.comida-form-hora input {
+  width: 120px;
+  padding: 10px 8px;
+  border-radius: var(--r-control);
+  background: var(--surface-strong);
+  border: 0;
+  color: var(--label);
+  font-variant-numeric: tabular-nums;
+  outline: none;
+  color-scheme: dark;
+}
+
+/* El peso del alimento: estrecho, que el nombre es el que manda. */
+.comida-form-fila .alimento-peso {
+  flex: none;
+  width: 84px;
+  padding: 10px 8px;
+  border-radius: var(--r-control);
+  background: var(--surface-strong);
+  border: 0;
+  color: var(--label);
+  font-size: var(--text-body);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  outline: none;
+}

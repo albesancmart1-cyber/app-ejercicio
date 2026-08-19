@@ -14,7 +14,7 @@
  *
  * Nada de calorías: se registra qué, cuándo y de qué tipo.
  */
-import type { CheckIn, ComidaRegistrada, DiaDeComidas, EtiquetaComida } from './types'
+import type { AlimentoRegistrado, CheckIn, ComidaRegistrada, DiaDeComidas, EtiquetaComida } from './types'
 
 /** A menos de estas horas de acostarse, una cena es tardía. */
 export const HORAS_CENA_TARDIA = 3
@@ -89,9 +89,31 @@ export function cenaTardia(dia: DiaDeComidas | undefined, checkIn?: CheckIn): bo
   return ultima >= aMinutos(CENA_TARDE_POR_DEFECTO)!
 }
 
-/** ¿Alguna comida del día lleva la etiqueta? */
+/**
+ * Todas las etiquetas de una comida: las suyas y las de cada alimento.
+ * Un arroz etiquetado dentro de la cena etiqueta la cena entera — para la
+ * cetosis y el peso da igual en qué plato venía el carbohidrato.
+ */
+export function etiquetasDe(c: ComidaRegistrada): EtiquetaComida[] {
+  const todas = [...(c.etiquetas ?? []), ...(c.alimentos ?? []).flatMap((a) => a.etiquetas ?? [])]
+  return [...new Set(todas)]
+}
+
+/** ¿Alguna comida del día lleva la etiqueta, en la comida o en sus alimentos? */
 export function llevaEtiqueta(dia: DiaDeComidas | undefined, etiqueta: EtiquetaComida): boolean {
-  return (dia?.comidas ?? []).some((c) => c.etiquetas?.includes(etiqueta))
+  return (dia?.comidas ?? []).some((c) => etiquetasDe(c).includes(etiqueta))
+}
+
+/**
+ * Cómo se lee una comida en una línea: el texto si lo hay, y si no, sus
+ * alimentos con su peso — «Pollo 250 g · Aguacate».
+ */
+export function describirComida(c: ComidaRegistrada): string {
+  if (c.texto.trim() && c.texto !== 'Comida') return c.texto
+  const partes = (c.alimentos ?? []).map((a: AlimentoRegistrado) =>
+    a.gramos !== undefined ? `${a.nombre} ${a.gramos} g` : a.nombre
+  )
+  return partes.length > 0 ? partes.join(' · ') : c.texto
 }
 
 /** ¿El día salió de cetosis? Solo se afirma si hay diario: sin comidas no se sabe. */

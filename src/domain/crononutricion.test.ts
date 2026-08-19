@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   aHora,
+  describirComida,
+  etiquetasDe,
   aMinutos,
   cenaTardia,
   conComida,
@@ -163,5 +165,41 @@ describe('editar el día', () => {
     expect(diaDe([dia('10:00')], F)?.comidas).toHaveLength(1)
     expect(diaDe([dia('10:00')], '2026-01-01')).toBeUndefined()
     expect(diaDe(undefined, F)).toBeUndefined()
+  })
+})
+
+describe('los alimentos dentro de una comida', () => {
+  const cena: import('./types').ComidaRegistrada = {
+    hora: '21:00',
+    texto: '',
+    alimentos: [
+      { nombre: 'Pollo', gramos: 250, etiquetas: ['proteina'] },
+      { nombre: 'Arroz', gramos: 80, etiquetas: ['carbohidrato', 'salada'] },
+      { nombre: 'Aguacate' }
+    ]
+  }
+
+  it('las etiquetas de la comida son la unión de las de sus alimentos', () => {
+    expect(etiquetasDe(cena).sort()).toEqual(['carbohidrato', 'proteina', 'salada'])
+  })
+
+  it('un carbohidrato en un alimento saca al día de cetosis, como si fuera de la comida', () => {
+    const d: import('./types').DiaDeComidas = { date: F, comidas: [cena] }
+    expect(saleDeCetosis(d)).toBe(true)
+    expect(llevaEtiqueta(d, 'salada')).toBe(true)
+  })
+
+  it('la comida se lee por sus alimentos y sus pesos cuando no hay texto', () => {
+    expect(describirComida(cena)).toBe('Pollo 250 g · Arroz 80 g · Aguacate')
+  })
+
+  it('con texto propio, manda el texto', () => {
+    expect(describirComida({ ...cena, texto: 'Cena de tupper' })).toBe('Cena de tupper')
+  })
+
+  it('las etiquetas de la comida entera siguen valiendo, con y sin alimentos', () => {
+    const vieja: import('./types').ComidaRegistrada = { hora: '14:00', texto: 'arroz', etiquetas: ['carbohidrato'] }
+    expect(etiquetasDe(vieja)).toEqual(['carbohidrato'])
+    expect(saleDeCetosis({ date: F, comidas: [vieja] })).toBe(true)
   })
 })

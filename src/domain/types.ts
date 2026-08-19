@@ -607,6 +607,17 @@ export const ETIQUETAS_COMIDA: Record<EtiquetaComida, string> = {
   alcohol: 'Alcohol'
 }
 
+/**
+ * Un alimento dentro de una comida: su nombre, su peso si se quiere apuntar, y
+ * sus propias etiquetas. El peso va en gramos y es **peso**, no una cuenta de
+ * energía: sirve para saber qué cantidad de qué, nada más.
+ */
+export interface AlimentoRegistrado {
+  nombre: string
+  gramos?: number
+  etiquetas?: EtiquetaComida[]
+}
+
 /** Una comida del día. Sin desayuno/comida/cena: comida 1, comida 2, las que sean. */
 export interface ComidaRegistrada {
   /** «HH:MM». La hora es el dato central: crononutrición. */
@@ -615,6 +626,13 @@ export interface ComidaRegistrada {
   texto: string
   /** El plato del recetario del que vino, si vino de ahí: suma DHA y proteína solas. */
   mealId?: string
+  /**
+   * Los alimentos de la comida, cada uno con su peso y sus etiquetas. Una
+   * comida puede seguir siendo solo `texto` —apuntar rápido vale más que
+   * apuntar completo—; los alimentos son el detalle para quien lo quiera.
+   */
+  alimentos?: AlimentoRegistrado[]
+  /** Etiquetas de la comida entera. Con alimentos, cada uno lleva las suyas. */
   etiquetas?: EtiquetaComida[]
 }
 
