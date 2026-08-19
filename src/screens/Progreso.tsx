@@ -21,7 +21,7 @@ import Icon from '../components/Icon'
 import { formatDuration } from '../components/Chrono'
 import { computeBalance } from '../domain/muscleBalance'
 import VolumeByMuscle from '../components/VolumeByMuscle'
-import { computeLeptinSignal } from '../domain/leptin'
+import { computeLeptinSignal, explicarCobertura } from '../domain/leptin'
 import { useAppData } from '../store/store'
 import { useToday } from '../store/clock'
 import { Boton, Etiqueta, Regla } from '../components/ui'
@@ -270,6 +270,7 @@ export default function Progreso() {
   const completed = data.sessions.filter((s) => s.completed)
 
   const leptin = computeLeptinSignal(data.checkIns, today, data.profile?.goal)
+  const cobertura = explicarCobertura(leptin)
 
   if (ficha) {
     return (
@@ -371,6 +372,11 @@ export default function Progreso() {
                 <span key={i} className={i < Math.round(leptin.score / 10) ? 'on' : ''} />
               ))}
             </div>
+            {/*
+              Los días sin contestar, dichos donde se ve la cifra y no en la
+              letra pequeña del final: son parte de lo que significa el número.
+            */}
+            {cobertura && <p className="leptina-cobertura">{cobertura}</p>}
             <p className="dim" style={{ marginTop: 14 }}>
               {leptin.muscleNote}
             </p>
@@ -397,7 +403,8 @@ export default function Progreso() {
               </>
             )}
             <p className="faint" style={{ marginTop: 14 }}>
-              Calculado sobre {leptin.days} {leptin.days === 1 ? 'día' : 'días'} de la última semana.
+              Calculado sobre {leptin.days} de los últimos {leptin.diasDeLaVentana} días
+              {leptin.diasSinContestar > 0 ? `, y los otros ${leptin.diasSinContestar} cuentan como días sin saber` : ''}.
               La leptina responde a patrones, no a una noche suelta.
             </p>
           </>

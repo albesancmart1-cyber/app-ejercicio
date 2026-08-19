@@ -3491,3 +3491,20 @@ textarea:focus {
   font-weight: 700;
   letter-spacing: 0.06em;
 }
+
+/*
+ * Los días que faltan por contestar, junto a la cifra de la señal.
+ *
+ * En ámbar y no en gris a propósito: no es una nota al pie, es lo que le quita
+ * o le pone valor al número que hay justo encima. Antes esos días ni se
+ * mencionaban —se caían del cálculo— y una semana con dos check-ins buenos
+ * salía como «93 sobre 100, señal limpia».
+ */
+.leptina-cobertura {
+  margin-top: var(--sp-3);
+  padding-left: var(--sp-3);
+  border-left: 2px solid var(--accent-soft);
+  font-size: var(--text-caption);
+  line-height: var(--leading-caption);
+  color: var(--label-2);
+}

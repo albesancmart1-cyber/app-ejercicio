@@ -36,12 +36,26 @@ import { daysBetween } from './muscleBalance'
 
 const WINDOW_DAYS = 7
 
+/**
+ * Días contestados por debajo de los cuales no se da veredicto.
+ *
+ * Con dos días sueltos se puede decir qué pasó esos dos días, no cómo va la
+ * semana, que es lo que esta señal dice medir.
+ */
+export const DIAS_MINIMOS = 3
+
 export interface LeptinSignal {
   /** 0–100 sobre la última semana. */
   score: number
   level: 'baja' | 'media' | 'alta'
   /** Cuántos check-ins sostienen el cálculo. */
   days: number
+  /** Los días de la ventana: siempre siete, se hayan contestado o no. */
+  diasDeLaVentana: number
+  /** Los que se quedaron sin contestar, que también cuentan. */
+  diasSinContestar: number
+  /** La puntuación antes de descontar los días sin contestar. */
+  scoreBruto: number
   helping: string[]
   hurting: string[]
   /** Qué significa esto para ganar músculo. */
@@ -63,17 +77,42 @@ function ratioOf(values: (boolean | undefined)[]): number | null {
   return known.filter(Boolean).length / known.length
 }
 
+/**
+ * La señal de la última semana.
+ *
+ * **Los días sin contestar cuentan.** Antes no: la media se hacía solo sobre los
+ * días que había, así que una semana con dos check-ins buenos y cinco días en
+ * blanco salía como «93 sobre 100, señal limpia». Es decir, la app premiaba
+ * dejar de contestar, que es exactamente lo contrario de lo que quiere medir —y
+ * de paso alimentaba con esa cifra inflada la interpretación de la tendencia y
+ * la progresión de carga.
+ *
+ * La corrección no es inventarse los días que faltan: de un día en blanco no se
+ * sabe si dormiste bien o mal, y ponerle un cero sería mentir igual, solo que en
+ * la otra dirección. Lo que se hace es **acercar la puntuación al medio en
+ * proporción a lo que no se sabe**: con la semana entera contestada la cifra es
+ * la que sale de los datos; con dos días de siete, la mayor parte de lo que se
+ * enseña es «no lo sé». Así no se puede llegar a «alta» sin contestar, y una
+ * semana mala tampoco se dispara a «baja» por dos días sueltos.
+ */
 export function computeLeptinSignal(checkIns: CheckIn[], todayIso: string, goal?: Goal): LeptinSignal {
   const window = checkIns.filter((c) => {
     const age = daysBetween(c.date, todayIso)
     return age >= 0 && age < WINDOW_DAYS
   })
+  // Por fecha: dos check-ins del mismo día no son dos días cubiertos.
+  const diasContestados = new Set(window.map((c) => c.date)).size
+  const diasSinContestar = WINDOW_DAYS - diasContestados
+  const cobertura = diasContestados / WINDOW_DAYS
 
   if (window.length === 0) {
     return {
       score: 0,
       level: 'media',
       days: 0,
+      diasDeLaVentana: WINDOW_DAYS,
+      diasSinContestar: WINDOW_DAYS,
+      scoreBruto: 0,
       helping: [],
       hurting: [],
       muscleNote:
@@ -135,10 +174,26 @@ export function computeLeptinSignal(checkIns: CheckIn[], todayIso: string, goal?
   const available = levers.filter((l) => l.ratio !== null)
   const totalWeight = available.reduce((acc, l) => acc + l.weight, 0)
   const earned = available.reduce((acc, l) => acc + l.ratio! * l.weight, 0)
-  const score = totalWeight === 0 ? 0 : Math.round((earned / totalWeight) * 100)
+  const scoreBruto = totalWeight === 0 ? 0 : Math.round((earned / totalWeight) * 100)
 
-  const helping = available.filter((l) => l.ratio! >= 0.6).map((l) => l.good)
-  const hurting = available.filter((l) => l.ratio! < 0.6).map((l) => l.bad)
+  /*
+   * Lo que no se contestó tira hacia el medio. Con la semana entera puesta, la
+   * cifra es la que dicen los datos; con dos días de siete, cinco séptimos de
+   * lo que se enseña es «no lo sé», y eso es 50, ni bien ni mal.
+   */
+  const score = Math.round(NEUTRO + (scoreBruto - NEUTRO) * cobertura)
+
+  /*
+   * Con muy pocos días no se listan aciertos ni fallos.
+   *
+   * Un solo check-in bueno daba siete líneas de «estás durmiendo bien», «la luz
+   * de la mañana está haciendo su trabajo»… que son afirmaciones sobre la
+   * semana hechas con un día. Y además contradecían al propio aviso de que
+   * faltan días, justo encima.
+   */
+  const bastante = diasContestados >= DIAS_MINIMOS
+  const helping = bastante ? available.filter((l) => l.ratio! >= 0.6).map((l) => l.good) : []
+  const hurting = bastante ? available.filter((l) => l.ratio! < 0.6).map((l) => l.bad) : []
 
   const level: LeptinSignal['level'] = score < 45 ? 'baja' : score < 70 ? 'media' : 'alta'
 
@@ -150,18 +205,38 @@ export function computeLeptinSignal(checkIns: CheckIn[], todayIso: string, goal?
   return {
     score,
     level,
-    days: window.length,
+    days: diasContestados,
+    diasDeLaVentana: WINDOW_DAYS,
+    diasSinContestar,
+    scoreBruto,
     helping,
     hurting,
-    muscleNote: muscleNoteFor(level, lowEnergyAvailability, goal)
+    muscleNote: muscleNoteFor(level, lowEnergyAvailability, goal, diasSinContestar, diasContestados)
   }
+}
+
+/** El punto medio: ni a favor ni en contra. Es lo que vale un día sin contestar. */
+const NEUTRO = 50
+
+/** «4 de los últimos 7 días sin contestar», cuando toca decirlo. */
+export function explicarCobertura(s: LeptinSignal): string | undefined {
+  if (s.diasSinContestar === 0) return undefined
+  const dias = `${s.diasSinContestar} de los últimos ${s.diasDeLaVentana} días`
+  if (s.days < DIAS_MINIMOS) return `Llevas ${dias} sin contestar el test.`
+  return `${dias} sin contestar, y esos días también cuentan: la cifra está descontada por lo que no sé de ellos.`
 }
 
 function muscleNoteFor(
   level: LeptinSignal['level'],
   lowEnergyAvailability: boolean,
-  goal?: Goal
+  goal: Goal | undefined,
+  diasSinContestar: number,
+  diasContestados: number
 ): string {
+  // Sin días suficientes no hay veredicto que dar, y decirlo es la respuesta.
+  if (diasContestados < DIAS_MINIMOS) {
+    return `Con ${diasContestados} ${diasContestados === 1 ? 'día' : 'días'} no puedo decirte cómo va la semana, que es lo que esta señal mide. Los días en blanco cuentan como que no lo sé, no como que fueron bien: contesta el test unos días seguidos y la cifra empezará a significar algo.`
+  }
   if (lowEnergyAvailability) {
     return 'Poca energía y antojos a la vez suelen significar que estás comiendo por debajo de lo que tu cuerpo necesita. Sostenido, eso hunde la leptina y frena el músculo: come hasta saciarte de verdad, empezando siempre por la proteína.'
   }
@@ -171,7 +246,9 @@ function muscleNoteFor(
       : 'Tu señal está apagada. Antes de tocar nada del entrenamiento, prioriza dormir y ver luz por la mañana.'
   }
   if (level === 'media') {
-    return 'Vas por buen camino. Come hasta saciedad real con proteína por delante y cuida las noches: es lo que termina de afinar la señal.'
+    return diasSinContestar > 0
+      ? 'Vas por buen camino con lo que sé. Contestar los días que faltan es lo que haría esta cifra fiable, además de cuidar las noches y comer hasta saciedad real con proteína por delante.'
+      : 'Vas por buen camino. Come hasta saciedad real con proteína por delante y cuida las noches: es lo que termina de afinar la señal.'
   }
   return goal === 'masa'
     ? 'Señal limpia: tu cuerpo está en condiciones de construir. Come hasta saciarte con proteína suficiente y deja que el apetito haga el resto, sin contar nada.'
