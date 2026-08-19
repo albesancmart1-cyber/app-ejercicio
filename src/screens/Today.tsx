@@ -6,6 +6,7 @@ import {
   type MuscleGroup,
   type Routine
 } from '../domain/types'
+import PesoDeHoy from '../components/PesoDeHoy'
 import { computeReadiness, tieneLevesRepartidas, zonasConMolestias } from '../domain/readiness'
 import { canIntensify, canMix, recommend, withMoreIntensity, withSomeStrength } from '../domain/recommender'
 import { NIVEL_MAXIMO, volumePlan } from '../domain/progression'
@@ -28,7 +29,8 @@ import WeekStrip from '../components/WeekStrip'
  * ver qué le toca y decide que hoy no, no descarga nada de eso.
  */
 const SessionScreen = lazy(() => import('./Session'))
-import { Boton, Escala, Etiqueta, Opcion, Regla } from '../components/ui'
+import { Boton, CampoNumero, Escala, Etiqueta, Opcion, Regla } from '../components/ui'
+import { explicarPeso } from '../domain/explicacionPeso'
 import {
   MI_MATERIAL,
   describirLocalizacion,
@@ -116,6 +118,28 @@ export default function Today() {
   const [minutos, setMinutos] = useState<MinutosDisponibles | null>(null)
   const [sleep, setSleep] = useState<Scale | null>(saved?.sleep ?? null)
   const [energy, setEnergy] = useState<Scale | null>(saved?.energy ?? null)
+  /*
+   * La báscula, dentro del test porque es cuando uno se acaba de pesar.
+   * Opcional entera: un día sin pesarse no invalida el test.
+   */
+  const medidaHoy = data.measurements.find((m) => m.date === today)
+  const [peso, setPeso] = useState<number | undefined>(medidaHoy?.weightKg)
+  const [grasa, setGrasa] = useState<number | undefined>(medidaHoy?.fatPercent)
+  const [musculo, setMusculo] = useState<number | undefined>(medidaHoy?.musclePercent)
+  /*
+   * Lo de ayer que explica la báscula de hoy. Opcional todo: cada respuesta
+   * activa un factor en `explicacionPeso`, y la que falte deja ese factor sin
+   * mirar — nunca se inventa.
+   */
+  const [ayer, setAyer] = useState<Record<'cenaTarde' | 'alcohol' | 'comidaSalada' | 'transito', boolean | null>>({
+    cenaTarde: saved?.cenaTarde ?? null,
+    alcohol: saved?.alcohol ?? null,
+    comidaSalada: saved?.comidaSalada ?? null,
+    transito: saved?.transito ?? null
+  })
+  const [estres, setEstres] = useState<Scale | null>(saved?.estres ?? null)
+  const [horaAcostarse, setHoraAcostarse] = useState(saved?.horaAcostarse ?? '')
+  const [horaLevantarse, setHoraLevantarse] = useState(saved?.horaLevantarse ?? '')
   const [habits, setHabits] = useState<Record<YesNoKey, boolean | null>>({
     lightHygiene: saved?.lightHygiene ?? null,
     sunrise: saved?.sunrise ?? null,
@@ -166,11 +190,20 @@ export default function Today() {
       cravings: habits.cravings!,
       discomforts: zonas,
       mildSoreness: leves,
+      // Lo opcional entra solo si se contestó: `undefined` es «sin contestar»,
+      // que el motor del peso distingue de «no».
+      ...(ayer.cenaTarde !== null ? { cenaTarde: ayer.cenaTarde } : {}),
+      ...(ayer.alcohol !== null ? { alcohol: ayer.alcohol } : {}),
+      ...(ayer.comidaSalada !== null ? { comidaSalada: ayer.comidaSalada } : {}),
+      ...(ayer.transito !== null ? { transito: ayer.transito } : {}),
+      ...(estres !== null ? { estres } : {}),
+      ...(horaAcostarse ? { horaAcostarse } : {}),
+      ...(horaLevantarse ? { horaLevantarse } : {}),
       // El campo viejo se sigue rellenando como resumen, para que un check-in
       // guardado hoy se pueda leer con una versión anterior de la app.
       discomfort: zonas[0] ?? (leves ? 'leves' : 'ninguna')
     }
-  }, [complete, today, sleep, energy, habits, zonas, leves])
+  }, [complete, today, sleep, energy, habits, zonas, leves, ayer, estres, horaAcostarse, horaLevantarse])
 
   const renderYesNo = ({ q, key }: { q: string; key: YesNoKey }, i: number) => (
     <div key={key} style={{ marginTop: i === 0 ? 0 : 18 }}>
@@ -316,15 +349,59 @@ export default function Today() {
           <Boton tono="primario" onClick={() => setPhase('checkin')}>
             {doneToday ? 'Preparar otra sesión' : 'Empezar'}
           </Boton>
+          <PesoDeHoy
+            measurements={data.measurements}
+            checkIns={data.checkIns}
+            sessions={data.sessions}
+            todayIso={today}
+          />
         </div>
       )}
 
       {phase === 'checkin' && (
         <div className="stack" style={{ marginTop: 28 }}>
+          {/*
+            La báscula va la primera y es opcional entera: es el momento en que
+            uno se acaba de pesar, y con el dato aquí la app puede explicar cada
+            mañana por qué el número se movió. Un día sin pesarse no bloquea
+            nada.
+          */}
+          <div className="card">
+            <p className="eyebrow">La báscula · si te has pesado</p>
+            <div className="bascula-campos">
+              <label className="bascula-campo">
+                <span className="focus-label">Peso</span>
+                <CampoNumero decimales valor={peso} onCambiar={setPeso} placeholder="kg" aria-label="Peso de hoy en kilos" />
+              </label>
+              <label className="bascula-campo">
+                <span className="focus-label">Grasa</span>
+                <CampoNumero decimales valor={grasa} onCambiar={setGrasa} placeholder="%" aria-label="Porcentaje de grasa de hoy" />
+              </label>
+              <label className="bascula-campo">
+                <span className="focus-label">Músculo</span>
+                <CampoNumero decimales valor={musculo} onCambiar={setMusculo} placeholder="%" aria-label="Porcentaje de músculo de hoy" />
+              </label>
+            </div>
+            <p className="faint" style={{ marginTop: 10 }}>
+              Con esto te explico cada mañana por qué el número sube o baja. Los porcentajes, si tu
+              báscula los da: son lo que separa una meseta de una recomposición.
+            </p>
+          </div>
+
           <div className="card">
             <p className="eyebrow">Descanso</p>
             <h2 style={{ marginBottom: 16 }}>¿Cómo has dormido?</h2>
             <ScaleInput value={sleep} onChange={setSleep} low="Muy mal" high="De maravilla" />
+            <div className="horas-sueno">
+              <label>
+                <span className="focus-label">Me acosté a las</span>
+                <input type="time" value={horaAcostarse} onChange={(e) => setHoraAcostarse(e.target.value)} aria-label="Hora de acostarse anoche" />
+              </label>
+              <label>
+                <span className="focus-label">Me levanté a las</span>
+                <input type="time" value={horaLevantarse} onChange={(e) => setHoraLevantarse(e.target.value)} aria-label="Hora de levantarse hoy" />
+              </label>
+            </div>
             <Regla />
             <h2 style={{ marginBottom: 16 }}>¿Cuánta energía tienes?</h2>
             <ScaleInput value={energy} onChange={setEnergy} low="Agotado" high="A tope" />
@@ -341,6 +418,44 @@ export default function Today() {
             <p className="faint" style={{ marginTop: 16 }}>
               Estas dos no deciden tu entreno de hoy: son las señales con las que leo tu leptina a
               lo largo de la semana.
+            </p>
+          </div>
+
+          {/*
+            Lo de ayer que mueve la báscula. Opcional todo: cada respuesta
+            enciende o apaga un factor de la explicación del peso, y la que se
+            quede sin contestar simplemente no se mira.
+          */}
+          <div className="card">
+            <p className="eyebrow">Lo de ayer · para explicarte la báscula</p>
+            {(
+              [
+                { q: '¿Cenaste tarde, a menos de 3 h de acostarte?', key: 'cenaTarde' },
+                { q: '¿Bebiste alcohol?', key: 'alcohol' },
+                { q: '¿Alguna comida muy salada?', key: 'comidaSalada' },
+                { q: '¿Has ido al baño antes de pesarte?', key: 'transito' }
+              ] as const
+            ).map(({ q, key }, i) => (
+              <div key={key} style={{ marginTop: i === 0 ? 0 : 18 }}>
+                <div className="row">
+                  <span style={{ fontSize: '0.9rem' }}>{q}</span>
+                  <div className="options" style={{ flexWrap: 'nowrap' }}>
+                    <Opcion activa={ayer[key] === true} onElegir={() => setAyer((p) => ({ ...p, [key]: true }))}>
+                      Sí
+                    </Opcion>
+                    <Opcion activa={ayer[key] === false} onElegir={() => setAyer((p) => ({ ...p, [key]: false }))}>
+                      No
+                    </Opcion>
+                  </div>
+                </div>
+              </div>
+            ))}
+            <Regla />
+            <h2 style={{ marginBottom: 16 }}>¿Cuánto estrés tuviste ayer?</h2>
+            <ScaleInput value={estres} onChange={setEstres} low="Tranquilo" high="Muy alto" />
+            <p className="faint" style={{ marginTop: 12 }}>
+              Todo esto es opcional. Cada respuesta me deja explicarte mejor el número de la báscula;
+              la que falte, simplemente no la miro.
             </p>
           </div>
 
@@ -392,6 +507,14 @@ export default function Today() {
             disabled={!complete}
             onClick={() => {
               if (checkIn) actions.saveCheckIn(checkIn)
+              if (peso !== undefined) {
+                actions.saveMeasurement({
+                  date: today,
+                  weightKg: peso,
+                  ...(grasa !== undefined ? { fatPercent: grasa } : {}),
+                  ...(musculo !== undefined ? { musclePercent: musculo } : {})
+                })
+              }
               setPhase('plan')
             }}
           >
@@ -583,6 +706,14 @@ export default function Today() {
             )}
 
           </div>
+
+          {/* La báscula explicada, recién contestado el test: es cuando se mira. */}
+          <PesoDeHoy
+            measurements={data.measurements}
+            checkIns={data.checkIns}
+            sessions={data.sessions}
+            todayIso={today}
+          />
 
           {/* Las tres razones, fuera de la tarjeta y en tono menor: informan sin
               competir con la decisión ni con su botón. */}

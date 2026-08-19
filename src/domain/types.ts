@@ -282,6 +282,26 @@ export interface CheckIn {
   wokeHungry?: boolean
   /** Los antojos son el marcador clásico de leptina que no llega. */
   cravings?: boolean
+  // Lo que alimenta la explicación diaria del peso (`explicacionPeso.ts`).
+  // Todo opcional: los check-ins de antes siguen valiendo, y un día sin
+  // contestar algo no rompe nada — solo deja ese factor sin mirar.
+  /** A qué hora te acostaste anoche, «HH:MM». */
+  horaAcostarse?: string
+  /** A qué hora te levantaste hoy, «HH:MM». */
+  horaLevantarse?: string
+  /** Cenaste tarde ayer (a menos de ~3 h de acostarte). */
+  cenaTarde?: boolean
+  /** Alcohol ayer. */
+  alcohol?: boolean
+  /** Comida muy salada ayer. */
+  comidaSalada?: boolean
+  /**
+   * Has ido al baño antes de pesarte. Suena prosaico y es uno de los mayores
+   * factores del número de la báscula de un día a otro.
+   */
+  transito?: boolean
+  /** Estrés de ayer, 1 (tranquilo) a 5 (muy alto). El cortisol retiene agua. */
+  estres?: 1 | 2 | 3 | 4 | 5
 }
 
 export type SessionKind = 'fuerza' | 'cardio_suave' | 'cardio_medio' | 'reacondicionamiento' | 'descanso_activo'

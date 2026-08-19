@@ -473,8 +473,8 @@ for (const esperado of ['16 kg', '32 kg', '64 kg']) {
     process.exit(1)
   }
 }
-// Con 1,80 m: 64 kg magros / 1,8² = 19,8 de FFMI.
-if (!(await page.getByText('FFMI 19.8').count())) {
+// Con 1,80 m: 64 kg magros / 1,8² = 19,8 de FFMI — con coma, como toca.
+if (!(await page.getByText('FFMI 19,8').count())) {
   console.error('ERROR: el FFMI no cuadra con 64 kg magros y 1,80 m')
   process.exit(1)
 }
