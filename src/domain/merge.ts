@@ -16,7 +16,7 @@
  * eso lo borrado deja una **lápida** —qué era y cuándo se borró— y la unión la
  * respeta mientras nadie haya vuelto a crear esa misma cosa después.
  */
-import type { DiaDeComidas, AppData, BodyMeasurement, CheckIn, Routine, Session } from './types'
+import type { DiaDeComidas, DiaDeSol, AppData, BodyMeasurement, CheckIn, Routine, Session } from './types'
 
 /** Qué se borró y cuándo, para que la fusión no lo resucite. */
 export interface Lapida {
@@ -39,6 +39,9 @@ export function claveDeRutina(id: string): string {
 }
 export function claveDeComidas(fecha: string): string {
   return `comidas:${fecha}`
+}
+export function claveDeSol(fecha: string): string {
+  return `sol:${fecha}`
 }
 
 /** Cuándo se tocó por última vez. Lo que no lo lleva es de antes de sincronizar. */
@@ -107,6 +110,7 @@ export function fusionar(local: AppData, remoto: AppData): { data: AppData; resu
 
   const claveRutina = (r: Routine) => claveDeRutina(r.id)
   const claveComidas = (d: DiaDeComidas) => claveDeComidas(d.date)
+  const claveSol = (d: DiaDeSol) => claveDeSol(d.date)
 
   const sessions = unir(local.sessions, remoto.sessions, claveSesion).filter(vivo(claveSesion))
   const routines = unir(local.routines ?? [], remoto.routines ?? [], claveRutina).filter(
@@ -119,6 +123,7 @@ export function fusionar(local: AppData, remoto: AppData): { data: AppData; resu
   const comidas = unir(local.comidas ?? [], remoto.comidas ?? [], claveComidas).filter(
     vivo(claveComidas)
   )
+  const sol = unir(local.sol ?? [], remoto.sol ?? [], claveSol).filter(vivo(claveSol))
 
   // El perfil es uno solo: no se puede unir por partes sin inventarse cosas, así
   // que gana el que se guardó más tarde.
@@ -148,6 +153,7 @@ export function fusionar(local: AppData, remoto: AppData): { data: AppData; resu
       measurements: [...measurements].sort((a, b) => (a.date < b.date ? -1 : 1)),
       routines: routines.length > 0 ? routines : undefined,
       comidas: comidas.length > 0 ? [...comidas].sort((a, b) => (a.date < b.date ? -1 : 1)) : undefined,
+      sol: sol.length > 0 ? [...sol].sort((a, b) => (a.date < b.date ? -1 : 1)) : undefined,
       deleted: lapidas.length > 0 ? lapidas : undefined
     },
     resumen: {

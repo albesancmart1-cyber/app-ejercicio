@@ -7,6 +7,7 @@ import {
   type Routine
 } from '../domain/types'
 import PesoDeHoy from '../components/PesoDeHoy'
+import SolDeHoy from '../components/SolDeHoy'
 import { computeReadiness, tieneLevesRepartidas, zonasConMolestias } from '../domain/readiness'
 import { canIntensify, canMix, recommend, withMoreIntensity, withSomeStrength } from '../domain/recommender'
 import { NIVEL_MAXIMO, volumePlan } from '../domain/progression'
@@ -356,6 +357,7 @@ export default function Today() {
             comidas={data.comidas}
             todayIso={today}
           />
+          <SolDeHoy sol={data.sol} todayIso={today} />
         </div>
       )}
 

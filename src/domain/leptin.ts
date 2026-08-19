@@ -31,7 +31,8 @@
  * La ventana es de 7 días a propósito: la leptina refleja patrones de días, no una
  * noche suelta. Es lo que la distingue del índice de disposición, que sí es diario.
  */
-import type { CheckIn, Goal } from './types'
+import { minutosDelDia, solDe } from './vitaminaD'
+import type { CheckIn, DiaDeSol, Goal } from './types'
 import { daysBetween } from './muscleBalance'
 
 const WINDOW_DAYS = 7
@@ -95,7 +96,12 @@ function ratioOf(values: (boolean | undefined)[]): number | null {
  * enseña es «no lo sé». Así no se puede llegar a «alta» sin contestar, y una
  * semana mala tampoco se dispara a «baja» por dos días sueltos.
  */
-export function computeLeptinSignal(checkIns: CheckIn[], todayIso: string, goal?: Goal): LeptinSignal {
+export function computeLeptinSignal(
+  checkIns: CheckIn[],
+  todayIso: string,
+  goal?: Goal,
+  sol?: DiaDeSol[]
+): LeptinSignal {
   const window = checkIns.filter((c) => {
     const age = daysBetween(c.date, todayIso)
     return age >= 0 && age < WINDOW_DAYS
@@ -144,7 +150,18 @@ export function computeLeptinSignal(checkIns: CheckIn[], todayIso: string, goal?
       bad: 'La luz azul de noche desalinea el reloj, y eso induce resistencia a la leptina.'
     },
     {
-      ratio: ratioOf(window.map((c) => c.sunExposure)),
+      /*
+       * Con el registro de sol, mandan los minutos reales del día: un cuarto de
+       * hora fuera es la dosis que ancla el ritmo. El sí/no del test queda de
+       * respaldo para los días sin registro.
+       */
+      ratio: ratioOf(
+        window.map((c) => {
+          const dia = solDe(sol, c.date)
+          if (dia && dia.exposiciones.length > 0) return minutosDelDia(dia) >= 15
+          return c.sunExposure
+        })
+      ),
       weight: 10,
       good: 'Buena exposición solar durante el día.',
       bad: 'Poco sol durante el día: el contraste luz/oscuridad es el que marca el ritmo.'

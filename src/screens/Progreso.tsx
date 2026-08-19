@@ -22,6 +22,7 @@ import { formatDuration } from '../components/Chrono'
 import { computeBalance } from '../domain/muscleBalance'
 import VolumeByMuscle from '../components/VolumeByMuscle'
 import { computeLeptinSignal, explicarCobertura } from '../domain/leptin'
+import { escribirUI, notaDeTemporada, resumenSemanal } from '../domain/vitaminaD'
 import { useAppData } from '../store/store'
 import { useToday } from '../store/clock'
 import { Boton, Etiqueta, Regla } from '../components/ui'
@@ -270,8 +271,9 @@ export default function Progreso() {
   const trained = new Set(data.sessions.filter((s) => s.completed).map((s) => s.date))
   const completed = data.sessions.filter((s) => s.completed)
 
-  const leptin = computeLeptinSignal(data.checkIns, today, data.profile?.goal)
+  const leptin = computeLeptinSignal(data.checkIns, today, data.profile?.goal, data.sol)
   const cobertura = explicarCobertura(leptin)
+  const solSemana = resumenSemanal(data.sol, today)
 
   if (ficha) {
     return (
@@ -409,6 +411,33 @@ export default function Progreso() {
               La leptina responde a patrones, no a una noche suelta.
             </p>
           </>
+        )}
+      </div>
+
+      <div className="card">
+        <p className="eyebrow">Sol y vitamina D · esta semana</p>
+        {solSemana.diasConSol === 0 ? (
+          <p className="dim">
+            Sin ratos de sol apuntados esta semana. Se apuntan en Hoy, con tres toques, y aquí se
+            acumula la vitamina D estimada.
+          </p>
+        ) : (
+          <>
+            <p className="dim">
+              {solSemana.diasConSol} de {solSemana.dias} días con sol, {solSemana.diasDeMediodia} de
+              ellos al mediodía — que es el que sintetiza. Acumuladas {escribirUI(solSemana.ui)} de
+              vitamina D estimadas.
+            </p>
+            {solSemana.diasDeMediodia < 3 && !notaDeTemporada(today) && (
+              <p className="faint" style={{ marginTop: 8 }}>
+                Un cuarto de hora al mediodía, con brazos al aire, vale más que una hora a última
+                hora: el UVB solo llega con el sol alto.
+              </p>
+            )}
+          </>
+        )}
+        {notaDeTemporada(today) && (
+          <p className="faint" style={{ marginTop: 8 }}>{notaDeTemporada(today)}</p>
         )}
       </div>
 

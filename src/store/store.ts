@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { todayIsoAt } from './clock'
 import { VERSION_ACTUAL, migrar } from './migrate'
-import type { DiaDeComidas, AppData, BodyMeasurement, CheckIn, Profile, Routine, Session } from '../domain/types'
+import type { DiaDeComidas, DiaDeSol, AppData, BodyMeasurement, CheckIn, Profile, Routine, Session } from '../domain/types'
 import { claveDeMedicion, claveDeRutina, claveDeSesion, type Lapida } from '../domain/merge'
 
 const STORAGE_KEY = 'ritmo-data-v1'
@@ -154,6 +154,16 @@ export const actions = {
       ...s,
       comidas: [
         ...(s.comidas ?? []).filter((d) => d.date !== dia.date),
+        { ...dia, updatedAt: Date.now() }
+      ].sort((a, b) => (a.date < b.date ? -1 : 1))
+    }))
+  },
+  /** Guarda el sol de un día entero, con su marca para la fusión. */
+  saveSol(dia: DiaDeSol) {
+    setState((s) => ({
+      ...s,
+      sol: [
+        ...(s.sol ?? []).filter((d) => d.date !== dia.date),
         { ...dia, updatedAt: Date.now() }
       ].sort((a, b) => (a.date < b.date ? -1 : 1))
     }))

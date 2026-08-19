@@ -618,6 +618,26 @@ export interface ComidaRegistrada {
   etiquetas?: EtiquetaComida[]
 }
 
+/** Cuándo dio el sol: la franja decide cuánto UVB había. */
+export type FranjaSolar = 'manana' | 'mediodia' | 'tarde'
+
+/** Cuánta piel recibió: la superficie manda en la síntesis. */
+export type PielExpuesta = 'cara_manos' | 'brazos_piernas' | 'torso'
+
+/** Un rato de sol: minutos, franja y piel. Se pueden apuntar varios al día. */
+export interface ExposicionSolar {
+  minutos: number
+  franja: FranjaSolar
+  piel: PielExpuesta
+}
+
+/** El sol de un día, con su marca para la fusión entre dispositivos. */
+export interface DiaDeSol {
+  date: string
+  updatedAt?: number
+  exposiciones: ExposicionSolar[]
+}
+
 /** Las comidas de un día, con su marca para la fusión entre dispositivos. */
 export interface DiaDeComidas {
   date: string
@@ -637,6 +657,8 @@ export interface AppData {
   measurements: BodyMeasurement[]
   /** El diario de comidas, día a día. Ausente hasta que se apunta la primera. */
   comidas?: DiaDeComidas[]
+  /** El sol de cada día. Se apunta cuando ocurre, no en el test de la mañana. */
+  sol?: DiaDeSol[]
   /** Entrenos guardados para repetir. Ausente hasta que se guarda el primero. */
   routines?: Routine[]
   /**
