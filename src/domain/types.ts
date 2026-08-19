@@ -626,6 +626,8 @@ export interface EdicionAlimento {
   etiquetas?: EtiquetaComida[]
   carbosPor100?: number
   carbo?: CalidadCarbo
+  /** Lo que pesa una unidad, para los que se cuentan por unidades. */
+  gramosPorUnidad?: number
 }
 
 /**
@@ -636,6 +638,14 @@ export interface EdicionAlimento {
 export interface AlimentoRegistrado {
   nombre: string
   gramos?: number
+  /**
+   * Las unidades, para lo que se cuenta por unidades —huevos, tortitas—. Los
+   * `gramos` se rellenan igual a partir de aquí, así que todo lo que cuenta
+   * por peso sigue funcionando sin enterarse.
+   */
+  unidades?: number
+  /** Cómo se llama la unidad, para poder escribir «2 huevos». */
+  unidad?: string
   /**
    * El alimento del catálogo del que salió, si salió de él. Con el enlace y
    * los gramos, la app cuenta los carbohidratos del día contra el margen de

@@ -15,6 +15,7 @@
  * Nada de calorías: se registra qué, cuándo y de qué tipo.
  */
 import { alimentoResuelto } from '../data/alimentos'
+import { escribirNumero } from './numeros'
 import type {
   AlimentoRegistrado,
   CheckIn,
@@ -114,13 +115,20 @@ export function llevaEtiqueta(dia: DiaDeComidas | undefined, etiqueta: EtiquetaC
 
 /**
  * Cómo se lee una comida en una línea: el texto si lo hay, y si no, sus
- * alimentos con su peso — «Pollo 250 g · Aguacate».
+ * alimentos con su cantidad — «Pollo 250 g · 2 huevos · Aguacate».
+ *
+ * Lo que se contó por unidades se devuelve en unidades: los gramos existen por
+ * debajo para la cuenta de carbohidratos, pero decir «110 g de huevo» sería
+ * contarle al usuario un dato que él no escribió.
  */
 export function describirComida(c: ComidaRegistrada): string {
   if (c.texto.trim() && c.texto !== 'Comida') return c.texto
-  const partes = (c.alimentos ?? []).map((a: AlimentoRegistrado) =>
-    a.gramos !== undefined ? `${a.nombre} ${a.gramos} g` : a.nombre
-  )
+  const partes = (c.alimentos ?? []).map((a: AlimentoRegistrado) => {
+    // La lista ya va separada por «·», así que aquí la cantidad se abrevia con
+    // «×2» en vez de repetir la palabra: «Huevo cocido ×2 · Aguacate».
+    if (a.unidades !== undefined) return `${a.nombre} ×${escribirNumero(a.unidades)}`
+    return a.gramos !== undefined ? `${a.nombre} ${a.gramos} g` : a.nombre
+  })
   return partes.length > 0 ? partes.join(' · ') : c.texto
 }
 

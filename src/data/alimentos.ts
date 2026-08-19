@@ -20,6 +20,7 @@
  * se guarda aparte (`EdicionAlimento`) y pisa a lo de fábrica — el catálogo
  * puede mejorar de versión en versión sin machacar lo que él corrigió.
  */
+import { escribirNumero } from '../domain/numeros'
 import type { CalidadCarbo, EdicionAlimento, EtiquetaComida } from '../domain/types'
 
 export type CategoriaAlimento =
@@ -64,6 +65,17 @@ export interface AlimentoBasico {
   carbosPor100?: number
   /** Calidad del carbohidrato, cuando lo lleva. */
   carbo?: CalidadCarbo
+  /**
+   * Lo que pesa una unidad, para lo que nadie pesa en una báscula.
+   *
+   * Un huevo se cuenta en huevos y una tortita en tortitas; obligar a poner
+   * «110 g» de huevo es pedir un dato que nadie tiene. Los gramos se calculan
+   * solos a partir de las unidades, así que la cuenta de carbohidratos sigue
+   * funcionando igual por debajo.
+   */
+  gramosPorUnidad?: number
+  /** Cómo se llama una unidad: «huevo», «tortita». El plural se hace con «s». */
+  unidad?: string
 }
 
 /** Atajo de escritura del catálogo. */
@@ -83,6 +95,20 @@ function a(
     ...(carbosPor100 !== undefined ? { carbosPor100 } : {}),
     ...(carbo !== undefined ? { carbo } : {})
   }
+}
+
+/** Lo mismo, pero contándose por unidades en vez de por peso. */
+function u(
+  base: AlimentoBasico,
+  gramosPorUnidad: number,
+  unidad: string
+): AlimentoBasico {
+  return { ...base, gramosPorUnidad, unidad }
+}
+
+/** «2 huevos», «1 tortita» — el plural con una «s» basta para lo que hay. */
+export function escribirUnidades(n: number, unidad: string): string {
+  return `${escribirNumero(n)} ${n === 1 ? unidad : `${unidad}s`}`
 }
 
 const P: EtiquetaComida[] = ['proteina']
@@ -188,14 +214,15 @@ export const ALIMENTOS: AlimentoBasico[] = [
   a('percebes', 'Percebes', 'marisco', P),
 
   // ── Huevos ────────────────────────────────────────────────
-  a('huevo_cocido', 'Huevo cocido', 'huevos', ['proteina', 'huevos']),
-  a('huevo_frito', 'Huevo frito', 'huevos', ['proteina', 'huevos']),
-  a('huevo_revuelto', 'Huevos revueltos', 'huevos', ['proteina', 'huevos']),
-  a('huevo_plancha', 'Huevo a la plancha', 'huevos', ['proteina', 'huevos']),
-  a('tortilla_francesa', 'Tortilla francesa', 'huevos', ['proteina', 'huevos']),
-  a('claras', 'Claras de huevo', 'huevos', ['proteina', 'huevos']),
-  a('yema', 'Yema de huevo', 'huevos', ['proteina', 'huevos']),
-  a('huevo_codorniz', 'Huevos de codorniz', 'huevos', ['proteina', 'huevos']),
+  // Los huevos se cuentan en huevos: nadie pesa un huevo antes de comérselo.
+  u(a('huevo_cocido', 'Huevo cocido', 'huevos', ['proteina', 'huevos']), 55, 'huevo'),
+  u(a('huevo_frito', 'Huevo frito', 'huevos', ['proteina', 'huevos']), 60, 'huevo'),
+  u(a('huevo_revuelto', 'Huevo revuelto', 'huevos', ['proteina', 'huevos']), 55, 'huevo'),
+  u(a('huevo_plancha', 'Huevo a la plancha', 'huevos', ['proteina', 'huevos']), 55, 'huevo'),
+  u(a('tortilla_francesa', 'Tortilla francesa', 'huevos', ['proteina', 'huevos']), 55, 'huevo'),
+  u(a('claras', 'Clara de huevo', 'huevos', ['proteina', 'huevos']), 33, 'clara'),
+  u(a('yema', 'Yema de huevo', 'huevos', ['proteina', 'huevos']), 17, 'yema'),
+  u(a('huevo_codorniz', 'Huevo de codorniz', 'huevos', ['proteina', 'huevos']), 9, 'huevo'),
 
   // ── Lácteos y quesos ──────────────────────────────────────
   a('yogur_griego', 'Yogur griego natural', 'lacteos', P, 5, 'bueno'),
@@ -304,6 +331,12 @@ export const ALIMENTOS: AlimentoBasico[] = [
   a('cuscus', 'Cuscús cocido', 'tuberculo_cereal', ['carbohidrato'], 23, 'malo'),
   a('maiz', 'Maíz', 'tuberculo_cereal', ['carbohidrato'], 19, 'bueno'),
   a('palomitas_caseras', 'Palomitas caseras', 'tuberculo_cereal', ['carbohidrato', 'salada'], 74, 'malo'),
+  // 36 g la unidad y 18 g de hidratos: la mitad de su peso es carbohidrato.
+  u(
+    a('tortita_trigo', 'Tortita de trigo para fajitas', 'tuberculo_cereal', ['carbohidrato'], 50, 'malo'),
+    36,
+    'tortita'
+  ),
 
   // ── Legumbres ─────────────────────────────────────────────
   a('lentejas', 'Lentejas cocidas', 'legumbre', ['proteina', 'carbohidrato'], 17, 'bueno'),
@@ -383,7 +416,8 @@ export function alimentoResuelto(
     ...base,
     ...(ed.etiquetas !== undefined ? { etiquetas: ed.etiquetas } : {}),
     ...(ed.carbosPor100 !== undefined ? { carbosPor100: ed.carbosPor100 } : {}),
-    ...(ed.carbo !== undefined ? { carbo: ed.carbo } : {})
+    ...(ed.carbo !== undefined ? { carbo: ed.carbo } : {}),
+    ...(ed.gramosPorUnidad !== undefined ? { gramosPorUnidad: ed.gramosPorUnidad } : {})
   }
 }
 

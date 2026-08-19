@@ -8,7 +8,12 @@ import {
   resumenDelDia,
   sinComida
 } from '../domain/crononutricion'
-import { CATEGORIA_LABELS, buscarAlimentos, type AlimentoBasico } from '../data/alimentos'
+import {
+  CATEGORIA_LABELS,
+  buscarAlimentos,
+  escribirUnidades,
+  type AlimentoBasico
+} from '../data/alimentos'
 import { escribirNumero } from '../domain/numeros'
 import {
   ETIQUETAS_COMIDA,
@@ -54,14 +59,26 @@ function ahora(): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
+/**
+ * La cantidad como se dijo: «2 huevos» si se contó en unidades, «250 g» si se
+ * pesó. Los gramos existen igual por debajo para la cuenta de carbohidratos,
+ * pero enseñarlos aquí sería devolver un dato que nadie escribió.
+ */
+function cantidadDe(a: AlimentoRegistrado): string | undefined {
+  if (a.unidades !== undefined && a.unidad) return escribirUnidades(a.unidades, a.unidad)
+  if (a.gramos !== undefined) return `${escribirNumero(a.gramos)} g`
+  return undefined
+}
+
 /** Un alimento en una línea: «Pollo · 250 g» y sus etiquetas debajo. */
 function FilaDeAlimento({ a, onQuitar }: { a: AlimentoRegistrado; onQuitar?: () => void }) {
+  const cantidad = cantidadDe(a)
   return (
     <div className="alimento-fila">
       <div className="comida-cuerpo">
         <span className="comida-texto">
           {a.nombre}
-          {a.gramos !== undefined && <span className="alimento-gramos"> · {escribirNumero(a.gramos)} g</span>}
+          {cantidad !== undefined && <span className="alimento-gramos"> · {cantidad}</span>}
         </span>
         {(a.etiquetas ?? []).length > 0 && (
           <span className="comida-etiquetas">
@@ -102,6 +119,8 @@ export default function DiarioDeComidas({
   /** El alimento que se está escribiendo ahora mismo. */
   const [nombre, setNombre] = useState('')
   const [gramos, setGramos] = useState<number | undefined>(undefined)
+  /** Las unidades, para lo que se cuenta contando: huevos, tortitas. */
+  const [unidades, setUnidades] = useState<number | undefined>(undefined)
   const [etiquetas, setEtiquetas] = useState<EtiquetaComida[]>([])
   /** El alimento del catálogo elegido en el buscador, si se eligió. */
   const [elegido, setElegido] = useState<AlimentoBasico | null>(null)
@@ -109,8 +128,19 @@ export default function DiarioDeComidas({
   const [corrigiendo, setCorrigiendo] = useState(false)
   const [edCarbos, setEdCarbos] = useState<number | undefined>(undefined)
   const [edCarbo, setEdCarbo] = useState<CalidadCarbo | undefined>(undefined)
+  const [edPorUnidad, setEdPorUnidad] = useState<number | undefined>(undefined)
 
   const resultados = elegido === null ? buscarAlimentos(nombre, ediciones) : []
+
+  /**
+   * Si lo que hay ahora mismo en el campo se cuenta por unidades. Solo cuenta
+   * mientras el nombre siga siendo el del catálogo: en cuanto se reescribe, ya
+   * es un alimento libre y vuelve a pesarse en gramos.
+   */
+  const porUnidades =
+    elegido && nombre.trim() === elegido.nombre && elegido.gramosPorUnidad !== undefined
+      ? { gramosPorUnidad: elegido.gramosPorUnidad, unidad: elegido.unidad ?? 'unidad' }
+      : null
 
   /** Elegir del catálogo: nombre, enlace y sus etiquetas ya interpretadas. */
   function elegir(x: AlimentoBasico) {
@@ -119,7 +149,16 @@ export default function DiarioDeComidas({
     setEtiquetas(x.etiquetas)
     setEdCarbos(x.carbosPor100)
     setEdCarbo(x.carbo)
+    setEdPorUnidad(x.gramosPorUnidad)
     setCorrigiendo(false)
+    // Lo que se cuenta por unidades empieza en una: es el caso de siempre, y
+    // dejarlo vacío obligaría a escribir «1» cada vez que se come un huevo.
+    if (x.gramosPorUnidad !== undefined) {
+      setUnidades(1)
+      setGramos(undefined)
+    } else {
+      setUnidades(undefined)
+    }
   }
 
   const lista = ordenadas(dia?.comidas ?? [])
@@ -136,9 +175,22 @@ export default function DiarioDeComidas({
   /** Lo escrito ahora mismo, como alimento — o nada si está en blanco. */
   function alimentoEnCurso(): AlimentoRegistrado | null {
     if (!nombre.trim()) return null
+    // Contado por unidades se guardan las dos cosas: las unidades para poder
+    // volver a enseñar «2 huevos», y los gramos que salen de ellas para que la
+    // cuenta de carbohidratos y la cetosis sigan funcionando sin enterarse.
+    const cantidad =
+      porUnidades && unidades !== undefined
+        ? {
+            unidades,
+            unidad: porUnidades.unidad,
+            gramos: Math.round(unidades * porUnidades.gramosPorUnidad)
+          }
+        : gramos !== undefined
+          ? { gramos }
+          : {}
     return {
       nombre: nombre.trim(),
-      ...(gramos !== undefined ? { gramos } : {}),
+      ...cantidad,
       // El enlace al catálogo solo vale si el nombre sigue siendo el suyo.
       ...(elegido && nombre.trim() === elegido.nombre ? { alimentoId: elegido.id } : {}),
       ...(etiquetas.length > 0 ? { etiquetas } : {})
@@ -148,6 +200,7 @@ export default function DiarioDeComidas({
   function limpiarCampos() {
     setNombre('')
     setGramos(undefined)
+    setUnidades(undefined)
     setEtiquetas([])
     setElegido(null)
     setCorrigiendo(false)
@@ -167,9 +220,16 @@ export default function DiarioDeComidas({
       id: elegido.id,
       etiquetas,
       ...(edCarbos !== undefined ? { carbosPor100: edCarbos } : {}),
-      ...(edCarbo !== undefined ? { carbo: edCarbo } : {})
+      ...(edCarbo !== undefined ? { carbo: edCarbo } : {}),
+      ...(edPorUnidad !== undefined ? { gramosPorUnidad: edPorUnidad } : {})
     })
-    setElegido({ ...elegido, etiquetas, carbosPor100: edCarbos, carbo: edCarbo })
+    setElegido({
+      ...elegido,
+      etiquetas,
+      carbosPor100: edCarbos,
+      carbo: edCarbo,
+      ...(edPorUnidad !== undefined ? { gramosPorUnidad: edPorUnidad } : {})
+    })
     setCorrigiendo(false)
   }
 
@@ -280,15 +340,34 @@ export default function DiarioDeComidas({
               placeholder="Busca un alimento (salmón, melocotón…)"
               aria-label="Nombre del alimento"
             />
-            <CampoNumero
-              decimales
-              valor={gramos}
-              onCambiar={setGramos}
-              placeholder="g"
-              className="alimento-peso"
-              aria-label="Peso del alimento en gramos"
-            />
+            {porUnidades ? (
+              <CampoNumero
+                decimales
+                valor={unidades}
+                onCambiar={setUnidades}
+                placeholder={porUnidades.unidad === 'unidad' ? 'uds.' : `${porUnidades.unidad}s`}
+                className="alimento-peso"
+                // Sin género: «cuántos tortitas» estaría mal y «cuántas huevos»
+                // también, y no hay género que consultar en el catálogo.
+                aria-label={`Cantidad en ${porUnidades.unidad}s`}
+              />
+            ) : (
+              <CampoNumero
+                decimales
+                valor={gramos}
+                onCambiar={setGramos}
+                placeholder="g"
+                className="alimento-peso"
+                aria-label="Peso del alimento en gramos"
+              />
+            )}
           </div>
+          {porUnidades && unidades !== undefined && (
+            <p className="faint" style={{ marginTop: 6 }}>
+              {escribirUnidades(unidades, porUnidades.unidad)} ·{' '}
+              {escribirNumero(Math.round(unidades * porUnidades.gramosPorUnidad))} g
+            </p>
+          )}
 
           {/*
             El buscador del catálogo: alimentos básicos ya interpretados. Elegir
@@ -322,12 +401,35 @@ export default function DiarioDeComidas({
                     }`
                   : ' · sin carbohidrato que contar'}
               </p>
+              {elegido.gramosPorUnidad !== undefined && (
+                <p className="faint">
+                  Se cuenta por {elegido.unidad ?? 'unidad'}s · {escribirNumero(elegido.gramosPorUnidad)} g
+                  por {elegido.unidad ?? 'unidad'}
+                  {elegido.carbosPor100 !== undefined && elegido.etiquetas.includes('carbohidrato')
+                    ? `, ≈ ${escribirNumero(
+                        Math.round((elegido.gramosPorUnidad * elegido.carbosPor100) / 10) / 10
+                      )} g de carbohidrato`
+                    : ''}
+                </p>
+              )}
               {corrigiendo ? (
                 <div className="fade-in" style={{ marginTop: 8 }}>
                   <label className="bascula-campo" style={{ maxWidth: 170 }}>
                     <span className="focus-label">Carbohidrato por 100 g</span>
                     <CampoNumero decimales valor={edCarbos} onCambiar={setEdCarbos} placeholder="g" aria-label="Gramos de carbohidrato por cien gramos" />
                   </label>
+                  {elegido.gramosPorUnidad !== undefined && (
+                    <label className="bascula-campo" style={{ maxWidth: 170, marginTop: 8 }}>
+                      <span className="focus-label">Gramos por {elegido.unidad ?? 'unidad'}</span>
+                      <CampoNumero
+                        decimales
+                        valor={edPorUnidad}
+                        onCambiar={setEdPorUnidad}
+                        placeholder="g"
+                        aria-label="Gramos que pesa una unidad"
+                      />
+                    </label>
+                  )}
                   <div className="options" style={{ marginTop: 8 }}>
                     <Opcion activa={edCarbo === 'bueno'} onElegir={() => setEdCarbo('bueno')}>
                       Carbohidrato bueno
