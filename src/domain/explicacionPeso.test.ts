@@ -264,3 +264,78 @@ describe('el diario de comidas manda sobre el test', () => {
     expect(f.some((x) => x.id === 'glucogeno-entra')).toBe(false)
   })
 })
+
+describe('el diario por alimentos también alimenta al motor', () => {
+  // El formato nuevo: la comida sin etiquetas propias, y cada alimento con las
+  // suyas. Es la cadena completa que le importa al usuario: apuntar el arroz
+  // dentro de la cena y que la báscula de mañana se explique sola.
+  const cenaConArroz: import('./types').DiaDeComidas[] = [
+    {
+      date: menos(1),
+      comidas: [
+        {
+          hora: '21:00',
+          texto: '',
+          alimentos: [
+            { nombre: 'Pollo', gramos: 250, etiquetas: ['proteina'] },
+            { nombre: 'Arroz', gramos: 80, etiquetas: ['carbohidrato'] }
+          ]
+        }
+      ]
+    }
+  ]
+
+  it('un carbohidrato en un alimento de ayer activa el glucógeno', () => {
+    const f = factoresDeHoy([checkin(0), checkin(1, { keto: true })], [], HOY, cenaConArroz)
+    expect(f.some((x) => x.id === 'glucogeno-entra')).toBe(true)
+  })
+
+  it('la sal y el alcohol de un alimento cuentan igual que los de la comida', () => {
+    const diario: import('./types').DiaDeComidas[] = [
+      {
+        date: menos(1),
+        comidas: [
+          {
+            hora: '14:00',
+            texto: '',
+            alimentos: [
+              { nombre: 'Jamón', gramos: 100, etiquetas: ['salada'] },
+              { nombre: 'Vino', etiquetas: ['alcohol'] }
+            ]
+          }
+        ]
+      }
+    ]
+    const f = factoresDeHoy([checkin(0)], [], HOY, diario)
+    expect(f.some((x) => x.id === 'sal')).toBe(true)
+    expect(f.some((x) => x.id === 'alcohol')).toBe(true)
+  })
+
+  it('la explicación entera, de la báscula al veredicto, con el formato nuevo', () => {
+    const e = explicarPeso(
+      {
+        measurements: [bascula(1, 80), bascula(0, 81.2)],
+        checkIns: [checkin(0), checkin(1, { keto: true })],
+        sessions: [],
+        comidas: cenaConArroz
+      },
+      HOY
+    )!
+    expect(e.deltaG).toBe(1200)
+    expect(e.veredicto).toMatch(/glucógeno|cetosis/i)
+    expect(e.veredicto).toMatch(/agua/)
+  })
+
+  it('un día por alimentos sin carbohidrato mantiene la cetosis y no inventa subidas', () => {
+    const sinCarbo: import('./types').DiaDeComidas[] = [
+      {
+        date: menos(1),
+        comidas: [
+          { hora: '14:00', texto: '', alimentos: [{ nombre: 'Pollo', gramos: 300, etiquetas: ['proteina'] }] }
+        ]
+      }
+    ]
+    const f = factoresDeHoy([checkin(0), checkin(1, { keto: true })], [], HOY, sinCarbo)
+    expect(f.some((x) => x.id === 'glucogeno-entra')).toBe(false)
+  })
+})

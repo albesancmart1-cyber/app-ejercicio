@@ -87,13 +87,23 @@ await page.evaluate(() => {
         { date: menos(1), weightKg: 103 },
         { date: menos(0), weightKg: 104.1 }
       ],
-      // Ayer, apuntado en el diario: una cena con carbohidrato.
+      // Ayer, apuntado en el diario **por alimentos**: la comida no lleva
+      // etiquetas propias — el carbohidrato va en el arroz, dentro de la cena.
+      // Es la cadena completa: etiqueta de alimento → cetosis del día →
+      // explicación de la báscula de hoy.
       comidas: [
         {
           date: menos(1),
           comidas: [
-            { hora: '14:00', texto: 'Chuletas', etiquetas: ['proteina'] },
-            { hora: '21:00', texto: 'Arroz con pollo', etiquetas: ['carbohidrato'] }
+            { hora: '14:00', texto: '', alimentos: [{ nombre: 'Chuletas', gramos: 300, etiquetas: ['proteina'] }] },
+            {
+              hora: '21:00',
+              texto: '',
+              alimentos: [
+                { nombre: 'Pollo', gramos: 200, etiquetas: ['proteina'] },
+                { nombre: 'Arroz', gramos: 80, etiquetas: ['carbohidrato'] }
+              ]
+            }
           ]
         }
       ]
