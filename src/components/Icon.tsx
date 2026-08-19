@@ -63,13 +63,6 @@ const paths: Record<string, JSX.Element> = {
       <circle cx="18.8" cy="12" r="1.4" fill="currentColor" stroke="none" />
     </>
   ),
-  /* Dos cartas, una tras otra: la pestaña de la pirámide. */
-  cards: (
-    <>
-      <rect x="8.4" y="4.6" width="11.2" height="14.8" rx="2" />
-      <path d="M15.8 20.9H6.4a2 2 0 0 1-2-2V8.6" />
-    </>
-  ),
   /* Lista: volver a ver todos los ejercicios de la sesión. */
   list: (
     <>
