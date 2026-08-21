@@ -31,6 +31,16 @@ import {
   ratioFiable
 } from '../domain/omega'
 import type { DiaDeComidas, Suplemento } from '../domain/types'
+import {
+  HERRAMIENTAS,
+  NOMBRES_EFECTO,
+  QUE_HACEN_LOS_ANTINUTRIENTES,
+  calidadDe,
+  coberturaDeDatos,
+  leerDia,
+  nivelDeuterio
+} from '../domain/mesa'
+import { Etiqueta, Regla } from '../components/ui'
 
 const BASES = Object.keys(BASE_LABELS) as MealBase[]
 const EFFORTS = Object.keys(EFFORT_LABELS) as MealEffort[]
@@ -164,6 +174,116 @@ function RatioDeOmegas({
   )
 }
 
+
+/**
+ * Lo que la app mira de la mesa y las demás no miran.
+ *
+ * Leucina **por comida** —que es lo que enciende la síntesis, y por eso no se
+ * suma el día—, calidad de la proteína, deuterio, minerales secuestrados y el
+ * ritmo de la insulina. Siempre con la cobertura al lado: un dato calculado
+ * sobre un tercio del plato no es el dato, es una impresión.
+ */
+function LaMesa({ dia }: { dia: DiaDeComidas | undefined }) {
+  const [abierto, setAbierto] = useState(false)
+  const l = leerDia(dia)
+  if (l.comidas === 0) return null
+
+  const cob = coberturaDeDatos(l)
+
+  return (
+    <div className="card">
+      <div className="row">
+        <p className="eyebrow" style={{ margin: 0 }}>
+          La mesa de hoy
+        </p>
+        <Etiqueta acento={l.conUmbral > 0}>
+          {l.conUmbral} de {l.comidas} con bolo
+        </Etiqueta>
+      </div>
+
+      <p className="faint" style={{ marginTop: 8 }}>
+        {l.conUmbral === 0
+          ? 'Ninguna comida ha llegado al umbral de leucina. La síntesis de proteína no se enciende con una suma diaria: se enciende con un bolo que pase de 2,5 g de golpe.'
+          : `${l.conUmbral} ${l.conUmbral === 1 ? 'comida ha encendido' : 'comidas han encendido'} la síntesis. Repartir la misma proteína en picoteos no habría encendido ninguna.`}
+      </p>
+
+      <Regla />
+      {l.diaas !== undefined && (
+        <div className="row" style={{ padding: '6px 0' }}>
+          <span className="dim">Calidad de la proteína</span>
+          <span>
+            {Math.round(l.diaas)} <span className="faint">· {calidadDe(l.diaas)}</span>
+          </span>
+        </div>
+      )}
+      {l.deuterioPpm !== undefined && (
+        <div className="row" style={{ padding: '6px 0' }}>
+          <span className="dim">Deuterio</span>
+          <span>
+            {Math.round(l.deuterioPpm)} ppm{' '}
+            <span className="faint">· {nivelDeuterio(l.deuterioPpm)}</span>
+          </span>
+        </div>
+      )}
+      {l.antinutrientes && (
+        <div className="row" style={{ padding: '6px 0' }}>
+          <span className="dim">Antinutrientes</span>
+          <span className={l.antinutrientes === 'alto' ? 'faint' : ''}>{l.antinutrientes}</span>
+        </div>
+      )}
+      {l.antinutrientes && (
+        <p className="faint" style={{ marginTop: 4 }}>
+          {QUE_HACEN_LOS_ANTINUTRIENTES[l.antinutrientes]}
+        </p>
+      )}
+
+      <Regla />
+      <div className="row" style={{ padding: '6px 0' }}>
+        <span className="dim">Eventos de insulina</span>
+        <span>{l.insulina.eventos.length}</span>
+      </div>
+      <div className="row" style={{ padding: '6px 0' }}>
+        <span className="dim">Mayor descanso</span>
+        <span className={l.insulina.mayorDescanso >= 12 ? 'accent' : ''}>
+          {escribirNumero(Math.round(l.insulina.mayorDescanso * 10) / 10)} h
+        </span>
+      </div>
+
+      <p className="faint" style={{ marginTop: 8 }}>
+        {cob >= 0.5
+          ? `Calculado sobre el ${Math.round(cob * 100)} % de lo que has apuntado.`
+          : `Ojo: solo el ${Math.round(cob * 100)} % de lo apuntado tiene estos datos, así que dicen poco todavía.`}
+      </p>
+
+      <Regla />
+      {!abierto ? (
+        <Boton tono="callado" onClick={() => setAbierto(true)}>
+          Qué rompe el ayuno y qué no
+        </Boton>
+      ) : (
+        <div className="fade-in">
+          {HERRAMIENTAS.map((h) => (
+            <div key={h.nombre} style={{ padding: '8px 0' }}>
+              <div className="row">
+                <span className="dim">{h.nombre}</span>
+                <span className={h.efecto === 'no-rompe' ? 'accent' : 'faint'}>
+                  {NOMBRES_EFECTO[h.efecto]}
+                </span>
+              </div>
+              <p className="faint" style={{ marginTop: 3 }}>
+                {h.porque.replace(/\*\*/g, '')}
+              </p>
+            </div>
+          ))}
+          <Boton tono="callado" onClick={() => setAbierto(false)}>
+            Cerrar
+          </Boton>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Meals() {
   const data = useAppData()
   const profile = data.profile!
@@ -249,6 +369,8 @@ export default function Meals() {
       />
 
       <RatioDeOmegas dia={data.comidas?.find((d) => d.date === today)} suplementos={data.suplementos} />
+
+      <LaMesa dia={data.comidas?.find((d) => d.date === today)} />
 
       {/*
         Antes esta pantalla pedía dos filtros y daba **una** idea al pulsar un

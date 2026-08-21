@@ -121,18 +121,24 @@ Marcar una casilla sin escribir el código **rompe la suite**. Es deliberado.
   → src/domain/types.ts :: AlimentoRegistrado
 - [x] mesa-ventana-cafe · Ventana que arranca con el primer café
   → src/domain/crononutricion.ts :: ventana
-- [ ] mesa-eventos-insulina · Eventos de insulina y horas entre comidas
-- [ ] mesa-leucina · Umbral de leucina por comida
+- [x] mesa-eventos-insulina · Eventos de insulina y horas entre comidas
+  → src/domain/mesa.ts :: ritmoDeInsulina
+- [x] mesa-leucina · Umbral de leucina por comida
+  → src/domain/mesa.ts :: llegaAlUmbral
 - [x] mesa-cetosis · Cetosis con margen estacional
   → src/domain/crononutricion.ts :: estadoDeCetosis
 - [x] mesa-omega-ratio · Omega 3:6 con y sin suplemento
   → src/domain/omega.ts :: ratioDelDia
 - [x] mesa-suplementos · Suplementación dentro de la comida, creada una vez
   → src/domain/types.ts :: Suplemento
-- [ ] mesa-diaas · DIAAS por alimento
-- [ ] mesa-deuterio · Deuterio por alimento
-- [ ] mesa-antinutrientes · Antinutrientes por alimento
-- [ ] mesa-herramienta-ayuno · Alimentos herramienta y qué rompe el ayuno
+- [x] mesa-diaas · DIAAS por alimento
+  → src/data/nutrientes.ts :: diaas
+- [x] mesa-deuterio · Deuterio por alimento
+  → src/data/nutrientes.ts :: deuterioPpm
+- [x] mesa-antinutrientes · Antinutrientes por alimento
+  → src/data/nutrientes.ts :: NivelAntinutrientes
+- [x] mesa-herramienta-ayuno · Alimentos herramienta y qué rompe el ayuno
+  → src/domain/mesa.ts :: HERRAMIENTAS
 - [x] mesa-editar-dias · Editar comidas y ver cualquier día pasado
   → src/components/DiarioDeComidas.tsx :: editarComida
 

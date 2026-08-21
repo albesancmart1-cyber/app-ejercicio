@@ -131,6 +131,34 @@ if (soloComida && conSup) {
 }
 await page.screenshot({ path: `${OUT}/sup-03-ratio.png`, fullPage: true })
 
+// ── La mesa: leucina por comida, calidad, deuterio e insulina ──────────
+const mesa = await page.locator('.cards-grid').first().innerText()
+comprobar(mesa.includes('La mesa de hoy'), 'debería aparecer la tarjeta de la mesa')
+comprobar(
+  /con bolo/.test(mesa),
+  'la leucina se cuenta por comida, y la tarjeta debería decir cuántas llegaron'
+)
+comprobar(
+  mesa.includes('Calidad de la proteína'),
+  'con el DIAAS del plato, que distingue dos platos de «20 g de proteína»'
+)
+comprobar(mesa.includes('Deuterio'), 'y el deuterio')
+comprobar(mesa.includes('Eventos de insulina'), 'y los eventos de insulina del día')
+comprobar(
+  mesa.includes('2,5 g de golpe') || mesa.includes('encendido'),
+  'y explicar que la síntesis va por umbral y no por suma diaria'
+)
+
+await page.getByRole('button', { name: 'Qué rompe el ayuno y qué no' }).click()
+await page.waitForTimeout(300)
+const ayuno = await page.locator('.cards-grid').first().innerText()
+comprobar(ayuno.includes('Zona gris'), 'debería haber una zona gris: no se finge que sea binario')
+comprobar(
+  ayuno.includes('ventana del hígado'),
+  'y el café solo debería explicar por qué cuenta aunque no suba la glucosa'
+)
+await page.screenshot({ path: `${OUT}/sup-04-mesa.png`, fullPage: true })
+
 const desborde = await page.evaluate(
   () => document.documentElement.scrollWidth - document.documentElement.clientWidth
 )
