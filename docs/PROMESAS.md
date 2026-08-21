@@ -152,17 +152,23 @@ Marcar una casilla sin escribir el código **rompe la suite**. Es deliberado.
   → src/domain/body.ts :: computeComposition
 - [x] cuerpo-corregir-pasado · Corregir la báscula de cualquier día pasado
   → src/screens/Progreso.tsx :: Corregir un día pasado
-- [ ] cuerpo-keto-adaptacion · Curva de keto-adaptación con hitos
+- [x] cuerpo-keto-adaptacion · Curva de keto-adaptación con hitos
+  → src/domain/analiticas.ts :: HITOS
 - [x] cuerpo-meseta · Árbol de meseta cuando el peso no se mueve
   → src/domain/explicacionPeso.ts :: meseta
-- [ ] cuerpo-analiticas · Analíticas: HOMA-IR, TG/HDL, CT/HDL, vitamina D, ferritina
+- [x] cuerpo-analiticas · Analíticas: HOMA-IR, TG/HDL, CT/HDL, vitamina D, ferritina
+  → src/domain/analiticas.ts :: indicesDe
 
 ## Hábitos
 
-- [ ] habito-grounding · Grounding con minutos y superficie
-- [ ] habito-frio · Frío en seis escalones
-- [ ] habito-ayuno-estacional · Ayuno estacional con fases
-- [ ] habito-rampa · Rampa de protocolos
+- [x] habito-grounding · Grounding con minutos y superficie
+  → src/domain/habitos.ts :: SUPERFICIES_QUE_VALEN
+- [x] habito-frio · Frío en seis escalones
+  → src/domain/habitos.ts :: ESCALONES_FRIO
+- [x] habito-ayuno-estacional · Ayuno estacional con fases
+  → src/domain/habitos.ts :: FASES_AYUNO
+- [x] habito-rampa · Rampa de protocolos
+  → src/domain/habitos.ts :: estadoDeHabito
 - [x] habito-rachas · Rachas de todo lo anterior
   → src/domain/estaciones.ts :: rachaDeSol
 - [x] habito-uno-cada-vez · Un solo hábito cada vez: el más barato que más arregla
@@ -220,15 +226,18 @@ Estas también son promesas, y romperlas sería peor que no cumplir una función
 
 - [x] no-calorias · Ni una caloría, ni déficit, ni superávit, ni macros
   → src/ui-copy.test.ts :: caloría
-- [ ] no-diagnostica · No dice qué tienes, no cura nada, no toca tratamientos
+- [x] no-diagnostica · No dice qué tienes, no cura nada, no toca tratamientos
+  → src/ui-copy.test.ts :: la app no diagnostica
 - [x] no-rine-latitud · Ni un solo «no has tomado suficiente sol»
   → src/domain/balanceLuz.ts :: No es un fallo tuyo: es tu turno.
 - [x] no-inventa-compensaciones · Lo que no se compensa, se dice
   → src/domain/compensaciones.ts :: sinRemedio
-- [ ] no-cronotipo · No te asigna un cronotipo
+- [x] no-cronotipo · No te asigna un cronotipo
+  → src/ui-copy.test.ts :: no hay búhos ni alondras
 - [x] no-vende-lamparas · No recomienda marcas, dosis ni aparatos
   → src/domain/compensaciones.test.ts :: no recomienda marcas
-- [ ] no-dejes-tu-trabajo · Da por hecha tu jornada y trabaja con los huecos que tienes
+- [x] no-dejes-tu-trabajo · Da por hecha tu jornada y trabaja con los huecos que tienes
+  → src/ui-copy.test.ts :: no te dice que dejes tu trabajo
 
 ---
 

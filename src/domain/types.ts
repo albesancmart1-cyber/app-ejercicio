@@ -918,6 +918,10 @@ export interface AppData {
   suplementos?: Suplemento[]
   /** Las noches apuntadas: a qué hora se apagó todo y a qué hora se levantó. */
   noches?: NocheRegistrada[]
+  /** Las analíticas apuntadas, con sus índices calculados al vuelo. */
+  analiticas?: import('./analiticas').Analitica[]
+  /** Los hábitos hechos, día a día: grounding, frío, ayuno. */
+  habitos?: import('./habitos').RegistroHabito[]
   /**
    * Lo que se ha borrado, para que sincronizar no lo resucite. Ver
    * `src/domain/merge.ts`.

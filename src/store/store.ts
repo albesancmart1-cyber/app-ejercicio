@@ -267,6 +267,27 @@ export const actions = {
       ]
     }))
   },
+  saveAnalitica(a: import('../domain/analiticas').Analitica) {
+    setState((s) => ({
+      ...s,
+      analiticas: [
+        ...(s.analiticas ?? []).filter((x) => x.date !== a.date),
+        { ...a, updatedAt: Date.now() }
+      ]
+    }))
+  },
+  deleteAnalitica(date: string) {
+    setState((s) => ({ ...s, analiticas: (s.analiticas ?? []).filter((x) => x.date !== date) }))
+  },
+  saveHabito(r: import('../domain/habitos').RegistroHabito) {
+    setState((s) => ({
+      ...s,
+      habitos: [
+        ...(s.habitos ?? []).filter((x) => !(x.date === r.date && x.habito === r.habito)),
+        { ...r, updatedAt: Date.now() }
+      ]
+    }))
+  },
   saveSuplemento(sup: Suplemento) {
     setState((s) => ({
       ...s,

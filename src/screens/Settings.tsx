@@ -15,6 +15,7 @@ import ExercisePicker from '../components/ExercisePicker'
 import AccountCard from '../components/AccountCard'
 import LandmarkSettings from '../components/LandmarkSettings'
 import VolumeLevelChooser from '../components/VolumeLevelChooser'
+import { Analiticas, CurvaKeto, TarjetaDeHabito } from '../components/Habitos'
 import { NIVEL_MAXIMO, volumePlan } from '../domain/progression'
 import { interpretTrend } from '../domain/trend'
 import { actions, todayIso, useAppData } from '../store/store'
@@ -170,6 +171,22 @@ export default function Settings() {
 
   return (
     <div className="fade-in cards-grid">
+      {/*
+        Los hábitos van aquí y no en «Hoy» a propósito: son cosas que se
+        construyen en semanas, y mezclarlos con la decisión del día los
+        convertiría en una lista de pendientes más.
+      */}
+      <TarjetaDeHabito habito="grounding" registros={data.habitos} hoy={todayIso()} />
+      <TarjetaDeHabito habito="frio" registros={data.habitos} hoy={todayIso()} />
+      <TarjetaDeHabito
+        habito="ayuno"
+        registros={data.habitos}
+        hoy={todayIso()}
+        lat={data.profile?.lat}
+      />
+      {data.profile?.ketoSince && <CurvaKeto desde={data.profile.ketoSince} hoy={todayIso()} />}
+      <Analiticas analiticas={data.analiticas} hoy={todayIso()} />
+
       <p className="eyebrow">Tú y cómo te trata la app</p>
       <h1>Yo</h1>
 
