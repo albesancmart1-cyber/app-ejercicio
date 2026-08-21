@@ -29,11 +29,14 @@ Marcar una casilla sin escribir el código **rompe la suite**. Es deliberado.
 
 ## El reloj
 
-- [ ] reloj-tres-esferas · Período, fase y amplitud como lectura del día
+- [x] reloj-tres-esferas · Período, fase y amplitud como lectura del día
+  → src/domain/esferas.ts :: leerElReloj
 - [x] reloj-arco-seis · Arco solar por latitud y fecha, seis umbrales
   → src/domain/arcoSolar.ts :: arcoDelDia
-- [ ] reloj-direccion-fase · Dirección del desplazamiento de fase
-- [ ] reloj-contraste · Contraste día:noche
+- [x] reloj-direccion-fase · Dirección del desplazamiento de fase
+  → src/domain/esferas.ts :: desplazamientoDeFase
+- [x] reloj-contraste · Contraste día:noche
+  → src/domain/esferas.ts :: contrasteDiaNoche
 - [ ] reloj-fotoperiodo · Desfase estacional (fotoperiodo)
 - [ ] reloj-callo-solar · Callo solar anclado al solsticio
 
@@ -56,7 +59,8 @@ Marcar una casilla sin escribir el código **rompe la suite**. Es deliberado.
   → src/domain/jornada.ts :: resumenDeJornada
 - [x] turno-deficit-banda · Balance diario de déficit por banda
   → src/domain/balanceLuz.ts :: balanceDelDia
-- [ ] turno-fase-amplitud-aparte · Fase y amplitud contadas por separado
+- [x] turno-fase-amplitud-aparte · Fase y amplitud contadas por separado
+  → src/domain/esferas.ts :: son independientes
 - [x] turno-sugerencia-descanso · Sugerencias del tamaño de tu descanso, no de tu día libre
   → src/domain/jornada.ts :: juzgarHueco
 - [x] turno-sin-comparar · Nada de compararte con un horario que no tienes
@@ -147,7 +151,8 @@ Marcar una casilla sin escribir el código **rompe la suite**. Es deliberado.
 - [ ] habito-ayuno-estacional · Ayuno estacional con fases
 - [ ] habito-rampa · Rampa de protocolos
 - [ ] habito-rachas · Rachas de todo lo anterior
-- [ ] habito-uno-cada-vez · Un solo hábito cada vez: el más barato que más arregla
+- [x] habito-uno-cada-vez · Un solo hábito cada vez: el más barato que más arregla
+  → src/domain/esferas.ts :: loDeHoy
 
 ## El motor
 

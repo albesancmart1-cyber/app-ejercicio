@@ -7,6 +7,8 @@ import {
   type Routine
 } from '../domain/types'
 import PesoDeHoy from '../components/PesoDeHoy'
+import TresEsferas from '../components/TresEsferas'
+import type { DatosDelReloj } from '../domain/esferas'
 import SolDeHoy from '../components/SolDeHoy'
 import ResumenComparado from '../components/ResumenComparado'
 import { computeReadiness, tieneLevesRepartidas, zonasConMolestias } from '../domain/readiness'
@@ -100,6 +102,24 @@ function ScaleInput({
       </div>
     </>
   )
+}
+
+/**
+ * Lo que necesitan las tres esferas, o nada si no hay coordenadas.
+ *
+ * Misma regla que en el resto: sin sitio no se enseña un reloj inventado.
+ */
+function datosDelReloj(data: AppData, hoy: string): DatosDelReloj | undefined {
+  const coord = coordenadasDe(data.profile)
+  if (!coord) return undefined
+  return {
+    hoy,
+    coord,
+    salidas: data.salidas,
+    checkIns: data.checkIns,
+    comidas: data.comidas,
+    desfasePara: desfaseHorario
+  }
 }
 
 /**
@@ -369,6 +389,7 @@ export default function Today() {
           <Boton tono="primario" onClick={() => setPhase('checkin')}>
             {doneToday ? 'Preparar otra sesión' : 'Empezar'}
           </Boton>
+          {datosDelReloj(data, today) && <TresEsferas datos={datosDelReloj(data, today)!} />}
           <PesoDeHoy
             measurements={data.measurements}
             checkIns={data.checkIns}
@@ -732,6 +753,7 @@ export default function Today() {
           </div>
 
           {/* La báscula explicada, recién contestado el test: es cuando se mira. */}
+          {datosDelReloj(data, today) && <TresEsferas datos={datosDelReloj(data, today)!} />}
           <PesoDeHoy
             measurements={data.measurements}
             checkIns={data.checkIns}
