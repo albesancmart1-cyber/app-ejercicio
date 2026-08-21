@@ -27,7 +27,17 @@
 import { cargaDeSesion } from './estres'
 import { escribirNumero } from './numeros'
 import { CETOSIS_G, cenaTardia, diaDe, estadoDeCetosis, llevaEtiqueta } from './crononutricion'
-import type { BodyMeasurement, CheckIn, DiaDeComidas, EdicionAlimento, Session } from './types'
+import type {
+  BodyMeasurement,
+  CheckIn,
+  DiaDeComidas,
+  EdicionAlimento,
+  SalidaAlExterior,
+  Session
+} from './types'
+import type { Coordenadas } from './arcoSolar'
+import { arcoDelDia } from './arcoSolar'
+import { dosRelojes, escribirDistancia, huboPulsoDeManana, rachaDesincronizada } from './relojes'
 
 /** Techo de tejido graso real que se mueve en un día, en gramos. */
 export const TECHO_GRASA_DIA_G = 100
@@ -44,6 +54,11 @@ export interface FactorPeso {
     | 'cena-tarde'
     | 'cortisol'
     | 'transito'
+    // Los de la luz. Llegaron los últimos y son los que más explican de todo
+    // lo que hay aquí: el resto mueve agua, y estos mueven la señal.
+    | 'relojes-desincronizados'
+    | 'sin-pulso-manana'
+    | 'noche-corta'
   texto: string
   /** Cuánto suele explicar, en gramos. Positivo = empuja el peso hacia arriba. */
   minG: number
@@ -133,12 +148,26 @@ function cargaDelDia(sessions: Session[], iso: string): number {
  * y el entreno de ayer. Cada uno con su magnitud típica: no para sumarlas como
  * una cuenta —no lo son—, sino para ordenar por quién puede explicar más.
  */
+/**
+ * Lo que hace falta para que la luz entre en la explicación.
+ *
+ * Va aparte y entero opcional porque quien no haya puesto sus coordenadas
+ * tiene que seguir teniendo su explicación de siempre, sin huecos ni avisos de
+ * que le falta algo. La luz **añade**, no condiciona.
+ */
+export interface DatosDeLuz {
+  coord: Coordenadas
+  salidas?: SalidaAlExterior[]
+  desfasePara?: (iso: string) => number | undefined
+}
+
 export function factoresDeHoy(
   checkIns: CheckIn[],
   sessions: Session[],
   todayIso: string,
   comidas?: DiaDeComidas[],
-  ediciones?: EdicionAlimento[]
+  ediciones?: EdicionAlimento[],
+  luz?: DatosDeLuz
 ): FactorPeso[] {
   const hoy = checkIns.find((c) => c.date === todayIso)
   const ayer = sumarDias(todayIso, -1)
@@ -150,6 +179,55 @@ export function factoresDeHoy(
    */
   const diarioAyer = diaDe(comidas, ayer)
   const f: FactorPeso[] = []
+
+  /*
+   * La luz va primero **en el código** aunque se ordene después por tamaño,
+   * porque es la que explica de verdad. El resto de factores mueven agua —
+   * glucógeno, sal, cortisol— y se resuelven solos en dos días. Los relojes
+   * desincronizados no se resuelven solos: siguen ahí mañana.
+   */
+  if (luz) {
+    const tzDe = luz.desfasePara ?? (() => undefined)
+
+    const racha = rachaDesincronizada(ayer, luz.coord, luz.salidas, comidas, tzDe)
+    if (racha >= 2) {
+      const r = dosRelojes(ayer, luz.coord, luz.salidas, diarioAyer, tzDe(ayer))
+      f.push({
+        id: 'relojes-desincronizados',
+        texto:
+          `Llevas ${racha} días comiendo ${escribirDistancia(r)}. El hígado va por delante del ` +
+          'cerebro, y con los dos relojes a distinta hora la misma comida se gestiona peor. No es ' +
+          'agua: esto no se va solo mañana.',
+        minG: 0,
+        maxG: 400
+      })
+    }
+
+    if (!huboPulsoDeManana(ayer, luz.coord, luz.salidas, tzDe(ayer))) {
+      f.push({
+        id: 'sin-pulso-manana',
+        texto:
+          'Ayer no hubo pulso de luz por la mañana. Sin esa señal el reloj se atrasa unos doce ' +
+          'minutos, y arrastra con él la hora a la que aparecen el hambre y la saciedad.',
+        minG: 0,
+        maxG: 250
+      })
+    }
+
+    const checkinDeAyer = checkIns.find((c) => c.date === ayer)
+    if (checkinDeAyer?.lightHygiene === false) {
+      const arco = arcoDelDia(ayer, luz.coord, tzDe(ayer))
+      const nocheQueTocaba = Math.max(0, 1440 - arco.duracionDiaMin)
+      f.push({
+        id: 'noche-corta',
+        texto:
+          `Anoche hubo luz hasta tarde. Ayer tocaban ${Math.floor(nocheQueTocaba / 60)} h de ` +
+          'oscuridad en tu latitud, y la melatonina no mide si hay luz: mide cuánto dura la noche.',
+        minG: 0,
+        maxG: 300
+      })
+    }
+  }
 
   /*
    * Glucógeno: la cetosis se cuenta **en gramos** cuando el diario los trae.
@@ -271,6 +349,8 @@ export function explicarPeso(
     sessions: Session[]
     comidas?: DiaDeComidas[]
     alimentosEditados?: EdicionAlimento[]
+    /** La luz, si el usuario ha puesto sus coordenadas. Opcional a propósito. */
+    luz?: DatosDeLuz
   },
   todayIso: string
 ): ExplicacionPeso | null {
@@ -281,7 +361,14 @@ export function explicarPeso(
 
   const anteriores = ordenadas.filter((m) => m.date < todayIso)
   const anterior = anteriores[anteriores.length - 1]
-  const factores = factoresDeHoy(datos.checkIns, datos.sessions, todayIso, datos.comidas, datos.alimentosEditados)
+  const factores = factoresDeHoy(
+    datos.checkIns,
+    datos.sessions,
+    todayIso,
+    datos.comidas,
+    datos.alimentosEditados,
+    datos.luz
+  )
   const pendiente = pendienteSemanalG(datos.measurements, todayIso)
   const tendencia =
     pendiente === undefined

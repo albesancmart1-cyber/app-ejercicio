@@ -15,6 +15,10 @@ import { NIVEL_MAXIMO, volumePlan } from '../domain/progression'
 import { interpretTrend } from '../domain/trend'
 import { buildSession } from '../domain/workoutBuilder'
 import { actions, useAppData } from '../store/store'
+import type { AppData } from '../domain/types'
+import type { DatosDeLuz } from '../domain/explicacionPeso'
+import { coordenadasDe } from '../domain/jornada'
+import { desfaseHorario } from '../domain/arcoSolar'
 import { useToday } from '../store/clock'
 import { findActiveSession } from '../domain/activeSession'
 import { razonesCortas, resumenDelPlan, tituloDeHoy } from '../domain/decision'
@@ -96,6 +100,19 @@ function ScaleInput({
       </div>
     </>
   )
+}
+
+/**
+ * La luz para la explicación del peso, o nada.
+ *
+ * Devuelve `undefined` cuando no hay coordenadas, y eso es justo lo que debe
+ * pasar: quien no las haya puesto sigue teniendo su explicación de siempre, sin
+ * huecos ni avisos de que le falta configurar algo.
+ */
+function datosDeLuz(data: AppData): DatosDeLuz | undefined {
+  const coord = coordenadasDe(data.profile)
+  if (!coord) return undefined
+  return { coord, salidas: data.salidas, desfasePara: desfaseHorario }
 }
 
 export default function Today() {
@@ -358,6 +375,7 @@ export default function Today() {
             sessions={data.sessions}
             comidas={data.comidas}
             alimentosEditados={data.alimentosEditados}
+            luz={datosDeLuz(data)}
             todayIso={today}
           />
           <SolDeHoy sol={data.sol} todayIso={today} />
@@ -720,6 +738,7 @@ export default function Today() {
             sessions={data.sessions}
             comidas={data.comidas}
             alimentosEditados={data.alimentosEditados}
+            luz={datosDeLuz(data)}
             todayIso={today}
           />
 

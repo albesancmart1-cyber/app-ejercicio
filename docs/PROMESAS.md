@@ -129,7 +129,8 @@ Marcar una casilla sin escribir el código **rompe la suite**. Es deliberado.
 
 - [x] cuerpo-explicacion-peso · Explicación diaria del peso, con factores
   → src/domain/explicacionPeso.ts :: explicarPeso
-- [ ] cuerpo-dos-relojes · Distancia entre los dos relojes, central y periférico
+- [x] cuerpo-dos-relojes · Distancia entre los dos relojes, central y periférico
+  → src/domain/relojes.ts :: dosRelojes
 - [x] cuerpo-composicion · Peso, grasa y masa libre de grasa con rangos
   → src/domain/body.ts :: computeComposition
 - [x] cuerpo-corregir-pasado · Corregir la báscula de cualquier día pasado
@@ -150,7 +151,8 @@ Marcar una casilla sin escribir el código **rompe la suite**. Es deliberado.
 
 ## El motor
 
-- [ ] motor-luz-explica-peso · La báscula viene cada mañana con la explicación puesta, y la luz entra en ella
+- [x] motor-luz-explica-peso · La báscula viene cada mañana con la explicación puesta, y la luz entra en ella
+  → src/domain/explicacionPeso.ts :: relojes-desincronizados
 
 ## Entreno
 

@@ -339,3 +339,86 @@ describe('el diario por alimentos también alimenta al motor', () => {
     expect(f.some((x) => x.id === 'glucogeno-entra')).toBe(false)
   })
 })
+
+/* ══════════════════════════════════════════════════ LA LUZ EN EL PESO ══ */
+
+describe('la luz entra en la explicación del peso', () => {
+  const MADRID = { lat: 40.4165, lon: -3.7026 }
+  const tz = () => 60
+  const salida = (fecha: string, desde: number) => ({
+    id: `s${fecha}${desde}`,
+    date: fecha,
+    desde,
+    minutos: 20,
+    filtro: 'ninguno' as const
+  })
+  const comiendo = (fecha: string, hora: string) => ({
+    date: fecha,
+    comidas: [{ hora, texto: 'algo' }]
+  })
+  /** Cinco días seguidos comiendo a las 07:10 y sin pisar la calle hasta las 10. */
+  const DIAS = ['2026-03-20', '2026-03-19', '2026-03-18', '2026-03-17', '2026-03-16']
+  const luz = {
+    coord: MADRID,
+    salidas: DIAS.map((d) => salida(d, 10 * 60)),
+    desfasePara: tz
+  }
+  const comidas = DIAS.map((d) => comiendo(d, '07:10'))
+
+  it('sin coordenadas, la explicación es la de siempre y no falta nada', () => {
+    const sinLuz = factoresDeHoy([], [], '2026-03-21', comidas, undefined)
+    expect(sinLuz.some((f) => f.id === 'relojes-desincronizados')).toBe(false)
+    expect(sinLuz.some((f) => f.id === 'sin-pulso-manana')).toBe(false)
+  })
+
+  it('con ellas, cuatro días comiendo antes de ver luz salen como factor', () => {
+    const f = factoresDeHoy([], [], '2026-03-21', comidas, undefined, luz)
+    const relojes = f.find((x) => x.id === 'relojes-desincronizados')
+    expect(relojes).toBeDefined()
+    expect(relojes!.texto).toContain('días comiendo')
+    expect(relojes!.texto).toContain('antes de ver luz')
+  })
+
+  it('y se dice que eso no es agua, porque no se va solo mañana', () => {
+    const f = factoresDeHoy([], [], '2026-03-21', comidas, undefined, luz)
+    expect(f.find((x) => x.id === 'relojes-desincronizados')!.texto).toContain('no se va solo')
+  })
+
+  it('un solo día no basta para señalar a nadie', () => {
+    const unDia = { coord: MADRID, salidas: [salida('2026-03-20', 10 * 60)], desfasePara: tz }
+    const f = factoresDeHoy([], [], '2026-03-21', [comiendo('2026-03-20', '07:10')], undefined, unDia)
+    expect(f.some((x) => x.id === 'relojes-desincronizados')).toBe(false)
+  })
+
+  it('no haber salido por la mañana también cuenta, y dice cuánto atrasa', () => {
+    const f = factoresDeHoy([], [], '2026-03-21', comidas, undefined, luz)
+    const pulso = f.find((x) => x.id === 'sin-pulso-manana')
+    expect(pulso).toBeDefined()
+    expect(pulso!.texto).toContain('doce minutos')
+  })
+
+  it('pero salir al amanecer lo quita', () => {
+    const conAmanecer = {
+      coord: MADRID,
+      salidas: [salida('2026-03-20', 7 * 60 + 20)],
+      desfasePara: tz
+    }
+    const f = factoresDeHoy([], [], '2026-03-21', comidas, undefined, conAmanecer)
+    expect(f.some((x) => x.id === 'sin-pulso-manana')).toBe(false)
+  })
+
+  it('la noche corta se cuenta contra la que tocaba en tu latitud', () => {
+    const checkIns = [
+      { date: '2026-03-20', sleep: 3, energy: 3, soreness: [], lightHygiene: false } as never
+    ]
+    const f = factoresDeHoy(checkIns, [], '2026-03-21', comidas, undefined, luz)
+    const noche = f.find((x) => x.id === 'noche-corta')
+    expect(noche).toBeDefined()
+    expect(noche!.texto).toContain('en tu latitud')
+  })
+
+  it('y ninguno de los factores de luz habla de calorías', () => {
+    const f = factoresDeHoy([], [], '2026-03-21', comidas, undefined, luz)
+    for (const x of f) expect(x.texto.toLowerCase()).not.toContain('calor')
+  })
+})

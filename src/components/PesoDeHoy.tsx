@@ -1,4 +1,4 @@
-import { escribirGramos, explicarPeso } from '../domain/explicacionPeso'
+import { escribirGramos, explicarPeso, type DatosDeLuz } from '../domain/explicacionPeso'
 import type { BodyMeasurement, CheckIn, DiaDeComidas, Session } from '../domain/types'
 import { escribirNumero } from '../domain/numeros'
 
@@ -19,6 +19,7 @@ export default function PesoDeHoy({
   sessions,
   comidas,
   alimentosEditados,
+  luz,
   todayIso
 }: {
   measurements: BodyMeasurement[]
@@ -26,9 +27,17 @@ export default function PesoDeHoy({
   sessions: Session[]
   comidas?: DiaDeComidas[]
   alimentosEditados?: import('../domain/types').EdicionAlimento[]
+  /**
+   * La luz, si hay coordenadas puestas. Sin ella la tarjeta funciona igual que
+   * siempre: la luz añade factores, no los condiciona.
+   */
+  luz?: DatosDeLuz
   todayIso: string
 }) {
-  const e = explicarPeso({ measurements, checkIns, sessions, comidas, alimentosEditados }, todayIso)
+  const e = explicarPeso(
+    { measurements, checkIns, sessions, comidas, alimentosEditados, luz },
+    todayIso
+  )
   if (!e) return null
   const deHoy = measurements.find((m) => m.date === todayIso)
 

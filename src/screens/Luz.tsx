@@ -55,6 +55,7 @@ import {
 } from '../domain/fotobiomodulacion'
 import { PICOS_KARU } from '../domain/luz'
 import { sumarDiaIso } from '../domain/arcoSolar'
+import { dosRelojes, escribirDistancia } from '../domain/relojes'
 import type { Filtro, Lampara, OndaLampara, PerfilDeLuz, SesionPBM, ZonaPBM } from '../domain/types'
 
 const UMBRALES_A_ENSEÑAR: Umbral[] = ['civil', 'orto', 'uva', 'uvb']
@@ -522,6 +523,76 @@ function DiaDeReparar({ hoy, lat, lon }: { hoy: string; lat: number; lon: number
   )
 }
 
+
+/* ══════════════════════════════════════════════════ LOS DOS RELOJES ══ */
+
+/**
+ * La distancia entre el reloj de la luz y el de la comida.
+ *
+ * Es, probablemente, el número más útil de la app: el único que explica por qué
+ * alguien que come lo mismo que el año pasado ha engordado. Cuando falta un
+ * dato se dice cuál falta, en vez de suponerlo — suponer aquí sería inventar la
+ * conclusión entera.
+ */
+function DosRelojesCard({ hoy, lat, lon }: { hoy: string; lat: number; lon: number }) {
+  const data = useAppData()
+  const coord = { lat, lon }
+  const r = dosRelojes(
+    hoy,
+    coord,
+    data.salidas,
+    (data.comidas ?? []).find((d) => d.date === hoy),
+    desfaseHorario(hoy)
+  )
+
+  return (
+    <div className="card">
+      <div className="row">
+        <p className="eyebrow" style={{ margin: 0 }}>
+          Tus dos relojes
+        </p>
+        {r.distanciaMin !== undefined && (
+          <Etiqueta acento={!r.desincronizado}>
+            {r.desincronizado ? 'A distinta hora' : 'En hora'}
+          </Etiqueta>
+        )}
+      </div>
+
+      <div className="row" style={{ marginTop: 10 }}>
+        <span className="dim">Central · lo pone la luz</span>
+        <span>{r.central !== undefined ? escribirHora(r.central) : '—'}</span>
+      </div>
+      <div className="row" style={{ padding: '7px 0' }}>
+        <span className="dim">Periférico · lo pone la comida</span>
+        <span>{r.periferico !== undefined ? escribirHora(r.periferico) : '—'}</span>
+      </div>
+
+      {r.distanciaMin !== undefined ? (
+        <>
+          <Regla />
+          <div className="row">
+            <span className="dim">Comiste</span>
+            <span className={r.desincronizado ? 'faint' : 'accent'}>{escribirDistancia(r)}</span>
+          </div>
+          <p className="faint" style={{ marginTop: 10 }}>
+            {r.desincronizado
+              ? 'El hígado va por delante del cerebro. Con los dos relojes a distinta hora, la misma comida se gestiona peor y la saciedad llega tarde. Lo más barato de cambiar suele ser retrasar la primera comida, no comer menos.'
+              : 'Los dos van a la misma hora. Es el orden que hace que la comida caiga cuando el cuerpo la espera.'}
+          </p>
+        </>
+      ) : (
+        <p className="faint" style={{ marginTop: 10 }}>
+          {r.falta === 'luz'
+            ? 'Falta apuntar algún rato fuera para saber cuándo se puso en hora tu reloj central.'
+            : r.falta === 'comida'
+              ? 'Falta apuntar la primera comida del día — el café cuenta.'
+              : 'Apunta un rato fuera y tu primera comida, y te digo la distancia entre los dos.'}
+        </p>
+      )}
+    </div>
+  )
+}
+
 /* ══════════════════════════════════════════════════ LÁMPARAS ══ */
 
 function Lamparas({ hoy }: { hoy: string }) {
@@ -879,6 +950,7 @@ export default function Luz() {
     <div className="card-wrap fade-in">
       <ArcoDeHoy hoy={hoy} lat={coord.lat} lon={coord.lon} />
       <Jornada hoy={hoy} lat={coord.lat} lon={coord.lon} />
+      <DosRelojesCard hoy={hoy} lat={coord.lat} lon={coord.lon} />
       <DiaDeReparar hoy={hoy} lat={coord.lat} lon={coord.lon} />
       <Lamparas hoy={hoy} />
       <Balance hoy={hoy} lat={coord.lat} lon={coord.lon} />
