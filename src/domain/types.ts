@@ -684,6 +684,14 @@ export interface ComidaRegistrada {
   alimentos?: AlimentoRegistrado[]
   /** Etiquetas de la comida entera. Con alimentos, cada uno lleva las suyas. */
   etiquetas?: EtiquetaComida[]
+  /**
+   * Las cápsulas tomadas en esta comida.
+   *
+   * Van aparte de `alimentos` a propósito: un suplemento no es un alimento, no
+   * tiene gramos que apuntar, y mezclarlos impediría enseñar el ratio de omegas
+   * con y sin él — que es justo la comparación que dice algo.
+   */
+  suplementos?: TomaDeSuplemento[]
 }
 
 /** Cuándo dio el sol: la franja decide cuánto UVB había. */
