@@ -135,6 +135,19 @@ export interface Profile {
   dhaPillMg?: number
   /** Altura en cm, necesaria para el FFMI. */
   heightCm?: number
+  /**
+   * Dónde vives, para calcular el arco del sol. Se mete una vez y de ahí sale
+   * todo: el amanecer exacto, los seis umbrales y la duración del día, cambiando
+   * solos cada día. Longitud con el **este positivo**: Madrid es −3,70.
+   */
+  lat?: number
+  lon?: number
+  /** Cómo se llama el sitio, solo para enseñarlo: «Madrid». */
+  lugar?: string
+  /** Qué días se trabaja, de 0 (domingo) a 6 (sábado). Por defecto, de lunes a viernes. */
+  diasLaborables?: number[]
+  /** El sitio de trabajo habitual, para que fichar sea un solo toque. */
+  perfilLuzHabitualId?: string
   /** Ejercicios que el usuario ha descartado y no quiere que se le propongan. */
   dislikedExercises?: string[]
   /**
@@ -713,6 +726,133 @@ export interface DiaDeComidas {
   comidas: ComidaRegistrada[]
 }
 
+/* ────────────────────────────────────────────────────────────────────────────
+ * Luz: lámparas, sesiones, jornada y el sitio donde vives
+ * ──────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Una longitud de onda de una lámpara, con lo que entrega.
+ *
+ * La irradiancia va en mW/cm² **a la distancia de referencia** de la propia
+ * lámpara, que es como vienen las hojas de datos. Sin ella no hay dosis que
+ * calcular, así que se pide — y si el fabricante no la da, la app lo dirá en
+ * vez de inventarse un número.
+ */
+export interface OndaLampara {
+  /** Nanómetros. Cualquier valor de 280 a 3 000: ver `domain/luz.ts`. */
+  nm: number
+  /** mW/cm² a `distanciaRefCm`. */
+  irradiancia: number
+}
+
+/** Una lámpara del usuario, con el nombre que él le haya puesto. */
+export interface Lampara {
+  id: string
+  updatedAt?: number
+  /** Libre: «Panel del salón», «Casco», «Lámpara 1». */
+  nombre: string
+  ondas: OndaLampara[]
+  /** A qué distancia están medidas las irradiancias. Casi siempre 15 o 30 cm. */
+  distanciaRefCm: number
+}
+
+/** Las zonas del cuerpo que se pueden iluminar. Sirven para no repetir la misma. */
+export type ZonaPBM = 'cara' | 'cuello' | 'torso' | 'espalda' | 'abdomen' | 'piernas' | 'articulacion'
+
+/** Una sesión de fotobiomodulación ya hecha. */
+export interface SesionPBM {
+  id: string
+  date: string
+  updatedAt?: number
+  lamparaId: string
+  /** Minutos desde la medianoche local en que se hizo. */
+  hora?: number
+  minutos: number
+  /** A qué distancia real se puso, que casi nunca es la de referencia. */
+  distanciaCm: number
+  zona: ZonaPBM
+}
+
+/**
+ * Bajo qué luz estás cuando estás dentro.
+ *
+ * Existe porque no da igual, y hasta ahora ninguna app lo distinguía: gafas
+ * ámbar con LED cálido, gafas ámbar con LED frío y sin gafas con LED frío son
+ * tres días distintos para el reloj, y el usuario solo tiene que configurarlo
+ * una vez.
+ */
+export type Filtro = 'ninguno' | 'ambar' | 'rojo'
+
+export interface PerfilDeLuz {
+  id: string
+  updatedAt?: number
+  nombre: string
+  /** Kelvin. 2 700 es un LED cálido, 5 700 uno frío de taller. */
+  temperaturaK: number
+  /** Lux aproximados a la altura de los ojos. Un taller bien iluminado ronda 450. */
+  lux: number
+  /** Si entra luz natural por algún sitio. Cambia el cálculo por completo. */
+  ventana: boolean
+  filtro: Filtro
+}
+
+/**
+ * Un fichaje: entrar o salir del sitio de trabajo.
+ *
+ * Se guarda la hora y **qué luz había**, no una referencia al perfil, porque el
+ * perfil puede cambiar después y eso reescribiría el pasado.
+ */
+export interface Fichaje {
+  id: string
+  date: string
+  updatedAt?: number
+  /** Minutos desde medianoche local. */
+  entrada: number
+  /** Ausente mientras se sigue dentro. */
+  salida?: number
+  perfilLuzId?: string
+  /** El perfil congelado tal y como estaba al fichar. */
+  luz: Omit<PerfilDeLuz, 'id' | 'updatedAt'>
+}
+
+/** Un rato fuera, dentro de la jornada: el hueco del descanso. */
+export interface SalidaAlExterior {
+  id: string
+  date: string
+  updatedAt?: number
+  /** Minutos desde medianoche local. */
+  desde: number
+  minutos: number
+  /** Si llevaba puesto algún filtro, porque entonces cuenta distinto. */
+  filtro: Filtro
+}
+
+/**
+ * Un suplemento creado una vez para reutilizarlo siempre.
+ *
+ * **No es un alimento**, y por eso vive aparte del catálogo: se añade a una
+ * comida como suplementación, cuenta para el ratio de omegas del día, y el
+ * ratio se enseña con y sin él para que se vea de dónde viene cada cosa.
+ */
+export interface Suplemento {
+  id: string
+  updatedAt?: number
+  nombre: string
+  /** mg de DHA por cápsula. */
+  dhaMg?: number
+  /** mg de EPA por cápsula. */
+  epaMg?: number
+  /** mg de omega 6 por cápsula, si los trae. Casi ninguno. */
+  omega6Mg?: number
+}
+
+/** Un suplemento tomado dentro de una comida concreta. */
+export interface TomaDeSuplemento {
+  suplementoId: string
+  /** Cuántas cápsulas. Admite media. */
+  capsulas: number
+}
+
 export interface AppData {
   /** 1 = taxonomía de grupos gruesos. 2 = taxonomía muscular con conteo fraccional. */
   version: 1 | 2
@@ -731,6 +871,18 @@ export interface AppData {
   alimentosEditados?: EdicionAlimento[]
   /** Entrenos guardados para repetir. Ausente hasta que se guarda el primero. */
   routines?: Routine[]
+  /** Las lámparas del usuario. Ausente hasta que crea la primera. */
+  lamparas?: Lampara[]
+  /** Las sesiones de fotobiomodulación hechas. */
+  sesionesPBM?: SesionPBM[]
+  /** Los sitios con su iluminación: el taller, la oficina, casa. */
+  perfilesLuz?: PerfilDeLuz[]
+  /** Los fichajes, día a día. */
+  fichajes?: Fichaje[]
+  /** Los ratos fuera durante la jornada. */
+  salidas?: SalidaAlExterior[]
+  /** Los suplementos creados, para reutilizarlos en cualquier comida. */
+  suplementos?: Suplemento[]
   /**
    * Lo que se ha borrado, para que sincronizar no lo resucite. Ver
    * `src/domain/merge.ts`.
