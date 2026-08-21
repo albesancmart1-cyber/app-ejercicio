@@ -30,8 +30,11 @@ import {
   type ComidaRegistrada,
   type DiaDeComidas,
   type EdicionAlimento,
-  type EtiquetaComida
+  type EtiquetaComida,
+  type Suplemento,
+  type TomaDeSuplemento
 } from '../domain/types'
+import { resumirToma } from '../domain/omega'
 import { actions } from '../store/store'
 import Icon from './Icon'
 import { Boton, CampoNumero, Etiqueta, Opcion, Regla } from './ui'
@@ -132,7 +135,8 @@ export default function DiarioDeComidas({
   comidas,
   todayIso,
   checkIns,
-  ediciones
+  ediciones,
+  suplementos
 }: {
   comidas: DiaDeComidas[] | undefined
   todayIso: string
@@ -140,6 +144,8 @@ export default function DiarioDeComidas({
   checkIns?: CheckIn[]
   /** Las correcciones del usuario sobre el catálogo de alimentos. */
   ediciones?: EdicionAlimento[]
+  /** Los suplementos ya creados, para reutilizarlos de un toque. */
+  suplementos?: Suplemento[]
 }) {
   /**
    * El día que se está mirando, o `null` para hoy.
@@ -175,6 +181,20 @@ export default function DiarioDeComidas({
   const [etiquetas, setEtiquetas] = useState<EtiquetaComida[]>([])
   /** El alimento del catálogo elegido en el buscador, si se eligió. */
   const [elegido, setElegido] = useState<AlimentoBasico | null>(null)
+  /**
+   * Las cápsulas de esta comida.
+   *
+   * Van en su propio estado y no dentro de `alimentos` porque **un suplemento
+   * no es un alimento**: no tiene gramos que pesar, y mezclarlos impediría
+   * enseñar el ratio de omegas con y sin él, que es justo la comparación que
+   * dice algo.
+   */
+  const [tomas, setTomas] = useState<TomaDeSuplemento[]>([])
+  /** El panel de crear un suplemento nuevo para reutilizarlo siempre. */
+  const [creandoSuplemento, setCreandoSuplemento] = useState(false)
+  const [supNombre, setSupNombre] = useState('')
+  const [supDha, setSupDha] = useState<number | undefined>(undefined)
+  const [supEpa, setSupEpa] = useState<number | undefined>(undefined)
   /** El panel de corregir el alimento del catálogo para siempre. */
   const [corrigiendo, setCorrigiendo] = useState(false)
   const [edCarbos, setEdCarbos] = useState<number | undefined>(undefined)
@@ -310,6 +330,8 @@ export default function DiarioDeComidas({
 
   function cerrarFormulario() {
     setAlimentos([])
+    setTomas([])
+    setCreandoSuplemento(false)
     limpiarCampos()
     setHora(ahora())
     setEditando(null)
@@ -323,6 +345,7 @@ export default function DiarioDeComidas({
     setEditando(dia.comidas.indexOf(c))
     setMealIdEnEdicion(c.mealId)
     setHora(c.hora)
+    setTomas([...(c.suplementos ?? [])])
     // Un plato del recetario o una comida vieja de texto no tienen alimentos
     // sueltos: entra tal cual como un alimento, con sus etiquetas, y desde ahí
     // ya se le pueden añadir los acompañamientos.
@@ -342,11 +365,13 @@ export default function DiarioDeComidas({
     // antes de guardar perdería el último alimento sin que nadie lo note.
     const enCurso = alimentoEnCurso()
     const todos = enCurso ? [...alimentos, enCurso] : alimentos
-    if (todos.length === 0) return
+    // Una comida que solo son cápsulas también vale: hay quien las toma sola.
+    if (todos.length === 0 && tomas.length === 0) return
     const comida: ComidaRegistrada = {
       hora,
       texto: '',
       alimentos: todos,
+      ...(tomas.length > 0 ? { suplementos: tomas } : {}),
       // El enlace al plato del recetario se conserva al corregir: de él salen
       // la proteína y el DHA del día, y perderlo al tocar la hora sería un
       // agujero silencioso en la cuenta.
@@ -474,6 +499,128 @@ export default function DiarioDeComidas({
                   onQuitar={() => setAlimentos((prev) => prev.filter((_, j) => j !== i))}
                 />
               ))}
+            </div>
+          )}
+
+          {/*
+            * La suplementación va **dentro de la comida** y separada de los
+            * alimentos, tal y como se toma: la cápsula se traga con la comida,
+            * pero no es comida. Se crea una vez y luego es un toque.
+            */}
+          {tomas.length > 0 && (
+            <div className="comida-borrador">
+              {tomas.map((t, i) => {
+                const sup = (suplementos ?? []).find((x) => x.id === t.suplementoId)
+                return (
+                  <div className="row" key={i} style={{ padding: '6px 0' }}>
+                    <span className="dim">
+                      ＋ {sup?.nombre ?? 'Suplemento borrado'}{' '}
+                      <Etiqueta>Suplem.</Etiqueta>
+                    </span>
+                    <span className="faint">
+                      {sup ? resumirToma(t, sup) : `${t.capsulas} cáps.`}
+                      <button
+                        onClick={() => setTomas((prev) => prev.filter((_, j) => j !== i))}
+                        aria-label={`Quitar ${sup?.nombre ?? 'suplemento'}`}
+                        style={{
+                          background: 'none',
+                          border: 0,
+                          color: 'var(--label-3)',
+                          marginLeft: 10,
+                          cursor: 'pointer',
+                          font: 'inherit'
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {(suplementos ?? []).length > 0 && !creandoSuplemento && (
+            <div style={{ marginTop: 8 }}>
+              <span className="bar-label">Suplementación</span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                {(suplementos ?? []).map((sup) => (
+                  <Boton
+                    key={sup.id}
+                    tono="callado"
+                    style={{ width: 'auto' }}
+                    onClick={() =>
+                      setTomas((prev) => {
+                        const ya = prev.find((t) => t.suplementoId === sup.id)
+                        // Volver a tocarlo sube una cápsula: es más rápido que
+                        // abrir un campo para escribir «2».
+                        return ya
+                          ? prev.map((t) =>
+                              t.suplementoId === sup.id ? { ...t, capsulas: t.capsulas + 1 } : t
+                            )
+                          : [...prev, { suplementoId: sup.id, capsulas: 1 }]
+                      })
+                    }
+                  >
+                    ＋ {sup.nombre}
+                  </Boton>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!creandoSuplemento ? (
+            <Boton tono="callado" onClick={() => setCreandoSuplemento(true)}>
+              Crear un suplemento
+            </Boton>
+          ) : (
+            <div className="fade-in" style={{ marginTop: 8 }}>
+              <label className="field">
+                <span className="bar-label">Nombre</span>
+                <input
+                  value={supNombre}
+                  onChange={(e) => setSupNombre(e.target.value)}
+                  placeholder="Omega-3 Nordic"
+                />
+              </label>
+              <div className="field-row" style={{ marginTop: 8 }}>
+                <label className="field">
+                  <span className="bar-label">DHA por cápsula (mg)</span>
+                  <CampoNumero valor={supDha} onCambiar={setSupDha} placeholder="330" />
+                </label>
+                <label className="field">
+                  <span className="bar-label">EPA por cápsula (mg)</span>
+                  <CampoNumero valor={supEpa} onCambiar={setSupEpa} placeholder="110" />
+                </label>
+              </div>
+              <p className="faint" style={{ marginTop: 8 }}>
+                Se crea una vez y ya está para siempre: a partir de ahora lo añades a cualquier
+                comida con un toque. Cuenta para el ratio de omegas del día, pero se guarda aparte
+                para que puedas ver el ratio solo de comida y con suplemento.
+              </p>
+              <Boton
+                tono="primario"
+                disabled={!supNombre.trim()}
+                onClick={() => {
+                  const sup: Suplemento = {
+                    id: `sup-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                    nombre: supNombre.trim(),
+                    ...(supDha !== undefined ? { dhaMg: supDha } : {}),
+                    ...(supEpa !== undefined ? { epaMg: supEpa } : {})
+                  }
+                  actions.saveSuplemento(sup)
+                  setTomas((prev) => [...prev, { suplementoId: sup.id, capsulas: 1 }])
+                  setSupNombre('')
+                  setSupDha(undefined)
+                  setSupEpa(undefined)
+                  setCreandoSuplemento(false)
+                }}
+              >
+                Guardar y añadir a esta comida
+              </Boton>
+              <Boton tono="callado" onClick={() => setCreandoSuplemento(false)}>
+                Cancelar
+              </Boton>
             </div>
           )}
 

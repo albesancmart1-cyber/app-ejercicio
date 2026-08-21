@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { todayIsoAt } from './clock'
 import { VERSION_ACTUAL, migrar } from './migrate'
-import type { DiaDeComidas, DiaDeSol, EdicionAlimento, AppData, BodyMeasurement, CheckIn, Profile, Routine, Session } from '../domain/types'
+import type { DiaDeComidas, DiaDeSol, EdicionAlimento, AppData, BodyMeasurement, CheckIn, Fichaje, Lampara, PerfilDeLuz, Profile, Routine, SalidaAlExterior, SesionPBM, Suplemento, Session } from '../domain/types'
 import { claveDeMedicion, claveDeRutina, claveDeSesion, type Lapida } from '../domain/merge'
 
 const STORAGE_KEY = 'ritmo-data-v1'
@@ -193,6 +193,82 @@ export const actions = {
       measurements: s.measurements.filter((m) => m.date !== date),
       deleted: conLapida(s, claveDeMedicion(date))
     }))
+  },
+  /*
+   * Luz. Todas siguen el mismo patrón que las de arriba: reemplazar por id y
+   * poner `updatedAt`, para que la fusión entre dispositivos sepa cuál gana.
+   */
+  saveLampara(lampara: Lampara) {
+    setState((s) => ({
+      ...s,
+      lamparas: [
+        ...(s.lamparas ?? []).filter((l) => l.id !== lampara.id),
+        { ...lampara, updatedAt: Date.now() }
+      ]
+    }))
+  },
+  deleteLampara(id: string) {
+    setState((s) => ({ ...s, lamparas: (s.lamparas ?? []).filter((l) => l.id !== id) }))
+  },
+  saveSesionPBM(sesion: SesionPBM) {
+    setState((s) => ({
+      ...s,
+      sesionesPBM: [
+        ...(s.sesionesPBM ?? []).filter((x) => x.id !== sesion.id),
+        { ...sesion, updatedAt: Date.now() }
+      ]
+    }))
+  },
+  deleteSesionPBM(id: string) {
+    setState((s) => ({ ...s, sesionesPBM: (s.sesionesPBM ?? []).filter((x) => x.id !== id) }))
+  },
+  savePerfilLuz(perfil: PerfilDeLuz) {
+    setState((s) => ({
+      ...s,
+      perfilesLuz: [
+        ...(s.perfilesLuz ?? []).filter((p) => p.id !== perfil.id),
+        { ...perfil, updatedAt: Date.now() }
+      ]
+    }))
+  },
+  deletePerfilLuz(id: string) {
+    setState((s) => ({ ...s, perfilesLuz: (s.perfilesLuz ?? []).filter((p) => p.id !== id) }))
+  },
+  saveFichaje(fichaje: Fichaje) {
+    setState((s) => ({
+      ...s,
+      fichajes: [
+        ...(s.fichajes ?? []).filter((f) => f.id !== fichaje.id),
+        { ...fichaje, updatedAt: Date.now() }
+      ]
+    }))
+  },
+  deleteFichaje(id: string) {
+    setState((s) => ({ ...s, fichajes: (s.fichajes ?? []).filter((f) => f.id !== id) }))
+  },
+  saveSalida(salida: SalidaAlExterior) {
+    setState((s) => ({
+      ...s,
+      salidas: [
+        ...(s.salidas ?? []).filter((x) => x.id !== salida.id),
+        { ...salida, updatedAt: Date.now() }
+      ]
+    }))
+  },
+  deleteSalida(id: string) {
+    setState((s) => ({ ...s, salidas: (s.salidas ?? []).filter((x) => x.id !== id) }))
+  },
+  saveSuplemento(sup: Suplemento) {
+    setState((s) => ({
+      ...s,
+      suplementos: [
+        ...(s.suplementos ?? []).filter((x) => x.id !== sup.id),
+        { ...sup, updatedAt: Date.now() }
+      ]
+    }))
+  },
+  deleteSuplemento(id: string) {
+    setState((s) => ({ ...s, suplementos: (s.suplementos ?? []).filter((x) => x.id !== id) }))
   },
   /** Los datos tal cual están aquí, para sincronizar. */
   snapshot(): AppData {

@@ -24,6 +24,13 @@ import DiarioDeComidas from '../components/DiarioDeComidas'
 import { conComida, diaDe } from '../domain/crononutricion'
 import { Boton, Opcion } from '../components/ui'
 import { escribirNumero } from '../domain/numeros'
+import {
+  cobertura,
+  escribirRatio,
+  ratioDelDia,
+  ratioFiable
+} from '../domain/omega'
+import type { DiaDeComidas, Suplemento } from '../domain/types'
 
 const BASES = Object.keys(BASE_LABELS) as MealBase[]
 const EFFORTS = Object.keys(EFFORT_LABELS) as MealEffort[]
@@ -97,6 +104,63 @@ function Idea({ meal, onAbrir }: { meal: Meal; onAbrir: () => void }) {
       </span>
       <Icon name="chevron" />
     </button>
+  )
+}
+
+
+/**
+ * El ratio omega 3 : 6 del día, en sus tres versiones.
+ *
+ * Se enseñan las tres —solo comida, con suplemento, y el total— porque son
+ * información distinta. Alguien con un 1 : 1,2 gracias a las cápsulas y un
+ * 1 : 2,4 de comida sabe algo útil sobre su semana que el número combinado le
+ * escondería: que la mejora viene del bote, no de la mesa.
+ *
+ * Y siempre con la cobertura al lado. Un ratio calculado sobre un tercio del
+ * plato no es un ratio, es una impresión, y presentarlo como si fuera lo mismo
+ * sería el tipo de falsa precisión que esta app procura no cometer.
+ */
+function RatioDeOmegas({
+  dia,
+  suplementos
+}: {
+  dia: DiaDeComidas | undefined
+  suplementos: Suplemento[] | undefined
+}) {
+  const r = ratioDelDia(dia, suplementos)
+  if (r.total.o3 === 0 && r.total.o6 === 0) return null
+
+  const haySuplemento = r.suplemento.o3 > 0 || r.suplemento.o6 > 0
+  const fiable = ratioFiable(r)
+
+  return (
+    <div className="card">
+      <p className="eyebrow">Omega 3 : 6 de hoy</p>
+      <div className="row" style={{ marginTop: 8 }}>
+        <span className="score" style={{ fontSize: 28 }}>
+          {escribirRatio(r.total)}
+        </span>
+      </div>
+
+      {haySuplemento && (
+        <>
+          <div className="row" style={{ padding: '7px 0' }}>
+            <span className="dim">Solo de comida</span>
+            <span className="faint">{escribirRatio(r.comida)}</span>
+          </div>
+          <div className="row" style={{ padding: '7px 0' }}>
+            <span className="dim">Con suplemento</span>
+            <span className="accent">{escribirRatio(r.total)}</span>
+          </div>
+        </>
+      )}
+
+      <p className="faint" style={{ marginTop: 10 }}>
+        {fiable
+          ? `Calculado sobre el ${Math.round(cobertura(r) * 100)} % de lo que has apuntado hoy.`
+          : `Ojo: solo el ${Math.round(cobertura(r) * 100)} % de lo apuntado tiene datos de omegas, así que este número dice poco todavía.`}
+      </p>
+    </div>
   )
 }
 
@@ -181,7 +245,10 @@ export default function Meals() {
         todayIso={today}
         checkIns={data.checkIns}
         ediciones={data.alimentosEditados}
+        suplementos={data.suplementos}
       />
+
+      <RatioDeOmegas dia={data.comidas?.find((d) => d.date === today)} suplementos={data.suplementos} />
 
       {/*
         Antes esta pantalla pedía dos filtros y daba **una** idea al pulsar un

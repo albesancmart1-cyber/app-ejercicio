@@ -20,10 +20,11 @@ import { Navigation, NavigationItem, NavigationList } from '@appica/ui-react/nav
  * que el parpadeo que evita.
  */
 const Progreso = lazy(() => import('./screens/Progreso'))
+const Luz = lazy(() => import('./screens/Luz'))
 const Meals = lazy(() => import('./screens/Meals'))
 const Settings = lazy(() => import('./screens/Settings'))
 
-type Tab = 'hoy' | 'progreso' | 'cocina' | 'yo'
+type Tab = 'hoy' | 'luz' | 'cocina' | 'progreso' | 'yo'
 
 /*
  * Cuatro destinos con nombre, no cuatro cajones.
@@ -33,10 +34,17 @@ type Tab = 'hoy' | 'progreso' | 'cocina' | 'yo'
  * hay ajustes: hay perfil, material, rutinas y cuenta, y con el nombre viejo
  * mucha gente no entraba a configurar lo que más cambia sus entrenos.
  */
-const TABS: { id: Tab; label: string; icon: 'horizon' | 'body' | 'plate' | 'leaf' }[] = [
+/*
+ * El orden importa. «Luz» va la segunda —y no al final— porque el arco del sol
+ * es el marco dentro del cual se deciden la comida y el entreno, no un extra
+ * que se consulta cuando sobra tiempo. La app entera dice que el reloj va río
+ * arriba de todo lo demás; la barra tenía que decirlo también.
+ */
+const TABS: { id: Tab; label: string; icon: 'horizon' | 'sun' | 'body' | 'plate' | 'leaf' }[] = [
   { id: 'hoy', label: 'Hoy', icon: 'horizon' },
-  { id: 'progreso', label: 'Progreso', icon: 'body' },
+  { id: 'luz', label: 'Luz', icon: 'sun' },
   { id: 'cocina', label: 'Cocina', icon: 'plate' },
+  { id: 'progreso', label: 'Progreso', icon: 'body' },
   { id: 'yo', label: 'Yo', icon: 'leaf' }
 ]
 
@@ -62,6 +70,7 @@ export default function App() {
             respuestas de ayer, que viven en el estado local del componente. */}
         <Suspense fallback={null}>
           {tab === 'hoy' && <Today key={today} />}
+          {tab === 'luz' && <Luz key={today} />}
           {tab === 'progreso' && <Progreso key={today} />}
           {tab === 'cocina' && <Meals key={today} />}
           {tab === 'yo' && <Settings />}
