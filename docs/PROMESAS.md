@@ -37,8 +37,10 @@ Marcar una casilla sin escribir el código **rompe la suite**. Es deliberado.
   → src/domain/esferas.ts :: desplazamientoDeFase
 - [x] reloj-contraste · Contraste día:noche
   → src/domain/esferas.ts :: contrasteDiaNoche
-- [ ] reloj-fotoperiodo · Desfase estacional (fotoperiodo)
-- [ ] reloj-callo-solar · Callo solar anclado al solsticio
+- [x] reloj-fotoperiodo · Desfase estacional (fotoperiodo)
+  → src/domain/estaciones.ts :: estacionRobada
+- [x] reloj-callo-solar · Callo solar anclado al solsticio
+  → src/domain/estaciones.ts :: solsticioAnterior
 
 ## Luz
 
@@ -50,8 +52,10 @@ Marcar una casilla sin escribir el código **rompe la suite**. Es deliberado.
   → src/domain/vitaminaD.ts :: FRANJAS
 - [x] luz-vitamina-d-rango · Vitamina D estimada en rango, e invierno vitamínico
   → src/domain/vitaminaD.ts :: UI_POR_MINUTO
-- [ ] luz-higiene-noche · Higiene de luz de la noche
-- [ ] luz-skygazing · Skygazing y atardecer
+- [x] luz-higiene-noche · Higiene de luz de la noche
+  → src/domain/estaciones.ts :: higieneDeNoche
+- [x] luz-skygazing · Skygazing y atardecer
+  → src/domain/estaciones.ts :: skygazing
 
 ## Turnos y talleres
 
@@ -150,7 +154,8 @@ Marcar una casilla sin escribir el código **rompe la suite**. Es deliberado.
 - [ ] habito-frio · Frío en seis escalones
 - [ ] habito-ayuno-estacional · Ayuno estacional con fases
 - [ ] habito-rampa · Rampa de protocolos
-- [ ] habito-rachas · Rachas de todo lo anterior
+- [x] habito-rachas · Rachas de todo lo anterior
+  → src/domain/estaciones.ts :: rachaDeSol
 - [x] habito-uno-cada-vez · Un solo hábito cada vez: el más barato que más arregla
   → src/domain/esferas.ts :: loDeHoy
 

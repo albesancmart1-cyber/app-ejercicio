@@ -56,6 +56,13 @@ import {
 import { PICOS_KARU } from '../domain/luz'
 import { sumarDiaIso } from '../domain/arcoSolar'
 import { dosRelojes, escribirDistancia } from '../domain/relojes'
+import {
+  CalloSolar,
+  EstacionesRobadas,
+  HigieneDeLuz,
+  Skygazing,
+  minutosDeNoche
+} from '../components/Estaciones'
 import type { Filtro, Lampara, OndaLampara, PerfilDeLuz, SesionPBM, ZonaPBM } from '../domain/types'
 
 const UMBRALES_A_ENSEÑAR: Umbral[] = ['civil', 'orto', 'uva', 'uvb']
@@ -885,6 +892,7 @@ function Lamparas({ hoy }: { hoy: string }) {
 
 function Balance({ hoy, lat, lon }: { hoy: string; lat: number; lon: number }) {
   const data = useAppData()
+  const noche = (data.noches ?? []).find((n) => n.date === hoy)
   const balance = balanceDelDia({
     fecha: hoy,
     coord: { lat, lon },
@@ -893,7 +901,8 @@ function Balance({ hoy, lat, lon }: { hoy: string; lat: number; lon: number }) {
     sol: (data.sol ?? []).find((s) => s.date === hoy),
     sesionesPBM: (data.sesionesPBM ?? []).filter((s) => s.date === hoy),
     lamparas: data.lamparas,
-    fichaje: (data.fichajes ?? []).find((f) => f.date === hoy)
+    fichaje: (data.fichajes ?? []).find((f) => f.date === hoy),
+    ...(noche ? { oscuridadDesde: noche.apagado, oscuridadHasta: noche.levantado } : {})
   })
 
   return (
@@ -946,6 +955,21 @@ export default function Luz() {
     )
   }
 
+  /* Lo que comparten las cuatro tarjetas del final, para no repetirlo cuatro veces. */
+  // La noche se guarda con la fecha de la mañana en que uno se levanta, así que
+  // «anoche» es la de hoy. Ver el comentario de `NocheRegistrada`.
+  const nocheDeAnoche = (data.noches ?? []).find((n) => n.date === hoy)
+  const comunes = {
+    hoy,
+    lat: coord.lat,
+    lon: coord.lon,
+    salidas: data.salidas,
+    checkIns: data.checkIns,
+    noches: data.noches,
+    // Las estaciones se leen con la noche **de anoche**, que es la que ya pasó.
+    oscuridadReal: nocheDeAnoche ? minutosDeNoche(nocheDeAnoche) : undefined
+  }
+
   return (
     <div className="card-wrap fade-in">
       <ArcoDeHoy hoy={hoy} lat={coord.lat} lon={coord.lon} />
@@ -954,6 +978,10 @@ export default function Luz() {
       <DiaDeReparar hoy={hoy} lat={coord.lat} lon={coord.lon} />
       <Lamparas hoy={hoy} />
       <Balance hoy={hoy} lat={coord.lat} lon={coord.lon} />
+      <EstacionesRobadas {...comunes} />
+      <CalloSolar {...comunes} />
+      <Skygazing {...comunes} />
+      <HigieneDeLuz {...comunes} />
     </div>
   )
 }

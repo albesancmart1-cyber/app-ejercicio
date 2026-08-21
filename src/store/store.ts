@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { todayIsoAt } from './clock'
 import { VERSION_ACTUAL, migrar } from './migrate'
-import type { DiaDeComidas, DiaDeSol, EdicionAlimento, AppData, BodyMeasurement, CheckIn, Fichaje, Lampara, PerfilDeLuz, Profile, Routine, SalidaAlExterior, SesionPBM, Suplemento, Session } from '../domain/types'
+import type { DiaDeComidas, DiaDeSol, EdicionAlimento, AppData, BodyMeasurement, CheckIn, Fichaje, Lampara, PerfilDeLuz, Profile, Routine, NocheRegistrada, SalidaAlExterior, SesionPBM, Suplemento, Session } from '../domain/types'
 import { claveDeMedicion, claveDeRutina, claveDeSesion, type Lapida } from '../domain/merge'
 
 const STORAGE_KEY = 'ritmo-data-v1'
@@ -257,6 +257,15 @@ export const actions = {
   },
   deleteSalida(id: string) {
     setState((s) => ({ ...s, salidas: (s.salidas ?? []).filter((x) => x.id !== id) }))
+  },
+  saveNoche(noche: NocheRegistrada) {
+    setState((s) => ({
+      ...s,
+      noches: [
+        ...(s.noches ?? []).filter((n) => n.date !== noche.date),
+        { ...noche, updatedAt: Date.now() }
+      ]
+    }))
   },
   saveSuplemento(sup: Suplemento) {
     setState((s) => ({

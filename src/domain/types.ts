@@ -861,6 +861,31 @@ export interface TomaDeSuplemento {
   capsulas: number
 }
 
+/**
+ * La noche de un día: cuándo se apagó todo y cuándo se levantó uno.
+ *
+ * Es el dato que faltaba para que la oscuridad deje de ser una suposición. La
+ * app lo pedía —«cuando apuntes a qué hora se apagó todo»— sin dar ninguna
+ * forma de apuntarlo, que es la clase de agujero que hace que una pantalla
+ * parezca completa y no lo esté.
+ *
+ * La fecha es la de **la mañana en que uno se levanta**, que es como se habla:
+ * «anoche» dicho el miércoles es la noche que acabó el miércoles por la mañana.
+ * Guardarla con la fecha del martes sería más exacto astronómicamente y
+ * completamente contraintuitivo al apuntarla, que se hace por la mañana.
+ *
+ * Es además la noche que explica el peso de ese día, así que las dos lecturas
+ * —la báscula y el balance— van con la misma fecha y no hay que traducir nada.
+ */
+export interface NocheRegistrada {
+  date: string
+  updatedAt?: number
+  /** Minutos desde medianoche en que se apagó la última luz. */
+  apagado: number
+  /** Y en que se levantó, ya del día siguiente. */
+  levantado: number
+}
+
 export interface AppData {
   /** 1 = taxonomía de grupos gruesos. 2 = taxonomía muscular con conteo fraccional. */
   version: 1 | 2
@@ -891,6 +916,8 @@ export interface AppData {
   salidas?: SalidaAlExterior[]
   /** Los suplementos creados, para reutilizarlos en cualquier comida. */
   suplementos?: Suplemento[]
+  /** Las noches apuntadas: a qué hora se apagó todo y a qué hora se levantó. */
+  noches?: NocheRegistrada[]
   /**
    * Lo que se ha borrado, para que sincronizar no lo resucite. Ver
    * `src/domain/merge.ts`.
