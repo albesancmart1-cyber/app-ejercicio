@@ -29,7 +29,8 @@ import { Boton, Etiqueta, Regla } from '../components/ui'
 import { Tabs, TabsList, TabsTrigger } from '@appica/ui-react/tabs'
 import { Field, FieldLabel } from '@appica/ui-react/field'
 import { Input } from '@appica/ui-react/input'
-import { escribirNumero } from '../domain/numeros'
+import { escribirNumero, leerNumero } from '../domain/numeros'
+import { nombreDeDia } from '../domain/crononutricion'
 
 /** Los cinco destinos de Progreso, en el orden en que se miran. */
 type Seccion = 'semana' | 'mes' | 'ano' | 'cuerpo' | 'ejercicios'
@@ -106,10 +107,18 @@ function BodyCompositionCard({
   reading: TrendReading
 }) {
   const [abierto, setAbierto] = useState(false)
+  /**
+   * Qué día se está escribiendo. Hasta ahora era siempre hoy, y por eso una
+   * lectura mal tecleada se quedaba mal para siempre: no había forma de volver
+   * a un día pasado. Ahora la casilla lleva su fecha, y corregir el martes es
+   * lo mismo que anotar el jueves.
+   */
+  const [fecha, setFecha] = useState(today)
   const [peso, setPeso] = useState('')
   const [grasa, setGrasa] = useState('')
   const [musculo, setMusculo] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [historial, setHistorial] = useState(false)
 
   const ordenadas = sortMeasurements(measurements)
   const ultima = ordenadas[0]
@@ -123,18 +132,55 @@ function BodyCompositionCard({
       ? compareComposition(actual, computeComposition(primera, heightCm))
       : null
 
+  /** Abre la casilla en blanco para un día, o con lo que ya hubiera anotado. */
+  function abrir(dia: string) {
+    const ya = measurements.find((m) => m.date === dia)
+    setFecha(dia)
+    setPeso(ya ? escribirNumero(ya.weightKg) : '')
+    setGrasa(ya?.fatPercent !== undefined ? escribirNumero(ya.fatPercent) : '')
+    setMusculo(ya?.musclePercent !== undefined ? escribirNumero(ya.musclePercent) : '')
+    setError(null)
+    setAbierto(true)
+  }
+
+  function cerrar() {
+    setAbierto(false)
+    setError(null)
+  }
+
   function guardar() {
+    // `leerNumero` y no `Number`: con el teclado español «19,9» son 19,9 y no 199.
+    const kg = leerNumero(peso)
+    if (kg === undefined) {
+      setError('El peso no se entiende. Escríbelo con coma, por ejemplo 82,4.')
+      return
+    }
+    const pctGrasa = grasa.trim() === '' ? undefined : leerNumero(grasa)
+    const pctMusculo = musculo.trim() === '' ? undefined : leerNumero(musculo)
+    if ((grasa.trim() !== '' && pctGrasa === undefined) || (musculo.trim() !== '' && pctMusculo === undefined)) {
+      setError('Los porcentajes no se entienden. Escríbelos con coma, por ejemplo 19,9.')
+      return
+    }
     const medicion: BodyMeasurement = {
-      date: today,
-      weightKg: Number(peso),
-      fatPercent: grasa ? Number(grasa) : undefined,
-      musclePercent: musculo ? Number(musculo) : undefined
+      date: fecha,
+      weightKg: kg,
+      fatPercent: pctGrasa,
+      musclePercent: pctMusculo
     }
     if (!esMedicionValida(medicion)) {
       setError('Esos números no cuadran. Revisa el peso y que grasa y músculo no sumen más de 100 %.')
       return
     }
     actions.saveMeasurement(medicion)
+    setPeso('')
+    setGrasa('')
+    setMusculo('')
+    setError(null)
+    setAbierto(false)
+  }
+
+  function borrar() {
+    actions.deleteMeasurement(fecha)
     setPeso('')
     setGrasa('')
     setMusculo('')
@@ -221,23 +267,70 @@ function BodyCompositionCard({
 
       <Regla />
       {!abierto ? (
-        <Boton tono="callado" onClick={() => setAbierto(true)}>
-          Anotar una medición
-        </Boton>
+        <>
+          <Boton tono="callado" onClick={() => abrir(today)}>
+            {measurements.some((m) => m.date === today) ? 'Corregir la de hoy' : 'Anotar una medición'}
+          </Boton>
+          {ordenadas.length > 0 && (
+            <Boton tono="callado" onClick={() => setHistorial((v) => !v)}>
+              {historial ? 'Ocultar las anteriores' : 'Corregir un día pasado'}
+            </Boton>
+          )}
+          {historial && (
+            <div className="fade-in" style={{ marginTop: 6 }}>
+              <p className="faint" style={{ marginBottom: 8 }}>
+                Toca la lectura que quieras cambiar. Se corrige o se borra, y la tendencia se
+                rehace con el dato bueno.
+              </p>
+              {ordenadas.map((m) => (
+                <button
+                  key={m.date}
+                  className="row"
+                  onClick={() => abrir(m.date)}
+                  style={{
+                    width: '100%',
+                    padding: '11px 0',
+                    background: 'none',
+                    border: 0,
+                    borderTop: '1px solid var(--separator)',
+                    color: 'inherit',
+                    font: 'inherit',
+                    textAlign: 'left',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <span className="dim">{nombreDeDia(m.date, today)}</span>
+                  <span>
+                    {escribirNumero(m.weightKg)} kg
+                    {m.fatPercent !== undefined && (
+                      <span className="faint"> · {escribirNumero(m.fatPercent)} % grasa</span>
+                    )}
+                    {m.musclePercent !== undefined && (
+                      <span className="faint"> · {escribirNumero(m.musclePercent)} % músculo</span>
+                    )}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </>
       ) : (
         <div className="fade-in">
+          <p className="eyebrow" style={{ marginBottom: 10 }}>
+            {`La báscula · ${nombreDeDia(fecha, today).toLowerCase()}`}
+          </p>
           <div className="field-row">
             <Field className="field">
   <FieldLabel>Peso (kg)</FieldLabel>
-  <Input type="number" inputMode="decimal" value={peso} onChange={(e) => setPeso(e.target.value)} />
+  <Input inputMode="decimal" value={peso} onChange={(e) => setPeso(e.target.value)} />
 </Field>
             <Field className="field">
   <FieldLabel>Grasa (%)</FieldLabel>
-  <Input type="number" inputMode="decimal" value={grasa} onChange={(e) => setGrasa(e.target.value)} />
+  <Input inputMode="decimal" value={grasa} onChange={(e) => setGrasa(e.target.value)} />
 </Field>
             <Field className="field">
   <FieldLabel>Músculo (%)</FieldLabel>
-  <Input type="number" inputMode="decimal" value={musculo} onChange={(e) => setMusculo(e.target.value)} />
+  <Input inputMode="decimal" value={musculo} onChange={(e) => setMusculo(e.target.value)} />
 </Field>
           </div>
           {error && (
@@ -249,7 +342,12 @@ function BodyCompositionCard({
           <Boton tono="primario" disabled={!peso} onClick={guardar}>
             Guardar medición
           </Boton>
-          <Boton tono="callado" onClick={() => setAbierto(false)}>
+          {measurements.some((m) => m.date === fecha) && (
+            <Boton tono="callado" onClick={borrar}>
+              Borrar la de ese día
+            </Boton>
+          )}
+          <Boton tono="callado" onClick={cerrar}>
             Cancelar
           </Boton>
         </div>
