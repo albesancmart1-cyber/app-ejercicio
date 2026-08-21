@@ -22,7 +22,9 @@ import { formatDuration } from '../components/Chrono'
 import { computeBalance } from '../domain/muscleBalance'
 import VolumeByMuscle from '../components/VolumeByMuscle'
 import { computeLeptinSignal, explicarCobertura } from '../domain/leptin'
-import { escribirUI, notaDeTemporada, resumenSemanal } from '../domain/vitaminaD'
+import { deElPerfil, escribirUI, notaDeTemporada, resumenSemanal } from '../domain/vitaminaD'
+import { coordenadasDe } from '../domain/jornada'
+import { arcoDelDia } from '../domain/arcoSolar'
 import { useAppData } from '../store/store'
 import { useToday } from '../store/clock'
 import { Boton, Etiqueta, Regla } from '../components/ui'
@@ -371,7 +373,17 @@ export default function Progreso() {
 
   const leptin = computeLeptinSignal(data.checkIns, today, data.profile?.goal, data.sol)
   const cobertura = explicarCobertura(leptin)
-  const solSemana = resumenSemanal(data.sol, today)
+  const coordPerfil = coordenadasDe(data.profile)
+  const quienToma = deElPerfil(data.profile)
+  const solSemana = resumenSemanal(data.sol, today, 7, coordPerfil ?? undefined, quienToma)
+  /*
+   * La nota de invierno ya no sale de una lista de meses: sale de que el arco
+   * de hoy, en este sitio, no llegue al umbral de síntesis. Así aparece en
+   * Noruega en septiembre y no aparece en Quito en enero.
+   */
+  const notaSol = coordPerfil
+    ? notaDeTemporada(today, coordPerfil, arcoDelDia(today, coordPerfil).elevacionMaxima)
+    : undefined
 
   if (ficha) {
     return (
@@ -523,15 +535,15 @@ export default function Progreso() {
           <>
             <p className="dim">
               {solSemana.diasConSol} de {solSemana.dias} días con sol
-              {solSemana.diasDeMediodia > 0
-                ? `, ${solSemana.diasDeMediodia} de ellos al mediodía — que es el que sintetiza`
+              {solSemana.diasQueSintetizan > 0
+                ? `, ${solSemana.diasQueSintetizan} de ellos con el sol lo bastante alto para sintetizar`
                 : ''}
               . Acumuladas {escribirUI(solSemana.ui)} de vitamina D.
             </p>
           </>
         )}
-        {notaDeTemporada(today) && (
-          <p className="faint" style={{ marginTop: 8 }}>{notaDeTemporada(today)}</p>
+        {notaSol && (
+          <p className="faint" style={{ marginTop: 8 }}>{notaSol}</p>
         )}
       </div>
 

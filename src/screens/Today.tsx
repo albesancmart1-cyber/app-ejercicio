@@ -21,6 +21,7 @@ import type { AppData } from '../domain/types'
 import type { DatosDeLuz } from '../domain/explicacionPeso'
 import { coordenadasDe } from '../domain/jornada'
 import { desfaseHorario } from '../domain/arcoSolar'
+import { deElPerfil } from '../domain/vitaminaD'
 import { useToday } from '../store/clock'
 import { findActiveSession } from '../domain/activeSession'
 import { razonesCortas, resumenDelPlan, tituloDeHoy } from '../domain/decision'
@@ -399,7 +400,12 @@ export default function Today() {
             luz={datosDeLuz(data)}
             todayIso={today}
           />
-          <SolDeHoy sol={data.sol} todayIso={today} />
+          <SolDeHoy
+            sol={data.sol}
+            todayIso={today}
+            coord={coordenadasDe(data.profile) ?? undefined}
+            quien={deElPerfil(data.profile)}
+          />
         </div>
       )}
 

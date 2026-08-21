@@ -1,27 +1,51 @@
 /**
- * Sol de verdad: minutos, franja y piel — y la vitamina D que eso da.
+ * Sol de verdad, y la vitamina D que da.
  *
- * «¿Te dio el sol ayer?» con un sí o un no no distingue cinco minutos por la
- * ventana de una hora a mediodía, y la diferencia fisiológica entre ambos es
- * enorme. Aquí el sol se apunta como lo que es: cuánto tiempo, a qué hora y
- * con cuánta piel.
+ * ## La fórmula
  *
- * **La estimación de UI es honesta o no es.** La síntesis depende del UVB que
- * llega, y en España (~40° N) eso significa dos cosas que el modelo respeta:
+ * Se calcula la síntesis a partir del índice UV, que a su vez sale de la altura
+ * real del sol. Es el modelo de referencia habitual:
  *
- *  - Solo la franja del mediodía (≈12–16 h solar) trae UVB en serio. Por la
- *    mañana temprano y a última hora el ángulo del sol lo filtra casi entero.
- *  - **De noviembre a febrero apenas hay síntesis** a esta latitud — el
- *    «invierno vitamínico»— y la app lo dice tal cual en vez de repartir UI
- *    imaginarias.
+ * ```
+ * UI/min = UVI × k × f_fototipo × f_piel × f_edad × f_altitud
  *
- * Los números salen de la referencia clásica: una exposición de cuerpo entero
- * al mediodía de verano produce del orden de 10 000–20 000 UI en 15–30 minutos
- * (≈1 dosis eritemal mínima, Holick). De ahí se escala por fracción de piel y
- * por temporada, **siempre como rango**: la piel, la edad y hasta la nubosidad
- * mueven el resultado, y dar una cifra exacta sería mentir con decimales.
+ * UVI  = 12,5 · cos(SZA)^1,5     con SZA = 90° − elevación (cielo despejado)
+ *      = 0                        por debajo de 30° de elevación
+ * k    = 21 UI/min·UVI            referencia: fototipo II, 25 % piel, 30 años
+ * ```
+ *
+ * El corte en 30° es la regla de Holick: por debajo de esa altura el camino que
+ * la luz recorre por la atmósfera es tan largo que el UVB se absorbe casi
+ * entero, y la piel no sintetiza por mucho que se note el calor.
+ *
+ * Referencias: Webb 2006; Holick; MacLaughlin & Holick 1985; Blumthaler 1997.
+ *
+ * ## Qué arregla esto respecto a lo que había
+ *
+ * La versión anterior repartía por franjas horarias —«mediodía» de 12 a 16 h
+ * valía uno y el resto un cuarto— y llevaba una función `esInviernoVitaminico()`
+ * con los meses de noviembre a febrero **escritos a mano**. Eso significaba dos
+ * cosas malas: que el mediodía de diciembre sintetizaba casi como el de junio, y
+ * que alguien en Quito o en Tromsø recibía las suposiciones de 40° N.
+ *
+ * Con la elevación real las dos desaparecen solas. En Madrid en diciembre el sol
+ * no pasa de 26°, así que el resultado es cero **sin que nadie tenga que saber
+ * que diciembre es invierno**, y en el hemisferio sur funciona sin tocar nada.
+ * Por eso `esInviernoVitaminico()` ya no existe.
+ *
+ * ## Lo que la fórmula no incluye, y lo que hacemos con ello
+ *
+ * La referencia es de cielo despejado y lo dice: sin nubes, ozono ni aerosoles.
+ * Lo que se ve en el cielo se aplica encima como **un factor nuestro**, desde
+ * `domain/cielo.ts`, separado a propósito para que se distinga la referencia
+ * publicada de nuestra estimación.
+ *
+ * Y sigue siendo una **estimación, no una medida**. Por eso todo lo que sale de
+ * aquí se da como rango y se escribe con «unas».
  */
-import type { DiaDeSol, ExposicionSolar, FranjaSolar, PielExpuesta } from './types'
+import type { DiaDeSol, ExposicionSolar, FranjaSolar, PielExpuesta, Profile } from './types'
+import { elevacionSolar, type Coordenadas } from './arcoSolar'
+import { factorDeCielo } from './cielo'
 
 export const FRANJAS: Record<FranjaSolar, string> = {
   manana: 'Por la mañana',
@@ -29,46 +53,145 @@ export const FRANJAS: Record<FranjaSolar, string> = {
   tarde: 'Por la tarde'
 }
 
+/* ══════════════════════════════════════════════ CUÁNTA PIEL ══ */
+
+/**
+ * Fracción de superficie corporal expuesta, por la regla de los nueves.
+ *
+ * Los tres primeros identificadores son los de siempre y **no se tocan**: hay
+ * exposiciones ya guardadas que los usan, y renombrarlos las dejaría sin leer.
+ */
+export const PIEL_PCT: Record<PielExpuesta, number> = {
+  cara_manos: 5,
+  antebrazos: 12,
+  brazos_piernas: 30,
+  torso: 45,
+  banador: 70,
+  entero: 90
+}
+
 export const PIELES: Record<PielExpuesta, string> = {
   cara_manos: 'Cara y manos',
-  brazos_piernas: 'Brazos o piernas',
-  torso: 'Torso descubierto'
+  antebrazos: 'Cara, manos y antebrazos',
+  brazos_piernas: 'Manga corta y pantalón corto',
+  torso: 'Torso descubierto',
+  banador: 'En bañador',
+  entero: 'Cuerpo entero'
+}
+
+/** De la menos piel a la más, para ofrecerlas en orden. */
+export const ORDEN_PIEL: PielExpuesta[] = [
+  'cara_manos',
+  'antebrazos',
+  'brazos_piernas',
+  'torso',
+  'banador',
+  'entero'
+]
+
+/* ══════════════════════════════════════════════ FOTOTIPO ══ */
+
+export type Fototipo = 'I' | 'II' | 'III' | 'IV' | 'V' | 'VI'
+
+export const ORDEN_FOTOTIPO: Fototipo[] = ['I', 'II', 'III', 'IV', 'V', 'VI']
+
+/** Cuánto sintetiza cada fototipo respecto al II, que es la referencia de `k`. */
+export const F_FOTOTIPO: Record<Fototipo, number> = {
+  I: 1.5,
+  II: 1,
+  III: 0.7,
+  IV: 0.5,
+  V: 0.3,
+  VI: 0.2
+}
+
+export const FOTOTIPOS: Record<Fototipo, string> = {
+  I: 'Muy clara. Siempre se quema, nunca se broncea',
+  II: 'Clara. Se quema con facilidad, se broncea poco',
+  III: 'Media. A veces se quema, se broncea poco a poco',
+  IV: 'Morena. Se quema poco, se broncea bien',
+  V: 'Oscura. Rara vez se quema',
+  VI: 'Muy oscura. No se quema'
+}
+
+export const FOTOTIPO_POR_DEFECTO: Fototipo = 'III'
+
+/* ══════════════════════════════════════════════ LA FÓRMULA ══ */
+
+const RAD = Math.PI / 180
+
+/** UI por minuto y por unidad de índice UV, en la referencia. */
+export const K_UI_POR_MIN_UVI = 21
+
+/** La altura mínima a la que hay síntesis. Regla de Holick. */
+export const ELEVACION_MINIMA = 30
+
+/** El porcentaje de piel de la referencia de `k`. */
+const PIEL_DE_REFERENCIA = 25
+
+/**
+ * El índice UV de cielo despejado a una altura del sol.
+ *
+ * Por debajo de 30° devuelve cero, y ahí hay un salto: justo en el umbral el
+ * valor no es pequeño, es 4,4. El corte es el de la referencia y se respeta tal
+ * cual — suavizarlo sería inventarse una curva que nadie ha publicado — pero
+ * queda dicho para que nadie lo lea como un error.
+ */
+export function indiceUV(elevacionGrados: number): number {
+  if (elevacionGrados < ELEVACION_MINIMA) return 0
+  const sza = 90 - elevacionGrados
+  return 12.5 * Math.cos(sza * RAD) ** 1.5
+}
+
+/** Cuánto pierde la piel con la edad. Nunca baja de un cuarto. */
+export function factorEdad(edad: number | undefined): number {
+  if (edad === undefined || !Number.isFinite(edad)) return 1
+  return Math.max(0.25, 1 - 0.012 * (edad - 20))
+}
+
+/** La altitud suma UV: un 10 % por cada mil metros. */
+export function factorAltitud(metros: number | undefined): number {
+  if (metros === undefined || !Number.isFinite(metros)) return 1
+  return 1 + 0.1 * (Math.max(0, metros) / 1000)
+}
+
+export function factorPiel(piel: PielExpuesta): number {
+  return PIEL_PCT[piel] / PIEL_DE_REFERENCIA
+}
+
+/** Quién toma el sol: lo que la fórmula necesita saber de la persona. */
+export interface QuienToma {
+  fototipo?: Fototipo
+  edad?: number
+  altitudM?: number
+}
+
+export function deElPerfil(p: Profile | null | undefined): QuienToma {
+  return { fototipo: p?.fototipo, edad: p?.age, altitudM: p?.altitudM }
 }
 
 /**
- * UI por minuto al mediodía de temporada alta, según la piel expuesta.
- * Rangos, no cifras: piel clara-media en latitud española.
+ * UI por minuto con el sol a una altura dada.
+ *
+ * Es la fórmula entera en una línea, y de aquí sale todo lo demás.
  */
-const UI_POR_MINUTO: Record<PielExpuesta, { min: number; max: number }> = {
-  cara_manos: { min: 40, max: 100 },
-  brazos_piernas: { min: 150, max: 350 },
-  torso: { min: 300, max: 650 }
-}
-
-/** Fuera del mediodía el UVB cae en picado. */
-const FACTOR_FRANJA: Record<FranjaSolar, number> = {
-  manana: 0.25,
-  mediodia: 1,
-  tarde: 0.25
-}
-
-/**
- * La piel satura: pasada media hora eficaz, la propia piel degrada la
- * previtamina D y seguir al sol ya no suma en proporción.
- */
-const MINUTOS_EFICACES = 40
-
-/** Techo diario razonable de síntesis. */
-const TOPE_UI_DIA = 20000
-
-/** De noviembre a febrero, a ~40° N, la síntesis es casi nula. */
-export function esInviernoVitaminico(mes: number): boolean {
-  return mes === 11 || mes === 12 || mes === 1 || mes === 2
-}
-
-/** El mes (1–12) de una fecha ISO. */
-export function mesDe(iso: string): number {
-  return Number(iso.slice(5, 7))
+export function uiPorMinuto(
+  elevacionGrados: number,
+  piel: PielExpuesta,
+  quien: QuienToma,
+  factorCielo = 1
+): number {
+  const uvi = indiceUV(elevacionGrados)
+  if (uvi === 0) return 0
+  return (
+    uvi *
+    K_UI_POR_MIN_UVI *
+    F_FOTOTIPO[quien.fototipo ?? FOTOTIPO_POR_DEFECTO] *
+    factorPiel(piel) *
+    factorEdad(quien.edad) *
+    factorAltitud(quien.altitudM) *
+    factorCielo
+  )
 }
 
 export interface RangoUI {
@@ -76,33 +199,120 @@ export interface RangoUI {
   max: number
 }
 
-/** Las UI estimadas de una exposición suelta, ya con temporada y franja. */
-export function uiDeExposicion(e: ExposicionSolar, mes: number): RangoUI {
+/**
+ * El rango alrededor de la cifra.
+ *
+ * La fórmula da un número, pero la piel, la hidratación, el ozono del día y la
+ * postura mueven el resultado tanto que darlo con decimales sería mentir. Se
+ * abre un ±30 %, que es el orden de la dispersión que reconocen las propias
+ * referencias.
+ */
+const DISPERSION = 0.3
+
+function comoRango(ui: number): RangoUI {
+  return { min: Math.round(ui * (1 - DISPERSION)), max: Math.round(ui * (1 + DISPERSION)) }
+}
+
+/**
+ * La piel satura: pasada media hora eficaz, la propia piel degrada la
+ * previtamina D y seguir al sol ya no suma en proporción.
+ */
+export const MINUTOS_EFICACES = 40
+
+/** Techo diario razonable de síntesis. */
+export const TOPE_UI_DIA = 20000
+
+/* ══════════════════════════════════════════════ UNA EXPOSICIÓN ══ */
+
+/** Fuera del mediodía el UVB cae en picado. Solo para registros sin hora. */
+const FACTOR_FRANJA: Record<FranjaSolar, number> = {
+  manana: 0.25,
+  mediodia: 1,
+  tarde: 0.25
+}
+
+/** El mes (1–12) de una fecha ISO. */
+export function mesDe(iso: string): number {
+  return Number(iso.slice(5, 7))
+}
+
+/**
+ * Las UI de un rato de sol.
+ *
+ * Con `desde` se integra **minuto a minuto** con la altura real del sol, que es
+ * lo que hace que las once de la mañana de junio y las once de diciembre dejen
+ * de dar lo mismo. Sin `desde` —los registros de antes de este cambio— se usa
+ * el camino viejo de la franja, para que lo ya apuntado **siga dando
+ * exactamente el mismo número que daba**.
+ */
+export function uiDeExposicion(
+  e: ExposicionSolar,
+  fecha: string,
+  coord?: Coordenadas,
+  quien: QuienToma = {},
+  desfaseMin?: number
+): RangoUI {
   const minutos = Math.min(Math.max(0, e.minutos), MINUTOS_EFICACES)
-  const base = UI_POR_MINUTO[e.piel]
-  // 0,05 y no un número mayor: en diciembre a 40° N el índice UV del mediodía
-  // ronda el 2, y por debajo de 3 la síntesis es residual.
-  const temporada = esInviernoVitaminico(mes) ? 0.05 : 1
-  const factor = FACTOR_FRANJA[e.franja] * temporada
+  if (minutos === 0) return { min: 0, max: 0 }
+
+  // Camino viejo: sin hora o sin coordenadas no hay elevación que calcular.
+  if (e.desde === undefined || !coord) return porFranja(e, minutos, mesDe(fecha))
+
+  const cielo = factorDeCielo(e.cielo)
+  let ui = 0
+  for (let i = 0; i < minutos; i++) {
+    const elev = elevacionSolar(fecha, coord, e.desde + i, desfaseMin)
+    ui += uiPorMinuto(elev, e.piel, quien, cielo)
+  }
+  return comoRango(ui)
+}
+
+/**
+ * El cálculo de antes de este cambio, conservado tal cual.
+ *
+ * Vive aquí y no se borra porque hay exposiciones guardadas que no tienen hora,
+ * y recalcularlas con la fórmula nueva les inventaría un dato que nadie apuntó.
+ * Lo viejo se lee como se escribió.
+ */
+const UI_POR_MINUTO_VIEJO: Record<PielExpuesta, RangoUI> = {
+  cara_manos: { min: 40, max: 100 },
+  antebrazos: { min: 90, max: 220 },
+  brazos_piernas: { min: 150, max: 350 },
+  torso: { min: 300, max: 650 },
+  banador: { min: 450, max: 1000 },
+  entero: { min: 600, max: 1300 }
+}
+
+function porFranja(e: ExposicionSolar, minutos: number, mes: number): RangoUI {
+  const base = UI_POR_MINUTO_VIEJO[e.piel]
+  // La misma corrección de temporada que tenía: de noviembre a febrero, a
+  // nuestra latitud, la síntesis era residual.
+  const invierno = mes === 11 || mes === 12 || mes === 1 || mes === 2
+  const factor = FACTOR_FRANJA[e.franja] * (invierno ? 0.05 : 1)
   return {
     min: Math.round(base.min * minutos * factor),
     max: Math.round(base.max * minutos * factor)
   }
 }
 
+/* ══════════════════════════════════════════════ EL DÍA ══ */
+
 /**
  * Las UI del día. La cifra manual manda: si el usuario la trae de una app que
  * la calcula con más datos que nosotros, estimar por encima sería empeorarla.
- * Sin cifra manual, se estima de las exposiciones.
  */
-export function uiDelDia(dia: DiaDeSol | undefined): RangoUI | undefined {
+export function uiDelDia(
+  dia: DiaDeSol | undefined,
+  coord?: Coordenadas,
+  quien: QuienToma = {},
+  desfaseMin?: number
+): RangoUI | undefined {
   if (!dia) return undefined
   if (dia.ui !== undefined) return { min: dia.ui, max: dia.ui }
   if (dia.exposiciones.length === 0) return undefined
-  const mes = mesDe(dia.date)
   const suma = dia.exposiciones.reduce(
     (a, e) => {
-      const r = uiDeExposicion(e, mes)
+      const r = uiDeExposicion(e, dia.date, coord, quien, desfaseMin)
       return { min: a.min + r.min, max: a.max + r.max }
     },
     { min: 0, max: 0 }
@@ -127,6 +337,53 @@ export function escribirUI(r: RangoUI): string {
   if (r.max < 100) return 'una síntesis mínima'
   return `unas ${red(r.min)}–${red(r.max)} UI`
 }
+
+/* ══════════════════════════════════════════════ QUEMARSE ══ */
+
+/**
+ * La dosis eritemática mínima de cada fototipo, en J/m².
+ *
+ * **Aquí nos apartamos de la fórmula de referencia a propósito, y conviene
+ * dejarlo escrito.** La que venía era `MED_min = 25 / (UVI × f_fototipo)`, que
+ * con un índice UV de 11,7 da 2,1 minutos para el fototipo II. Las tablas
+ * publicadas de tiempo de quemadura dan unos catorce para ese caso, así que un
+ * aviso construido sobre esa versión saltaría a los dos minutos casi cualquier
+ * día de verano — y un aviso que salta siempre se ignora, que es lo contrario
+ * de lo que debe hacer un aviso de quemadura.
+ *
+ * Se usa entonces la dosis en J/m² por fototipo sobre la irradiancia
+ * eritemática del índice UV, que es de donde salen esas tablas.
+ */
+export const MED_J_M2: Record<Fototipo, number> = {
+  I: 200,
+  II: 250,
+  III: 350,
+  IV: 450,
+  V: 600,
+  VI: 1000
+}
+
+/** Un punto de índice UV son 0,025 W/m² de irradiancia eritemática. */
+const W_POR_UVI = 0.025
+
+/**
+ * Minutos hasta empezar a enrojecer con el sol a esa altura.
+ *
+ * `null` cuando no hay UV que queme: de noche, o con el sol tan bajo que el
+ * índice es cero. Devolver un número enorme sería peor que decir que no aplica.
+ */
+export function minutosParaQuemarse(
+  elevacionGrados: number,
+  quien: QuienToma,
+  cieloFactor = 1
+): number | null {
+  const uvi = indiceUV(elevacionGrados) * cieloFactor
+  if (uvi <= 0) return null
+  const med = MED_J_M2[quien.fototipo ?? FOTOTIPO_POR_DEFECTO]
+  return med / (uvi * W_POR_UVI) / 60
+}
+
+/* ══════════════════════════════════════════════ LA SEMANA ══ */
 
 /** El día de una fecha, del registro completo. */
 export function solDe(sol: DiaDeSol[] | undefined, fecha: string): DiaDeSol | undefined {
@@ -166,21 +423,27 @@ export interface ResumenSolar {
   ui: RangoUI
   /** Días con al menos un rato de sol apuntado. */
   diasConSol: number
-  /** Días con sol de mediodía, que es el que sintetiza. */
-  diasDeMediodia: number
+  /** Días con síntesis de verdad: con el sol por encima del umbral. */
+  diasQueSintetizan: number
   /** La ventana mirada, en días. */
   dias: number
 }
 
-/** La semana de sol: cuánta vitamina D y cuántos días de mediodía. */
-export function resumenSemanal(sol: DiaDeSol[] | undefined, todayIso: string, dias = 7): ResumenSolar {
+/** La semana de sol: cuánta vitamina D y cuántos días sintetizaron. */
+export function resumenSemanal(
+  sol: DiaDeSol[] | undefined,
+  todayIso: string,
+  dias = 7,
+  coord?: Coordenadas,
+  quien: QuienToma = {}
+): ResumenSolar {
   const desde = new Date(Date.parse(`${todayIso}T00:00:00Z`) - (dias - 1) * 86400000)
     .toISOString()
     .slice(0, 10)
   const ventana = (sol ?? []).filter((d) => d.date >= desde && d.date <= todayIso)
   const ui = ventana.reduce(
     (a, d) => {
-      const r = uiDelDia(d)
+      const r = uiDelDia(d, coord, quien)
       return r ? { min: a.min + r.min, max: a.max + r.max } : a
     },
     { min: 0, max: 0 }
@@ -188,18 +451,29 @@ export function resumenSemanal(sol: DiaDeSol[] | undefined, todayIso: string, di
   return {
     ui,
     diasConSol: ventana.filter((d) => minutosDelDia(d) > 0).length,
-    diasDeMediodia: ventana.filter((d) => d.exposiciones.some((e) => e.franja === 'mediodia' && e.minutos >= 10))
-      .length,
+    // Con la fórmula nueva «día que sintetiza» ya no es una franja horaria:
+    // es que de verdad hubiera UVB, que es lo único que importaba de la franja.
+    diasQueSintetizan: ventana.filter((d) => {
+      const r = uiDelDia(d, coord, quien)
+      return r !== undefined && r.max > 100
+    }).length,
     dias
   }
 }
 
 /**
- * La nota de temporada, cuando toca. En invierno la app no reparte UI
- * imaginarias: dice que el sol de estos meses no sintetiza y para qué sigue
- * sirviendo (el ritmo circadiano se ancla igual).
+ * La nota de temporada, cuando toca.
+ *
+ * Ya no sale de una lista de meses: sale de que hoy, en este sitio, el arco no
+ * llegue al umbral. Así aparece en Noruega en septiembre y no aparece en Quito
+ * en enero, que es lo correcto y lo que la versión anterior no podía hacer.
  */
-export function notaDeTemporada(todayIso: string): string | undefined {
-  if (!esInviernoVitaminico(mesDe(todayIso))) return undefined
-  return 'De noviembre a febrero, a nuestra latitud, la piel apenas sintetiza vitamina D por bajo que esté el sol. El rato fuera sigue contando — ancla tu reloj y tu leptina — pero la vitamina D de estos meses sale de lo que sintetizaste en verano, del pescado azul o de un suplemento.'
+export function notaDeTemporada(
+  todayIso: string,
+  coord?: Coordenadas,
+  elevacionMaxima?: number
+): string | undefined {
+  if (!coord || elevacionMaxima === undefined) return undefined
+  if (elevacionMaxima >= ELEVACION_MINIMA) return undefined
+  return `Hoy el sol no pasa de ${elevacionMaxima.toLocaleString('es-ES', { maximumFractionDigits: 0 })}° en tu sitio, y por debajo de ${ELEVACION_MINIMA}° la piel no sintetiza vitamina D. El rato fuera sigue contando —ancla tu reloj y tu leptina— pero la vitamina D de estos días sale de lo que guardaste en verano, del pescado azul o de un suplemento.`
 }

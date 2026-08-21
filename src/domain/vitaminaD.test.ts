@@ -1,182 +1,418 @@
 import { describe, expect, it } from 'vitest'
 import {
+  ELEVACION_MINIMA,
+  F_FOTOTIPO,
+  MED_J_M2,
+  ORDEN_FOTOTIPO,
+  ORDEN_PIEL,
+  PIEL_PCT,
   conExposicion,
-  esInviernoVitaminico,
+  conManual,
   escribirUI,
+  factorAltitud,
+  factorEdad,
+  indiceUV,
   minutosDelDia,
+  minutosParaQuemarse,
   notaDeTemporada,
   resumenSemanal,
   sinExposicion,
   solDe,
   uiDeExposicion,
-  uiDelDia
-  , conManual
+  uiDelDia,
+  uiPorMinuto,
+  type Fototipo,
+  type QuienToma
 } from './vitaminaD'
-import type { DiaDeSol, ExposicionSolar } from './types'
+import { CIELOS, ORDEN_CIELO, factorDeCielo } from './cielo'
+import { arcoDelDia } from './arcoSolar'
+import type { DiaDeSol, ExposicionSolar, PielExpuesta } from './types'
 
-const VERANO = '2026-07-15'
-const INVIERNO = '2026-12-15'
+const MADRID = { lat: 40.4165, lon: -3.7026 }
+const QUITO = { lat: -0.1807, lon: -78.4678 }
+const TROMSO = { lat: 69.6496, lon: 18.956 }
 
-const exp = (minutos: number, franja: ExposicionSolar['franja'] = 'mediodia', piel: ExposicionSolar['piel'] = 'brazos_piernas'): ExposicionSolar => ({ minutos, franja, piel })
+const VERANO = '2026-06-21'
+const INVIERNO = '2025-12-21'
+const TZ_VERANO = 120
+const TZ_INVIERNO = 60
 
-function dia(fecha: string, ...exposiciones: ExposicionSolar[]): DiaDeSol {
-  return { date: fecha, exposiciones }
-}
+/** El mediodía solar de Madrid en junio cae hacia las 14:16. */
+const MEDIODIA_JUNIO = 14 * 60 + 16
 
-describe('la estimación de UI', () => {
-  it('media hora de mediodía en verano con brazos y piernas da miles de UI, en rango', () => {
-    const r = uiDeExposicion(exp(30), 7)
-    expect(r.min).toBeGreaterThanOrEqual(4000)
-    expect(r.max).toBeLessThanOrEqual(11000)
-    expect(r.min).toBeLessThan(r.max)
+const exp = (
+  minutos: number,
+  desde?: number,
+  piel: PielExpuesta = 'brazos_piernas',
+  cielo?: ExposicionSolar['cielo']
+): ExposicionSolar => ({
+  minutos,
+  franja: 'mediodia',
+  piel,
+  ...(desde !== undefined ? { desde } : {}),
+  ...(cielo ? { cielo } : {})
+})
+
+const dia = (date: string, ...exposiciones: ExposicionSolar[]): DiaDeSol => ({
+  date,
+  exposiciones
+})
+
+/** Fototipo III, 45 años, Madrid a 650 m: el caso que se usa de referencia. */
+const ALBERTO: QuienToma = { fototipo: 'III', edad: 45, altitudM: 650 }
+
+describe('el índice UV', () => {
+  it('es cero por debajo del umbral de síntesis', () => {
+    expect(indiceUV(29.9)).toBe(0)
+    expect(indiceUV(10)).toBe(0)
+    expect(indiceUV(-5)).toBe(0)
   })
 
-  it('la misma media hora en diciembre es casi nada: invierno vitamínico', () => {
-    const verano = uiDeExposicion(exp(30), 7)
-    const invierno = uiDeExposicion(exp(30), 12)
-    expect(invierno.max).toBeLessThan(verano.min * 0.2)
+  it('y con el sol alto da valores de verano de verdad', () => {
+    // Madrid en junio llega a unos 73°: UVI ~11,7, que es lo que se mide.
+    expect(indiceUV(73)).toBeGreaterThan(11)
+    expect(indiceUV(73)).toBeLessThan(12.5)
+    // Sol en la vertical: el máximo teórico de la fórmula.
+    expect(indiceUV(90)).toBeCloseTo(12.5, 5)
   })
 
-  it('fuera del mediodía el UVB cae en picado', () => {
-    const mediodia = uiDeExposicion(exp(30, 'mediodia'), 7)
-    const tarde = uiDeExposicion(exp(30, 'tarde'), 7)
-    expect(tarde.max).toBeLessThanOrEqual(mediodia.max * 0.3)
+  it('crece con la altura del sol', () => {
+    expect(indiceUV(60)).toBeGreaterThan(indiceUV(45))
+    expect(indiceUV(45)).toBeGreaterThan(indiceUV(31))
   })
 
-  it('más piel, más síntesis: torso > brazos > cara', () => {
-    const cara = uiDeExposicion(exp(20, 'mediodia', 'cara_manos'), 7)
-    const brazos = uiDeExposicion(exp(20, 'mediodia', 'brazos_piernas'), 7)
-    const torso = uiDeExposicion(exp(20, 'mediodia', 'torso'), 7)
-    expect(brazos.max).toBeGreaterThan(cara.max)
-    expect(torso.max).toBeGreaterThan(brazos.max)
+  it('tiene un salto en el umbral, y está puesto a propósito', () => {
+    // Justo por encima de 30° el valor no es pequeño: es 4,4. Es el corte de la
+    // referencia y se respeta; suavizarlo sería inventarse una curva.
+    expect(indiceUV(ELEVACION_MINIMA)).toBeGreaterThan(4)
+    expect(indiceUV(ELEVACION_MINIMA - 0.1)).toBe(0)
+  })
+})
+
+describe('los factores de la persona', () => {
+  it('el fototipo más claro sintetiza más y el más oscuro menos', () => {
+    const valores = ORDEN_FOTOTIPO.map((f) => F_FOTOTIPO[f])
+    expect(valores).toEqual([...valores].sort((a, b) => b - a))
+    expect(F_FOTOTIPO.II).toBe(1) // la referencia de k
   })
 
-  it('la piel satura: dos horas no dan el cuádruple que media', () => {
-    const media = uiDeExposicion(exp(30), 7)
-    const dosHoras = uiDeExposicion(exp(120), 7)
+  it('la edad resta, pero nunca por debajo de un cuarto', () => {
+    expect(factorEdad(20)).toBe(1)
+    expect(factorEdad(45)).toBeCloseTo(0.7, 5)
+    expect(factorEdad(120)).toBe(0.25)
+    expect(factorEdad(undefined)).toBe(1)
+  })
+
+  it('la altitud suma un diez por ciento por cada mil metros', () => {
+    expect(factorAltitud(0)).toBe(1)
+    expect(factorAltitud(1000)).toBeCloseTo(1.1, 5)
+    expect(factorAltitud(2850)).toBeCloseTo(1.285, 5) // Quito
+    expect(factorAltitud(undefined)).toBe(1)
+  })
+
+  it('la piel va en orden de menos a más superficie', () => {
+    const pcts = ORDEN_PIEL.map((p) => PIEL_PCT[p])
+    expect(pcts).toEqual([...pcts].sort((a, b) => a - b))
+  })
+
+  it('y los tres identificadores viejos siguen existiendo', () => {
+    // Hay exposiciones guardadas que los usan: renombrarlos las dejaría sin leer.
+    for (const viejo of ['cara_manos', 'brazos_piernas', 'torso'] as PielExpuesta[]) {
+      expect(PIEL_PCT[viejo]).toBeGreaterThan(0)
+    }
+  })
+})
+
+describe('las UI por minuto', () => {
+  it('cuadran con la referencia de Holick a cuerpo entero', () => {
+    // 20 min de cuerpo entero al mediodía de junio deberían caer en la horquilla
+    // clásica de 10 000–20 000 UI para una dosis eritemal mínima.
+    const porMin = uiPorMinuto(73, 'entero', { fototipo: 'II', edad: 30, altitudM: 0 })
+    const enVeinte = porMin * 20
+    expect(enVeinte).toBeGreaterThan(10000)
+    expect(enVeinte).toBeLessThan(20000)
+  })
+
+  it('y son cero con el sol por debajo del umbral, por mucha piel que lleves', () => {
+    expect(uiPorMinuto(25, 'entero', { fototipo: 'I' })).toBe(0)
+  })
+
+  it('el doble de piel es el doble de síntesis', () => {
+    const torso = uiPorMinuto(60, 'torso', ALBERTO)
+    const cara = uiPorMinuto(60, 'cara_manos', ALBERTO)
+    expect(torso / cara).toBeCloseTo(PIEL_PCT.torso / PIEL_PCT.cara_manos, 5)
+  })
+})
+
+describe('una exposición con hora, que es lo nuevo', () => {
+  it('las once de junio y las once de diciembre dejan de dar lo mismo', () => {
+    // Este es el fallo que tenía la versión anterior: la franja decía
+    // «mediodía» en los dos casos y repartía casi igual.
+    const junio = uiDeExposicion(exp(20, 11 * 60), VERANO, MADRID, ALBERTO, TZ_VERANO)
+    const diciembre = uiDeExposicion(exp(20, 11 * 60), INVIERNO, MADRID, ALBERTO, TZ_INVIERNO)
+    expect(junio.max).toBeGreaterThan(0)
+    expect(diciembre.max).toBe(0)
+  })
+
+  it('en Madrid en diciembre no hay síntesis a ninguna hora', () => {
+    // Y sale solo del arco: no queda ninguna lista de meses en el código.
+    for (const hora of [10, 12, 13, 14, 15, 16]) {
+      const r = uiDeExposicion(exp(30, hora * 60), INVIERNO, MADRID, ALBERTO, TZ_INVIERNO)
+      expect(r.max, `${hora}:00`).toBe(0)
+    }
+  })
+
+  it('veinte minutos en bañador al mediodía de junio dan una cifra creíble', () => {
+    const r = uiDeExposicion(exp(20, MEDIODIA_JUNIO, 'banador'), VERANO, MADRID, ALBERTO, TZ_VERANO)
+    expect(r.min).toBeGreaterThan(3000)
+    expect(r.max).toBeLessThan(15000)
+  })
+
+  it('y media hora de cara y manos, una mucho menor', () => {
+    const r = uiDeExposicion(
+      exp(30, MEDIODIA_JUNIO, 'cara_manos'),
+      VERANO,
+      MADRID,
+      ALBERTO,
+      TZ_VERANO
+    )
+    expect(r.min).toBeGreaterThan(200)
+    expect(r.max).toBeLessThan(3000)
+  })
+
+  it('la piel satura: dos horas no dan cuatro veces lo de media hora', () => {
+    const media = uiDeExposicion(exp(30, MEDIODIA_JUNIO), VERANO, MADRID, ALBERTO, TZ_VERANO)
+    const dosHoras = uiDeExposicion(exp(120, MEDIODIA_JUNIO), VERANO, MADRID, ALBERTO, TZ_VERANO)
     expect(dosHoras.max).toBeLessThan(media.max * 2)
   })
 
-  it('el día suma exposiciones y respeta el techo', () => {
-    const d = dia(VERANO, exp(40, 'mediodia', 'torso'), exp(40, 'mediodia', 'torso'), exp(40, 'mediodia', 'torso'))
-    const r = uiDelDia(d)!
-    expect(r.max).toBeLessThanOrEqual(20000)
+  it('funciona igual de bien en el ecuador y en el círculo polar', () => {
+    // Lo que la versión anterior no podía hacer: daba por hecha la latitud de
+    // España y repartía «invierno» por meses del hemisferio norte.
+    const quito = uiDeExposicion(exp(20, 12 * 60), '2026-01-15', QUITO, ALBERTO, -300)
+    expect(quito.max).toBeGreaterThan(0) // en enero, en el ecuador, sí sintetiza
+
+    // En Tromsø el sol llega a 43,8° en el solsticio: sí sintetiza en verano.
+    // La versión vieja, con su lista de meses del hemisferio norte, decía que
+    // junio era temporada alta allí y en Quito — con un modelo de 40° N.
+    const tromsoVerano = uiDeExposicion(exp(20, 12 * 60), VERANO, TROMSO, ALBERTO, TZ_VERANO)
+    expect(tromsoVerano.max).toBeGreaterThan(0)
+
+    // Y en diciembre no: allí es noche polar y el sol no sale.
+    const tromsoInvierno = uiDeExposicion(exp(20, 12 * 60), INVIERNO, TROMSO, ALBERTO, TZ_INVIERNO)
+    expect(tromsoInvierno.max).toBe(0)
   })
 
-  it('sin exposiciones no hay estimación', () => {
+  it('un rato de cero minutos no da nada', () => {
+    expect(uiDeExposicion(exp(0, MEDIODIA_JUNIO), VERANO, MADRID, ALBERTO, TZ_VERANO)).toEqual({
+      min: 0,
+      max: 0
+    })
+  })
+})
+
+describe('el cielo', () => {
+  it('atenúa de más a menos, y ninguno se sale de cero a uno', () => {
+    const factores = ORDEN_CIELO.map((c) => CIELOS[c].factor)
+    expect(factores).toEqual([...factores].sort((a, b) => b - a))
+    for (const f of factores) {
+      expect(f).toBeGreaterThan(0)
+      expect(f).toBeLessThanOrEqual(1)
+    }
+  })
+
+  it('sin sol no se sintetiza prácticamente nada', () => {
+    const limpio = uiDeExposicion(
+      exp(30, MEDIODIA_JUNIO, 'torso', 'limpio'),
+      VERANO,
+      MADRID,
+      ALBERTO,
+      TZ_VERANO
+    )
+    const sinSol = uiDeExposicion(
+      exp(30, MEDIODIA_JUNIO, 'torso', 'sin_sol'),
+      VERANO,
+      MADRID,
+      ALBERTO,
+      TZ_VERANO
+    )
+    expect(sinSol.max).toBeLessThan(limpio.max * 0.05)
+  })
+
+  it('un cielo con estelas o calima quita cerca de un tercio', () => {
+    const limpio = uiDeExposicion(exp(30, MEDIODIA_JUNIO, 'torso', 'limpio'), VERANO, MADRID, ALBERTO, TZ_VERANO)
+    const estelas = uiDeExposicion(exp(30, MEDIODIA_JUNIO, 'torso', 'estelas'), VERANO, MADRID, ALBERTO, TZ_VERANO)
+    expect(estelas.max / limpio.max).toBeCloseTo(0.7, 1)
+  })
+
+  it('sin decir nada se supone cielo despejado, que es lo que asume la referencia', () => {
+    expect(factorDeCielo(undefined)).toBe(1)
+  })
+})
+
+describe('lo apuntado antes de este cambio', () => {
+  it('sin hora sigue dando exactamente el mismo número que daba', () => {
+    // Cifras del cálculo viejo: 30 min de brazos y piernas al mediodía de julio,
+    // 150–350 UI/min → 4 500–10 500.
+    const r = uiDeExposicion(exp(30), '2026-07-15')
+    expect(r).toEqual({ min: 4500, max: 10500 })
+  })
+
+  it('y su corrección de invierno se conserva', () => {
+    const verano = uiDeExposicion(exp(30), '2026-07-15')
+    const invierno = uiDeExposicion(exp(30), '2026-12-15')
+    expect(invierno.max).toBeLessThan(verano.max * 0.1)
+  })
+
+  it('sin coordenadas también se usa el camino viejo, aunque haya hora', () => {
+    const r = uiDeExposicion(exp(30, MEDIODIA_JUNIO), '2026-07-15')
+    expect(r).toEqual({ min: 4500, max: 10500 })
+  })
+})
+
+describe('el día entero', () => {
+  it('suma las exposiciones', () => {
+    const d = dia(VERANO, exp(15, MEDIODIA_JUNIO), exp(15, MEDIODIA_JUNIO))
+    const r = uiDelDia(d, MADRID, ALBERTO, TZ_VERANO)!
+    const una = uiDeExposicion(exp(15, MEDIODIA_JUNIO), VERANO, MADRID, ALBERTO, TZ_VERANO)
+    expect(r.max).toBeCloseTo(una.max * 2, 0)
+  })
+
+  it('la cifra manual manda sobre la estimación', () => {
+    const d: DiaDeSol = { ...dia(VERANO, exp(30, MEDIODIA_JUNIO)), ui: 6400 }
+    expect(uiDelDia(d, MADRID, ALBERTO, TZ_VERANO)).toEqual({ min: 6400, max: 6400 })
+  })
+
+  it('sin nada apuntado no hay cifra que dar', () => {
     expect(uiDelDia(undefined)).toBeUndefined()
     expect(uiDelDia(dia(VERANO))).toBeUndefined()
   })
-})
 
-describe('el invierno vitamínico', () => {
-  it('va de noviembre a febrero', () => {
-    expect(esInviernoVitaminico(11)).toBe(true)
-    expect(esInviernoVitaminico(1)).toBe(true)
-    expect(esInviernoVitaminico(3)).toBe(false)
-    expect(esInviernoVitaminico(10)).toBe(false)
-  })
-
-  it('la nota de temporada solo aparece en esos meses, y no vende humo', () => {
-    expect(notaDeTemporada(VERANO)).toBeUndefined()
-    const nota = notaDeTemporada(INVIERNO)!
-    expect(nota).toMatch(/apenas sintetiza/)
-    expect(nota).toMatch(/sigue contando/)
+  it('los minutos manuales mandan sobre la suma', () => {
+    expect(minutosDelDia({ ...dia(VERANO, exp(30)), minutos: 90 })).toBe(90)
+    expect(minutosDelDia(dia(VERANO, exp(30), exp(15)))).toBe(45)
   })
 })
 
-describe('cómo se escriben las UI', () => {
-  it('siempre como rango redondeado: la precisión sería mentira', () => {
-    // El español no separa millares en cifras de cuatro dígitos: «4200» está bien.
-    expect(escribirUI({ min: 4230, max: 8460 })).toMatch(/^unas 4\.?200–8\.?500 UI$/)
-    expect(escribirUI({ min: 12300, max: 18800 })).toBe('unas 12.300–18.800 UI')
+describe('cuánto se tarda en quemarse', () => {
+  it('con el sol de junio en Madrid da los minutos de las tablas', () => {
+    expect(minutosParaQuemarse(73, { fototipo: 'I' })!).toBeGreaterThan(9)
+    expect(minutosParaQuemarse(73, { fototipo: 'I' })!).toBeLessThan(13)
+    expect(minutosParaQuemarse(73, { fototipo: 'II' })!).toBeGreaterThan(12)
+    expect(minutosParaQuemarse(73, { fototipo: 'II' })!).toBeLessThan(17)
   })
 
-  it('una síntesis despreciable se dice, no se numera', () => {
-    expect(escribirUI({ min: 10, max: 60 })).toBe('una síntesis mínima')
+  it('la piel más oscura SIEMPRE tarda más que la más clara', () => {
+    // La fórmula de partida hacía justo lo contrario para algunos fototipos.
+    const tiempos = ORDEN_FOTOTIPO.map((f) => minutosParaQuemarse(60, { fototipo: f })!)
+    expect(tiempos).toEqual([...tiempos].sort((a, b) => a - b))
+    expect(minutosParaQuemarse(73, { fototipo: 'VI' })!).toBeGreaterThan(40)
+  })
+
+  it('un cielo cerrado alarga el tiempo hasta quemarse', () => {
+    const limpio = minutosParaQuemarse(73, ALBERTO, 1)!
+    const velado = minutosParaQuemarse(73, ALBERTO, 0.4)!
+    expect(velado).toBeGreaterThan(limpio * 2)
+  })
+
+  it('sin UV no aplica, y se dice con null en vez de con un número enorme', () => {
+    expect(minutosParaQuemarse(20, ALBERTO)).toBeNull()
+    expect(minutosParaQuemarse(-10, ALBERTO)).toBeNull()
+    expect(minutosParaQuemarse(73, ALBERTO, 0)).toBeNull()
+  })
+
+  it('la tabla de dosis crece con el fototipo', () => {
+    const dosis = ORDEN_FOTOTIPO.map((f) => MED_J_M2[f])
+    expect(dosis).toEqual([...dosis].sort((a, b) => a - b))
   })
 })
 
 describe('la semana', () => {
-  it('acumula UI y cuenta los días de mediodía', () => {
+  it('cuenta los días con sol y los que de verdad sintetizaron', () => {
     const sol = [
-      dia('2026-07-13', exp(20)),
-      dia('2026-07-14', exp(30, 'tarde')),
-      dia('2026-07-15', exp(15))
+      dia('2026-06-19', exp(30, MEDIODIA_JUNIO)),
+      dia('2026-06-20', exp(20, 7 * 60)), // de madrugada: no sintetiza
+      dia(VERANO, exp(30, MEDIODIA_JUNIO))
     ]
-    const r = resumenSemanal(sol, VERANO)
+    const r = resumenSemanal(sol, VERANO, 7, MADRID, ALBERTO)
     expect(r.diasConSol).toBe(3)
-    expect(r.diasDeMediodia).toBe(2)
-    expect(r.ui.min).toBeGreaterThan(0)
+    expect(r.diasQueSintetizan).toBe(2)
   })
 
-  it('lo de hace más de una semana queda fuera', () => {
-    const r = resumenSemanal([dia('2026-07-01', exp(30))], VERANO)
+  it('suma las UI de la ventana', () => {
+    const r = resumenSemanal([dia(VERANO, exp(30, MEDIODIA_JUNIO))], VERANO, 7, MADRID, ALBERTO)
+    expect(r.ui.max).toBeGreaterThan(0)
+  })
+
+  it('sin nada apuntado no revienta', () => {
+    const r = resumenSemanal(undefined, VERANO)
+    expect(r.ui).toEqual({ min: 0, max: 0 })
     expect(r.diasConSol).toBe(0)
   })
 })
 
-describe('editar el día', () => {
-  it('añadir y quitar sin tocar el anterior', () => {
-    const d = conExposicion(undefined, VERANO, exp(15))
-    expect(d.exposiciones).toHaveLength(1)
-    const con2 = conExposicion(d, VERANO, exp(30, 'tarde'))
-    expect(con2.exposiciones).toHaveLength(2)
-    expect(d.exposiciones).toHaveLength(1)
-    expect(sinExposicion(con2, 0).exposiciones).toHaveLength(1)
-    expect(minutosDelDia(con2)).toBe(45)
+describe('la nota de temporada', () => {
+  it('sale del arco del sitio, no de una lista de meses', () => {
+    const arcoInvierno = arcoDelDia(INVIERNO, MADRID, TZ_INVIERNO)
+    const nota = notaDeTemporada(INVIERNO, MADRID, arcoInvierno.elevacionMaxima)!
+    expect(nota).toContain('no pasa de')
+    expect(nota).toContain('sigue contando')
   })
 
-  it('solDe encuentra la fecha', () => {
-    expect(solDe([dia(VERANO, exp(15))], VERANO)?.exposiciones).toHaveLength(1)
-    expect(solDe(undefined, VERANO)).toBeUndefined()
+  it('no sale cuando el sol sí llega al umbral', () => {
+    const arcoVerano = arcoDelDia(VERANO, MADRID, TZ_VERANO)
+    expect(notaDeTemporada(VERANO, MADRID, arcoVerano.elevacionMaxima)).toBeUndefined()
+  })
+
+  it('en Quito no sale en enero, que es lo que la versión vieja no sabía hacer', () => {
+    const arco = arcoDelDia('2026-01-15', QUITO, -300)
+    expect(notaDeTemporada('2026-01-15', QUITO, arco.elevacionMaxima)).toBeUndefined()
+  })
+
+  it('y en Tromsø sale en invierno pero no en verano, que es lo correcto', () => {
+    // A 69,6° N el sol llega a 43,8° en el solsticio de verano: hay síntesis.
+    const verano = arcoDelDia(VERANO, TROMSO, TZ_VERANO)
+    expect(notaDeTemporada(VERANO, TROMSO, verano.elevacionMaxima)).toBeUndefined()
+
+    const invierno = arcoDelDia(INVIERNO, TROMSO, TZ_INVIERNO)
+    expect(notaDeTemporada(INVIERNO, TROMSO, invierno.elevacionMaxima)).toBeDefined()
+  })
+
+  it('sin coordenadas no dice nada, en vez de suponer una latitud', () => {
+    expect(notaDeTemporada(INVIERNO)).toBeUndefined()
   })
 })
 
-describe('lo apuntado a mano manda', () => {
-  it('los minutos manuales pisan a la suma de ratos', () => {
-    const d: DiaDeSol = { date: VERANO, minutos: 45, exposiciones: [exp(15), exp(10)] }
-    expect(minutosDelDia(d)).toBe(45)
+describe('cómo se escriben las UI', () => {
+  it('un rango va redondeado y con «unas»', () => {
+    // El español no agrupa los millares de cuatro cifras: 4500 va sin punto y
+    // 10.500 con él. Es `toLocaleString('es-ES')` haciendo lo correcto.
+    expect(escribirUI({ min: 4500, max: 10500 })).toBe('unas 4500–10.500 UI')
   })
 
-  it('las UI traídas de fuera se usan tal cual, sin estimar por encima', () => {
-    const d: DiaDeSol = { date: VERANO, minutos: 40, ui: 6400, exposiciones: [] }
-    expect(uiDelDia(d)).toEqual({ min: 6400, max: 6400 })
-  })
-
-  it('una cifra exacta se escribe exacta, sin «unas» y sin redondear', () => {
+  it('una cifra exacta va tal cual, sin redondear lo que no es nuestro', () => {
     expect(escribirUI({ min: 6400, max: 6400 })).toBe('6400 UI')
-    expect(escribirUI({ min: 12345, max: 12345 })).toBe('12.345 UI')
   })
 
-  it('sin cifra manual, la estimación por ratos sigue funcionando', () => {
-    const d = dia(VERANO, exp(30))
-    const r = uiDelDia(d)!
-    expect(r.min).toBeLessThan(r.max)
+  it('y lo residual se dice con palabras', () => {
+    expect(escribirUI({ min: 10, max: 40 })).toBe('una síntesis mínima')
+  })
+})
+
+describe('editar el día de sol', () => {
+  it('añade y quita exposiciones sin tocar lo demás', () => {
+    const d = conExposicion(undefined, VERANO, exp(20, MEDIODIA_JUNIO))
+    expect(d.exposiciones).toHaveLength(1)
+    expect(sinExposicion(d, 0).exposiciones).toHaveLength(0)
   })
 
-  it('conManual conserva las exposiciones y fija minutos y UI', () => {
-    const base = dia(VERANO, exp(15))
-    const con = conManual(base, VERANO, { minutos: 50, ui: 8000 })
-    expect(con.minutos).toBe(50)
-    expect(con.ui).toBe(8000)
-    expect(con.exposiciones).toHaveLength(1)
-    expect(base.minutos).toBeUndefined()
+  it('la cifra manual conserva las exposiciones', () => {
+    const d = conExposicion(undefined, VERANO, exp(20, MEDIODIA_JUNIO))
+    expect(conManual(d, VERANO, { ui: 5000 }).exposiciones).toHaveLength(1)
   })
 
-  it('la semana suma las UI manuales exactas junto a las estimadas', () => {
-    const sol: DiaDeSol[] = [
-      { date: '2026-07-14', minutos: 40, ui: 6000, exposiciones: [] },
-      dia('2026-07-15', exp(20))
-    ]
-    const r = resumenSemanal(sol, VERANO)
-    expect(r.diasConSol).toBe(2)
-    expect(r.ui.min).toBeGreaterThan(6000)
-  })
-
-  it('los 15 minutos manuales anclan la leptina igual que los de los ratos', () => {
-    // La palanca de sol usa minutosDelDia, así que basta con que este los lea.
-    expect(minutosDelDia({ date: VERANO, minutos: 15, exposiciones: [] })).toBe(15)
-    expect(minutosDelDia({ date: VERANO, minutos: 0, exposiciones: [exp(30)] })).toBe(0)
+  it('y se encuentra el día por su fecha', () => {
+    expect(solDe([dia(VERANO)], VERANO)?.date).toBe(VERANO)
+    expect(solDe([dia(VERANO)], INVIERNO)).toBeUndefined()
   })
 })

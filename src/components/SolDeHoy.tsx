@@ -1,5 +1,8 @@
 import { useState } from 'react'
 import { conManual, escribirUI, minutosDelDia, notaDeTemporada, solDe, uiDelDia } from '../domain/vitaminaD'
+import type { QuienToma } from '../domain/vitaminaD'
+import type { Coordenadas } from '../domain/arcoSolar'
+import { arcoDelDia } from '../domain/arcoSolar'
 import type { DiaDeSol } from '../domain/types'
 import { actions } from '../store/store'
 import { Boton, CampoNumero } from './ui'
@@ -19,10 +22,15 @@ import { Boton, CampoNumero } from './ui'
  */
 export default function SolDeHoy({
   sol,
-  todayIso
+  todayIso,
+  coord,
+  quien
 }: {
   sol: DiaDeSol[] | undefined
   todayIso: string
+  /** Para calcular la síntesis con la altura real del sol, si hay coordenadas. */
+  coord?: Coordenadas
+  quien?: QuienToma
 }) {
   const dia = solDe(sol, todayIso)
   const [editando, setEditando] = useState(false)
@@ -30,8 +38,12 @@ export default function SolDeHoy({
   const [ui, setUi] = useState<number | undefined>(dia?.ui)
 
   const guardadoMin = minutosDelDia(dia)
-  const guardadoUi = uiDelDia(dia)
-  const nota = notaDeTemporada(todayIso)
+  const guardadoUi = uiDelDia(dia, coord, quien)
+  // La nota de invierno sale del arco de este sitio y no de una lista de meses,
+  // así que sin coordenadas no se dice nada en vez de suponer una latitud.
+  const nota = coord
+    ? notaDeTemporada(todayIso, coord, arcoDelDia(todayIso, coord).elevacionMaxima)
+    : undefined
   const hayAlgo = guardadoMin > 0 || guardadoUi !== undefined
 
   function guardar() {

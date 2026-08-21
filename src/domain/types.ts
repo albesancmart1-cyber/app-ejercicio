@@ -144,6 +144,13 @@ export interface Profile {
   lon?: number
   /** Cómo se llama el sitio, solo para enseñarlo: «Madrid». */
   lugar?: string
+  /** Metros sobre el nivel del mar. Suben el UV un 10 % por cada mil. */
+  altitudM?: number
+  /** Fototipo de Fitzpatrick. Decide cuánto sintetiza y cuánto tarda en quemarse. */
+  fototipo?: import('./vitaminaD').Fototipo
+  /** Lo último que se eligió al apuntar sol, para no volver a preguntarlo. */
+  pielHabitual?: PielExpuesta
+  cieloHabitual?: import('./cielo').EstadoDelCielo
   /** Qué días se trabaja, de 0 (domingo) a 6 (sábado). Por defecto, de lunes a viernes. */
   diasLaborables?: number[]
   /** El sitio de trabajo habitual, para que fichar sea un solo toque. */
@@ -697,14 +704,36 @@ export interface ComidaRegistrada {
 /** Cuándo dio el sol: la franja decide cuánto UVB había. */
 export type FranjaSolar = 'manana' | 'mediodia' | 'tarde'
 
-/** Cuánta piel recibió: la superficie manda en la síntesis. */
-export type PielExpuesta = 'cara_manos' | 'brazos_piernas' | 'torso'
+/**
+ * Cuánta piel recibió: la superficie manda en la síntesis.
+ *
+ * Los tres primeros son los de siempre y **no se renombran**: hay exposiciones
+ * guardadas que los usan, y cambiarlos las dejaría sin leer. Los tres nuevos
+ * completan la escala para que `f_piel` de la fórmula tenga con qué trabajar.
+ */
+export type PielExpuesta =
+  | 'cara_manos'
+  | 'antebrazos'
+  | 'brazos_piernas'
+  | 'torso'
+  | 'banador'
+  | 'entero'
 
-/** Un rato de sol: minutos, franja y piel. Se pueden apuntar varios al día. */
+/**
+ * Un rato de sol.
+ *
+ * `franja` se conserva para los registros de antes de que la app supiera la
+ * altura del sol; con `desde` se calcula con la elevación real, que es mucho
+ * mejor. Ver `domain/vitaminaD.ts`.
+ */
 export interface ExposicionSolar {
   minutos: number
   franja: FranjaSolar
   piel: PielExpuesta
+  /** Minutos desde medianoche en que empezó. Sin esto se usa la franja. */
+  desde?: number
+  /** Cómo se veía el sol: atenúa la síntesis. Ver `domain/cielo.ts`. */
+  cielo?: import('./cielo').EstadoDelCielo
 }
 
 /**
