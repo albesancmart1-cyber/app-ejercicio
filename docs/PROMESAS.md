@@ -69,7 +69,8 @@ Marcar una casilla sin escribir el código **rompe la suite**. Es deliberado.
   → src/domain/jornada.ts :: juzgarHueco
 - [x] turno-sin-comparar · Nada de compararte con un horario que no tienes
   → src/domain/jornada.ts :: esLaborable
-- [ ] turno-tabla-compensaciones · Qué se compensa, con qué, y qué no se compensa con nada
+- [x] turno-tabla-compensaciones · Qué se compensa, con qué, y qué no se compensa con nada
+  → src/domain/compensaciones.ts :: COMPENSACIONES
 
 ## Lámparas y fotobiomodulación
 
@@ -85,7 +86,8 @@ Marcar una casilla sin escribir el código **rompe la suite**. Es deliberado.
   → src/domain/luz.ts :: picosCubiertos
 - [x] pbm-cuanto-tapa · Cuánto del déficit de rojo e infrarrojo tapa la semana
   → src/domain/fotobiomodulacion.ts :: dosisAcumulada
-- [ ] pbm-que-no-tapa · Y qué parte no tapa: la fase y la UVB
+- [x] pbm-que-no-tapa · Y qué parte no tapa: la fase y la UVB
+  → src/domain/compensaciones.ts :: LO_QUE_LA_LAMPARA_NO_TAPA
 
 ## Balance de luz
 
@@ -108,7 +110,8 @@ Marcar una casilla sin escribir el código **rompe la suite**. Es deliberado.
   → src/domain/jornada.ts :: esLaborable
 - [x] fichar-aviso-gafas · Avisa el día en que las gafas de la mañana pasan a estorbar
   → src/domain/jornada.ts :: avisoDeGafas
-- [ ] fichar-aviso-por-fecha · Y entre qué fechas del año pasa, para avisar con antelación
+- [x] fichar-aviso-por-fecha · Y entre qué fechas del año pasa, para avisar con antelación
+  → src/screens/Luz.tsx :: TramosDeGafas
 
 ## Mesa
 
@@ -214,9 +217,11 @@ Estas también son promesas, y romperlas sería peor que no cumplir una función
 - [ ] no-diagnostica · No dice qué tienes, no cura nada, no toca tratamientos
 - [x] no-rine-latitud · Ni un solo «no has tomado suficiente sol»
   → src/domain/balanceLuz.ts :: No es un fallo tuyo: es tu turno.
-- [ ] no-inventa-compensaciones · Lo que no se compensa, se dice
+- [x] no-inventa-compensaciones · Lo que no se compensa, se dice
+  → src/domain/compensaciones.ts :: sinRemedio
 - [ ] no-cronotipo · No te asigna un cronotipo
-- [ ] no-vende-lamparas · No recomienda marcas, dosis ni aparatos
+- [x] no-vende-lamparas · No recomienda marcas, dosis ni aparatos
+  → src/domain/compensaciones.test.ts :: no recomienda marcas
 - [ ] no-dejes-tu-trabajo · Da por hecha tu jornada y trabaja con los huecos que tienes
 
 ---

@@ -201,6 +201,25 @@ comprobar(
   'y una que sí tenía disponible debería dar su porcentaje'
 )
 
+// ── La tabla de compensaciones, con la fila que no tiene remedio ───────
+await page.getByRole('button', { name: 'Ver la tabla' }).click()
+await page.waitForTimeout(300)
+const tabla = await texto()
+comprobar(tabla.includes('Rojo e infrarrojo'), 'la tabla debería traer sus filas')
+comprobar(
+  tabla.includes('Nada lo tapa'),
+  'la fila de la UVB debería decir que no la tapa nada — quitarla haría la tabla más agradable y menos cierta'
+)
+comprobar(
+  tabla.includes('No cubre:'),
+  'cada compensación debería decir qué NO cubre, que es lo que hace honesta la tabla'
+)
+comprobar(
+  tabla.includes('Un LED rojo no pone tu reloj en hora'),
+  'y decirse en concreto qué es lo que la lámpara no tapa'
+)
+await page.screenshot({ path: `${OUT}/luz-08-compensaciones.png`, fullPage: true })
+
 const desborde = await page.evaluate(
   () => document.documentElement.scrollWidth - document.documentElement.clientWidth
 )

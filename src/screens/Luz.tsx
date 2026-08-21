@@ -36,7 +36,8 @@ import {
   fichajeAbierto,
   filtroCuestaAmplitud,
   nombreDiaSemana,
-  queSirve
+  queSirve,
+  tramosConLuzALaEntrada
 } from '../domain/jornada'
 import {
   NOMBRES_BANDA4,
@@ -56,6 +57,8 @@ import {
 import { PICOS_KARU } from '../domain/luz'
 import { sumarDiaIso } from '../domain/arcoSolar'
 import { dosRelojes, escribirDistancia } from '../domain/relojes'
+import { COMPENSACIONES, LO_QUE_LA_LAMPARA_NO_TAPA } from '../domain/compensaciones'
+import { MESES_LARGOS } from '../domain/estaciones'
 import {
   CalloSolar,
   EstacionesRobadas,
@@ -412,9 +415,9 @@ function Jornada({ hoy, lat, lon }: { hoy: string; lat: number; lon: number }) {
                 <p className="faint" style={{ marginTop: 8 }}>
                   Ojo: cuando fichaste el sol ya estaba a {escribirGrados(gafas.elevacion)}. Tu
                   trayecto de hoy era la ventana del amanecer, y las gafas bloquean justo esa señal.
-                  De octubre a abril están bien puestas; hoy no.
                 </p>
               )}
+              <TramosDeGafas hoy={hoy} coord={coord} entrada={abierto.entrada} />
               <Boton
                 tono="primario"
                 onClick={() => actions.saveFichaje({ ...abierto, salida: ahora })}
@@ -463,6 +466,51 @@ function Jornada({ hoy, lat, lon }: { hoy: string; lat: number; lon: number }) {
       )}
     </div>
   )
+}
+
+
+/**
+ * Entre qué fechas del año el filtro de la mañana estorba en tu trayecto.
+ *
+ * El aviso del mismo día llega tarde para organizarse. Esto lo dice con
+ * antelación y, sobre todo, dice **también cuándo las gafas están bien
+ * puestas**: el resto del año protegen tu melatonina y quitárselas sería peor.
+ * Un aviso que solo señala el fallo enseña a ignorarlo.
+ */
+function TramosDeGafas({
+  hoy,
+  coord,
+  entrada
+}: {
+  hoy: string
+  coord: { lat: number; lon: number }
+  entrada: number
+}) {
+  const tramos = tramosConLuzALaEntrada(Number(hoy.slice(0, 4)), coord, entrada, desfaseHorario)
+  // Los cambios de hora parten el año en trozos pequeños que no aportan nada.
+  const largos = tramos.filter(
+    (t) => (Date.parse(t.hasta) - Date.parse(t.desde)) / 86400000 >= 14
+  )
+  if (largos.length === 0) return null
+
+  return (
+    <p className="faint" style={{ marginTop: 8 }}>
+      A tu hora de entrada hay luz aprovechable{' '}
+      {largos.map((t, i) => (
+        <span key={t.desde}>
+          {i > 0 && ' y '}
+          del {escribirDiaCorto(t.desde)} al {escribirDiaCorto(t.hasta)}
+        </span>
+      ))}
+      . Fuera de ahí es de noche a esa hora y las gafas están bien puestas: protegen tu melatonina.
+    </p>
+  )
+}
+
+/** «1 de mayo», para decir un tramo del año sin repetirlo entero. */
+function escribirDiaCorto(iso: string): string {
+  const dia = Number(iso.slice(8, 10))
+  return `${dia} de ${MESES_LARGOS[Number(iso.slice(5, 7)) - 1]}`
 }
 
 /* ══════════════════════════════════════════════════ FIN DE SEMANA ══ */
@@ -888,6 +936,73 @@ function Lamparas({ hoy }: { hoy: string }) {
   )
 }
 
+
+/* ══════════════════════════════════════════════ COMPENSACIONES ══ */
+
+/**
+ * Qué se compensa, con qué, y qué no se compensa con nada.
+ *
+ * Estaba escrita en la página de producto y no en la app, que es el peor sitio
+ * posible: la promesa la lee quien está decidiendo si instalarla, y la necesita
+ * quien ya la está usando a las siete menos cuarto de la mañana.
+ */
+function Compensaciones() {
+  const [abierto, setAbierto] = useState(false)
+
+  return (
+    <div className="card">
+      <p className="eyebrow">Qué se puede compensar</p>
+
+      {!abierto ? (
+        <>
+          <p className="dim" style={{ marginTop: 8 }}>
+            Una herramienta que tenga un remedio para todo te está mintiendo en algo. Aquí está la
+            tabla honesta, con la letra pequeña de cada compensación.
+          </p>
+          <Boton tono="callado" onClick={() => setAbierto(true)}>
+            Ver la tabla
+          </Boton>
+        </>
+      ) : (
+        <div className="fade-in">
+          {COMPENSACIONES.map((c) => (
+            <div key={c.id} style={{ padding: '11px 0', borderTop: '1px solid var(--separator)' }}>
+              <div className="row">
+                <span className="item-title">{c.falta}</span>
+                {c.seCompensaCon === null && <Etiqueta>Nada lo tapa</Etiqueta>}
+              </div>
+              {c.seCompensaCon && (
+                <p className="dim" style={{ margin: '5px 0 0', fontSize: 15 }}>
+                  {c.seCompensaCon}
+                </p>
+              )}
+              {c.noCubre !== '—' && (
+                <p className="faint" style={{ marginTop: 5 }}>
+                  No cubre: {c.noCubre}
+                </p>
+              )}
+            </div>
+          ))}
+
+          <Regla />
+          <p className="dim" style={{ marginBottom: 6 }}>
+            Y lo que una lámpara no tapa
+          </p>
+          {LO_QUE_LA_LAMPARA_NO_TAPA.map((linea) => (
+            <p className="faint" key={linea} style={{ marginTop: 4 }}>
+              · {linea}
+            </p>
+          ))}
+
+          <Boton tono="callado" onClick={() => setAbierto(false)}>
+            Cerrar
+          </Boton>
+        </div>
+      )}
+    </div>
+  )
+}
+
 /* ══════════════════════════════════════════════════ BALANCE ══ */
 
 function Balance({ hoy, lat, lon }: { hoy: string; lat: number; lon: number }) {
@@ -978,6 +1093,7 @@ export default function Luz() {
       <DiaDeReparar hoy={hoy} lat={coord.lat} lon={coord.lon} />
       <Lamparas hoy={hoy} />
       <Balance hoy={hoy} lat={coord.lat} lon={coord.lon} />
+      <Compensaciones />
       <EstacionesRobadas {...comunes} />
       <CalloSolar {...comunes} />
       <Skygazing {...comunes} />
