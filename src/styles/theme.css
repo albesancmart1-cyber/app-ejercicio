@@ -3802,3 +3802,103 @@ textarea:focus {
   border-radius: var(--r-control);
   background: var(--fill-3);
 }
+
+/*
+  ══════════════════════════════════════════════════════════ EL PARTE DEL DÍA
+
+  Cuatro grupos —aún a tiempo, a favor, en contra, ni suma ni resta— cada uno
+  con su marca de color a la izquierda. El color nunca va solo: al lado va
+  siempre la etiqueta escrita, porque un semáforo de puntitos no se lee ni con
+  daltonismo ni al sol de la calle, que es justo donde se mira esta pantalla.
+*/
+.parte {
+  margin-top: var(--sp-3);
+}
+
+.parte-grupo {
+  border-top: 1px solid var(--separator);
+}
+
+.parte-grupo:first-child {
+  border-top: 0;
+}
+
+.parte-cabecera {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: var(--sp-3) 0;
+  background: none;
+  border: 0;
+  text-align: left;
+  color: inherit;
+}
+
+.parte-marca {
+  flex: 0 0 auto;
+  width: 4px;
+  height: 18px;
+  border-radius: 2px;
+  background: var(--label-3);
+}
+
+.parte-titulo {
+  flex: 1 1 auto;
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+  font-weight: var(--w-semibold);
+}
+
+.parte-cuenta {
+  flex: 0 0 auto;
+  min-width: 22px;
+  text-align: center;
+  font-size: var(--text-caption);
+  font-variant-numeric: tabular-nums;
+  color: var(--label-2);
+  padding: 2px 6px;
+  border-radius: var(--r-pill);
+  background: var(--fill-3);
+}
+
+.parte-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 var(--sp-3) calc(4px + var(--sp-3));
+}
+
+.parte-punto + .parte-punto {
+  margin-top: var(--sp-4);
+}
+
+.parte-punto-titulo {
+  margin: 0;
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+}
+
+.parte-hora {
+  color: var(--label-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.parte-punto-porque {
+  margin: var(--sp-1) 0 0;
+  color: var(--label-2);
+  font-size: var(--text-caption);
+  line-height: 1.5;
+}
+
+/* Los cuatro colores. «Ni suma ni resta» se queda en gris a propósito. */
+.parte-aun_puedes .parte-marca {
+  background: var(--accent);
+}
+
+.parte-favor .parte-marca {
+  background: var(--st-fresco);
+}
+
+.parte-contra .parte-marca {
+  background: var(--st-pasado);
+}
