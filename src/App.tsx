@@ -19,12 +19,13 @@ import { Navigation, NavigationItem, NavigationList } from '@appica/ui-react/nav
  * service worker y el cambio es inmediato; un destello de «cargando…» sería peor
  * que el parpadeo que evita.
  */
+const Medir = lazy(() => import('./screens/Medir'))
 const Progreso = lazy(() => import('./screens/Progreso'))
 const Luz = lazy(() => import('./screens/Luz'))
 const Meals = lazy(() => import('./screens/Meals'))
 const Settings = lazy(() => import('./screens/Settings'))
 
-type Tab = 'hoy' | 'luz' | 'cocina' | 'progreso' | 'yo'
+type Tab = 'medir' | 'hoy' | 'luz' | 'cocina' | 'progreso' | 'yo'
 
 /*
  * Cuatro destinos con nombre, no cuatro cajones.
@@ -39,8 +40,17 @@ type Tab = 'hoy' | 'luz' | 'cocina' | 'progreso' | 'yo'
  * es el marco dentro del cual se deciden la comida y el entreno, no un extra
  * que se consulta cuando sobra tiempo. La app entera dice que el reloj va río
  * arriba de todo lo demás; la barra tenía que decirlo también.
+ *
+ * Y «Medir» va la primera porque es la única que se abre **para hacer algo**:
+ * las otras cinco se abren para leer. Apuntar que estás al sol tenía que costar
+ * un toque desde donde estés, no tres pantallas y un formulario.
  */
-const TABS: { id: Tab; label: string; icon: 'horizon' | 'sun' | 'body' | 'plate' | 'leaf' }[] = [
+const TABS: {
+  id: Tab
+  label: string
+  icon: 'medir' | 'horizon' | 'sun' | 'body' | 'plate' | 'leaf'
+}[] = [
+  { id: 'medir', label: 'Medir', icon: 'medir' },
   { id: 'hoy', label: 'Hoy', icon: 'horizon' },
   { id: 'luz', label: 'Luz', icon: 'sun' },
   { id: 'cocina', label: 'Cocina', icon: 'plate' },
@@ -69,6 +79,7 @@ export default function App() {
             el check-in del día nuevo empieza en blanco en vez de heredar las
             respuestas de ayer, que viven en el estado local del componente. */}
         <Suspense fallback={null}>
+          {tab === 'medir' && <Medir key={today} onEntrenar={() => setTab('hoy')} />}
           {tab === 'hoy' && <Today key={today} />}
           {tab === 'luz' && <Luz key={today} />}
           {tab === 'progreso' && <Progreso key={today} />}

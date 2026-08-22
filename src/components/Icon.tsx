@@ -20,6 +20,15 @@ const paths: Record<string, JSX.Element> = {
       <path d="M12 4.2v2.4M5.6 7.4l1.7 1.7M18.4 7.4l-1.7 1.7M2.9 13.6h2.4M18.7 13.6h2.4" />
     </>
   ),
+  /* Cronómetro: la pestaña de medir, que va de empezar y parar. */
+  medir: (
+    <>
+      <circle cx="12" cy="13.6" r="7.4" />
+      <path d="M12 9.6v4h3.1" />
+      <path d="M9.6 2.6h4.8" />
+      <path d="M12 2.6v3.6" />
+    </>
+  ),
   /* Figura de pie: la pestaña del cuerpo. */
   body: (
     <>

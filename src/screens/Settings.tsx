@@ -4,7 +4,8 @@ import {
   GOAL_LABELS,
   WEIGHTED_EQUIPMENT,
   type Equipment,
-  type Goal
+  type Goal,
+  type Profile
 } from '../domain/types'
 import { ketoAdaptationWeeksLeft, proteinTarget } from '../domain/protocol'
 import { esVerano, objetivoDhaDiario } from '../domain/dha'
@@ -24,6 +25,15 @@ import { Tabs, TabsList, TabsTrigger } from '@appica/ui-react/tabs'
 import { Field, FieldLabel } from '@appica/ui-react/field'
 import { Input } from '@appica/ui-react/input'
 import Localizaciones from '../components/Localizaciones'
+import {
+  FOTOTIPOS,
+  FOTOTIPO_POR_DEFECTO,
+  MED_J_M2,
+  ORDEN_FOTOTIPO,
+  factorAltitud,
+  factorEdad,
+  type Fototipo
+} from '../domain/vitaminaD'
 
 const ALL_EQUIPMENT = Object.keys(EQUIPMENT_LABELS) as Equipment[]
 
@@ -244,6 +254,8 @@ export default function Settings() {
             La altura solo se usa para calcular el FFMI en la pestaña Cuerpo.
           </p>
         </div>
+
+        <TuPiel profile={profile} update={update} />
 
         <div className="card">
           <p className="eyebrow">Equipamiento</p>
@@ -599,6 +611,84 @@ export default function Settings() {
         </div>
         </>
       )}
+    </div>
+  )
+}
+
+/* ══════════════════════════════════════════════ TU PIEL Y TU ALTITUD ══ */
+
+/**
+ * Los tres datos que faltaban para calcular la vitamina D con la fórmula real.
+ *
+ * La edad ya se pedía en el alta pero no se podía corregir después, y sin ella
+ * la síntesis se calculaba con el factor de una persona de treinta años. El
+ * fototipo mueve el resultado siete veces de punta a punta —de 1,5 a 0,2— y es
+ * el dato que más pesa; sin él la app estaría dando por hecha una piel clara,
+ * que es exactamente la clase de suposición que hace inútil una estimación.
+ *
+ * Los tres son opcionales y traen un valor por defecto razonable. Nadie tiene
+ * que rellenar un formulario antes de poder apretar un botón.
+ */
+function TuPiel({
+  profile,
+  update
+}: {
+  profile: Profile
+  update: (partial: Partial<Profile>) => void
+}) {
+  const fototipo: Fototipo = profile.fototipo ?? FOTOTIPO_POR_DEFECTO
+
+  return (
+    <div className="card">
+      <p className="eyebrow">Tu piel y tu altitud</p>
+      <p className="dim" style={{ marginTop: 8 }}>
+        Con esto y con tu sitio se calcula cuánta vitamina D fabrica tu piel en un rato de sol, y
+        cuánto tardarías en quemarte. Es una estimación: no incluye nubes, ozono ni aerosoles.
+      </p>
+
+      <div className="field-row" style={{ marginTop: 16 }}>
+        <Field className="field">
+          <FieldLabel>Edad</FieldLabel>
+          <Input
+            type="number"
+            placeholder="—"
+            value={profile.age ?? ''}
+            onChange={(e) => update({ age: e.target.value ? Number(e.target.value) : undefined })}
+          />
+        </Field>
+        <Field className="field">
+          <FieldLabel>Altitud (m)</FieldLabel>
+          <Input
+            type="number"
+            placeholder="0"
+            value={profile.altitudM ?? ''}
+            onChange={(e) =>
+              update({ altitudM: e.target.value ? Number(e.target.value) : undefined })
+            }
+          />
+        </Field>
+      </div>
+
+      <p className="faint" style={{ marginTop: 10 }}>
+        La piel sintetiza peor con los años: a los {profile.age ?? 30} vas por el{' '}
+        {Math.round(factorEdad(profile.age ?? 30) * 100)} % de lo que sintetizaba a los veinte. Y el
+        UV sube un 10 % por cada mil metros: tu altitud lo multiplica por{' '}
+        {factorAltitud(profile.altitudM).toLocaleString('es-ES', { maximumFractionDigits: 2 })}.
+      </p>
+
+      <Regla />
+      <p className="eyebrow">Fototipo</p>
+      <div className="options-col" style={{ marginTop: 10 }}>
+        {ORDEN_FOTOTIPO.map((f) => (
+          <Opcion key={f} activa={fototipo === f} onElegir={() => update({ fototipo: f })}>
+            {f} · {FOTOTIPOS[f]}
+          </Opcion>
+        ))}
+      </div>
+      <p className="faint" style={{ marginTop: 10 }}>
+        Tu fototipo aguanta {MED_J_M2[fototipo]} J/m² antes de enrojecer. Cuanta más melanina, más
+        rato al sol hace falta para lo mismo — para quemarse y para sintetizar.
+      </p>
     </div>
   )
 }
