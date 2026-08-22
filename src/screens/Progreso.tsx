@@ -528,7 +528,7 @@ export default function Progreso() {
         <p className="eyebrow">Sol y vitamina D · esta semana</p>
         {solSemana.diasConSol === 0 ? (
           <p className="dim">
-            Sin ratos de sol apuntados esta semana. Se apuntan en Hoy, con tres toques, y aquí se
+            Sin ratos de sol apuntados esta semana. Se apuntan en «Medir», con un toque, y aquí se
             acumula la vitamina D estimada.
           </p>
         ) : (

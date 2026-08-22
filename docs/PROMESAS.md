@@ -220,6 +220,72 @@ Marcar una casilla sin escribir el código **rompe la suite**. Es deliberado.
 - [x] datos-offline · Funciona sin conexión; se instala como app
   → vite.config.ts :: VitePWA
 
+## Medir
+
+Once botones en cuatro grupos, y debajo el saldo del día. Apuntar tenía que
+costar un toque, y ese toque tenía que alimentar todo lo ya construido.
+
+- [x] medir-pestana · Una pestaña para apuntar, la primera de la barra
+  → src/screens/Medir.tsx :: Medir
+- [x] medir-empezar-parar · Empezar y parar, con el cronómetro a la vista
+  → src/domain/medir.ts :: minutosAbierto
+- [x] medir-varios-a-la-vez · Varias cosas a la vez, porque se solapan de verdad
+  → src/domain/medir.test.ts :: permite varias a la vez
+- [x] medir-contexto-al-empezar · La piel y el cielo se congelan al empezar, no al parar
+  → src/domain/types.ts :: EnCurso
+- [x] medir-sin-estructuras-nuevas · Cada botón escribe donde ya escribía la app
+  → src/domain/medir.ts :: Resultado
+- [x] medir-olvido · Lo que se olvida abierto se cierra con media hora, y se dice
+  → src/domain/medir.ts :: MINUTOS_SI_SE_OLVIDA
+- [x] medir-estimado-se-dice · Un rato estimado no se presenta como uno cronometrado
+  → src/domain/types.ts :: estimado
+- [x] medir-piel · Seis opciones de cuánta piel llevas
+  → src/domain/vitaminaD.ts :: ORDEN_PIEL
+- [x] medir-cielo · Cinco estados del cielo, con su multiplicador
+  → src/domain/cielo.ts :: ORDEN_CIELO
+- [x] medir-cielo-es-anadido · El cielo se declara como añadido nuestro, no como parte de la fórmula
+  → src/domain/cielo.ts :: un añadido nuestro sobre esa fórmula
+- [x] medir-quemadura · Cuánto tardarías en quemarte, con tu fototipo y este cielo
+  → src/domain/vitaminaD.ts :: minutosParaQuemarse
+- [x] medir-fichar · Fichar y salir del trabajo desde el mismo sitio
+  → src/screens/Medir.tsx :: Jornada
+- [x] medir-cafe-cuenta · El café abre la ventana, y se dice que cuenta
+  → src/screens/Medir.tsx :: El café cuenta
+
+## El parte del día
+
+- [x] parte-cuatro-signos · Cuatro signos, no dos
+  → src/domain/parte.ts :: ORDEN_SIGNO
+- [x] parte-nada-contra-por-ausencia · Nada entra en contra por no haber podido
+  → src/domain/parte.test.ts :: nada entra como «contra» por no haber podido
+- [x] parte-aun-a-tiempo · Lo accionable va primero, con su hora límite
+  → src/domain/parte.ts :: aun_puedes
+- [x] parte-diciembre-no-es-culpa · Un día sin UVB da «no había», no un punto negativo
+  → src/domain/parte.test.ts :: no un punto negativo
+- [x] parte-sin-nota · No hay nota del día: no se promedia lo que no se puede promediar
+  → src/components/ParteDelDia.tsx :: Esto no es una nota del día
+- [x] parte-lampara-letra-pequena · La lámpara aparece siempre con lo que no tapa
+  → src/domain/parte.ts :: pbm-no-tapa
+- [x] parte-semana · Si se ha recuperado la deuda de fase de la semana
+  → src/domain/parte.ts :: deudaSemana
+
+## Vitamina D con la fórmula real
+
+- [x] vitd-formula · La fórmula completa, con sus seis factores
+  → src/domain/vitaminaD.ts :: uiPorMinuto
+- [x] vitd-elevacion-real · Minuto a minuto con la altura real del sol, sin listas de meses
+  → src/domain/vitaminaD.ts :: uiDeExposicion
+- [x] vitd-fototipo · Fototipo de Fitzpatrick, editable en «Yo»
+  → src/screens/Settings.tsx :: TuPiel
+- [x] vitd-edad-altitud · La edad y la altitud mueven la síntesis
+  → src/domain/vitaminaD.ts :: factorEdad
+- [x] vitd-med · El aviso de quemadura con la dosis eritemática por fototipo
+  → src/domain/vitaminaD.ts :: MED_J_M2
+- [x] vitd-compatible · Lo apuntado antes sigue dando el mismo número
+  → src/domain/vitaminaD.ts :: UI_POR_MINUTO_VIEJO
+- [x] vitd-es-estimacion · Se presenta siempre como estimación, no como medida
+  → src/domain/parte.ts :: estimación, no medida
+
 ## Lo que Ritmo NO hace
 
 Estas también son promesas, y romperlas sería peor que no cumplir una función.
@@ -241,4 +307,4 @@ Estas también son promesas, y romperlas sería peor que no cumplir una función
 
 ---
 
-TOTAL: 84
+TOTAL: 111

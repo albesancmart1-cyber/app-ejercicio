@@ -1,0 +1,206 @@
+/**
+ * La pestaña de Medir, en navegador.
+ *
+ * Lo que tiene que pasar: que empezar el sol pregunte piel y cielo y solo eso;
+ * que el cronómetro corra; que al parar, **ese mismo rato** aparezca a la vez en
+ * el balance de Luz, en los dos relojes y en la vitamina D de Progreso —que es
+ * el punto entero del cambio: un toque que alimenta todo lo ya construido—; y
+ * que el parte del día no reproche nada a quien no ha apuntado nada.
+ *
+ *   node scripts/check-medir.mjs
+ */
+import { chromium } from 'playwright-core'
+
+const OUT = process.env.OUT_DIR ?? '/tmp/shots'
+const BASE = process.env.BASE_URL ?? 'http://localhost:4173/'
+
+const browser = await chromium.launch({
+  executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
+})
+const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
+const errores = []
+page.on('pageerror', (e) => errores.push(e.message))
+page.on('console', (m) => m.type() === 'error' && errores.push(m.text()))
+
+const fallos = []
+const comprobar = (ok, queja) => {
+  if (!ok) fallos.push(queja)
+}
+const datos = () => page.evaluate(() => JSON.parse(localStorage.getItem('ritmo-data-v1')))
+const texto = () => page.locator('.app-main').innerText()
+const pestana = async (nombre) => {
+  await page.locator('.tab', { hasText: nombre }).click()
+  await page.waitForTimeout(400)
+}
+
+// ── Un perfil con sitio, para no tener que pedirlo aquí ────────────────
+await page.goto(BASE)
+await page.evaluate(() => {
+  localStorage.setItem(
+    'ritmo-data-v1',
+    JSON.stringify({
+      version: 2,
+      profile: {
+        name: 'Alberto',
+        goal: 'recomposicion',
+        equipment: ['peso_corporal'],
+        maxWeights: {},
+        heightCm: 178,
+        age: 38,
+        lat: 40.4165,
+        lon: -3.7026,
+        lugar: 'Madrid',
+        fototipo: 'III'
+      },
+      checkIns: [],
+      sessions: [],
+      measurements: []
+    })
+  )
+})
+await page.reload({ waitUntil: 'networkidle' })
+
+// ── La barra tiene seis pestañas y ninguna se sale ─────────────────────
+comprobar((await page.locator('.tab').count()) === 6, 'la barra debería tener seis pestañas')
+comprobar(
+  (await page.locator('.tab', { hasText: 'Medir' }).count()) === 1,
+  'y una de ellas debería ser Medir'
+)
+const primera = await page.locator('.tab').first().innerText()
+comprobar(
+  primera.includes('Medir'),
+  `«Medir» debería ir la primera —es la única que se abre para hacer algo—, y va «${primera.trim()}»`
+)
+
+await pestana('Medir')
+await page.screenshot({ path: `${OUT}/medir-01-botones.png`, fullPage: true })
+
+const inicio = await texto()
+comprobar(inicio.includes('Tomando el sol'), 'debería estar el botón del sol')
+comprobar(inicio.includes('Viendo el amanecer'), 'y el del amanecer')
+comprobar(inicio.includes('El sol ahora'), 'con lo que ofrece el sol en este momento')
+comprobar(inicio.includes('El parte del día'), 'y el parte debajo')
+
+// ── El parte no reprocha nada a quien no ha apuntado nada ──────────────
+comprobar(
+  !inicio.includes('En contra'),
+  'un día sin apuntar nada no puede traer un grupo «En contra»: es la regla de tono del parte'
+)
+
+// ── Empezar el sol: pregunta piel y cielo, y nada más ──────────────────
+await page.getByRole('button', { name: 'Tomando el sol' }).click()
+await page.waitForTimeout(300)
+const preguntas = await texto()
+comprobar(preguntas.includes('Cuánta piel'), 'el sol debería preguntar cuánta piel')
+comprobar(preguntas.includes('Cómo está el cielo'), 'y cómo está el cielo')
+comprobar(
+  preguntas.includes('no incluye nubes, ozono ni aerosoles'),
+  'y decir que el cielo es un añadido nuestro sobre la fórmula, no parte de ella'
+)
+await page.screenshot({ path: `${OUT}/medir-02-piel-y-cielo.png`, fullPage: true })
+
+await page.getByRole('button', { name: 'En bañador' }).click()
+await page.getByRole('button', { name: 'Sol limpio' }).click()
+await page.getByRole('button', { name: 'Empezar', exact: true }).click()
+await page.waitForTimeout(400)
+
+const enMarcha = await texto()
+comprobar(enMarcha.includes('En marcha'), 'debería aparecer el cronómetro')
+comprobar(enMarcha.includes('En bañador'), 'con la piel elegida a la vista')
+
+const d1 = await datos()
+comprobar(d1.enCurso?.length === 1, 'debería haber exactamente una actividad abierta')
+comprobar(d1.enCurso?.[0].cielo === 'limpio', 'con el cielo congelado al empezar')
+comprobar(
+  d1.profile.pielHabitual === 'banador' && d1.profile.cieloHabitual === 'limpio',
+  'y las dos respuestas recordadas en el perfil, para que la próxima vez sea un toque'
+)
+await page.screenshot({ path: `${OUT}/medir-03-en-marcha.png`, fullPage: true })
+
+// ── Se para, y el rato tiene que llegar a los cuatro sitios ────────────
+// Se retrasa el inicio media hora a mano: el recorrido no puede esperar
+// treinta minutos, y lo que se comprueba es el reparto, no el reloj.
+await page.evaluate(() => {
+  const d = JSON.parse(localStorage.getItem('ritmo-data-v1'))
+  d.enCurso[0].desde -= 30
+  localStorage.setItem('ritmo-data-v1', JSON.stringify(d))
+})
+await page.reload({ waitUntil: 'networkidle' })
+await pestana('Medir')
+await page.getByRole("button", { name: /^Parar · tomando el sol/ }).click()
+await page.waitForTimeout(400)
+
+const d2 = await datos()
+comprobar((d2.enCurso ?? []).length === 0, 'al parar no debería quedar nada abierto')
+comprobar(d2.salidas?.length === 1, 'debería haber quedado un rato fuera')
+comprobar(
+  d2.salidas?.[0].minutos >= 29 && d2.salidas?.[0].minutos <= 31,
+  `el rato debería durar la media hora real, y dura ${d2.salidas?.[0].minutos}`
+)
+comprobar(d2.salidas?.[0].estimado === undefined, 'parado a mano no se marca como estimado')
+comprobar(
+  d2.sol?.[0].exposiciones?.length === 1,
+  'y el sol debería dejar además su exposición para la vitamina D'
+)
+const exp = d2.sol?.[0].exposiciones?.[0]
+comprobar(exp?.piel === 'banador' && exp?.cielo === 'limpio', 'con la piel y el cielo de cuando empezó')
+comprobar(exp?.desde !== undefined, 'y con la hora, que es lo que permite usar la elevación real')
+
+// ── El mismo rato, visto desde las otras pantallas ─────────────────────
+await pestana('Luz')
+const luz = await texto()
+comprobar(/\d{2}:\d{2}/.test(luz), 'Luz debería seguir enseñando el arco')
+comprobar(
+  luz.includes('30 min') || luz.includes('0 h 30'),
+  'y el rato de sol debería aparecer en el balance de Luz'
+)
+await page.screenshot({ path: `${OUT}/medir-04-en-luz.png`, fullPage: true })
+
+await pestana('Progreso')
+// La vitamina D vive en la sección «Cuerpo» de Progreso.
+await page.getByRole('tab', { name: 'Cuerpo' }).click()
+await page.waitForTimeout(400)
+const progreso = await texto()
+comprobar(
+  progreso.includes('Sol y vitamina D'),
+  'Progreso debería traer su tarjeta de sol y vitamina D'
+)
+comprobar(
+  progreso.includes('1 de 7 días con sol'),
+  'y contar el día de hoy — es el punto entero del cambio: un toque en Medir llega hasta aquí'
+)
+comprobar(/UI/.test(progreso), 'con su cifra de vitamina D acumulada')
+await page.screenshot({ path: `${OUT}/medir-05-en-progreso.png`, fullPage: true })
+
+// ── El parte lo recoge, y como punto a favor ───────────────────────────
+await pestana('Medir')
+const conParte = await texto()
+comprobar(conParte.includes('A favor'), 'el parte debería tener ya puntos a favor')
+comprobar(
+  !/En contra/.test(conParte),
+  'y seguir sin reprochar nada: solo se ha apuntado algo bueno'
+)
+await page.screenshot({ path: `${OUT}/medir-06-parte.png`, fullPage: true })
+
+// ── La noche, con la fecha de la mañana en que uno se levanta ──────────
+await page.getByRole('button', { name: 'A oscuras' }).click()
+await page.waitForTimeout(300)
+await page.getByRole('button', { name: /^Parar · a oscuras/ }).click()
+await page.waitForTimeout(300)
+const d3 = await datos()
+comprobar(d3.noches?.length === 1, 'la noche debería quedar apuntada')
+
+// ── Y nada se desborda a lo ancho, que es el riesgo de seis pestañas ───
+const desborde = await page.evaluate(
+  () => document.documentElement.scrollWidth - document.documentElement.clientWidth
+)
+comprobar(desborde === 0, `la pantalla se desborda ${desborde} px a lo ancho`)
+
+if (errores.length) fallos.push(`errores en consola: ${errores.join(' | ')}`)
+await browser.close()
+
+if (fallos.length) {
+  console.error('✗ ' + fallos.join('\n✗ '))
+  process.exit(1)
+}
+console.log('✓ Medir: un toque que llega al balance, a los relojes, a la vitamina D y al parte')

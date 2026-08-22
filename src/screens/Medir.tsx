@@ -161,13 +161,12 @@ export default function Medir({ onEntrenar }: { onEntrenar?: () => void }) {
 
   return (
     <div className="card-wrap fade-in">
-      <EnMarcha abiertos={abiertos} ahora={ahora} onParar={parar} />
+      <EnMarcha abiertos={abiertos} ahora={ahora} />
 
       <SolAhora hoy={hoy} coord={coord} ahora={ahora} perfil={data.profile} />
 
       <BotonesDeLuz
         abiertos={abiertos}
-        hoy={hoy}
         ahora={ahora}
         perfil={data.profile}
         onEmpezar={empezar}
@@ -261,19 +260,16 @@ function guardarResultado(r: Resultado) {
 /* ══════════════════════════════════════════════ LO QUE ESTÁ EN MARCHA ══ */
 
 /**
- * Los cronómetros de arriba. Solo aparece la tarjeta si hay algo corriendo:
+ * Lo que está corriendo, de un vistazo. Solo aparece si hay algo:
  * una tarjeta vacía permanente ocuparía el sitio de los botones, que es lo que
  * de verdad se viene a tocar.
+ *
+ * **No lleva botón de parar**, y es a propósito: se para desde el mismo botón
+ * con el que se empezó, que es donde el dedo ya sabe ir. Tener dos botones que
+ * hacen lo mismo con el mismo texto en la misma pantalla es una forma segura de
+ * que alguien pare lo que no quería.
  */
-function EnMarcha({
-  abiertos,
-  ahora,
-  onParar
-}: {
-  abiertos: EnCurso[]
-  ahora: number
-  onParar: (x: EnCurso) => void
-}) {
+function EnMarcha({ abiertos, ahora }: { abiertos: EnCurso[]; ahora: number }) {
   if (abiertos.length === 0) return null
 
   return (
@@ -292,13 +288,10 @@ function EnMarcha({
           {pareceOlvidado(x, ahora) && (
             <p className="faint" style={{ marginTop: 4 }}>
               Lleva más de {Math.round(MINUTOS_SOSPECHOSOS / 60)} horas abierto. Si se te olvidó
-              pararlo, párala ahora: al cambiar de día la app la cierra sola con media hora y la
-              marca como estimada, para no apuntar una jornada entera de sol que no ocurrió.
+              pararlo, páralo ahora: al cambiar de día la app lo cierra solo con media hora y lo
+              marca como estimado, para no apuntar una jornada entera de sol que no ocurrió.
             </p>
           )}
-          <Boton tono="primario" onClick={() => onParar(x)}>
-            Parar · {NOMBRES_TIPO[x.tipo].toLowerCase()}
-          </Boton>
         </div>
       ))}
     </div>
@@ -369,14 +362,12 @@ function SolAhora({
  */
 function BotonesDeLuz({
   abiertos,
-  hoy,
   ahora,
   perfil,
   onEmpezar,
   onParar
 }: {
   abiertos: EnCurso[]
-  hoy: string
   ahora: number
   perfil: Profile | null
   onEmpezar: (tipo: TipoEnCurso, extra?: Partial<EnCurso>) => void
@@ -398,8 +389,8 @@ function BotonesDeLuz({
   return (
     <Grupo titulo="Luz natural">
       {solEnCurso ? (
-        <Boton tono="secundario" onClick={() => onParar(solEnCurso)}>
-          Parar · tomando el sol
+        <Boton tono="primario" onClick={() => onParar(solEnCurso)}>
+          Parar · tomando el sol · {escribirDuracion(minutosAbierto(solEnCurso, ahora))}
         </Boton>
       ) : preguntando ? (
         <>
@@ -465,7 +456,7 @@ function BotonesDeLuz({
         El amanecer y el atardecer se apuntan aparte de «Fuera» porque no son un rato de sol
         cualquiera: son las dos ventanas en que cambia la proporción entre el rojo y el azul, que es
         la señal que mueve el reloj. Los cuatro se guardan como el mismo rato fuera; solo el sol
-        deja además su exposición para la vitamina D. Hoy es {hoy}.
+        deja además su exposición para la vitamina D.
       </p>
     </Grupo>
   )
