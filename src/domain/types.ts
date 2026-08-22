@@ -862,6 +862,13 @@ export interface SalidaAlExterior {
   minutos: number
   /** Si llevaba puesto algún filtro, porque entonces cuenta distinto. */
   filtro: Filtro
+  /**
+   * La duración no se paró a mano: la cerró la app porque se olvidó.
+   *
+   * Se marca para poder decirlo. Un rato estimado y uno cronometrado valen
+   * distinto, y presentarlos igual sería falsa precisión.
+   */
+  estimado?: boolean
 }
 
 /**
@@ -915,6 +922,47 @@ export interface NocheRegistrada {
   levantado: number
 }
 
+/**
+ * Lo que se puede tener en marcha ahora mismo.
+ *
+ * `trabajo` no está en la lista a propósito: el fichaje ya sabía estar abierto
+ * desde el principio, con su `salida?` sin rellenar, y meterlo aquí sería tener
+ * dos formas de decir lo mismo.
+ */
+export type TipoEnCurso =
+  | 'sol'
+  | 'amanecer'
+  | 'atardecer'
+  | 'fuera'
+  | 'lampara'
+  | 'oscuridad'
+  | 'frio'
+  | 'grounding'
+
+/**
+ * Una actividad empezada y todavía sin parar.
+ *
+ * Hasta aquí, apuntar algo era decir cuánto había durado **después**. Con la
+ * vitamina D dependiendo de la hora exacta y de la altura del sol eso ya no
+ * vale: hace falta poder decir «estoy tomando el sol» y pararlo al entrar.
+ *
+ * El contexto se congela **al empezar**, no al parar: si sales a las ocho y
+ * paras a las nueve, la piel que llevabas y el cielo que había son los de las
+ * ocho, no los de ahora.
+ */
+export interface EnCurso {
+  tipo: TipoEnCurso
+  date: string
+  /** Minutos desde la medianoche local en que empezó. */
+  desde: number
+  piel?: PielExpuesta
+  cielo?: import('./cielo').EstadoDelCielo
+  filtro?: Filtro
+  lamparaId?: string
+  distanciaCm?: number
+  zona?: ZonaPBM
+}
+
 export interface AppData {
   /** 1 = taxonomía de grupos gruesos. 2 = taxonomía muscular con conteo fraccional. */
   version: 1 | 2
@@ -951,6 +999,11 @@ export interface AppData {
   analiticas?: import('./analiticas').Analitica[]
   /** Los hábitos hechos, día a día: grounding, frío, ayuno. */
   habitos?: import('./habitos').RegistroHabito[]
+  /**
+   * Lo que está en marcha ahora mismo. Varios a la vez, porque se solapan de
+   * verdad: estás fichado en el taller **y** sales quince minutos al patio.
+   */
+  enCurso?: EnCurso[]
   /**
    * Lo que se ha borrado, para que sincronizar no lo resucite. Ver
    * `src/domain/merge.ts`.

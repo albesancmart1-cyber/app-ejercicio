@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { todayIsoAt } from './clock'
 import { VERSION_ACTUAL, migrar } from './migrate'
-import type { DiaDeComidas, DiaDeSol, EdicionAlimento, AppData, BodyMeasurement, CheckIn, Fichaje, Lampara, PerfilDeLuz, Profile, Routine, NocheRegistrada, SalidaAlExterior, SesionPBM, Suplemento, Session } from '../domain/types'
+import type { DiaDeComidas, DiaDeSol, EdicionAlimento, AppData, BodyMeasurement, CheckIn, EnCurso, Fichaje, Lampara, PerfilDeLuz, Profile, Routine, NocheRegistrada, SalidaAlExterior, SesionPBM, Suplemento, Session, TipoEnCurso } from '../domain/types'
 import { claveDeMedicion, claveDeRutina, claveDeSesion, type Lapida } from '../domain/merge'
 
 const STORAGE_KEY = 'ritmo-data-v1'
@@ -265,6 +265,26 @@ export const actions = {
         ...(s.noches ?? []).filter((n) => n.date !== noche.date),
         { ...noche, updatedAt: Date.now() }
       ]
+    }))
+  },
+  /**
+   * Empieza algo. Sustituye lo que hubiera abierto del mismo tipo en vez de
+   * duplicarlo: darle dos veces al botón del sol es un dedo, no dos ratos.
+   */
+  abrirEnCurso(x: EnCurso) {
+    setState((s) => ({
+      ...s,
+      enCurso: [
+        ...(s.enCurso ?? []).filter((y) => !(y.tipo === x.tipo && y.date === x.date)),
+        x
+      ]
+    }))
+  },
+  /** Y lo cierra, sin tocar lo demás que siga en marcha. */
+  cerrarEnCurso(tipo: TipoEnCurso, date: string) {
+    setState((s) => ({
+      ...s,
+      enCurso: (s.enCurso ?? []).filter((y) => !(y.tipo === tipo && y.date === date))
     }))
   },
   saveAnalitica(a: import('../domain/analiticas').Analitica) {
