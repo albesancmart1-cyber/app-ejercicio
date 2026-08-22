@@ -252,6 +252,23 @@ costar un toque, y ese toque tenía que alimentar todo lo ya construido.
 - [x] medir-cafe-cuenta · El café abre la ventana, y se dice que cuenta
   → src/screens/Medir.tsx :: El café cuenta
 
+## La ventana de la mañana contra tu jornada
+
+Un consejo que no puedes seguir no es un consejo: es un reproche con formato de
+consejo. La app decía «sal fuera entre las 05:04 y las 07:03» a quien a las siete
+menos cuarto ya está fichado en una nave sin ventanas.
+
+- [x] ventana-no-manda-salir · No manda salir a quien a esa hora está fichado
+  → src/domain/esferas.ts :: queHacerConLaVentana
+- [x] ventana-hora-real · Tu hora de entrada sale de tus fichajes, no de un formulario
+  → src/domain/jornada.ts :: entradaHabitual
+- [x] ventana-media-tuya · Si solo te pilla media ventana, dice hasta cuándo es tuya
+  → src/domain/jornada.ts :: parte
+- [x] ventana-no-supone · Sin fichajes suficientes lo dice, en vez de suponer
+  → src/domain/jornada.ts :: FICHAJES_PARA_SABERLO
+- [x] ventana-no-esta-a-tiempo · Lo que no puedes hacer no se ofrece como «aún a tiempo»
+  → src/domain/parte.ts :: cae dentro de tu jornada
+
 ## El parte del día
 
 - [x] parte-cuatro-signos · Cuatro signos, no dos
@@ -307,4 +324,4 @@ Estas también son promesas, y romperlas sería peor que no cumplir una función
 
 ---
 
-TOTAL: 111
+TOTAL: 116

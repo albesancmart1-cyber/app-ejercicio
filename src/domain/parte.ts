@@ -49,6 +49,7 @@ import {
   type QuienToma
 } from './vitaminaD'
 import { COMPENSACIONES } from './compensaciones'
+import type { VentanaYTuJornada } from './jornada'
 import type {
   DiaDeComidas,
   DiaDeSol,
@@ -140,6 +141,14 @@ export interface DatosDelParte {
   entreno?: { hecho: boolean; tocaba?: boolean }
   /** La deuda de fase de la semana, de `balanceLuz.deudaDeFase`. */
   deudaSemana?: { minutos: number; diasSinPulso: number }
+  /**
+   * De quién es la ventana de la mañana, de `jornada.ventanaContraTuJornada`.
+   *
+   * Sin esto, el parte ofrecía «aún a tiempo» a quien a esa hora está fichado,
+   * que es justo el reproche disfrazado que los cuatro signos existen para
+   * evitar. Una ventana que no es tuya no está a tiempo: no la hubo.
+   */
+  ventanaManana?: VentanaYTuJornada
 }
 
 /* ══════════════════════════════════════════════ AYUDAS ══ */
@@ -214,15 +223,40 @@ function luzDeLaManana(d: DatosDelParte, out: Punto[]): void {
     return
   }
 
-  if (d.ahoraMin < v.hasta) {
+  /*
+   * Una ventana que cae dentro de tu jornada **no está a tiempo**: no la hubo.
+   * Ofrecerla como «aún puedes» a quien a esa hora está fichado es el reproche
+   * disfrazado de consejo que los cuatro signos existen para evitar.
+   */
+  if (d.ventanaManana?.de === 'trabajas') {
+    out.push(
+      p(
+        'amanecer',
+        'amanecer',
+        'no_habia',
+        'La ventana de hoy cae dentro de tu jornada',
+        `Iba de las ${escribirHora(Math.round(v.desde))} a las ${escribirHora(Math.round(v.hasta))} y tú sueles entrar a las ${escribirHora(d.ventanaManana.entrada!)}. No es tuya hoy, y no es un fallo: esta señal se coge el fin de semana.`,
+        { cuando: Math.round(v.desde) }
+      )
+    )
+    return
+  }
+
+  // Y si solo te pilla media, el límite es cuando entras, no cuando cierra.
+  const cierra =
+    d.ventanaManana?.de === 'parte' ? Math.min(v.hasta, d.ventanaManana.hastaQue!) : v.hasta
+
+  if (d.ahoraMin < cierra) {
     out.push(
       p(
         'amanecer',
         'amanecer',
         'aun_puedes',
-        `La ventana de fase se cierra a las ${escribirHora(Math.round(v.hasta))}`,
+        d.ventanaManana?.de === 'parte'
+          ? `Tienes hasta las ${escribirHora(Math.round(cierra))}, que es cuando sueles entrar`
+          : `La ventana de fase se cierra a las ${escribirHora(Math.round(cierra))}`,
         'Basta con estar fuera unos minutos, sin gafas de sol. No hace falta que el sol haya salido: con el crepúsculo civil ya hay azul suficiente.',
-        { cuando: Math.round(v.desde), hasta: Math.round(v.hasta) }
+        { cuando: Math.round(v.desde), hasta: Math.round(cierra) }
       )
     )
     return

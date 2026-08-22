@@ -34,6 +34,7 @@ import { arcoDelDia, type Coordenadas } from './arcoSolar'
 import type { CheckIn, DiaDeComidas, SalidaAlExterior } from './types'
 import { huboPulsoDeManana } from './relojes'
 import { ATRASO_POR_DIA_SIN_LUZ, ventanaDeFase } from './balanceLuz'
+import type { VentanaYTuJornada } from './jornada'
 
 export type Esfera = 'periodo' | 'fase' | 'amplitud'
 
@@ -78,6 +79,14 @@ export interface DatosDelReloj {
   desfasePara?: (iso: string) => number | undefined
   /** Cuántos días atrás se mira. Una semana es lo que da una lectura estable. */
   dias?: number
+  /**
+   * De quién es la ventana de la mañana de hoy, de `jornada.ventanaContraTuJornada`.
+   *
+   * Entra ya resuelta en vez de calcularse aquí porque este módulo no sabe de
+   * fichajes ni de perfiles, y no tenía por qué empezar a saberlo. Sin ella,
+   * `loDeHoy` da la ventana sin dar por hecho que puedes cogerla.
+   */
+  ventana?: VentanaYTuJornada
 }
 
 function diasAtras(hoy: string, n: number): string[] {
@@ -293,9 +302,42 @@ export function loDeHoy(d: DatosDelReloj, lectura: LecturaDelReloj): string | nu
       if (v.desde === null || v.hasta === null) {
         return 'Hoy no amanece en tu latitud. Protege la noche, que es la mitad que sí controlas.'
       }
-      return `Sal fuera entre las ${horaCorta(v.desde)} y las ${horaCorta(v.hasta)}. Cinco minutos bastan: lo que cuenta es la hora, no el rato.`
+      return queHacerConLaVentana(v.desde, v.hasta, d.ventana)
     case 'amplitud':
       return 'Tu contraste está plano. Lo más barato no es más día: es una noche más oscura, y esa mitad es entera tuya.'
+  }
+}
+
+/**
+ * Qué se dice de la ventana de la mañana, según de quién sea.
+ *
+ * La versión anterior decía «sal fuera entre las 05:04 y las 07:03» a todo el
+ * mundo. A quien a las seis y media ya está fichado en una nave sin ventanas
+ * eso no le sirve de nada, y además le deja con la sensación de estar
+ * haciéndolo mal — que es exactamente lo que esta app no hace. Así que la
+ * ventana se dice siempre, pero **solo se manda salir a quien puede**.
+ */
+function queHacerConLaVentana(
+  desde: number,
+  hasta: number,
+  ventana: VentanaYTuJornada | undefined
+): string {
+  const rango = `de las ${horaCorta(desde)} a las ${horaCorta(hasta)}`
+
+  switch (ventana?.de) {
+    case 'trabajas':
+      return `La ventana de hoy va ${rango} y tú sueles entrar a las ${horaCorta(ventana.entrada!)}. Hoy no es tuya, y eso no es un fallo: esta señal se coge el fin de semana, que es cuando de verdad la tienes.`
+
+    case 'parte':
+      return `La ventana va ${rango}, pero la tuya acaba a las ${horaCorta(ventana.hastaQue!)}, que es cuando sueles entrar. Cinco minutos ahí dentro bastan: lo que cuenta es la hora, no el rato.`
+
+    case 'tuya':
+      return `Sal fuera entre las ${horaCorta(desde)} y las ${horaCorta(hasta)}. Cinco minutos bastan: lo que cuenta es la hora, no el rato.`
+
+    // Sin fichajes suficientes no se sabe si a esa hora puedes estar fuera, así
+    // que se da el dato y se deja la decisión donde está: en quien conoce su día.
+    default:
+      return `La ventana de hoy va ${rango}. Cinco minutos dentro de ella bastan —lo que cuenta es la hora, no el rato— si a esa hora puedes estar fuera.`
   }
 }
 

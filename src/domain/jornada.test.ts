@@ -4,6 +4,7 @@ import {
   azulEfectivo,
   coordenadasDe,
   diaSemana,
+  entradaHabitual,
   esLaborable,
   fichajeAbierto,
   filtroCuestaAmplitud,
@@ -13,7 +14,8 @@ import {
   queSirve,
   resumenDeJornada,
   tieneSitio,
-  tramosConLuzALaEntrada
+  tramosConLuzALaEntrada,
+  ventanaContraTuJornada
 } from './jornada'
 import type { Fichaje, PerfilDeLuz, Profile, SalidaAlExterior } from './types'
 import type { Coordenadas } from './arcoSolar'
@@ -290,5 +292,118 @@ describe('el resumen del día', () => {
     const r = resumenDeJornada('2026-03-16', perfil(), [fichaje], [nocturna], 20 * 60, INVIERNO)!
     expect(r.huecos[0].sirve).toBe(false)
     expect(r.minutosUtiles).toBe(0)
+  })
+})
+
+
+/* ══════════════════════════════════════════════ ¿ES TUYA ESA VENTANA? ══ */
+
+describe('a qué hora sueles entrar', () => {
+  // Lunes 2026-03-16 … viernes 2026-03-20.
+  const fichaje = (date: string, entrada: number): Fichaje => ({
+    id: date,
+    date,
+    entrada,
+    luz: { nombre: 'Nave', temperaturaK: 5700, lux: 450, ventana: false, filtro: 'ninguno' }
+  })
+
+  const semana = [
+    fichaje('2026-03-16', 6 * 60 + 45),
+    fichaje('2026-03-17', 6 * 60 + 50),
+    fichaje('2026-03-18', 6 * 60 + 40),
+    fichaje('2026-03-19', 6 * 60 + 45),
+    fichaje('2026-03-20', 6 * 60 + 45)
+  ]
+
+  it('sale de lo fichado, no de un campo que nadie rellena', () => {
+    expect(entradaHabitual(semana, '2026-03-21')).toBe(6 * 60 + 45)
+  })
+
+  it('con menos de tres fichajes dice que no lo sabe, en vez de inventarlo', () => {
+    // Uno solo pudo ser el día que fuiste al médico.
+    expect(entradaHabitual(semana.slice(0, 2), '2026-03-21')).toBeUndefined()
+    expect(entradaHabitual(undefined, '2026-03-21')).toBeUndefined()
+  })
+
+  it('es la mediana, así que un día raro no la mueve', () => {
+    // El día que te llamaron a las cinco de la mañana no puede cambiar tu hora.
+    const conRaro = [...semana, fichaje('2026-03-13', 5 * 60)]
+    expect(entradaHabitual(conRaro, '2026-03-21')).toBe(6 * 60 + 45)
+  })
+
+  it('no mira más atrás de la ventana: si cambiaste de turno, se entera', () => {
+    const viejos = [
+      fichaje('2025-11-03', 14 * 60),
+      fichaje('2025-11-04', 14 * 60),
+      fichaje('2025-11-05', 14 * 60)
+    ]
+    expect(entradaHabitual([...viejos, ...semana], '2026-03-21')).toBe(6 * 60 + 45)
+  })
+
+  it('sin fichajes en la ventana no se saca nada de los de hace meses', () => {
+    const viejos = [
+      fichaje('2025-11-03', 14 * 60),
+      fichaje('2025-11-04', 14 * 60),
+      fichaje('2025-11-05', 14 * 60)
+    ]
+    expect(entradaHabitual(viejos, '2026-03-21')).toBeUndefined()
+  })
+})
+
+describe('de quién es la ventana de la mañana', () => {
+  const fichaje = (date: string, entrada: number): Fichaje => ({
+    id: date,
+    date,
+    entrada,
+    luz: { nombre: 'Nave', temperaturaK: 5700, lux: 450, ventana: false, filtro: 'ninguno' }
+  })
+  const conEntrada = (entrada: number) =>
+    ['2026-03-16', '2026-03-17', '2026-03-18'].map((d) => fichaje(d, entrada))
+
+  // Un lunes laborable.
+  const LUNES = '2026-03-23'
+  const VENTANA = { desde: 6 * 60 + 49, hasta: 8 * 60 + 46 }
+  const perfil = { name: 'A', goal: 'recomposicion', equipment: [], maxWeights: {} } as Profile
+
+  it('si entras después de que cierre, es tuya entera', () => {
+    const r = ventanaContraTuJornada(LUNES, VENTANA, perfil, conEntrada(9 * 60))
+    expect(r.de).toBe('tuya')
+  })
+
+  it('si ya estás dentro cuando empieza, no es tuya', () => {
+    const r = ventanaContraTuJornada(LUNES, VENTANA, perfil, conEntrada(6 * 60 + 30))
+    expect(r.de).toBe('trabajas')
+    expect(r.entrada).toBe(6 * 60 + 30)
+  })
+
+  it('si entras a media ventana, es tuya hasta esa hora', () => {
+    const r = ventanaContraTuJornada(LUNES, VENTANA, perfil, conEntrada(7 * 60 + 30))
+    expect(r.de).toBe('parte')
+    expect(r.hastaQue).toBe(7 * 60 + 30)
+  })
+
+  it('el fin de semana es tuyo entero, sin mirar un solo fichaje', () => {
+    // 2026-03-22 es domingo.
+    const r = ventanaContraTuJornada('2026-03-22', VENTANA, perfil, conEntrada(6 * 60 + 30))
+    expect(r.de).toBe('tuya')
+  })
+
+  it('y respeta los días laborables que el usuario haya puesto', () => {
+    // Quien libra los lunes tiene el lunes entero.
+    const libraLunes = { ...perfil, diasLaborables: [2, 3, 4, 5, 6] }
+    const r = ventanaContraTuJornada(LUNES, VENTANA, libraLunes, conEntrada(6 * 60 + 30))
+    expect(r.de).toBe('tuya')
+  })
+
+  it('sin fichajes suficientes no supone: dice que no lo sabe', () => {
+    expect(ventanaContraTuJornada(LUNES, VENTANA, perfil, undefined).de).toBe('no_se_sabe')
+    expect(ventanaContraTuJornada(LUNES, VENTANA, perfil, conEntrada(6 * 60).slice(0, 1)).de).toBe(
+      'no_se_sabe'
+    )
+  })
+
+  it('donde no amanece no hay ventana que repartir', () => {
+    const r = ventanaContraTuJornada(LUNES, { desde: null, hasta: null }, perfil, conEntrada(6 * 60))
+    expect(r.de).toBe('tuya')
   })
 })

@@ -190,6 +190,57 @@ await page.waitForTimeout(300)
 const d3 = await datos()
 comprobar(d3.noches?.length === 1, 'la noche debería quedar apuntada')
 
+// ── A quien a esa hora está fichado no se le ofrece «aún a tiempo» ─────
+// Tres fichajes con entrada muy temprana: la ventana de la mañana queda
+// entera dentro de la jornada. Con `diasLaborables` a los siete días, el
+// recorrido no depende de en qué día de la semana se ejecute.
+await page.evaluate(() => {
+  const d = JSON.parse(localStorage.getItem('ritmo-data-v1'))
+  const luz = { nombre: 'Nave', temperaturaK: 5700, lux: 450, ventana: false, filtro: 'ninguno' }
+  const hoy = new Date()
+  d.profile.diasLaborables = [0, 1, 2, 3, 4, 5, 6]
+  d.fichajes = [1, 2, 3].map((i) => {
+    const f = new Date(hoy.getTime() - i * 86400000).toISOString().slice(0, 10)
+    return { id: `f${i}`, date: f, entrada: 3 * 60, salida: 11 * 60, luz }
+  })
+  // Y sin haber salido hoy, para que el punto del amanecer siga vivo.
+  d.salidas = []
+  d.sol = []
+  localStorage.setItem('ritmo-data-v1', JSON.stringify(d))
+})
+await page.reload({ waitUntil: 'networkidle' })
+await pestana('Medir')
+await page.getByRole('button', { name: /Ni suma ni resta/ }).click()
+await page.waitForTimeout(300)
+const conJornada = await texto()
+comprobar(
+  conJornada.includes('cae dentro de tu jornada'),
+  'con la ventana dentro de la jornada, el parte debería decirlo en vez de ofrecerla'
+)
+comprobar(
+  conJornada.includes('no es un fallo'),
+  'y decirlo sin culpar — es la regla de tono entera del parte'
+)
+comprobar(
+  !/La ventana de fase se cierra a las/.test(conJornada),
+  'y no ofrecer «aún a tiempo» algo que a esa hora no se puede hacer'
+)
+await page.screenshot({ path: `${OUT}/medir-07-ventana-no-es-tuya.png`, fullPage: true })
+
+// Y en «Hoy», la misma corrección: la tarjeta de los tres relojes no manda
+// salir a quien a esa hora está dentro.
+await pestana('Hoy')
+const hoyTexto = await texto()
+comprobar(
+  !/Sal fuera entre las/.test(hoyTexto),
+  'la tarjeta de los tres relojes tampoco debería mandar salir a esa hora'
+)
+comprobar(
+  hoyTexto.includes('sueles entrar a las 03:00'),
+  'sino decir a qué hora sueles entrar, que es lo que la app sabe de verdad'
+)
+await page.screenshot({ path: `${OUT}/medir-08-hoy-no-manda-salir.png`, fullPage: true })
+
 // ── Y nada se desborda a lo ancho, que es el riesgo de seis pestañas ───
 const desborde = await page.evaluate(
   () => document.documentElement.scrollWidth - document.documentElement.clientWidth

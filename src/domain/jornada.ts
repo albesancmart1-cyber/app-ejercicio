@@ -26,7 +26,14 @@
  *    señal que hace falta. El resto del año son correctas y no se toca nada.
  */
 import type { Fichaje, Filtro, PerfilDeLuz, Profile, SalidaAlExterior } from './types'
-import { ALTURAS, arcoDelDia, elevacionSolar, type ArcoDelDia, type Coordenadas } from './arcoSolar'
+import {
+  ALTURAS,
+  arcoDelDia,
+  elevacionSolar,
+  sumarDiaIso,
+  type ArcoDelDia,
+  type Coordenadas
+} from './arcoSolar'
 
 export const FILTROS: Record<Filtro, string> = {
   ninguno: 'Sin gafas',
@@ -209,6 +216,94 @@ export function minutosDentro(fichaje: Fichaje, ahoraMin: number): number {
 }
 
 /** El fichaje abierto de un día, si lo hay. */
+/* ══════════════════════════════════════════════ ¿ES TUYA ESA VENTANA? ══ */
+
+/**
+ * Cuántos fichajes hacen falta para atreverse a decir a qué hora entras.
+ *
+ * Con uno solo no se sabe nada: pudo ser el día que fuiste al médico. Tres es
+ * lo mínimo para que la mediana signifique algo, y por debajo de eso la app
+ * dice que no lo sabe en vez de inventárselo.
+ */
+export const FICHAJES_PARA_SABERLO = 3
+
+/** Cuántos días atrás se miran los fichajes para sacar tu hora de entrada. */
+export const DIAS_DE_FICHAJES = 28
+
+/**
+ * A qué hora sueles entrar, de lo que has fichado.
+ *
+ * **Mediana y no media**, a propósito: un sábado que entraste a las once, o el
+ * día que te llamaron a las cinco de la mañana, moverían la media lo bastante
+ * como para que la app se equivocara justo en el caso que importa.
+ *
+ * Y sale de los fichajes, no de un campo del perfil: nadie va a rellenar su
+ * horario en una pantalla de ajustes, pero fichar ya lo hace.
+ */
+export function entradaHabitual(
+  fichajes: Fichaje[] | undefined,
+  hastaIso: string,
+  dias = DIAS_DE_FICHAJES
+): number | undefined {
+  const desde = sumarDiaIso(hastaIso, -dias)
+  const horas = (fichajes ?? [])
+    .filter((f) => f.date >= desde && f.date <= hastaIso)
+    .map((f) => f.entrada)
+    .sort((a, b) => a - b)
+
+  if (horas.length < FICHAJES_PARA_SABERLO) return undefined
+  const mitad = Math.floor(horas.length / 2)
+  return horas.length % 2 === 1 ? horas[mitad] : Math.round((horas[mitad - 1] + horas[mitad]) / 2)
+}
+
+/**
+ * De quién es la ventana de la mañana: tuya, del trabajo, o no se sabe.
+ *
+ *  - `tuya`: acaba antes de que entres, o hoy no trabajas.
+ *  - `parte`: empieza antes de que entres y acaba después. Hay un trozo tuyo,
+ *    y `hastaQue` dice hasta cuándo.
+ *  - `trabajas`: ya estás dentro cuando empieza. No es tuya.
+ *  - `no_se_sabe`: aún no hay fichajes suficientes. Se dice, y no se supone.
+ */
+export type DeQuienEsLaVentana = 'tuya' | 'parte' | 'trabajas' | 'no_se_sabe'
+
+export interface VentanaYTuJornada {
+  de: DeQuienEsLaVentana
+  /** Hasta qué hora es tuya de verdad, cuando solo lo es en parte. */
+  hastaQue?: number
+  /** La hora a la que sueles entrar, si se sabe. */
+  entrada?: number
+}
+
+/**
+ * Cruza la ventana de fase con tu horario real.
+ *
+ * Existe para que la app deje de decirle «sal fuera entre las 05:04 y las
+ * 07:03» a quien a las seis y media ya está fichado en una nave sin ventanas.
+ * Eso no es un consejo: es un reproche con formato de consejo, y es justo lo
+ * que este módulo se escribió para no hacer.
+ *
+ * No devuelve un texto, sino de quién es la ventana. Quien lo pinte decide qué
+ * decir, y así el mismo juicio sirve para las tres esferas y para el parte.
+ */
+export function ventanaContraTuJornada(
+  fechaIso: string,
+  ventana: { desde: number | null; hasta: number | null },
+  perfil: Profile | null,
+  fichajes: Fichaje[] | undefined
+): VentanaYTuJornada {
+  // Un día libre es tuyo entero, y eso se sabe sin mirar ningún fichaje.
+  if (!esLaborable(fechaIso, perfil)) return { de: 'tuya' }
+  if (ventana.desde === null || ventana.hasta === null) return { de: 'tuya' }
+
+  const entrada = entradaHabitual(fichajes, fechaIso)
+  if (entrada === undefined) return { de: 'no_se_sabe' }
+
+  if (entrada >= ventana.hasta) return { de: 'tuya', entrada }
+  if (entrada <= ventana.desde) return { de: 'trabajas', entrada }
+  return { de: 'parte', hastaQue: entrada, entrada }
+}
+
 export function fichajeAbierto(fichajes: Fichaje[] | undefined, fechaIso: string): Fichaje | undefined {
   return fichajes?.find((f) => f.date === fechaIso && f.salida === undefined)
 }

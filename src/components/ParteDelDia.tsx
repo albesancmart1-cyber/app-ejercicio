@@ -16,9 +16,9 @@
  */
 import { useState } from 'react'
 import { useAppData } from '../store/store'
-import { coordenadasDe } from '../domain/jornada'
+import { coordenadasDe, ventanaContraTuJornada } from '../domain/jornada'
 import { desfaseHorario, escribirHora, minutosDeAhora, sumarDiaIso } from '../domain/arcoSolar'
-import { deudaDeFase } from '../domain/balanceLuz'
+import { deudaDeFase, ventanaDeFase } from '../domain/balanceLuz'
 import { huboPulsoDeManana } from '../domain/relojes'
 import { deElPerfil } from '../domain/vitaminaD'
 import { diaDe } from '../domain/crononutricion'
@@ -86,7 +86,14 @@ export default function ParteDelDia({ hoy }: { hoy: string }) {
       // aparecería como algo pendiente, que es justo lo contrario de lo que es.
       tocaba: resumenDeSemana(data.sessions, hoy).masCorta !== undefined
     },
-    deudaSemana: deudaDeFase(dias)
+    deudaSemana: deudaDeFase(dias),
+    // Una ventana que cae dentro de tu jornada no está «aún a tiempo»: no la hubo.
+    ventanaManana: ventanaContraTuJornada(
+      hoy,
+      ventanaDeFase(hoy, coord, desfaseHorario(hoy)),
+      data.profile,
+      data.fichajes
+    )
   })
 
   return (

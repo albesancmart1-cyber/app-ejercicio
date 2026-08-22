@@ -19,7 +19,8 @@ import { buildSession } from '../domain/workoutBuilder'
 import { actions, useAppData } from '../store/store'
 import type { AppData } from '../domain/types'
 import type { DatosDeLuz } from '../domain/explicacionPeso'
-import { coordenadasDe } from '../domain/jornada'
+import { coordenadasDe, ventanaContraTuJornada } from '../domain/jornada'
+import { ventanaDeFase } from '../domain/balanceLuz'
 import { desfaseHorario } from '../domain/arcoSolar'
 import { deElPerfil } from '../domain/vitaminaD'
 import { useToday } from '../store/clock'
@@ -119,7 +120,15 @@ function datosDelReloj(data: AppData, hoy: string): DatosDelReloj | undefined {
     salidas: data.salidas,
     checkIns: data.checkIns,
     comidas: data.comidas,
-    desfasePara: desfaseHorario
+    desfasePara: desfaseHorario,
+    // De quién es la ventana de hoy. Sin esto la tarjeta mandaba salir a las
+    // siete de la mañana a quien a esa hora ya está fichado.
+    ventana: ventanaContraTuJornada(
+      hoy,
+      ventanaDeFase(hoy, coord, desfaseHorario(hoy)),
+      data.profile,
+      data.fichajes
+    )
   }
 }
 

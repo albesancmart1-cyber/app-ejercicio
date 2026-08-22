@@ -78,6 +78,59 @@ describe('el tono: nada entra como «contra» por no haber podido', () => {
   })
 })
 
+describe('la ventana de la mañana contra tu jornada', () => {
+  it('si a esa hora estás fichado, no se ofrece como «aún a tiempo»', () => {
+    // Un «aún puedes» para algo que literalmente no puedes hacer es el reproche
+    // disfrazado de consejo que los cuatro signos existen para evitar.
+    const d = base({
+      ahoraMin: 7 * 60,
+      ventanaManana: { de: 'trabajas', entrada: 6 * 60 + 45 }
+    })
+    const punto = parteDelDia(d).puntos.find((x) => x.id === 'amanecer')
+    expect(punto?.signo).toBe('no_habia')
+    expect(punto?.porque).toMatch(/no es un fallo/i)
+  })
+
+  it('y sigue sin generar ningún punto en contra', () => {
+    expect(
+      parteDelDia(base({ ahoraMin: 7 * 60, ventanaManana: { de: 'trabajas', entrada: 400 } })).contra
+    ).toBe(0)
+  })
+
+  it('si solo te pilla media, el límite es cuando entras, no cuando cierra', () => {
+    const d = base({
+      ahoraMin: 6 * 60 + 30,
+      ventanaManana: { de: 'parte', hastaQue: 7 * 60, entrada: 7 * 60 }
+    })
+    const punto = parteDelDia(d).puntos.find((x) => x.id === 'amanecer')
+    expect(punto?.signo).toBe('aun_puedes')
+    expect(punto?.hasta).toBe(7 * 60)
+    expect(punto?.titulo).toContain('07:00')
+  })
+
+  it('y pasada esa hora deja de estar a tiempo, aunque la ventana siga abierta', () => {
+    const d = base({
+      ahoraMin: 7 * 60 + 30,
+      ventanaManana: { de: 'parte', hastaQue: 7 * 60, entrada: 7 * 60 }
+    })
+    expect(parteDelDia(d).puntos.find((x) => x.id === 'amanecer')?.signo).not.toBe('aun_puedes')
+  })
+
+  it('sin el dato de la jornada se comporta como siempre', () => {
+    const punto = parteDelDia(base({ ahoraMin: 7 * 60 })).puntos.find((x) => x.id === 'amanecer')
+    expect(punto?.signo).toBe('aun_puedes')
+  })
+
+  it('haber cogido ya la luz manda sobre todo lo demás', () => {
+    // Si saliste, saliste. Que la ventana cayera en tu jornada da igual.
+    const d = base({
+      salidas: [salida(6 * 60 + 30, 20)],
+      ventanaManana: { de: 'trabajas', entrada: 6 * 60 + 45 }
+    })
+    expect(parteDelDia(d).puntos.find((x) => x.id === 'amanecer')?.signo).toBe('favor')
+  })
+})
+
 describe('lo que aún está a tiempo', () => {
   it('a las siete de la mañana la ventana de fase está abierta', () => {
     const parte = parteDelDia(base({ ahoraMin: 7 * 60 }))

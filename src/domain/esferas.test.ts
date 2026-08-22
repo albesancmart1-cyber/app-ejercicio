@@ -186,7 +186,7 @@ describe('la lectura de las tres esferas', () => {
 describe('lo de hoy: una sola cosa', () => {
   it('con la fase mal y sin haber salido, da la ventana con su hora', () => {
     const l = leerElReloj(base({ salidas: [] }))
-    const frase = loDeHoy(base({ salidas: [] }), l)!
+    const frase = loDeHoy(base({ salidas: [], ventana: { de: 'tuya' } }), l)!
     expect(frase).toMatch(/\d{2}:\d{2}/)
     expect(frase).toContain('Cinco minutos bastan')
   })
@@ -226,11 +226,66 @@ describe('lo de hoy: una sola cosa', () => {
   })
 })
 
+describe('a quien no le dejan salir no se le manda salir', () => {
+  const sinPulso = () => leerElReloj(base({ salidas: [] }))
+
+  it('si a esa hora estás fichado, da la ventana pero no manda salir', () => {
+    // El caso que motivó todo esto: «sal fuera entre las 06:49 y las 08:46» a
+    // quien a las siete menos cuarto ya está dentro de una nave sin ventanas.
+    const d = base({ salidas: [], ventana: { de: 'trabajas', entrada: 6 * 60 + 45 } })
+    const frase = loDeHoy(d, sinPulso())!
+    expect(frase).not.toContain('Sal fuera')
+    expect(frase).toContain('06:45')
+  })
+
+  it('y lo dice sin culpar, mandando la señal al fin de semana', () => {
+    const d = base({ salidas: [], ventana: { de: 'trabajas', entrada: 6 * 60 + 45 } })
+    const frase = loDeHoy(d, sinPulso())!
+    expect(frase).toContain('no es un fallo')
+    expect(frase).toContain('fin de semana')
+  })
+
+  it('si solo te pilla media ventana, dice hasta cuándo es tuya', () => {
+    const d = base({
+      salidas: [],
+      ventana: { de: 'parte', hastaQue: 7 * 60 + 30, entrada: 7 * 60 + 30 }
+    })
+    const frase = loDeHoy(d, sinPulso())!
+    expect(frase).toContain('07:30')
+    expect(frase).toContain('Cinco minutos ahí dentro bastan')
+  })
+
+  it('sin fichajes suficientes no supone nada: da la ventana con su condición', () => {
+    const frase = loDeHoy(base({ salidas: [], ventana: { de: 'no_se_sabe' } }), sinPulso())!
+    expect(frase).not.toContain('Sal fuera')
+    expect(frase).toContain('si a esa hora puedes estar fuera')
+  })
+
+  it('y sin el dato de la jornada se comporta igual que sin saberlo', () => {
+    // No pasar `ventana` no puede volver a la versión que mandaba salir a todo
+    // el mundo: el caso por defecto es el prudente, no el cómodo.
+    const frase = loDeHoy(base({ salidas: [] }), sinPulso())!
+    expect(frase).not.toContain('Sal fuera')
+  })
+
+  it('la ventana sale siempre con sus dos horas, mande o no mande salir', () => {
+    for (const v of [
+      { de: 'tuya' as const },
+      { de: 'trabajas' as const, entrada: 400 },
+      { de: 'parte' as const, hastaQue: 450, entrada: 450 },
+      { de: 'no_se_sabe' as const }
+    ]) {
+      const frase = loDeHoy(base({ salidas: [], ventana: v }), sinPulso())!
+      expect(frase.match(/\d{2}:\d{2}/g)?.length, v.de).toBeGreaterThanOrEqual(2)
+    }
+  })
+})
+
 describe('el pulso de la mañana no se confunde con haber salido', () => {
   it('salir a la una de la tarde no cuenta como haber cogido la luz de la mañana', () => {
     // Este era un fallo de verdad: la app felicitaba por el pulso a quien había
     // salido a mediodía. Fuera de su ventana la luz sube la amplitud, no la fase.
-    const d = base({ salidas: [aMediodia(HOY, 60)] })
+    const d = base({ salidas: [aMediodia(HOY, 60)], ventana: { de: 'tuya' } })
     const frase = loDeHoy(d, leerElReloj(base({ salidas: [] })))!
     expect(frase).not.toContain('Ya has cogido')
     expect(frase).toMatch(/\d{2}:\d{2}/)
