@@ -32,7 +32,7 @@
  */
 import { arcoDelDia, type Coordenadas } from './arcoSolar'
 import type { CheckIn, DiaDeComidas, SalidaAlExterior } from './types'
-import { huboPulsoDeManana } from './relojes'
+import { huboPulsoDeManana, huboPulsoDeTarde } from './relojes'
 import { ATRASO_POR_DIA_SIN_LUZ, ventanaDeFase } from './balanceLuz'
 import type { VentanaYTuJornada } from './jornada'
 
@@ -51,6 +51,16 @@ export const NOMBRES_ESFERA: Record<Esfera, string> = {
  * de la mañana sería opcional.
  */
 export const MINUTOS_QUE_CORRE_LARGO = 12
+
+/**
+ * Lo que se atrasa un día en que se cogió el crepúsculo pero no la mañana.
+ *
+ * La mitad. El atardecer sujeta el extremo de la tarde y evita la bombilla a
+ * esa hora, pero no adelanta la fase: eso solo lo hace la luz de la mañana.
+ * Poner cero sería prometer que ver la puesta de sol sustituye a madrugar, y no
+ * la sustituye.
+ */
+export const ATRASO_CON_SOLO_CREPUSCULO = 6
 
 export interface LecturaEsfera {
   esfera: Esfera
@@ -79,6 +89,16 @@ export interface DatosDelReloj {
   desfasePara?: (iso: string) => number | undefined
   /** Cuántos días atrás se mira. Una semana es lo que da una lectura estable. */
   dias?: number
+  /**
+   * Minutos desde medianoche. Sin esto, **hoy no cuenta nunca** en la fase.
+   *
+   * Se miraba solo de ayer hacia atrás, y con razón para la racha: a media
+   * mañana el pulso puede estar todavía por llegar, y contarlo como fallado
+   * sería injusto. Pero para la fase tenía un efecto feo: hicieras lo que
+   * hicieras hoy, la esfera no se movía hasta mañana. Uno sale, vuelve, mira, y
+   * concluye que está rota.
+   */
+  ahoraMin?: number
   /**
    * De quién es la ventana de la mañana de hoy, de `jornada.ventanaContraTuJornada`.
    *
@@ -127,6 +147,8 @@ export interface DesplazamientoDeFase {
   acumulado: number
   /** Lo de ayer: positivo adelanta, negativo atrasa, cero no lo movió. */
   ayer: number
+  /** Y lo de hoy, cuando ya se sabe. `null` mientras el día siga abierto. */
+  hoy?: number | null
   direccion: 'adelanta' | 'atrasa' | 'quieta'
 }
 
@@ -137,22 +159,80 @@ export function desplazamientoDeFase(d: DatosDelReloj): DesplazamientoDeFase {
   let acumulado = 0
   let ayer = 0
 
+  /*
+   * Hoy cuenta **en cuanto se sabe**, y no antes.
+   *
+   * Si ya hubo pulso de mañana, es una buena noticia cerrada y se enseña ya: es
+   * lo que hace que la esfera se mueva el mismo día en que uno hace algo. Si no
+   * lo hubo pero las dos ventanas —la de la mañana y la del ocaso— ya han
+   * pasado, también está decidido. Mientras alguna siga abierta, hoy no entra:
+   * el día no ha terminado y darlo por perdido sería adelantarse.
+   */
+  const hoyCuenta = (): number | null => {
+    if (d.ahoraMin === undefined) return null
+    const tzHoy = tz(d.hoy)
+    if (huboPulsoDeManana(d.hoy, d.coord, d.salidas, tzHoy)) return MINUTOS_QUE_CORRE_LARGO
+    const v = ventanaDeFase(d.hoy, d.coord, tzHoy)
+    const arco = arcoDelDia(d.hoy, d.coord, tzHoy)
+    const finDelOcaso = arco.pasos.civil.tarde
+    const manana = v.hasta === null || d.ahoraMin > v.hasta
+    const tarde = finDelOcaso === null || d.ahoraMin > finDelOcaso
+    if (!manana || !tarde) return null
+    return huboPulsoDeTarde(d.hoy, d.coord, d.salidas, tzHoy)
+      ? -ATRASO_CON_SOLO_CREPUSCULO
+      : -MINUTOS_QUE_CORRE_LARGO
+  }
+
   dias.forEach((fecha, i) => {
     const conPulso = huboPulsoDeManana(fecha, d.coord, d.salidas, tz(fecha))
+    const conCrepusculo = huboPulsoDeTarde(fecha, d.coord, d.salidas, tz(fecha))
     /*
-     * Con pulso, el reloj se pone en hora y además recupera parte de lo perdido.
-     * Sin pulso, se atrasa lo que corre largo. Es un modelo simple y se dice:
-     * sirve para ordenar y comparar días, no para publicar una cifra.
+     * Con pulso de mañana, el reloj se pone en hora y además recupera parte de
+     * lo perdido. Sin él, se atrasa lo que corre largo.
+     *
+     * Y en medio hay un caso que antes no existía: **coger el crepúsculo pero
+     * no la mañana**. Eso contaba igual que un día encerrado, y no lo es. El
+     * atardecer sujeta el otro extremo del día —ver `huboPulsoDeTarde`— y esos
+     * minutos son además minutos que no pasas bajo una bombilla, que es lo que
+     * de verdad retrasa la fase a esa hora. Así que frena la deriva a la mitad.
+     * No la revierte: para eso hay que salir por la mañana.
+     *
+     * Es un modelo simple y se dice: sirve para ordenar y comparar días, no
+     * para publicar una cifra.
      */
-    const delta = conPulso ? MINUTOS_QUE_CORRE_LARGO : -MINUTOS_QUE_CORRE_LARGO
+    const delta = conPulso
+      ? MINUTOS_QUE_CORRE_LARGO
+      : conCrepusculo
+        ? -ATRASO_CON_SOLO_CREPUSCULO
+        : -MINUTOS_QUE_CORRE_LARGO
     acumulado = Math.max(-120, Math.min(0, acumulado + delta))
     if (i === 0) ayer = delta
   })
 
+  // Y lo de hoy encima de lo de la semana, si ya está decidido.
+  const hoy = hoyCuenta()
+  if (hoy !== null) {
+    acumulado = Math.max(-120, Math.min(0, acumulado + hoy))
+  }
+
   return {
     acumulado,
     ayer,
-    direccion: ayer > 0 ? 'adelanta' : ayer < 0 ? 'atrasa' : 'quieta'
+    /*
+     * La dirección es la de **hoy** cuando hoy ya cuenta, no la de ayer. Es lo
+     * que uno mira después de salir a la calle: si lo de hoy ha servido.
+     */
+    hoy,
+    direccion:
+      hoy !== null
+        ? hoy > 0
+          ? 'adelanta'
+          : 'atrasa'
+        : ayer > 0
+          ? 'adelanta'
+          : ayer < 0
+            ? 'atrasa'
+            : 'quieta'
   }
 }
 
@@ -301,6 +381,15 @@ export function loDeHoy(d: DatosDelReloj, lectura: LecturaDelReloj): string | nu
       if (yaSalio) return 'Ya has cogido la luz de la mañana. Mañana, otra vez a la misma hora.'
       if (v.desde === null || v.hasta === null) {
         return 'Hoy no amanece en tu latitud. Protege la noche, que es la mitad que sí controlas.'
+      }
+      /*
+       * Si hoy se cogió el crepúsculo, se dice **antes** de dar la ventana de
+       * mañana. Sin esto, alguien que sale a ver ponerse el sol mira las tres
+       * esferas, no ve moverse nada y concluye que están rotas — que es
+       * exactamente lo que pasó. Hizo algo y la app se lo callaba.
+       */
+      if (huboPulsoDeTarde(d.hoy, d.coord, d.salidas, d.desfasePara?.(d.hoy))) {
+        return `Cogiste el crepúsculo, y eso frena la deriva a la mitad: son minutos que no pasas bajo una bombilla. Ponerlo en hora es otra cosa, y esa ventana es de mañana de ${horaCorta(v.desde)} a ${horaCorta(v.hasta)}.`
       }
       return queHacerConLaVentana(v.desde, v.hasta, d.ventana)
     case 'amplitud':

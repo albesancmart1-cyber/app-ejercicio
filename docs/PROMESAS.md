@@ -300,6 +300,17 @@ menos cuarto ya está fichado en una nave sin ventanas.
 - [x] reparto-lo-dice · Cuando el total no cuadra al sumar, se explica por qué
   → src/components/RepartoDelDia.tsx :: ocurrieron a la vez
 
+## Las tres esferas
+
+- [x] esferas-crepusculo · Coger el atardecer frena la deriva de fase
+  → src/domain/relojes.ts :: huboPulsoDeTarde
+- [x] esferas-crepusculo-no-sustituye · Pero no sustituye a la luz de la mañana, y se dice
+  → src/domain/esferas.ts :: ATRASO_CON_SOLO_CREPUSCULO
+- [x] esferas-hoy-cuenta · Lo que haces hoy mueve la esfera hoy, no mañana
+  → src/domain/esferas.ts :: hoyCuenta
+- [x] esferas-no-se-adelanta · Pero no se da el día por perdido mientras quede ventana
+  → src/domain/esferas.test.ts :: hoy no se da por perdido
+
 ## El parte del día
 
 - [x] parte-cuatro-signos · Cuatro signos, no dos
@@ -401,4 +412,4 @@ Estas también son promesas, y romperlas sería peor que no cumplir una función
 
 ---
 
-TOTAL: 150
+TOTAL: 154

@@ -21,7 +21,7 @@ import type { AppData } from '../domain/types'
 import type { DatosDeLuz } from '../domain/explicacionPeso'
 import { coordenadasDe, ventanaContraTuJornada } from '../domain/jornada'
 import { ventanaDeFase } from '../domain/balanceLuz'
-import { desfaseHorario } from '../domain/arcoSolar'
+import { desfaseHorario, minutosDeAhora } from '../domain/arcoSolar'
 import { deElPerfil } from '../domain/vitaminaD'
 import { useToday } from '../store/clock'
 import { findActiveSession } from '../domain/activeSession'
@@ -121,6 +121,8 @@ function datosDelReloj(data: AppData, hoy: string): DatosDelReloj | undefined {
     checkIns: data.checkIns,
     comidas: data.comidas,
     desfasePara: desfaseHorario,
+    // Sin la hora, lo que hagas hoy no mueve la fase hasta mañana.
+    ahoraMin: minutosDeAhora(),
     // De quién es la ventana de hoy. Sin esto la tarjeta mandaba salir a las
     // siete de la mañana a quien a esa hora ya está fichado.
     ventana: ventanaContraTuJornada(

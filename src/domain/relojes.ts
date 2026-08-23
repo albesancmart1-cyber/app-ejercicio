@@ -33,6 +33,7 @@
  */
 import { ALTURAS, arcoDelDia, elevacionSolar, type Coordenadas } from './arcoSolar'
 import type { ComidaRegistrada, DiaDeComidas, SalidaAlExterior } from './types'
+import { PASO_DE_AZUL } from './jornada'
 
 /** «08:18» a minutos desde medianoche. */
 export function minutosDeHora(hhmm: string): number | undefined {
@@ -188,6 +189,48 @@ export function huboPulsoDeManana(
   // Vale desde el crepúsculo civil hasta hora y media después de la salida:
   // pasado eso, el pulso pierde la fuerza que tiene para mover la fase.
   return orto === null || luz <= orto + 90
+}
+
+/**
+ * Si hoy se cogió el **crepúsculo**: la otra ancla del día.
+ *
+ * La app llevaba desde el principio diciendo que el atardecer «es tan
+ * informativo como el amanecer», y luego no lo miraba en ninguna parte: un día
+ * en que salías a ver ponerse el sol contaba igual que uno encerrado. Esto es
+ * lo que faltaba para que esa frase sea verdad.
+ *
+ * ## Qué hace y qué no
+ *
+ * **No pone el reloj en hora.** Eso lo hace la luz de la mañana, y no hay dos
+ * maneras. Lo que hace el crepúsculo es sujetar el otro extremo: dos pulsos
+ * breves —uno al alba y otro al ocaso— bastan para arrastrar el ritmo casi
+ * igual que un día entero de luz, que es lo que en cronobiología se llama
+ * fotoperiodo esqueleto (Pittendrigh). Y hay una segunda razón, más prosaica:
+ * los minutos que pasas mirando cómo se pone el sol son minutos que **no** pasas
+ * bajo una bombilla, que es lo que de verdad retrasa la fase a esa hora.
+ *
+ * Por eso cuenta como **media** señal y no como una entera. Ver el atardecer no
+ * sustituye a salir por la mañana; frena la deriva, no la revierte.
+ *
+ * La ventana es la misma del skygazing: del ocaso al fin del crepúsculo civil.
+ */
+export function huboPulsoDeTarde(
+  fechaIso: string,
+  coord: Coordenadas,
+  salidas: SalidaAlExterior[] | undefined,
+  desfaseMin?: number
+): boolean {
+  const arco = arcoDelDia(fechaIso, coord, desfaseMin)
+  const desde = arco.pasos.orto.tarde
+  const hasta = arco.pasos.civil.tarde
+  if (desde === null || hasta === null) return false
+  return (salidas ?? []).some(
+    (s) =>
+      s.date === fechaIso &&
+      s.desde < hasta &&
+      s.desde + Math.max(0, s.minutos) > desde &&
+      PASO_DE_AZUL[s.filtro] > 0.5
+  )
 }
 
 /** La distancia, dicha como se dice: «1 h 20 antes de ver luz». */

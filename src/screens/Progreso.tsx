@@ -22,6 +22,7 @@ import { formatDuration } from '../components/Chrono'
 import { computeBalance } from '../domain/muscleBalance'
 import VolumeByMuscle from '../components/VolumeByMuscle'
 import { computeLeptinSignal, explicarCobertura } from '../domain/leptin'
+import { Analiticas, CurvaKeto, TarjetaDeHabito } from '../components/Habitos'
 import { deElPerfil, escribirUI, notaDeTemporada, resumenSemanal } from '../domain/vitaminaD'
 import { coordenadasDe } from '../domain/jornada'
 import { arcoDelDia } from '../domain/arcoSolar'
@@ -35,13 +36,24 @@ import { escribirNumero, leerNumero } from '../domain/numeros'
 import { nombreDeDia } from '../domain/crononutricion'
 
 /** Los cinco destinos de Progreso, en el orden en que se miran. */
-type Seccion = 'semana' | 'mes' | 'ano' | 'cuerpo' | 'ejercicios'
+type Seccion = 'semana' | 'mes' | 'ano' | 'cuerpo' | 'habitos' | 'ejercicios'
 
 const SECCIONES: { id: Seccion; label: string }[] = [
   { id: 'semana', label: 'Semana' },
   { id: 'mes', label: 'Mes' },
   { id: 'ano', label: 'Año' },
   { id: 'cuerpo', label: 'Cuerpo' },
+  /*
+   * Los hábitos viven aquí y no en «Yo». Estaban allí sueltos, por encima del
+   * propio título de la pestaña, y lo primero que veías al entrar a tus ajustes
+   * eran cinco tarjetas de rampas.
+   *
+   * Y este es su sitio de verdad, no solo un sitio mejor: una rampa que sube de
+   * escalón cada semana es progreso, exactamente igual que el volumen o la
+   * curva del peso. En «Yo» está lo que se configura una vez; aquí, lo que
+   * cambia solo con el tiempo.
+   */
+  { id: 'habitos', label: 'Hábitos' },
   { id: 'ejercicios', label: 'Ejercicios' }
 ]
 
@@ -575,6 +587,21 @@ export default function Progreso() {
         </p>
       </div>
 
+        </>
+      )}
+
+      {seccion === 'habitos' && (
+        <>
+          <TarjetaDeHabito habito="grounding" registros={data.habitos} hoy={today} />
+          <TarjetaDeHabito habito="frio" registros={data.habitos} hoy={today} />
+          <TarjetaDeHabito
+            habito="ayuno"
+            registros={data.habitos}
+            hoy={today}
+            lat={data.profile?.lat}
+          />
+          {data.profile?.ketoSince && <CurvaKeto desde={data.profile.ketoSince} hoy={today} />}
+          <Analiticas analiticas={data.analiticas} hoy={today} />
         </>
       )}
 
