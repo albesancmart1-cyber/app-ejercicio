@@ -391,6 +391,15 @@ menos cuarto ya está fichado en una nave sin ventanas.
 - [x] reloj-siete-dias-se-dice · Se avisa de que caduca a los 7 días
   → docs/RELOJ.md :: deja de abrirse a los 7 días
 
+## El manual
+
+- [x] manual-pdf · Hay un manual en PDF de la app entera
+  → scripts/generar-manual.mjs :: Ritmo-manual.pdf
+- [x] manual-cada-boton · Dice qué guarda y qué alimenta cada botón de Medir
+  → docs/manual/manual.html :: Al parar guarda
+- [x] manual-cifras-del-codigo · Las cifras salen del código, no de la memoria
+  → docs/manual/manual.html :: Todas las cifras, en tablas
+
 ## Lo que Ritmo NO hace
 
 Estas también son promesas, y romperlas sería peor que no cumplir una función.
@@ -412,4 +421,4 @@ Estas también son promesas, y romperlas sería peor que no cumplir una función
 
 ---
 
-TOTAL: 154
+TOTAL: 157

@@ -1,0 +1,1205 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Ritmo · Manual</title>
+<style>
+  @font-face {
+    font-family: 'Nunito Sans';
+    src: url('../../src/styles/fuentes/nunito-sans.woff2') format('woff2');
+    font-weight: 200 900;
+    font-display: block;
+  }
+
+  @page { size: A4; margin: 20mm 18mm 22mm; }
+  @page :first { margin: 0; }
+
+  * { box-sizing: border-box; }
+
+  html { font-size: 10.5pt; }
+  body {
+    font-family: 'Nunito Sans', 'DejaVu Sans', sans-serif;
+    color: #17141a;
+    line-height: 1.55;
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Portada ─────────────────────────────────────────── */
+  .portada {
+    height: 297mm;
+    background: linear-gradient(160deg, #4a2338 0%, #20101a 55%, #0b0609 100%);
+    color: #fff;
+    padding: 55mm 22mm 22mm;
+    page-break-after: always;
+    position: relative;
+  }
+  .portada .marca { width: 26mm; height: 26mm; margin-bottom: 14mm; }
+  .portada h1 { font-size: 34pt; line-height: 1.05; margin: 0 0 6mm; font-weight: 700; letter-spacing: -0.5pt; }
+  .portada .sub { font-size: 13pt; color: #ffb08a; margin: 0 0 12mm; font-weight: 600; }
+  .portada p { font-size: 11pt; color: rgba(255,255,255,.72); max-width: 120mm; }
+  .portada .pie {
+    position: absolute; bottom: 22mm; left: 22mm; right: 22mm;
+    font-size: 9pt; color: rgba(255,255,255,.45);
+    border-top: 1px solid rgba(255,255,255,.15); padding-top: 4mm;
+  }
+
+  /* ── Estructura ──────────────────────────────────────── */
+  h2 {
+    font-size: 19pt; line-height: 1.15; margin: 0 0 2mm;
+    page-break-before: always; page-break-after: avoid;
+    padding-top: 2mm; font-weight: 700; letter-spacing: -0.3pt;
+  }
+  h2 .num { display: block; font-size: 9pt; letter-spacing: 2pt; text-transform: uppercase; color: #b4553a; margin-bottom: 2mm; font-weight: 700; }
+  h2 + .entradilla { color: #5d5560; font-size: 11pt; margin: 0 0 7mm; page-break-after: avoid; }
+
+  h3 { font-size: 13.5pt; margin: 8mm 0 2mm; page-break-after: avoid; font-weight: 700; }
+  h4 { font-size: 11pt; margin: 6mm 0 1mm; page-break-after: avoid; font-weight: 700; color: #3a3140; }
+
+  p { margin: 0 0 3mm; }
+  ul, ol { margin: 0 0 3mm; padding-left: 5mm; }
+  li { margin-bottom: 1.5mm; }
+  strong { font-weight: 700; }
+  code { font-family: 'DejaVu Sans Mono', monospace; font-size: 8.5pt; background: #f2eff2; padding: 0.3mm 1mm; border-radius: 1mm; }
+
+  /* ── Tablas ──────────────────────────────────────────── */
+  table { width: 100%; border-collapse: collapse; margin: 3mm 0 5mm; font-size: 9.5pt; page-break-inside: avoid; }
+  th { text-align: left; font-weight: 700; border-bottom: 1.2pt solid #17141a; padding: 1.5mm 2mm 1.5mm 0; }
+  td { border-bottom: 0.4pt solid #ded8e0; padding: 1.8mm 2mm 1.8mm 0; vertical-align: top; }
+  td:first-child, th:first-child { padding-left: 0; }
+  .num-col { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* ── Cajas ───────────────────────────────────────────── */
+  .caja, .aviso, .dentro {
+    padding: 4mm 5mm; border-radius: 2mm; margin: 4mm 0 5mm; page-break-inside: avoid; font-size: 10pt;
+  }
+  .caja { background: #f6f3f7; border-left: 1.2mm solid #b4553a; }
+  .aviso { background: #fdf3ec; border-left: 1.2mm solid #d4762f; }
+  .dentro { background: #eef2f6; border-left: 1.2mm solid #4a6fa0; }
+  .caja p:last-child, .aviso p:last-child, .dentro p:last-child { margin-bottom: 0; }
+  .caja .et, .aviso .et, .dentro .et {
+    display: block; font-size: 8pt; letter-spacing: 1.5pt; text-transform: uppercase; font-weight: 700; margin-bottom: 1.5mm;
+  }
+  .caja .et { color: #b4553a; } .aviso .et { color: #b8621f; } .dentro .et { color: #3d5c85; }
+
+  /* ── Ficha de baldosa ────────────────────────────────── */
+  .ficha { border: 0.5pt solid #ded8e0; border-radius: 2mm; padding: 4mm 5mm; margin: 4mm 0; page-break-inside: avoid; }
+  .ficha h4 { margin-top: 0; font-size: 12pt; color: #17141a; }
+  .ficha dl { display: grid; grid-template-columns: 32mm 1fr; gap: 1.5mm 3mm; margin: 2mm 0 0; font-size: 9.5pt; }
+  .ficha dt { font-weight: 700; color: #6b6270; }
+  .ficha dd { margin: 0; }
+
+  /* ── Índice ──────────────────────────────────────────── */
+  .indice { page-break-after: always; }
+  .indice h2 { page-break-before: avoid; }
+  .indice ol { list-style: none; padding: 0; font-size: 11pt; }
+  .indice > ol > li { margin-bottom: 2.5mm; font-weight: 700; }
+  .indice ul { list-style: none; padding-left: 6mm; font-weight: 400; margin-top: 1mm; font-size: 10pt; color: #5d5560; }
+  .indice ul li { margin-bottom: 0.8mm; }
+  .indice .n { color: #b4553a; display: inline-block; width: 8mm; }
+</style>
+</head>
+<body>
+
+<section class="portada">
+  <svg class="marca" viewBox="0 0 100 100" fill="none">
+    <circle cx="50" cy="38" r="16" fill="#ffb894"/>
+    <rect x="24" y="60" width="52" height="6" rx="3" fill="#ffd9b0"/>
+    <rect x="32" y="72" width="36" height="6" rx="3" fill="#e08a5c"/>
+    <rect x="42" y="84" width="16" height="6" rx="3" fill="#b4553a"/>
+  </svg>
+  <h1>Ritmo</h1>
+  <p class="sub">Manual completo</p>
+  <p>Todo lo que hace la app, qué ocurre exactamente al pulsar cada botón, y qué hace
+  con lo que mides. Escrito para que al terminarlo sepas usarla entera y entiendas
+  por dentro de dónde sale cada número.</p>
+  <div class="pie">
+    Las cifras y los umbrales de este manual están sacados del código, no de la memoria.
+    Cuando una regla tiene una constante con nombre, el manual la cita.
+  </div>
+</section>
+
+<section class="indice">
+  <h2><span class="num">Contenido</span>Qué hay en este manual</h2>
+  <ol>
+    <li><span class="n">1</span> Antes de empezar
+      <ul>
+        <li>Qué es Ritmo, y qué no es</li>
+        <li>Instalarla en el móvil</li>
+        <li>Lo único que hay que configurar</li>
+        <li>Dónde viven tus datos</li>
+      </ul>
+    </li>
+    <li><span class="n">2</span> Medir · la pestaña principal
+      <ul>
+        <li>Cómo funciona una baldosa</li>
+        <li>Las ocho baldosas, una por una</li>
+        <li>El entrelazado: lo que cuenta dos veces sin contarse dos veces</li>
+        <li>Las tres que no cronometran</li>
+        <li>El sol ahora · Apuntar a mano · Si se te olvida parar</li>
+        <li>En qué se te va el día</li>
+        <li>El parte del día</li>
+      </ul>
+    </li>
+    <li><span class="n">3</span> Hoy · la decisión
+      <ul>
+        <li>El test de la mañana, pregunta por pregunta</li>
+        <li>Cómo se calcula la disposición, con la fórmula</li>
+        <li>Las tres esferas</li>
+        <li>La báscula y por qué el peso hace lo que hace</li>
+      </ul>
+    </li>
+    <li><span class="n">4</span> Luz · el marco del día
+      <ul>
+        <li>El arco del sol y sus seis umbrales</li>
+        <li>El balance de cuatro barras</li>
+        <li>Tu jornada, los fichajes y las gafas</li>
+        <li>Lámparas y fotobiomodulación</li>
+        <li>Las compensaciones · Las estaciones</li>
+      </ul>
+    </li>
+    <li><span class="n">5</span> Cocina · registrar la comida
+      <ul>
+        <li>Apuntar una comida, paso a paso</li>
+        <li>La mesa: leucina, DIAAS, deuterio, antinutrientes</li>
+        <li>El ritmo de insulina y la ventana</li>
+        <li>Omegas y suplementos</li>
+      </ul>
+    </li>
+    <li><span class="n">6</span> El entreno
+      <ul>
+        <li>De qué depende la sesión que te propone</li>
+        <li>Serie a serie: peso, repeticiones, RIR y tipo</li>
+        <li>Descanso, superseries, discos y récords</li>
+        <li>Cómo sube la carga y cómo sube el volumen</li>
+      </ul>
+    </li>
+    <li><span class="n">7</span> Progreso y Yo</li>
+    <li><span class="n">8</span> Todas las cifras, en tablas</li>
+    <li><span class="n">9</span> Lo que la app no hace, y por qué</li>
+  </ol>
+</section>
+
+<!-- ══════════════════════════════════════ 1 ══ -->
+<section>
+<h2><span class="num">Parte 1</span>Antes de empezar</h2>
+<p class="entradilla">Cinco minutos de configuración que decide si el resto del manual sirve
+para algo. Sin dos de estos datos, media app calcula a ciegas.</p>
+
+<h3>Qué es Ritmo, y qué no es</h3>
+<p>Ritmo mide tu día y te explica qué hace en tu cuerpo. Tres cosas define su carácter, y
+conviene saberlas antes de tocar nada:</p>
+<ul>
+  <li><strong>No cuenta calorías.</strong> Ni déficit, ni superávit, ni macros. La app no
+  tiene ese concepto en ninguna parte, y hay una prueba automática que falla si alguien
+  intenta colar la palabra en un texto.</li>
+  <li><strong>No diagnostica ni cura.</strong> Describe lo que mides y explica el mecanismo.
+  Nunca te va a decir qué tienes ni te va a sugerir que dejes un tratamiento.</li>
+  <li><strong>No te riñe por dónde vives ni por tu horario.</strong> Todo se mide contra el
+  arco del sol <em>de tu sitio</em>. Cuando algo no era posible hoy, lo dice — no lo apunta
+  como un fallo tuyo.</li>
+</ul>
+
+<h3>Instalarla en el móvil</h3>
+<p>No hay App Store. Se instala desde el navegador y queda como una app de verdad:</p>
+<ol>
+  <li>Abre la app <strong>en Safari</strong>. En iOS solo Safari puede instalar; Chrome no.</li>
+  <li>Botón de compartir → <strong>Añadir a pantalla de inicio</strong>.</li>
+  <li>Aparece como <strong>Ritmo</strong>, con su icono.</li>
+</ol>
+<p>A partir de ahí se abre a pantalla completa sin barras del navegador, arranca con su
+propia pantalla en negro y <strong>funciona entera sin conexión</strong>: todo se calcula
+en el aparato, incluida la posición del sol.</p>
+
+<div class="aviso">
+  <span class="et">Dos límites de iOS que conviene conocer</span>
+  <p><strong>No hay notificaciones ni trabajo en segundo plano.</strong> Si empiezas «Sol» y
+  bloqueas el móvil, el cronómetro sigue —se guarda la hora de inicio, no un contador— pero
+  la app no te va a avisar de nada.</p>
+  <p><strong>iOS puede borrar los datos de una web instalada si pasan siete semanas sin
+  abrirla.</strong> Es la razón de peso para entrar con tu correo y dejar la nube
+  configurada: con eso, lo que se pierda vuelve solo.</p>
+</div>
+
+<h3>Lo único que hay que configurar</h3>
+<p>Por orden de cuánto rompe si falta:</p>
+
+<table>
+  <tr><th>Dato</th><th>Dónde</th><th>Qué deja de funcionar sin él</th></tr>
+  <tr>
+    <td><strong>Latitud y longitud</strong></td>
+    <td>Luz → «Dos números, una vez»</td>
+    <td>Casi todo. Sin el sitio no hay arco solar, y sin arco no hay amanecer, ni ventanas,
+    ni vitamina D, ni balance, ni esferas, ni parte. La pestaña Medir directamente lo dice
+    y no deja seguir.</td>
+  </tr>
+  <tr>
+    <td><strong>Fototipo</strong></td>
+    <td>Yo → Perfil → Tu piel y tu altitud</td>
+    <td>La vitamina D se calcula con una piel del tipo III supuesta, y el aviso de
+    quemadura también. De punta a punta el fototipo mueve la síntesis <strong>siete
+    veces</strong>, así que suponerlo es mucho suponer.</td>
+  </tr>
+  <tr>
+    <td><strong>Edad</strong></td>
+    <td>Yo → Perfil</td>
+    <td>La síntesis se calcula como si tuvieras treinta años. A los sesenta vas por el
+    52&nbsp;% de lo que sintetizabas a los veinte.</td>
+  </tr>
+  <tr>
+    <td><strong>Altitud</strong></td>
+    <td>Yo → Perfil</td>
+    <td>Se supone el nivel del mar. El UV sube un 10&nbsp;% por cada mil metros.</td>
+  </tr>
+  <tr>
+    <td>Tu sitio de trabajo</td>
+    <td>Luz → Jornada</td>
+    <td>No podrás fichar de un toque, y la app no sabrá bajo qué luz pasas el día ni si la
+    ventana de la mañana te cae dentro del turno.</td>
+  </tr>
+  <tr>
+    <td>Tus lámparas</td>
+    <td>Luz → Lámparas</td>
+    <td>La baldosa de lámpara no guardará la sesión: sin longitudes de onda e irradiancia
+    no hay dosis que calcular, y guardarla sería un registro que nunca podrá contar nada.</td>
+  </tr>
+</table>
+
+<div class="caja">
+  <span class="et">La longitud va con el este positivo</span>
+  <p>Madrid es <code>−3,7026</code> y Barcelona <code>2,1734</code>. Se escriben con coma
+  decimal, como todo en la app.</p>
+</div>
+
+<h3>Dónde viven tus datos</h3>
+<p>En el aparato, en <code>localStorage</code>, bajo la clave <code>ritmo-data-v1</code>.
+La app arranca y funciona entera sin red: la nube <strong>nunca</strong> está en el camino
+crítico.</p>
+<p>Si entras con tu correo (Yo → Cuenta), se añade una copia en Supabase. El ciclo es
+siempre el mismo, y es lo que hace que no se pierda nada:</p>
+<ol>
+  <li>bajar lo que hay en la nube,</li>
+  <li>fusionarlo con lo de aquí,</li>
+  <li>guardar el resultado aquí,</li>
+  <li>subir ese mismo resultado.</li>
+</ol>
+<p>Sincronizar dos veces seguidas da lo mismo que hacerlo una, así que reintentar cuando
+vuelve la conexión es seguro. Y lo que borras se queda borrado: hay una lista de lápidas
+para que sincronizar no resucite lo que quitaste.</p>
+</section>
+
+<!-- ══════════════════════════════════════ 2 ══ -->
+<section>
+<h2><span class="num">Parte 2</span>Medir · la pestaña principal</h2>
+<p class="entradilla">Es la primera de la barra porque es la única que se abre <em>para
+hacer algo</em>; las otras cinco se abren para leer. Once baldosas, y debajo el saldo del
+día.</p>
+
+<h3>Cómo funciona una baldosa</h3>
+<p>Todas se comportan igual, y merece la pena entenderlo una vez:</p>
+<ul>
+  <li><strong>Un toque empieza. Otro toque para.</strong> No hay «guardar».</li>
+  <li><strong>Encendida se da la vuelta entera</strong>: fondo claro, tinta oscura. No hay
+  colores. Se distingue de reojo, con el móvil a un palmo y a pleno sol, que es donde se
+  va a usar.</li>
+  <li><strong>El primer minuto pone «Ahora mismo»</strong>, no «0 min». Un cero al pulsar
+  parece que el toque no ha entrado.</li>
+  <li><strong>Apagada enseña lo que llevas hoy</strong> de esa cosa, o «Sin tiempo hoy».</li>
+  <li><strong>Pueden estar varias a la vez.</strong> El día se solapa de verdad: estás
+  fichado en el taller y sales quince minutos al patio.</li>
+  <li><strong>El contexto se congela al empezar, no al parar.</strong> Si sales a las ocho y
+  paras a las nueve, la piel que llevabas y el cielo que había son los de las ocho.</li>
+</ul>
+
+<h3>Las ocho baldosas, una por una</h3>
+<p>Para cada una: qué preguntas te hace, qué se guarda exactamente al parar, y a qué parte
+de la app alimenta eso.</p>
+
+<div class="ficha">
+  <h4>Fuera</h4>
+  <p>El rato de calle sin nada más específico. Es también el <strong>paraguas</strong>: como
+  baldosa enseña todo el tiempo de exterior del día, venga del botón que venga.</p>
+  <dl>
+    <dt>Te pregunta</dt><dd>Nada. Un toque y arranca.</dd>
+    <dt>Al parar guarda</dt><dd>Un rato fuera, con la hora de inicio, los minutos y el filtro
+    de gafas.</dd>
+    <dt>Alimenta</dt><dd>La barra de rojo del balance, la amplitud de las esferas, el reparto
+    del día, la racha de sol, y el punto de amplitud del parte.</dd>
+    <dt>Ojo</dt><dd>Mientras corra algo que ya implique estar fuera, esta baldosa se enciende
+    sola y <strong>no se puede pulsar</strong>. Ya estás contando.</dd>
+  </dl>
+</div>
+
+<div class="ficha">
+  <h4>Sol</h4>
+  <p>La única baldosa que pregunta algo, y con razón: sin saber cuánta piel llevas y cómo
+  está el cielo, la vitamina D sería un número inventado.</p>
+  <dl>
+    <dt>Te pregunta</dt><dd><strong>Cuánta piel</strong> (seis opciones, de «cara y manos» a
+    «cuerpo entero») y <strong>cómo está el cielo</strong> (cinco: limpio, con estelas o
+    calima, velado, filtrado, sin sol). Las dos <em>antes</em> de empezar, y las dos se
+    recuerdan en el perfil: a partir de la segunda vez vuelve a ser un toque.</dd>
+    <dt>Al parar guarda</dt><dd><strong>Dos cosas</strong>: el rato fuera, y una exposición
+    solar con la hora exacta, la piel y el cielo.</dd>
+    <dt>Alimenta</dt><dd>Todo lo de «Fuera», <em>más</em> la vitamina D del día y de la
+    semana en Progreso, y el punto de mediodía del parte.</dd>
+    <dt>Mientras corre</dt><dd>Arriba, en «El sol ahora», ves a cuántos minutos empezarías a
+    enrojecer con tu fototipo y ese cielo.</dd>
+  </dl>
+</div>
+
+<div class="ficha">
+  <h4>Amanecer</h4>
+  <p>Se apunta aparte de «Fuera» porque no es un rato de sol cualquiera: es la ventana en
+  que cambia la proporción entre el rojo y el azul, que es la señal que mueve el reloj.</p>
+  <dl>
+    <dt>Te pregunta</dt><dd>Nada.</dd>
+    <dt>Al parar guarda</dt><dd>Un rato fuera marcado como amanecer.</dd>
+    <dt>Alimenta</dt><dd>Lo de «Fuera», y además —si cae dentro de la ventana— el
+    <strong>pulso de fase</strong>: la racha de la esfera de período, el desplazamiento de
+    la esfera de fase, el tercio de azul del balance y el punto de amanecer del parte.</dd>
+    <dt>La ventana</dt><dd>Del crepúsculo civil de la mañana hasta hora y media después de la
+    salida del sol. Pasado eso, la luz sube la amplitud pero ya no mueve la fase.</dd>
+  </dl>
+</div>
+
+<div class="ficha">
+  <h4>Atardecer</h4>
+  <p>La otra ancla del día. Dos pulsos breves —uno al alba y otro al ocaso— arrastran el
+  ritmo casi como un día entero de luz.</p>
+  <dl>
+    <dt>Te pregunta</dt><dd>Nada.</dd>
+    <dt>Al parar guarda</dt><dd>Un rato fuera marcado como atardecer.</dd>
+    <dt>Alimenta</dt><dd>Lo de «Fuera», el punto de tarde del parte, y —si cae en la ventana—
+    <strong>frena la deriva de la esfera de fase a la mitad</strong>: 6 minutos en vez de 12.</dd>
+    <dt>La ventana</dt><dd>Del ocaso al fin del crepúsculo civil de la tarde. En Madrid en
+    marzo, de 19:27 a 19:55: media hora.</dd>
+  </dl>
+</div>
+
+<div class="aviso">
+  <span class="et">Qué hace y qué no hace el atardecer</span>
+  <p><strong>No pone el reloj en hora.</strong> Eso lo hace la luz de la mañana y no hay dos
+  maneras. Lo que hace el crepúsculo es sujetar el otro extremo, y hay una segunda razón más
+  prosaica: los minutos que pasas mirando cómo se pone el sol son minutos que <strong>no</strong>
+  pasas bajo una bombilla, que es lo que de verdad retrasa la fase a esa hora.</p>
+  <p>Por eso cuenta como media señal y no como una entera. Frena la deriva; no la revierte.</p>
+</div>
+
+<div class="ficha">
+  <h4>Grounding</h4>
+  <dl>
+    <dt>Te pregunta</dt><dd>Nada. Coge el escalón en el que estés de la rampa.</dd>
+    <dt>Al parar guarda</dt><dd><strong>Dos cosas</strong>: el registro del hábito con su
+    nivel y sus minutos, <em>y</em> un rato fuera. Estar descalzo en la hierba es estar
+    fuera.</dd>
+    <dt>Alimenta</dt><dd>La rampa de hábitos en Progreso, el punto de hábitos del parte, y
+    todo lo de «Fuera».</dd>
+  </dl>
+</div>
+
+<div class="ficha">
+  <h4>Frío</h4>
+  <dl>
+    <dt>Te pregunta</dt><dd>Nada.</dd>
+    <dt>Al parar guarda</dt><dd>Solo el registro del hábito. <strong>No</strong> deja rato
+    fuera: una ducha fría se da dentro de casa, y contarla como calle apuntaría minutos que
+    nunca ocurrieron.</dd>
+    <dt>Alimenta</dt><dd>La rampa del frío en Progreso y el punto de hábitos del parte.</dd>
+    <dt>Limitación</dt><dd>El hábito guarda minutos pero no la hora a la que empezaste, así
+    que aparece con su barra en el reparto del día pero no entra en el total de horas
+    apuntadas.</dd>
+  </dl>
+</div>
+
+<div class="ficha">
+  <h4>Lámpara</h4>
+  <p>La segunda que pregunta, y por una razón concreta: la irradiancia cae con el
+  <strong>cuadrado</strong> de la distancia, así que entre veinte y cuarenta centímetros
+  hay cuatro veces de diferencia. Suponerla convertiría la dosis en un número inventado.</p>
+  <dl>
+    <dt>Te pregunta</dt><dd><strong>Cuál</strong> de tus lámparas, <strong>qué zona</strong>
+    del cuerpo (siete) y <strong>a qué distancia</strong> en centímetros. Viene puesta la
+    distancia de referencia de esa lámpara.</dd>
+    <dt>Al parar guarda</dt><dd>Una sesión de fotobiomodulación con la hora, los minutos, la
+    lámpara, la zona y la distancia.</dd>
+    <dt>Alimenta</dt><dd>La dosis acumulada en julios por cm², la barra de rojo del balance
+    —con una equivalencia declarada y a la baja— y el punto de lámpara del parte.</dd>
+    <dt>Si no tienes ninguna</dt><dd>La baldosa lo dice y no guarda nada. Se crean en Luz.</dd>
+  </dl>
+</div>
+
+<div class="ficha">
+  <h4>A oscuras</h4>
+  <dl>
+    <dt>Te pregunta</dt><dd>Nada. Se pulsa al apagar la última luz y se para al levantarse.</dd>
+    <dt>Al parar guarda</dt><dd>Una noche, con la hora de apagado y la de levantarse.</dd>
+    <dt>La fecha</dt><dd>Se guarda con la fecha de <strong>la mañana en que te levantas</strong>.
+    Apagar a las 23:30 del domingo y levantarse a las 07:00 es la noche del lunes: es la que
+    explica el peso del lunes.</dd>
+    <dt>Alimenta</dt><dd>La barra de oscuridad del balance, la amplitud de las esferas, la
+    higiene de noche de las estaciones y los puntos de noche del parte.</dd>
+  </dl>
+</div>
+
+<h3>El entrelazado</h3>
+<p>Cuatro de las ocho <strong>implican estar fuera</strong>: sol, amanecer, atardecer y
+grounding. El frío no, y es a propósito.</p>
+<p>Cuando arrancas cualquiera de esas cuatro, la baldosa de «Fuera» se enciende sola, con
+borde discontinuo y sin poder pulsarse, y pone <em>«Con Sol»</em> o lo que corresponda.
+Ya estás contando; pulsarla solo serviría para apuntar el mismo rato dos veces.</p>
+
+<div class="dentro">
+  <span class="et">Por qué el total de calle no es la suma</span>
+  <p>Sales al jardín, te descalzas y te quedas media hora. Quedan <strong>dos</strong>
+  registros de treinta minutos — uno de sol y otro de grounding — pero eso fue
+  <strong>media hora</strong> de calle, no una.</p>
+  <p>La app no suma los minutos: <strong>une los intervalos</strong>. Coge los tramos, pega
+  los que se pisan y mide lo que queda. Por eso en «En qué se te va el día» puedes ver que
+  las ramas de dentro suman más que el total, y la propia tarjeta te explica por qué.</p>
+</div>
+
+<h3>Las tres que no cronometran</h3>
+<table>
+  <tr><th>Baldosa</th><th>Qué hace un toque</th><th>Qué alimenta</th></tr>
+  <tr>
+    <td><strong>Trabajo</strong></td>
+    <td>Ficha la entrada con el perfil de luz de tu sitio congelado dentro. Vuelta a pulsar
+    («Salgo») ficha la salida.</td>
+    <td>Los huecos de la jornada, el aviso de gafas, el azul efectivo al que te expones y
+    la rama de trabajo del reparto.</td>
+  </tr>
+  <tr>
+    <td><strong>Café o comida</strong></td>
+    <td>Apunta una comida con la hora de ahora. <strong>El café cuenta</strong>: abre la
+    ventana del hígado igual que un plato.</td>
+    <td>El ritmo de insulina, la ventana de comida, los dos relojes y los puntos de mesa
+    del parte.</td>
+  </tr>
+  <tr>
+    <td><strong>Entreno</strong></td>
+    <td>Abre la pestaña «Hoy». No cronometra aquí: la sesión ya guarda cuándo empezó, y esta
+    baldosa lo <em>refleja</em> con su tiempo mientras está en marcha.</td>
+    <td>Nada nuevo — es un espejo. El entreno se lleva desde su pantalla.</td>
+  </tr>
+</table>
+
+<h3>El sol ahora</h3>
+<p>Arriba de la rejilla, y no escondido en un detalle: cuando estás tumbado al sol en
+bañador, el dato que necesitas en ese momento no es la vitamina D acumulada, es cuánto te
+queda. Enseña:</p>
+<ul>
+  <li>La <strong>altura del sol</strong> en este instante, en grados.</li>
+  <li>Qué ofrece a esa altura: UVB (por encima de 30°), UVA (por encima de 10°), azul que
+  pone el reloj en hora (por encima de −6°), o nada de eso.</li>
+  <li><strong>A cuántos minutos empezarías a enrojecer</strong> con tu fototipo y el cielo
+  que tengas guardado.</li>
+</ul>
+
+<h3>Apuntar un rato a mano</h3>
+<p>Debajo de la rejilla. Para lo que se te olvidó cronometrar — te acuerdas del paseo de
+esta mañana a la hora de comer, o se te olvidó parar y prefieres poner tú la hora buena.</p>
+<p>Eliges qué fue, a qué hora empezó y cuántos minutos duró. Detrás no hay nada nuevo: se
+construye exactamente lo mismo que si lo hubieras cronometrado, así que se guarda igual y
+alimenta lo mismo. Y <strong>no se marca como estimado</strong>, porque lo pusiste tú.</p>
+
+<h3>Si se te olvida parar</h3>
+<p>Dos cosas ocurren, y las dos importan:</p>
+<ul>
+  <li><strong>Pasadas cuatro horas</strong>, la pantalla avisa de que algo lleva demasiado
+  tiempo en marcha.</li>
+  <li><strong>Al cambiar de día</strong>, la app lo cierra sola con <strong>media hora</strong>
+  y lo marca como <em>estimado</em>.</li>
+</ul>
+<p>Media hora, y no lo que marque el reloj, es la decisión más importante de todo el
+mecanismo: alguien que aprieta «Sol» a las once y se olvida no ha estado catorce horas al
+sol, y apuntarlo así envenenaría la vitamina D del día, el balance de luz y la amplitud de
+la semana de una sola vez.</p>
+
+<h3>En qué se te va el día</h3>
+<p>Debajo de los botones. Una barra por cada cosa medida, todas a la misma escala, y las
+cuatro que implican estar fuera <strong>colgando de «Fuera»</strong>, indentadas.</p>
+<p>Las hijas se miden contra <em>su madre</em>, no contra el tope del día: así se ve de un
+vistazo qué parte del rato de calle fue cada cosa, y una hija nunca puede pintar más ancha
+que su madre — que es literalmente lo que significa estar dentro.</p>
+<p>Arriba a la derecha, <strong>las horas apuntadas</strong>: la unión de todo, sin contar
+ningún minuto dos veces ni siquiera entre ramas distintas. Estar fichado y salir al patio
+son los mismos minutos del día.</p>
+
+<h3>El parte del día</h3>
+<p>Lo último de la pestaña. Recorre todo lo apuntado hoy y lo reparte en
+<strong>cuatro signos</strong>, no dos:</p>
+<table>
+  <tr><th>Signo</th><th>Qué significa</th></tr>
+  <tr><td><strong>Aún a tiempo</strong></td><td>Todavía se puede hacer, con su hora límite.
+  Va arriba del todo y abierto, porque es lo único sobre lo que puedes actuar.</td></tr>
+  <tr><td><strong>A favor</strong></td><td>Lo hiciste y suma.</td></tr>
+  <tr><td><strong>En contra</strong></td><td>Lo hiciste y resta.</td></tr>
+  <tr><td><strong>Ni suma ni resta</strong></td><td>O el cielo no lo ofrecía, o la ventana
+  pasó. Ninguna de las dos es un fallo.</td></tr>
+</table>
+
+<div class="caja">
+  <span class="et">La regla que sostiene el tono</span>
+  <p><strong>Nada entra «en contra» por no haber podido.</strong> Un «en contra» es siempre
+  algo que <em>se hizo</em> —azul después del ocaso, comer antes de ver luz, cerrar la mesa
+  muy tarde—, nunca una ausencia.</p>
+  <p>Un día de diciembre sin UVB da «ni suma ni resta», no un punto negativo. Y un día
+  entero sin apuntar nada da <strong>cero</strong> puntos en contra, tampoco a medianoche.
+  Con dos signos esto sería una lista de reproches para cualquiera que trabaje encerrado,
+  que es justo la persona a la que la app quiere servir.</p>
+</div>
+
+<p>Y una cosa que el parte <strong>no</strong> hace: no hay nota del día. No se promedia la
+vitamina D con el ratio de omegas porque ese número no significaría nada. Se enseña cada
+cosa por su lado y se dice de dónde sale.</p>
+</section>
+
+<!-- ══════════════════════════════════════ 3 ══ -->
+<section>
+<h2><span class="num">Parte 3</span>Hoy · la decisión</h2>
+<p class="entradilla">La pantalla que se abre por la mañana para saber qué toca. Un test de
+medio minuto, y de ahí sale todo lo demás.</p>
+
+<h3>El test de la mañana, pregunta por pregunta</h3>
+<table>
+  <tr><th>Pregunta</th><th>Escala</th><th>Para qué se usa</th></tr>
+  <tr><td>Cómo has dormido</td><td>1 a 5</td><td><strong>40 puntos</strong> de la
+  disposición. Es lo que más pesa junto con la energía.</td></tr>
+  <tr><td>Cómo andas de energía</td><td>1 a 5</td><td>Otros <strong>40 puntos</strong>.</td></tr>
+  <tr><td>Higiene de luz anoche</td><td>sí / no</td><td>5 puntos. Si dices que no, además
+  te avisa de que el descanso pudo resentirse, y le quita un tercio a la mitad de oscuridad
+  del contraste.</td></tr>
+  <tr><td>Viste el amanecer</td><td>sí / no</td><td>4 puntos.</td></tr>
+  <tr><td>Viste el atardecer ayer</td><td>sí / no</td><td>3 puntos.</td></tr>
+  <tr><td>Te dio el sol</td><td>sí / no</td><td>4 puntos.</td></tr>
+  <tr><td>Cetogénica hoy</td><td>sí / no</td><td>4 puntos, y activa la curva de
+  keto-adaptación.</td></tr>
+  <tr><td>Zonas con molestias</td><td>tantas como haya</td><td>Cada una se deja descansar
+  hoy, <em>y además</em> restan puntos.</td></tr>
+  <tr><td>Agujetas leves repartidas</td><td>sí / no</td><td>Restan 8 puntos y bajan la
+  intensidad, sin señalar ninguna zona.</td></tr>
+</table>
+<p>Y opcionalmente, la báscula y cuatro preguntas sobre ayer —cena tardía, alcohol, comida
+salada, tránsito— más el estrés. Todo eso alimenta la explicación del peso, y lo que dejes
+sin contestar simplemente no se mira: <strong>nunca se inventa</strong>.</p>
+
+<h3>Cómo se calcula la disposición</h3>
+<p>Es una cuenta cerrada y sin misterio:</p>
+<div class="caja">
+  <p><code>sueño = (sueño − 1) / 4 × 40</code><br />
+  <code>energía = (energía − 1) / 4 × 40</code><br />
+  <code>hábitos = higiene·5 + amanecer·4 + atardecer·3 + sol·4 + keto·4</code> &nbsp;(20 máx.)<br />
+  <code>puntuación = sueño + energía + hábitos</code></p>
+  <p>Después se resta: <strong>8</strong> si hay agujetas leves repartidas, y
+  <strong>4 por cada zona</strong> con molestias, hasta un tope de <strong>12</strong>.</p>
+  <p>Por debajo de <strong>40</strong> la disposición es baja; hasta <strong>65</strong>,
+  media; por encima, alta.</p>
+</div>
+<p>Los hábitos suman 20 de 100 a propósito: <strong>acompañan, pero no compensan una mala
+noche</strong>. Con sueño y energía a 1, cinco hábitos perfectos te dejan en 20.</p>
+
+<h3>Las tres esferas</h3>
+<p>Tres cosas distintas que la gente mete en el mismo saco. Miran los últimos siete días.</p>
+
+<h4>Período — la racha</h4>
+<p>Cuántas mañanas seguidas hubo pulso de luz. Se cuenta desde <em>ayer</em> y no desde hoy,
+porque el pulso de hoy puede estar todavía por llegar y cortaría la racha injustamente a
+media mañana.</p>
+
+<h4>Fase — cuánto vas atrasado</h4>
+<p>El reloj humano corre largo — del orden de 24 h 12 min —, así que sin la señal que lo
+pone en hora se va retrasando solo. Cada día suma o resta:</p>
+<table>
+  <tr><th>Ese día…</th><th class="num-col">Mueve</th></tr>
+  <tr><td>Hubo pulso de mañana</td><td class="num-col">+12 min</td></tr>
+  <tr><td>No hubo mañana, pero sí crepúsculo</td><td class="num-col">−6 min</td></tr>
+  <tr><td>Ni una cosa ni la otra</td><td class="num-col">−12 min</td></tr>
+</table>
+<p>El acumulado se topa en −120 min: pasado eso el número dejaría de significar nada.</p>
+<div class="dentro">
+  <span class="et">Hoy cuenta en cuanto se sabe</span>
+  <p>Si ya hubo pulso de mañana, la esfera se mueve <strong>el mismo día</strong>: es lo que
+  hace que salir a la calle tenga un efecto que ves. Si no lo hubo pero las dos ventanas
+  —la de la mañana y la del ocaso— ya han pasado, también está decidido.</p>
+  <p>Mientras alguna siga abierta, hoy no entra. El día no ha terminado y darlo por perdido
+  sería adelantarse.</p>
+</div>
+
+<h4>Amplitud — el contraste entre el día y la noche</h4>
+<p>Un cociente con dos mitades que pesan igual:</p>
+<ul>
+  <li><strong>Por arriba</strong>: los minutos de exterior. Media hora al día es un contraste
+  pobre; tres horas, uno bueno.</li>
+  <li><strong>Por abajo</strong>: la oscuridad que hubo frente a la que tocaba en tu sitio y
+  esa fecha — no ocho horas fijas.</li>
+</ul>
+<p>Sin dato de la noche se supone la que tocaba, <strong>no cero</strong>: no apuntar algo no
+puede contar como haberlo hecho mal.</p>
+
+<h3>La báscula y por qué el peso hace lo que hace</h3>
+<p>Apuntas peso, y opcionalmente porcentaje de grasa y de músculo. Lo que la app hace con
+eso:</p>
+<ul>
+  <li><strong>Explica el número de hoy</strong> con lo que pasó ayer: cena tardía, alcohol,
+  sal, tránsito, estrés, noche corta, relojes desincronizados, falta de pulso de mañana.
+  Cada factor que no contestaste queda sin mirar.</li>
+  <li><strong>Separa la tendencia del ruido.</strong> El peso de un día no es una medida de
+  grasa: es agua, glucógeno y lo que haya en el intestino.</li>
+  <li>Con la altura calcula el <strong>FFMI</strong> y la masa libre de grasa, y los dibuja
+  con su rango.</li>
+</ul>
+<p>Cualquier día pasado se puede corregir o borrar desde Progreso → Cuerpo.</p>
+</section>
+
+<!-- ══════════════════════════════════════ 4 ══ -->
+<section>
+<h2><span class="num">Parte 4</span>Luz · el marco del día</h2>
+<p class="entradilla">Todo lo que la app calcula del sol sale de dos números y la fecha.
+Sin red, sin permisos de ubicación y sin batería: es astronomía, y se hace en el aparato.</p>
+
+<h3>El arco del sol y sus seis umbrales</h3>
+<p>Para tu sitio y la fecha de hoy, la app resuelve a qué hora el sol cruza seis alturas,
+subiendo y bajando. Cuando un umbral no ocurre hoy —en la noche polar, o en el sol de
+medianoche— lo dice, en vez de dar una hora falsa.</p>
+<table>
+  <tr><th>Umbral</th><th class="num-col">Altura</th><th>Qué trae</th></tr>
+  <tr><td>Crepúsculo astronómico</td><td class="num-col">−18°</td><td>Oscuridad real. Aquí
+  empieza y acaba la noche biológica.</td></tr>
+  <tr><td>Crepúsculo náutico</td><td class="num-col">−12°</td><td>Se distingue el horizonte.
+  Todavía no hay señal circadiana útil.</td></tr>
+  <tr><td>Crepúsculo civil</td><td class="num-col">−6°</td><td>Ya hay azul suficiente para
+  poner tu reloj en hora.</td></tr>
+  <tr><td>Amanecer y ocaso</td><td class="num-col">−0,833°</td><td>Rojo e infrarrojo, con la
+  refracción de la atmósfera ya descontada.</td></tr>
+  <tr><td>Sol a 10°</td><td class="num-col">+10°</td><td>Empieza el UVA: óxido nítrico y
+  vasodilatación.</td></tr>
+  <tr><td>Sol a 30°</td><td class="num-col">+30°</td><td>La única ventana en que tu piel
+  puede fabricar vitamina D.</td></tr>
+</table>
+<p>El amanecer va a −0,833° y no a cero porque el sol se ve cuando su <em>borde superior</em>
+toca el horizonte, no su centro, y la atmósfera además lo levanta ópticamente. Descontar
+esos dos efectos es la diferencia entre acertar el amanecer y equivocarlo en cuatro minutos.</p>
+
+<h3>El balance de cuatro barras</h3>
+<p>Cuánto de lo que el día ofrecía has cogido. Cada barra se mide contra el arco
+<strong>de tu sitio</strong>, así que nadie sale peor parado por vivir donde vive.</p>
+<table>
+  <tr><th>Barra</th><th>Cómo se gana</th></tr>
+  <tr><td><strong>Rojo e infrarrojo</strong></td><td>Minutos de exterior sobre los que el
+  sol ofrecía hoy, más lo que aportaran las lámparas con una equivalencia declarada y a la
+  baja.</td></tr>
+  <tr><td><strong>Ultravioleta</strong></td><td>Si el arco llegó a los 30° y si estuviste
+  fuera en esa franja. Cuando el arco no llega, la barra dice «no había» — no cero.</td></tr>
+  <tr><td><strong>Azul</strong></td><td>Tres tercios: el pulso de fase de la mañana, haber
+  pisado la calle en algún momento, y no haber tomado azul después del ocaso.</td></tr>
+  <tr><td><strong>Oscuridad</strong></td><td>Los minutos a oscuras contra la noche que
+  tocaba hoy — no contra ocho horas fijas: en junio esa noche dura menos y exigir lo mismo
+  sería absurdo.</td></tr>
+</table>
+<div class="caja">
+  <span class="et">«No había» no es cero</span>
+  <p>Una barra vacía significa que no lo cogiste. Una barra que dice «no había» significa que
+  el cielo no lo ofrecía. Son cosas distintas y la app las distingue en todas partes: en
+  diciembre, a nuestra latitud, la vitamina D no es posible y no es culpa tuya.</p>
+</div>
+
+<h3>Tu jornada, los fichajes y las gafas</h3>
+<p>Describes tu sitio de trabajo una vez —sus lux, su temperatura de color, si entra luz
+natural y si llevas filtro— y a partir de ahí fichar es un toque. Con el arco y el fichaje,
+la app sabe sin preguntar nada más:</p>
+<ul>
+  <li>A qué altura estaba el sol cuando fichaste, y por tanto si tu trayecto fue de noche
+  cerrada, de crepúsculo o ya de día.</li>
+  <li>Si el hueco que de verdad tienes cae por encima de los umbrales que sirven.</li>
+  <li><strong>Cuándo tus gafas de la mañana pasan a estorbar</strong>: hay épocas del año en
+  que tu trayecto de casa al trabajo <em>es</em> la ventana del amanecer, y llevarlas
+  puestas bloquea justo la señal que hace falta. El resto del año son correctas.</li>
+</ul>
+<p>Y con tres fichajes o más, la app aprende <strong>a qué hora sueles entrar</strong> —la
+mediana de los últimos 28 días, no la media, para que un día raro no la mueva—. Con eso deja
+de mandarte salir a una hora en que ya estás dentro: si la ventana de la mañana te cae en la
+jornada, lo dice y te manda la señal al fin de semana.</p>
+
+<h3>Lámparas y fotobiomodulación</h3>
+<p>Creas cada lámpara con <strong>todas</strong> sus longitudes de onda y la irradiancia de
+cada una a su distancia de referencia. Sin eso no hay dosis, y la app lo dice en vez de
+inventar un número.</p>
+<p>Con eso calcula los julios por cm² de cada sesión, aplicando la caída con el cuadrado de
+la distancia, y te dice cuáles de los cuatro picos de absorción del citocromo —620, 680, 760
+y 820 nm— cubre tu lámpara y cuáles no.</p>
+
+<h3>Las compensaciones</h3>
+<p>Una tabla de lo que falta y con qué se paga. Lo que la hace útil es la última columna:
+<strong>qué no cubre</strong> cada remedio. Y una fila que no tiene remedio:</p>
+<div class="aviso">
+  <span class="et">La UVB no se compensa</span>
+  <p>Ni lámpara, ni suplemento, ni truco. Se apunta como analítica y se recupera cuando el
+  arco vuelve a subir. La app no te va a ofrecer otra cosa, porque una herramienta que tiene
+  un remedio para todo te está mintiendo en algo.</p>
+</div>
+
+<h3>Las estaciones</h3>
+<p>La misma latitud vista a lo largo del año: qué meses te roban luz, en qué fase del callo
+solar estás, cuánta noche toca hoy, y las dos ventanas de mirar al cielo. Más el coste, en
+minutos de fase, de las cosas que se hacen sin pensar — una pantalla en la cama, dormir con
+la persiana subida.</p>
+</section>
+
+<!-- ══════════════════════════════════════ 5 ══ -->
+<section>
+<h2><span class="num">Parte 5</span>Cocina · registrar la comida</h2>
+<p class="entradilla">Apuntar rápido vale más que apuntar completo. La hora es el dato
+central; el detalle es para quien lo quiera.</p>
+
+<h3>Apuntar una comida, paso a paso</h3>
+<ol>
+  <li><strong>La hora.</strong> Viene puesta la de ahora y se puede cambiar. Es el dato que
+  más pesa de toda la comida: alimenta la ventana, el ritmo de insulina y los dos relojes.</li>
+  <li><strong>Qué fue.</strong> Texto libre. Con eso solo, la comida ya cuenta.</li>
+  <li><strong>Los alimentos</strong>, si quieres el detalle. Buscas en el catálogo y pones
+  gramos o unidades — huevos, tortitas. Lo que se cuenta por unidades rellena los gramos
+  solo.</li>
+  <li><strong>Las etiquetas</strong>, de la comida entera o de cada alimento: proteína
+  animal, pescado azul, huevos, verdura, carbohidrato, muy salada, alcohol.</li>
+  <li><strong>Los suplementos</strong>, si tomaste. Van aparte de los alimentos a propósito:
+  una cápsula no tiene gramos, y mezclarlos impediría enseñar el ratio de omegas con y sin
+  ella — que es justo la comparación que dice algo.</li>
+</ol>
+<p>Desde Medir, la baldosa <strong>«Café o comida»</strong> apunta una comida con la hora de
+ahora de un solo toque, sin detalle. Sirve para no perder la hora, que es lo que importa.</p>
+
+<h3>La mesa</h3>
+<p>Lo que la app calcula de lo que apuntas, por comida y por día. El catálogo tiene datos
+para <strong>86 de los 241 alimentos</strong>, así que junto a cada cifra derivada sale
+<strong>qué porcentaje de lo que apuntaste tenía dato</strong>. Sin eso, el número sería una
+cifra sin contexto.</p>
+
+<h4>Leucina — y por qué va por comida y no por día</h4>
+<p>El músculo no se construye con el total del día: <strong>cada comida tiene que llegar
+sola al umbral</strong> para encender la señal. Repartir la misma proteína en migas no la
+enciende.</p>
+<p>El umbral es <strong>2,5 g de leucina</strong> en una comida. Para hacerse una idea: 80 g
+de ternera dan 1,4 g — hacen falta unos 142 g.</p>
+
+<h4>DIAAS — la calidad de la proteína</h4>
+<table>
+  <tr><th>DIAAS</th><th>Se lee como</th></tr>
+  <tr><td class="num-col">100 o más</td><td>completa</td></tr>
+  <tr><td class="num-col">75 a 99</td><td>buena</td></tr>
+  <tr><td class="num-col">50 a 74</td><td>incompleta</td></tr>
+  <tr><td class="num-col">menos de 50</td><td>pobre</td></tr>
+</table>
+<p>Se pondera por los gramos de proteína de cada alimento, no se promedia a lo bruto.</p>
+
+<h4>Deuterio</h4>
+<p>El agua pesada estorba a la mitocondria. La referencia del agua corriente son
+<strong>155 ppm</strong>; por debajo de <strong>150</strong> se considera bajo y por encima
+de <strong>154</strong>, alto. La grasa animal de rumiante tiende a bajo; la fruta y el
+carbohidrato, a alto.</p>
+
+<h4>Antinutrientes</h4>
+<p>Tres niveles. No es veneno: es que ese mineral no llega. Con nivel alto, los fitatos y
+oxalatos secuestran zinc y hierro de <em>lo que comas a la vez</em>, que es el matiz que se
+suele perder.</p>
+
+<h3>El ritmo de insulina y la ventana</h3>
+<p>Cada comida es un evento de insulina. La app ordena los del día y saca:</p>
+<ul>
+  <li><strong>Cuándo abriste y cuándo cerraste</strong> la ventana, y cuántas horas duró.</li>
+  <li><strong>El hueco más largo</strong> entre dos eventos, contando el descanso de la
+  noche.</li>
+</ul>
+<p>En el parte, una ventana de <strong>12 horas o menos</strong> suma; más, resta. Y cerrar
+la mesa <strong>más de dos horas después del ocaso</strong> resta también: la misma comida
+sube más y baja peor de noche que de día.</p>
+
+<div class="caja">
+  <span class="et">Qué rompe el ayuno y qué no</span>
+  <p>Hay una zona intermedia real y la app no finge que sea binaria. El agua y la sal no lo
+  rompen. Un plato sí. Y en medio: <strong>el café solo no lleva nada que suba la glucosa,
+  pero abre la ventana del hígado</strong> — para el reloj periférico, cuenta. Un chorro de
+  leche ya lo rompe: la lactosa y la proteína levantan insulina, poco pero la levantan.</p>
+</div>
+
+<h3>Los dos relojes</h3>
+<p>El reloj de detrás de los ojos escucha a la luz; el del hígado escucha a la comida. La app
+mide la distancia entre los dos: cuándo entró tu primera luz útil y cuándo abriste la
+ventana.</p>
+<p>Cuando comes <strong>más de una hora antes</strong> de ver luz, están desincronizados, y
+eso sí es un punto en contra: es algo que se hizo.</p>
+
+<h3>Omegas</h3>
+<p>El ratio omega&nbsp;6 : omega&nbsp;3 del día, con la comida sola y con los suplementos
+sumados, para que se vea de dónde viene cada cosa. Se normaliza siempre con el omega&nbsp;3
+en uno, porque es como se habla de esto.</p>
+<p>El ratio solo se enseña si hay dato para al menos el <strong>50&nbsp;%</strong> de lo que
+apuntaste. Por debajo de eso sería una cifra inventada con aspecto de dato.</p>
+<p>En el parte: <strong>1:4 o menos</strong> suma, <strong>1:10 o más</strong> resta, y en
+medio ni suma ni resta.</p>
+
+<h3>Cetosis</h3>
+<p>Si declaras alimentación cetogénica, la app cuenta los carbohidratos del día contra el
+margen real: hasta <strong>30 g</strong> con holgura, y según la persona aguanta hasta
+<strong>50</strong>. La cetosis no se rompe por un carbohidrato.</p>
+</section>
+
+<!-- ══════════════════════════════════════ 6 ══ -->
+<section>
+<h2><span class="num">Parte 6</span>El entreno</h2>
+<p class="entradilla">La app te propone una sesión cada día. De qué depende, qué se guarda
+de cada serie, y cómo decide subirte la carga.</p>
+
+<h3>De qué depende la sesión que te propone</h3>
+<ul>
+  <li><strong>La disposición de hoy</strong>, del test de la mañana. Decide la intensidad, el
+  RIR objetivo y si toca fuerza, cardio o descanso activo.</li>
+  <li><strong>Las zonas con molestias</strong>: se dejan descansar. Y no solo eso — cuantas
+  más marques, menos exigente es la sesión entera: tener tres zonas cargadas no es lo mismo
+  que tener una.</li>
+  <li><strong>Qué músculos van cortos</strong> esta semana. El volumen se cuenta por
+  músculo, no por grupo grueso, y con series fraccionadas: una dominada no da lo mismo al
+  dorsal que al bíceps.</li>
+  <li><strong>Cuánto tiempo tienes</strong> y <strong>dónde entrenas</strong>. Los sitios se
+  configuran una vez, cada uno con su material y sus topes de peso.</li>
+  <li><strong>Qué ejercicios te gustan</strong>: los que marcas como favoritos, los que
+  descartas, y los que la app aprende sola — sube el que entrenas y baja el que cambias
+  por otro.</li>
+  <li><strong>Si vuelves de un parón</strong>: hay una vuelta progresiva por pasos en vez de
+  soltarte el volumen de golpe.</li>
+</ul>
+<p>Puedes pedir por encima de lo que tocaba: pesas en vez del cardio, o pesas sin renunciar
+al cardio. La app lo marca como decisión tuya y lo respeta.</p>
+
+<h3>Serie a serie</h3>
+<p>De cada serie se guarda el peso, las repeticiones, si se hizo, el <strong>RIR real</strong>
+y el tipo:</p>
+<table>
+  <tr><th>Tipo</th><th>Cuenta como</th><th>Por qué</th></tr>
+  <tr><td>Calentamiento</td><td class="num-col">0</td><td>Prepara, no estimula.</td></tr>
+  <tr><td>Normal</td><td class="num-col">1</td><td>La serie de trabajo de siempre.</td></tr>
+  <tr><td>Al fallo</td><td class="num-col">1</td><td>Su RIR es cero por definición, aunque no
+  se anote.</td></tr>
+  <tr><td>Drop set</td><td class="num-col">½</td><td><strong>Continúa</strong> la serie
+  anterior en vez de ser una nueva.</td></tr>
+</table>
+<div class="dentro">
+  <span class="et">El RIR real, no el que se pidió</span>
+  <p>El plan es una intención; el RIR que anotas es lo que pasó. Dos sesiones con el mismo
+  peso y las mismas repeticiones dejan un estrés muy distinto si una se hizo a dos de fallar
+  y la otra al fallo. Sin ese dato, la app estimaba el estrés por lo que había pedido, no por
+  lo que habías hecho.</p>
+</div>
+<p>El <strong>peso corporal</strong> se marca con un interruptor: la app calcula qué kilos de
+tu cuerpo mueve ese ejercicio y los congela en la serie. Es lo que levantaste ese día, y que
+mañana peses otra cosa no cambia lo que hiciste — así el volumen, los récords y la progresión
+funcionan sin enterarse de que no había mancuernas de por medio.</p>
+
+<h3>Durante la sesión</h3>
+<ul>
+  <li><strong>Cada ejercicio arranca con lo de la última vez</strong>, con su peso y sus
+  repeticiones. Sin eso hay que adivinar, y adivinar hacia abajo es la forma más silenciosa
+  de no progresar.</li>
+  <li><strong>El descanso corre contra el reloj</strong>, no contra un contador: puedes
+  cerrar la app y volver sin perderlo. Se ajusta con ±30 s y suena al terminar.</li>
+  <li><strong>Superseries</strong>: encadenas ejercicios sin descanso. Solo cambia el orden
+  en que se recorren y cuándo se descansa — una serie cuenta lo mismo encadenada que suelta.</li>
+  <li><strong>La calculadora de discos</strong> te dice qué poner en la barra, y el
+  calentamiento sugerido para el peso del día.</li>
+  <li><strong>Notas por ejercicio</strong>, que valen para siempre y no para un día: el
+  agujero del asiento, el agarre que no molesta la muñeca.</li>
+</ul>
+
+<h3>Cómo sube la carga y cómo sube el volumen</h3>
+<p>Son dos cosas distintas y suben por caminos distintos.</p>
+<p><strong>La carga</strong> sube por ejercicio, cuando cumples el rango de repeticiones con
+el RIR pedido. Si llegas al tope de tu material, la app lo dice y propone cambiar de palanca
+en vez de dejarte estancado sin explicación.</p>
+<p><strong>El volumen</strong> va por cuatro niveles, y solo sube cuando el cuerpo demuestra
+que asimila:</p>
+<table>
+  <tr><th>Nivel</th><th class="num-col">Series/ejercicio</th><th class="num-col">Ejercicios</th><th class="num-col">Músculos</th><th>Repeticiones</th></tr>
+  <tr><td>1</td><td class="num-col">2</td><td class="num-col">4</td><td class="num-col">4</td><td>normal</td></tr>
+  <tr><td>2</td><td class="num-col">3</td><td class="num-col">4</td><td class="num-col">4</td><td>normal</td></tr>
+  <tr><td>3</td><td class="num-col">3</td><td class="num-col">5</td><td class="num-col">5</td><td>normal</td></tr>
+  <tr><td>4</td><td class="num-col">4</td><td class="num-col">5</td><td class="num-col">5</td><td>variado</td></tr>
+</table>
+<p>Puedes elegirlo a mano en Yo → Entreno si te notas preparado, o quedarte por debajo. La
+app te dice dónde estaría ella si decidiera, para que puedas compararlo.</p>
+<p>Si declaras que estás perdiendo grasa, el objetivo de volumen se recorta: con la leptina
+baja se recupera peor, y pasar de doce series por músculo no conserva más.</p>
+
+<h3>Rutinas, récords y exportar</h3>
+<ul>
+  <li><strong>Rutinas</strong>: guardas la estructura de una sesión para repetirla. Guarda
+  qué ejercicios y cuántas series, <strong>no los pesos</strong> — esos los pone la
+  progresión cada vez.</li>
+  <li><strong>Récords</strong> por ejercicio, con su ficha y su curva.</li>
+  <li><strong>Exportar a CSV</strong>, e importar de Hevy y de Strong.</li>
+</ul>
+</section>
+
+<!-- ══════════════════════════════════════ 7 ══ -->
+<section>
+<h2><span class="num">Parte 7</span>Progreso y Yo</h2>
+<p class="entradilla">Dónde se mira lo que cambia con el tiempo, y dónde se configura lo que
+se toca una vez.</p>
+
+<h3>Progreso</h3>
+<table>
+  <tr><th>Sección</th><th>Qué hay</th></tr>
+  <tr><td><strong>Semana</strong></td><td>Días entrenados, series efectivas y las de la
+  semana anterior para saber si vas a más o a menos. Qué zona va más corta. La racha, contada
+  con amabilidad.</td></tr>
+  <tr><td><strong>Mes</strong></td><td>El informe del mes y la comparación con el
+  anterior.</td></tr>
+  <tr><td><strong>Año</strong></td><td>La vista larga, mes a mes.</td></tr>
+  <tr><td><strong>Cuerpo</strong></td><td>Peso, grasa, músculo, masa libre de grasa y FFMI,
+  con su curva y su rango. El mapa corporal por músculo. <strong>Sol y vitamina D de la
+  semana.</strong> Y aquí se corrige o se borra la báscula de cualquier día pasado.</td></tr>
+  <tr><td><strong>Hábitos</strong></td><td>Las tres rampas —grounding, frío, ayuno—, la curva
+  de keto-adaptación y las analíticas.</td></tr>
+  <tr><td><strong>Ejercicios</strong></td><td>La ficha de cada ejercicio, con récords y
+  progresión.</td></tr>
+</table>
+
+<h4>Las rampas de hábitos</h4>
+<p>Grounding y frío suben por escalones, y <strong>el siguiente solo se ofrece cuando el
+actual lleva hechos sus días</strong>. Es la regla que convierte esto en una rampa y no en un
+menú, y la que evita que alguien pase de treinta segundos de ducha fría a meterse en un río.</p>
+<table>
+  <tr><th class="num-col">Nivel</th><th>Frío</th><th class="num-col">Días</th></tr>
+  <tr><td class="num-col">1</td><td>Los últimos treinta segundos de la ducha</td><td class="num-col">7</td></tr>
+  <tr><td class="num-col">2</td><td>Un minuto</td><td class="num-col">10</td></tr>
+  <tr><td class="num-col">3</td><td>Dos minutos</td><td class="num-col">14</td></tr>
+  <tr><td class="num-col">4</td><td>Ducha entera fría</td><td class="num-col">21</td></tr>
+  <tr><td class="num-col">5</td><td>Salir al frío sin abrigo</td><td class="num-col">30</td></tr>
+  <tr><td class="num-col">6</td><td>Inmersión</td><td class="num-col">—</td></tr>
+</table>
+<div class="aviso">
+  <span class="et">Esto sale siempre con el frío, esté en el escalón que esté</span>
+  <p>El frío no es para todo el mundo. Si tomas medicación para el corazón o la tensión, o
+  has tenido algún problema cardíaco, pregunta antes. Y nunca en inmersión estando solo.</p>
+</div>
+<p>El <strong>ayuno</strong> no va por escalones sino por estación, porque la ventana que
+tiene sentido cambia con la luz del año: <strong>8 h</strong> en invierno, <strong>10</strong>
+en primavera y otoño, <strong>12</strong> en verano. Con quince horas de luz, forzar una
+ventana estrecha suele salir mal.</p>
+
+<h4>Analíticas</h4>
+<p>Apuntas los valores de una analítica y la app calcula los índices que la analítica no
+trae. El principal es el <strong>HOMA-IR</strong> — glucosa por insulina, dividido entre 405
+—, que dice lo que no dice la glucosa sola: cuánta insulina hace falta para mantenerla donde
+está. Por debajo de 1 es óptimo; hasta 2,5, aceptable.</p>
+<p>Junto a cada índice sale <strong>a quién preguntar</strong>. La app calcula e informa; no
+diagnostica.</p>
+
+<h3>Yo</h3>
+<table>
+  <tr><th>Sección</th><th>Qué hay</th></tr>
+  <tr><td><strong>Perfil</strong></td><td>Objetivo, peso, altura, y <strong>tu piel y tu
+  altitud</strong>: edad, metros sobre el nivel del mar y fototipo. Equipamiento y peso máximo
+  por equipo.</td></tr>
+  <tr><td><strong>Entreno</strong></td><td>Nivel de volumen, sitios donde entrenas,
+  ejercicios favoritos y descartados, landmarks de volumen ajustables.</td></tr>
+  <tr><td><strong>Comida</strong></td><td>Cetogénica, DHA por cápsula, correcciones del
+  catálogo de alimentos.</td></tr>
+  <tr><td><strong>Cuenta</strong></td><td>Entrar con el correo, sincronizar, exportar,
+  importar, borrar los datos. Y la fecha de la versión instalada, por si quieres comprobar
+  que ya cogió la última.</td></tr>
+</table>
+
+<h4>Los seis fototipos</h4>
+<p>Es el dato que más mueve la vitamina D: siete veces de punta a punta.</p>
+<table>
+  <tr><th>Fototipo</th><th class="num-col">Factor</th><th class="num-col">MED (J/m²)</th></tr>
+  <tr><td>I — siempre se quema, nunca se broncea</td><td class="num-col">1,5</td><td class="num-col">200</td></tr>
+  <tr><td>II — se quema con facilidad</td><td class="num-col">1,0</td><td class="num-col">250</td></tr>
+  <tr><td>III — a veces se quema, se broncea</td><td class="num-col">0,7</td><td class="num-col">350</td></tr>
+  <tr><td>IV — rara vez se quema</td><td class="num-col">0,5</td><td class="num-col">450</td></tr>
+  <tr><td>V — piel morena</td><td class="num-col">0,3</td><td class="num-col">600</td></tr>
+  <tr><td>VI — piel negra</td><td class="num-col">0,2</td><td class="num-col">1000</td></tr>
+</table>
+<p>Cuanta más melanina, más rato al sol hace falta para lo mismo — para quemarse y para
+sintetizar.</p>
+</section>
+
+<!-- ══════════════════════════════════════ 8 ══ -->
+<section>
+<h2><span class="num">Parte 8</span>Todas las cifras, en tablas</h2>
+<p class="entradilla">Cada número que la app usa para decidir algo, junto y con su porqué.
+Si alguna vez te preguntas de dónde sale una cifra, está aquí.</p>
+
+<h3>La vitamina D</h3>
+<p>La fórmula completa, que se integra <strong>minuto a minuto</strong> con la altura real
+del sol:</p>
+<div class="caja">
+  <p><code>UI/min = UVI × k × f_fototipo × f_piel × f_edad × f_altitud × f_cielo</code></p>
+  <p><code>UVI = 12,5 · cos(SZA)^1,5</code>, y <strong>cero por debajo de 30°</strong> de
+  altura del sol.<br />
+  <code>k = 21 UI/min·UVI</code> — referencia: fototipo II, 25&nbsp;% de piel, 30 años.<br />
+  <code>f_piel = % de piel / 25</code><br />
+  <code>f_edad = máx(0,25 ; 1 − 0,012 · (edad − 20))</code><br />
+  <code>f_altitud = 1 + 0,10 · (metros / 1000)</code></p>
+</div>
+<p>Referencias: Webb 2006, Holick, MacLaughlin &amp; Holick 1985, Blumthaler 1997.</p>
+<p>El umbral de 30° hace que en Madrid en diciembre el resultado <strong>salga cero
+solo</strong>, sin ninguna lista de meses escrita a mano — y que en Quito o en Tromsø
+funcione igual de bien.</p>
+
+<h4>Cuánta piel</h4>
+<table>
+  <tr><th>Opción</th><th class="num-col">% de superficie</th></tr>
+  <tr><td>Cara y manos</td><td class="num-col">5</td></tr>
+  <tr><td>Cara, manos y antebrazos</td><td class="num-col">12</td></tr>
+  <tr><td>Manga corta y pantalón corto</td><td class="num-col">30</td></tr>
+  <tr><td>Torso descubierto</td><td class="num-col">45</td></tr>
+  <tr><td>En bañador</td><td class="num-col">70</td></tr>
+  <tr><td>Cuerpo entero</td><td class="num-col">90</td></tr>
+</table>
+
+<h4>Cómo está el cielo</h4>
+<p>Esto es un <strong>añadido nuestro</strong> sobre la fórmula, y conviene que quede claro:
+la referencia calcula con cielo despejado y dice expresamente que no incluye nubes, ozono ni
+aerosoles. Los factores salen de la atenuación medida del UV eritemático, que está publicada.</p>
+<table>
+  <tr><th>Estado</th><th>Qué se ve</th><th class="num-col">Deja pasar</th></tr>
+  <tr><td>Sol limpio</td><td>Azul de punta a punta, el sol deslumbra</td><td class="num-col">100&nbsp;%</td></tr>
+  <tr><td>Con estelas o calima</td><td>El sol entero, pero el cielo con velo</td><td class="num-col">70&nbsp;%</td></tr>
+  <tr><td>Velado</td><td>Se ve el disco pero difuso</td><td class="num-col">40&nbsp;%</td></tr>
+  <tr><td>Filtrado</td><td>No se ve el disco, solo se intuye</td><td class="num-col">20&nbsp;%</td></tr>
+  <tr><td>Sin sol</td><td>Cubierto cerrado, o a la sombra</td><td class="num-col">3&nbsp;%</td></tr>
+</table>
+
+<h4>Topes y saturación</h4>
+<table>
+  <tr><td>Minutos eficaces por exposición</td><td class="num-col">40</td><td>Pasada media hora
+  larga, la propia piel degrada la previtamina D y seguir ya no suma en proporción.</td></tr>
+  <tr><td>Tope diario</td><td class="num-col">20 000 UI</td><td>Techo razonable de síntesis.</td></tr>
+  <tr><td>Dispersión del rango</td><td class="num-col">±30&nbsp;%</td><td>La piel, la
+  hidratación, el ozono del día y la postura mueven el resultado tanto que darlo con
+  decimales sería mentir.</td></tr>
+</table>
+<p>El tiempo hasta quemarse sale de la dosis eritemática por fototipo:
+<code>minutos = MED / (UVI × 0,025) / 60</code>. Con UVI 11,7 son 11 minutos para el
+fototipo I y 57 para el VI.</p>
+
+<h3>La luz y el reloj</h3>
+<table>
+  <tr><td>El reloj humano corre largo</td><td class="num-col">12 min/día</td><td>Lo que se
+  atrasa un día sin pulso de mañana, y lo que se recupera con él.</td></tr>
+  <tr><td>Solo con crepúsculo</td><td class="num-col">6 min</td><td>La mitad. Frena la
+  deriva, no la revierte.</td></tr>
+  <tr><td>Tope del atraso acumulado</td><td class="num-col">−120 min</td><td>Pasado eso el
+  número dejaría de significar nada.</td></tr>
+  <tr><td>Ventana del pulso de mañana</td><td>civil → orto + 90 min</td><td>Pasado eso, el
+  pulso pierde la fuerza que tiene para mover la fase.</td></tr>
+  <tr><td>Tarde que pasa sin castigo</td><td class="num-col">3 h</td><td>Tras el ocaso. Una
+  alarma que suena siempre no dice nada; tres horas dejan vivir una tarde normal.</td></tr>
+  <tr><td>Comer antes de ver luz</td><td class="num-col">60 min</td><td>A partir de ahí, los
+  dos relojes están desincronizados.</td></tr>
+  <tr><td>Lux que empiezan a contar</td><td class="num-col">1 000</td><td>Por debajo, una
+  bombilla no es luz para el reloj.</td></tr>
+  <tr><td>Equivalencia lámpara → sol</td><td class="num-col">1,2 min/J</td><td>Aproximada y
+  <em>a la baja</em>, y se dice: le falta el espectro completo, el UVB y la señal de fase.</td></tr>
+</table>
+
+<h4>Lo que dejan pasar las gafas</h4>
+<table>
+  <tr><th>Filtro</th><th class="num-col">Azul que pasa</th></tr>
+  <tr><td>Sin gafas</td><td class="num-col">100&nbsp;%</td></tr>
+  <tr><td>Gafas ámbar</td><td class="num-col">10&nbsp;%</td></tr>
+  <tr><td>Gafas rojas</td><td class="num-col">2&nbsp;%</td></tr>
+</table>
+<p>Son las cifras que dan los fabricantes para el rango de la melanopsina, no medidas
+propias. Un pulso de fase con filtro que corte más de la mitad del azul <strong>no
+cuenta</strong>.</p>
+
+<h3>Las bandas del espectro</h3>
+<table>
+  <tr><th>Banda</th><th class="num-col">nm</th><th>Qué hace</th></tr>
+  <tr><td>UVB</td><td class="num-col">280–315</td><td>Vitamina D. Solo por encima de 30° de altura.</td></tr>
+  <tr><td>UVA</td><td class="num-col">315–400</td><td>Óxido nítrico y vasodilatación. Desde 10°.</td></tr>
+  <tr><td>Violeta</td><td class="num-col">400–450</td><td>Parte de la señal de la mañana.</td></tr>
+  <tr><td>Azul</td><td class="num-col">450–495</td><td>La melanopsina responde en 480 nm.</td></tr>
+  <tr><td>Verde</td><td class="num-col">495–570</td><td>—</td></tr>
+  <tr><td>Ámbar</td><td class="num-col">570–620</td><td>—</td></tr>
+  <tr><td>Rojo</td><td class="num-col">620–750</td><td>Empieza la fotobiomodulación.</td></tr>
+  <tr><td>Infrarrojo cercano</td><td class="num-col">750–1400</td><td>Penetra centímetros.</td></tr>
+  <tr><td>Infrarrojo medio</td><td class="num-col">1400–3000</td><td>Calor.</td></tr>
+</table>
+<p>Los cuatro picos de absorción del citocromo c oxidasa que la app comprueba en tus
+lámparas: <strong>620, 680, 760 y 820 nm</strong>, con un margen de 30 nm.</p>
+
+<h3>Medir</h3>
+<table>
+  <tr><td>Si se olvida parar</td><td class="num-col">30 min</td><td>Y marcado como estimado.</td></tr>
+  <tr><td>Aviso de «lleva mucho abierto»</td><td class="num-col">4 h</td><td>—</td></tr>
+  <tr><td>Fichajes para saber tu hora de entrada</td><td class="num-col">3</td><td>Con uno
+  solo no se sabe nada: pudo ser el día que fuiste al médico.</td></tr>
+  <tr><td>Días de fichajes que se miran</td><td class="num-col">28</td><td>Para que un cambio
+  de turno se note.</td></tr>
+</table>
+
+<h3>La mesa</h3>
+<table>
+  <tr><td>Umbral de leucina por comida</td><td class="num-col">2,5 g</td></tr>
+  <tr><td>Deuterio de referencia</td><td class="num-col">155 ppm</td></tr>
+  <tr><td>Deuterio bajo / alto</td><td class="num-col">≤150 / ≥154</td></tr>
+  <tr><td>Cetosis: holgura / límite</td><td class="num-col">30 g / 50 g</td></tr>
+  <tr><td>Cena tardía</td><td class="num-col">&lt; 3 h antes de acostarse</td></tr>
+  <tr><td>Cobertura mínima para dar un ratio</td><td class="num-col">50&nbsp;%</td></tr>
+</table>
+</section>
+
+<!-- ══════════════════════════════════════ 9 ══ -->
+<section>
+<h2><span class="num">Parte 9</span>Lo que la app no hace, y por qué</h2>
+<p class="entradilla">Son promesas tanto como las funciones, y romperlas sería peor que no
+cumplir una función. Hay pruebas automáticas que fallan si alguien las rompe.</p>
+
+<h3>No cuenta calorías</h3>
+<p>Ni déficit, ni superávit, ni macros. No es un olvido ni una versión pendiente: el
+concepto no existe en la app, y una prueba falla si la palabra aparece en cualquier texto que
+vea el usuario.</p>
+
+<h3>No diagnostica, no cura, no toca tratamientos</h3>
+<p>Mide, calcula y explica el mecanismo. Nunca te dirá qué tienes, nunca dirá que algo cura
+una enfermedad, y nunca sugerirá dejar un tratamiento. Cuando un índice se sale de rango, te
+dice a quién preguntar.</p>
+
+<h3>No te riñe por tu latitud ni por tu horario</h3>
+<p>No hay ni un solo «no has tomado suficiente sol». Cuando el cielo no lo ofrecía, la app
+dice <em>«no había»</em>, que es distinto de cero. Y desde que sabe a qué hora entras a
+trabajar, no te manda salir a una hora en la que ya estás dentro.</p>
+
+<h3>No te asigna un cronotipo</h3>
+<p>Ni búhos ni alondras. Mide tu fase real y su deriva; no te mete en una categoría que
+después explique todo lo que haces.</p>
+
+<h3>No inventa compensaciones</h3>
+<p>Lo que no se compensa, se dice. La UVB no la tapa ninguna lámpara, ningún suplemento y
+ningún truco. Una herramienta que tenga un remedio para todo te está mintiendo en algo.</p>
+
+<h3>No recomienda marcas, dosis ni aparatos</h3>
+<p>Calcula con los datos de la lámpara que tú tengas. No hay una tienda detrás.</p>
+
+<h3>No te dice que dejes tu trabajo</h3>
+<p>Da por hecha tu jornada y trabaja con los huecos que de verdad tienes. Repartir consejos
+genéricos a alguien que ficha a las siete menos cuarto en una nave sin ventanas es peor que
+no decir nada, porque encima lo deja con la sensación de estar haciéndolo mal.</p>
+
+<h3>Y no promedia lo que no se puede promediar</h3>
+<p>No hay una nota del día de 0 a 100. Promediar la vitamina D con el ratio de omegas daría
+un número que no significa nada. Se enseña cada cosa por su lado y se dice de dónde sale.</p>
+
+<div class="caja">
+  <span class="et">Una última cosa</span>
+  <p>Cuando un número de esta app no cuadra al sumarlo a mano, la propia pantalla te explica
+  por qué. Si alguna vez te encuentras uno que no cuadra <em>y no se explica</em>, es un
+  fallo — y merece la pena decirlo.</p>
+</div>
+</section>
+
+</body>
+</html>
