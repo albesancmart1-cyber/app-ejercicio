@@ -33,6 +33,7 @@ import type {
   TipoEnCurso
 } from './types'
 import type { RegistroHabito } from './habitos'
+import { minutosDe } from './reparto'
 
 export const NOMBRES_TIPO: Record<TipoEnCurso, string> = {
   sol: 'Tomando el sol',
@@ -293,11 +294,18 @@ export function minutosDeHoy(
     /*
      * «Fuera» es el paraguas: enseña **todo** el rato de calle del día, venga
      * del botón que venga. Las otras tres enseñan lo suyo. El mismo rato de sol
-     * sale así en las dos baldosas, que es justo lo que se quiere ver —está
-     * guardado una sola vez, y en las cuentas del día entra una sola vez.
+     * sale así en las dos baldosas, que es justo lo que se quiere ver.
+     *
+     * Y se **une**, no se suma. Sales al jardín, te descalzas y te quedas media
+     * hora: eso es media hora de calle, no una, aunque haya dos registros de
+     * treinta minutos. Sumarlos daba justo el doble.
      */
     case 'fuera':
-      return suma((d.salidas ?? []).filter((s) => s.date === fecha).map((s) => s.minutos))
+      return minutosDe(
+        (d.salidas ?? [])
+          .filter((s) => s.date === fecha)
+          .map((s) => ({ desde: s.desde, hasta: s.desde + Math.max(0, s.minutos) }))
+      )
     case 'sol':
     case 'amanecer':
     case 'atardecer':

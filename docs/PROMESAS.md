@@ -289,6 +289,17 @@ menos cuarto ya está fichado en una nave sin ventanas.
 - [x] ventana-no-esta-a-tiempo · Lo que no puedes hacer no se ofrece como «aún a tiempo»
   → src/domain/parte.ts :: cae dentro de tu jornada
 
+## En qué se te va el día
+
+- [x] reparto-barras · Una barra por cada cosa medida, a la misma escala
+  → src/components/RepartoDelDia.tsx :: RepartoDelDia
+- [x] reparto-anidado · Lo que ocurre dentro de otra cosa se enseña dentro, no al lado
+  → src/domain/reparto.ts :: dentro
+- [x] reparto-sin-doble-cuenta · Dos ratos a la vez son un rato, no dos
+  → src/domain/reparto.ts :: unir
+- [x] reparto-lo-dice · Cuando el total no cuadra al sumar, se explica por qué
+  → src/components/RepartoDelDia.tsx :: ocurrieron a la vez
+
 ## El parte del día
 
 - [x] parte-cuatro-signos · Cuatro signos, no dos
@@ -390,4 +401,4 @@ Estas también son promesas, y romperlas sería peor que no cumplir una función
 
 ---
 
-TOTAL: 146
+TOTAL: 150

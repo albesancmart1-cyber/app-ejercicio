@@ -303,9 +303,17 @@ comprobar(
 await pestana('Luz')
 const luz = await texto()
 comprobar(/\d{2}:\d{2}/.test(luz), 'Luz debería seguir enseñando el arco')
+/*
+ * A estas alturas hay dos ratos de calle de media hora en horas distintas —el
+ * sol de antes y el que se apuntó a mano a las 06:30—, así que el balance tiene
+ * que decir una hora. No noventa: los ratos de grounding que se pararon al
+ * instante duran cero, y sumar no es lo mismo que unir.
+ */
 comprobar(
-  luz.includes('30 min') || luz.includes('0 h 30'),
-  'y el rato de sol debería aparecer en el balance de Luz'
+  luz.includes('60 min fuera'),
+  `el balance de Luz debería contar la hora de calle, y dice «${
+    luz.split('\n').find((l) => l.includes('fuera')) ?? 'nada de fuera'
+  }»`
 )
 await page.screenshot({ path: `${OUT}/medir-04-en-luz.png`, fullPage: true })
 
@@ -342,6 +350,55 @@ await page.getByRole('button', { name: 'A oscuras, en marcha' }).click()
 await page.waitForTimeout(300)
 const d3 = await datos()
 comprobar(d3.noches?.length === 1, 'la noche debería quedar apuntada')
+
+// ── El reparto del día, con el anidamiento a la vista ─────────────────
+// Dos ratos a la vez —al sol y descalzo— para comprobar lo que más importa:
+// que el total de calle NO es la suma de lo que cuelga.
+await page.evaluate(() => {
+  const d = JSON.parse(localStorage.getItem('ritmo-data-v1'))
+  const hoy = new Date().toISOString().slice(0, 10)
+  d.salidas = [
+    { id: 'x1', date: hoy, desde: 840, minutos: 30, filtro: 'ninguno', tipo: 'sol' },
+    { id: 'x2', date: hoy, desde: 850, minutos: 15, filtro: 'ninguno', tipo: 'grounding' },
+    { id: 'x3', date: hoy, desde: 1240, minutos: 20, filtro: 'ninguno', tipo: 'atardecer' }
+  ]
+  d.sol = []
+  localStorage.setItem('ritmo-data-v1', JSON.stringify(d))
+})
+await page.reload({ waitUntil: 'networkidle' })
+await pestana('Medir')
+const reparto = await page.locator('.card', { hasText: 'En qué se te va el día' }).innerText()
+
+comprobar(reparto.includes('Fuera'), 'el reparto debería tener la rama de calle')
+comprobar(
+  /Fuera\s*\n?\s*50 min/.test(reparto.replace(/\s+/g, ' ')) || reparto.includes('50 min'),
+  `el rato de calle debería ser 50 min —30 de sol con 15 de descalzo dentro, más 20 de atardecer—, y pone «${reparto.replace(/\n/g, ' · ').slice(0, 120)}»`
+)
+comprobar(
+  reparto.includes('ocurrieron a la vez'),
+  'y avisar de que lo de dentro suma más que el total porque se solaparon'
+)
+
+// El anidamiento tiene que estar en el marcado, no solo en el texto: es lo que
+// dice que el atardecer ocurre DENTRO del rato de calle y no al lado.
+const anidado = await page.evaluate(() => {
+  const dentro = document.querySelector('.reparto-dentro')
+  if (!dentro) return null
+  return {
+    hijas: dentro.querySelectorAll('.reparto-hija').length,
+    // Una hija nunca puede pintar más ancho que su madre: eso es estar dentro.
+    masAnchaQueLaMadre: [...dentro.querySelectorAll('.reparto-relleno')].some(
+      (e) => parseFloat(e.style.width) > 100
+    )
+  }
+})
+comprobar(anidado !== null, 'las ramas de dentro deberían ir indentadas, no al mismo nivel')
+comprobar(anidado?.hijas === 3, `deberían colgar tres: sol, atardecer y descalzo — cuelgan ${anidado?.hijas}`)
+comprobar(
+  anidado?.masAnchaQueLaMadre === false,
+  'ninguna hija puede pintar más ancha que su madre: eso es lo que significa estar dentro'
+)
+await page.screenshot({ path: `${OUT}/medir-09-reparto.png`, fullPage: true })
 
 // ── El entreno empezado en «Hoy» se ve corriendo aquí ─────────────────
 // No se apunta dos veces: la sesión ya guarda cuándo empezó, así que el

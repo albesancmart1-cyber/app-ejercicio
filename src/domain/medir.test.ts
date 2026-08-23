@@ -274,8 +274,24 @@ describe('lo que llevas hoy de cada cosa', () => {
     // El mismo rato de sol sale en las dos baldosas, que es justo lo que se
     // quiere ver al entrelazarlas. Guardado va una sola vez, y en las cuentas
     // del día entra una sola vez: aquí solo se está leyendo.
-    const salidas = [salida('sol', 20), salida('amanecer', 10), salida('fuera', 15)]
+    const salidas = [
+      { ...salida('amanecer', 10), desde: 400 },
+      { ...salida('sol', 20), desde: 600 },
+      { ...salida('fuera', 15), desde: 900 }
+    ]
     expect(minutosDeHoy('fuera', HOY, { salidas })).toBe(45)
+  })
+
+  it('y no cuenta dos veces lo que ocurrió a la vez', () => {
+    // Sales al jardín, te descalzas y te quedas media hora: eso es media hora
+    // de calle, no una, aunque queden dos registros de treinta minutos.
+    const salidas = [
+      { ...salida('sol', 30), desde: 600 },
+      { ...salida('grounding', 30), desde: 600 }
+    ]
+    expect(minutosDeHoy('fuera', HOY, { salidas })).toBe(30)
+    // Y cada una sigue enseñando lo suyo entero, que ocurrió de verdad.
+    expect(minutosDeHoy('sol', HOY, { salidas })).toBe(30)
   })
 
   it('los ratos de antes de que existiera el tipo no se reparten a dedo', () => {

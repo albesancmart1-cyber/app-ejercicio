@@ -28,6 +28,7 @@ import type { DiaDeSol, Fichaje, Lampara, SalidaAlExterior, SesionPBM } from './
 import { ALTURAS, arcoDelDia, elevacionSolar, type Coordenadas } from './arcoSolar'
 import { dosisAcumulada } from './fotobiomodulacion'
 import { PASO_DE_AZUL, juzgarHueco } from './jornada'
+import { minutosDe } from './reparto'
 
 /** Las cuatro cosas que se miden, y que no son intercambiables entre sí. */
 export type Banda4 = 'rojo' | 'ultravioleta' | 'azul' | 'oscuridad'
@@ -100,7 +101,13 @@ export interface DatosDelDia {
 
 /** Minutos al aire libre apuntados hoy, vengan de donde vengan. */
 function minutosFuera(d: DatosDelDia): number {
-  const conHora = (d.salidas ?? []).reduce((t, s) => t + Math.max(0, s.minutos), 0)
+  /*
+   * Unidos y no sumados: dos actividades a la vez —al sol y descalzo— dejan dos
+   * registros del mismo rato, y sumarlos inflaba la barra de rojo al doble.
+   */
+  const conHora = minutosDe(
+    (d.salidas ?? []).map((s) => ({ desde: s.desde, hasta: s.desde + Math.max(0, s.minutos) }))
+  )
   if (conHora > 0) return conHora
   // Si no hay salidas con hora, vale lo apuntado en el diario de sol de siempre.
   return d.sol?.minutos ?? 0

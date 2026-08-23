@@ -4063,3 +4063,85 @@ textarea:focus {
 .medir-nota {
   margin: calc(var(--sp-4) * -1) var(--sp-1) var(--sp-4);
 }
+
+/*
+  ══════════════════════════════════════════════ EN QUÉ SE TE VA EL DÍA
+
+  Barras a la misma escala, y las que cuelgan de otra **indentadas**: es lo que
+  dice que el atardecer ocurre dentro del rato de calle y no al lado. Puestas al
+  mismo nivel se leerían como que se suman, y no se suman.
+
+  Sin color, como las baldosas. Lo que distingue una barra de otra es su sitio y
+  su longitud; meter once tonos aquí sería volver a la bolsa de caramelos.
+*/
+.reparto {
+  margin-top: var(--sp-4);
+}
+
+.reparto-fila + .reparto-fila,
+.reparto > div + div {
+  margin-top: var(--sp-3);
+}
+
+.reparto-cabecera {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-bottom: 5px;
+}
+
+.reparto-nombre {
+  font-size: var(--text-body);
+  line-height: 1.3;
+}
+
+.reparto-min {
+  font-size: var(--text-caption);
+  color: var(--label-2);
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+
+.reparto-carril {
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: var(--fill-3);
+  overflow: hidden;
+}
+
+.reparto-relleno {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--label);
+}
+
+/* Lo que cuelga: indentado, más fino y en tono menor. */
+.reparto-dentro {
+  margin-top: var(--sp-2);
+  padding-left: var(--sp-4);
+  border-left: 1px solid var(--separator);
+  margin-left: 3px;
+}
+
+.reparto-hija + .reparto-hija {
+  margin-top: var(--sp-2);
+}
+
+.reparto-hija .reparto-nombre {
+  font-size: var(--text-caption);
+  color: var(--label-2);
+}
+
+.reparto-hija .reparto-carril {
+  height: 5px;
+}
+
+.reparto-hija .reparto-relleno {
+  background: var(--label-2);
+}
+
+.reparto-nota {
+  margin-top: var(--sp-2);
+  padding-left: var(--sp-4);
+}

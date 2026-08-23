@@ -78,6 +78,7 @@ import { ZONAS } from '../domain/fotobiomodulacion'
 import { findActiveSession } from '../domain/activeSession'
 import { CampoNumero } from '../components/ui'
 import ParteDelDia from '../components/ParteDelDia'
+import RepartoDelDia from '../components/RepartoDelDia'
 import type { Coordenadas } from '../domain/arcoSolar'
 import type { EnCurso, Lampara, PielExpuesta, Profile, TipoEnCurso, ZonaPBM } from '../domain/types'
 import type { EstadoDelCielo } from '../domain/cielo'
@@ -356,6 +357,8 @@ export default function Medir({ onEntrenar }: { onEntrenar?: () => void }) {
       )}
 
       <Avisos abiertos={abiertos} ahora={ahora} data={data} />
+
+      <RepartoDelDia hoy={hoy} />
 
       <ParteDelDia hoy={hoy} />
     </div>
