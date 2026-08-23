@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { todayIsoAt } from './clock'
 import { VERSION_ACTUAL, migrar } from './migrate'
-import type { DiaDeComidas, DiaDeSol, EdicionAlimento, AppData, BodyMeasurement, CheckIn, EnCurso, Fichaje, Lampara, PerfilDeLuz, Profile, Routine, NocheRegistrada, SalidaAlExterior, SesionPBM, Suplemento, Session, TipoEnCurso } from '../domain/types'
+import type { DiaDeComidas, DiaDeSol, EdicionAlimento, ExposicionSolar, AppData, BodyMeasurement, CheckIn, EnCurso, Fichaje, Lampara, PerfilDeLuz, Profile, Routine, NocheRegistrada, SalidaAlExterior, SesionPBM, Suplemento, Session, TipoEnCurso } from '../domain/types'
 import { claveDeMedicion, claveDeRutina, claveDeSesion, type Lapida } from '../domain/merge'
 
 const STORAGE_KEY = 'ritmo-data-v1'
@@ -167,6 +167,31 @@ export const actions = {
         { ...dia, updatedAt: Date.now() }
       ].sort((a, b) => (a.date < b.date ? -1 : 1))
     }))
+  },
+  /**
+   * Añade una exposición al sol del día, sin pisar las que ya hubiera.
+   *
+   * Va aquí y no en la pantalla porque hace falta el día que ya estuviera
+   * guardado para poder añadirle una más, y leer el estado desde fuera del
+   * store obligaría a que quien llame sea un componente. Este no lo es: lo
+   * llama también el cierre de lo que se quedó abierto.
+   */
+  saveExposicion(fecha: string, e: ExposicionSolar) {
+    setState((s) => {
+      const dia = (s.sol ?? []).find((d) => d.date === fecha)
+      const nuevo: DiaDeSol = {
+        ...(dia ?? {}),
+        date: fecha,
+        exposiciones: [...(dia?.exposiciones ?? []), e],
+        updatedAt: Date.now()
+      }
+      return {
+        ...s,
+        sol: [...(s.sol ?? []).filter((d) => d.date !== fecha), nuevo].sort((a, b) =>
+          a.date < b.date ? -1 : 1
+        )
+      }
+    })
   },
   /** Guarda la corrección de un alimento del catálogo. */
   saveEdicionAlimento(ed: EdicionAlimento) {

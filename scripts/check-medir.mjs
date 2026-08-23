@@ -170,6 +170,116 @@ comprobar(
 await page.getByRole('button', { name: 'Descalzo, en marcha' }).click()
 await page.waitForTimeout(300)
 
+// ── Entrelazado: estar descalzo ya es estar fuera ─────────────────────
+await page.getByRole('button', { name: 'Descalzo', exact: true }).click()
+await page.waitForTimeout(400)
+comprobar(
+  (await page.getByRole('button', { name: /^Fuera/ }).getAttribute('aria-label')) ===
+    'Fuera, incluida',
+  'con el grounding en marcha, «Fuera» debería quedar incluida: estar descalzo en la hierba es estar fuera'
+)
+comprobar(
+  await page.getByRole('button', { name: 'Fuera, incluida' }).isDisabled(),
+  'y no poder pulsarse, porque pulsarla apuntaría el mismo rato dos veces'
+)
+await page.getByRole('button', { name: 'Descalzo, en marcha' }).click()
+await page.waitForTimeout(400)
+const trasDescalzo = await datos()
+comprobar(
+  (trasDescalzo.habitos ?? []).some((h) => h.habito === 'grounding'),
+  'parar el grounding debería dejar su hábito'
+)
+comprobar(
+  (trasDescalzo.salidas ?? []).some((s) => s.tipo === 'grounding'),
+  'y también su rato fuera — antes solo dejaba el hábito, y una hora descalzo no subía la amplitud'
+)
+comprobar(
+  (await page.getByRole('button', { name: 'Fuera', exact: true }).count()) === 1,
+  'y al pararlo, «Fuera» vuelve a poder pulsarse'
+)
+
+// ── La lámpara pregunta las tres cosas que hacen falta ────────────────
+// Hace falta una creada: sin sus ondas no hay dosis, y la baldosa lo dice en
+// vez de guardar una sesión que nunca podría contar nada.
+await page.evaluate(() => {
+  const d = JSON.parse(localStorage.getItem('ritmo-data-v1'))
+  d.lamparas = [
+    {
+      id: 'l1',
+      nombre: 'Panel del salón',
+      distanciaRefCm: 15,
+      ondas: [
+        { nm: 660, irradiancia: 40 },
+        { nm: 850, irradiancia: 60 }
+      ]
+    }
+  ]
+  localStorage.setItem('ritmo-data-v1', JSON.stringify(d))
+})
+await page.reload({ waitUntil: 'networkidle' })
+await pestana('Medir')
+await page.getByRole('button', { name: 'Lámpara', exact: true }).click()
+await page.waitForTimeout(400)
+const lampara = await texto()
+comprobar(lampara.includes('Con cuál'), 'la lámpara debería preguntar con cuál')
+comprobar(lampara.includes('Qué zona'), 'y qué zona')
+comprobar(lampara.includes('A qué distancia'), 'y a qué distancia')
+comprobar(
+  lampara.includes('cuadrado de la distancia'),
+  'diciendo por qué se pregunta: la irradiancia cae con el cuadrado, y suponerla inventaría la dosis'
+)
+await page.getByRole('button', { name: 'Espalda' }).click()
+await page.getByRole('button', { name: 'Empezar', exact: true }).click()
+await page.waitForTimeout(400)
+await page.getByRole('button', { name: 'Lámpara, en marcha' }).click()
+await page.waitForTimeout(400)
+const conPBM = (await datos()).sesionesPBM ?? []
+comprobar(conPBM.length === 1, 'la sesión de fotobiomodulación debería quedar guardada')
+comprobar(conPBM[0]?.zona === 'espalda', `con la zona elegida, y trae «${conPBM[0]?.zona}»`)
+comprobar(conPBM[0]?.distanciaCm === 15, 'y la distancia, no una supuesta')
+
+// ── Un rato a mano, con su hora ───────────────────────────────────────
+await page.getByRole('button', { name: 'Apuntar un rato a mano' }).click()
+await page.waitForTimeout(300)
+await page.getByLabel('Hora a la que empezó').fill('06:30')
+await page.getByRole('button', { name: 'Guardar el rato' }).click()
+await page.waitForTimeout(400)
+const aMano = ((await datos()).salidas ?? []).find((s) => s.desde === 390)
+comprobar(aMano !== undefined, 'el rato apuntado a mano debería guardarse con la hora que se puso')
+comprobar(aMano?.minutos === 30, `y con sus minutos, y trae ${aMano?.minutos}`)
+comprobar(
+  aMano?.estimado === undefined,
+  'y sin marcarse como estimado: lo puso el usuario, no lo adivinó la app'
+)
+
+// ── Sin color: encendida se distingue por fondo y tinta, no por tono ──
+await page.getByRole('button', { name: 'Frío', exact: true }).click()
+await page.waitForTimeout(300)
+const contraste = await page.evaluate(() => {
+  const viva = document.querySelector('.baldosa-viva')
+  const muerta = [...document.querySelectorAll('.baldosa')].find(
+    (b) => !b.classList.contains('baldosa-viva') && !b.classList.contains('baldosa-incluida')
+  )
+  const fondo = (e) => (e ? getComputedStyle(e).backgroundColor : null)
+  const tinta = (e) => (e ? getComputedStyle(e).color : null)
+  return {
+    viva: fondo(viva),
+    muerta: fondo(muerta),
+    tinta: tinta(viva),
+    tintaMuerta: tinta(muerta)
+  }
+})
+comprobar(
+  contraste.viva !== null && contraste.viva !== contraste.muerta,
+  'una baldosa en marcha tiene que distinguirse por el fondo, que es lo único que se ve al sol de la calle'
+)
+comprobar(
+  contraste.tinta !== null && contraste.tinta !== contraste.tintaMuerta,
+  'y también por la tinta: se da la vuelta entera, no cambia de tono'
+)
+await page.getByRole('button', { name: 'Frío, en marcha' }).click()
+await page.waitForTimeout(300)
+
 // ── La rejilla es una rejilla de verdad, no una fila que se desborda ───
 const rejilla = await page.evaluate(() => {
   const g = document.querySelector('.baldosas')
@@ -233,6 +343,37 @@ await page.waitForTimeout(300)
 const d3 = await datos()
 comprobar(d3.noches?.length === 1, 'la noche debería quedar apuntada')
 
+// ── El entreno empezado en «Hoy» se ve corriendo aquí ─────────────────
+// No se apunta dos veces: la sesión ya guarda cuándo empezó, así que el
+// cronómetro de la baldosa sale de ahí y no de un segundo registro.
+await page.evaluate(() => {
+  const d = JSON.parse(localStorage.getItem('ritmo-data-v1'))
+  const hoy = new Date().toISOString().slice(0, 10)
+  d.sessions = [
+    {
+      id: 'e1',
+      date: hoy,
+      kind: 'fuerza',
+      title: 'Empuje',
+      exercises: [],
+      completed: false,
+      startedAt: Date.now() - 25 * 60 * 1000
+    }
+  ]
+  localStorage.setItem('ritmo-data-v1', JSON.stringify(d))
+})
+await page.reload({ waitUntil: 'networkidle' })
+await pestana('Medir')
+const conEntreno = await page.getByRole('button', { name: /^Entreno/ }).innerText()
+comprobar(
+  /2[45] min/.test(conEntreno),
+  `la baldosa del entreno debería llevar el tiempo de la sesión en marcha, y pone «${conEntreno.replace(/\n/g, ' · ')}»`
+)
+comprobar(
+  (await page.getByRole('button', { name: /^Entreno/ }).getAttribute('aria-pressed')) === 'true',
+  'y marcarse como encendida mientras la sesión siga abierta'
+)
+
 // ── A quien a esa hora está fichado no se le ofrece «aún a tiempo» ─────
 // Tres fichajes con entrada muy temprana: la ventana de la mañana queda
 // entera dentro de la jornada. Con `diasLaborables` a los siete días, el
@@ -249,6 +390,9 @@ await page.evaluate(() => {
   // Y sin haber salido hoy, para que el punto del amanecer siga vivo.
   d.salidas = []
   d.sol = []
+  // Sin el entreno de la prueba anterior: con una sesión en marcha, «Hoy»
+  // enseña el entreno y no la tarjeta de los tres relojes.
+  d.sessions = []
   localStorage.setItem('ritmo-data-v1', JSON.stringify(d))
 })
 await page.reload({ waitUntil: 'networkidle' })

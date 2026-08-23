@@ -242,7 +242,19 @@ costar un toque, y ese toque tenía que alimentar todo lo ya construido.
 - [x] medir-contexto-al-empezar · La piel y el cielo se congelan al empezar, no al parar
   → src/domain/types.ts :: EnCurso
 - [x] medir-sin-estructuras-nuevas · Cada botón escribe donde ya escribía la app
-  → src/domain/medir.ts :: Resultado
+  → src/domain/medir.ts :: Escritura
+- [x] medir-entrelazado · Tomar el sol o estar descalzo ya cuentan como estar fuera
+  → src/domain/medir.ts :: IMPLICA_FUERA
+- [x] medir-sin-doble-cuenta · Nada deja dos ratos fuera a la vez
+  → src/domain/medir.test.ts :: contarlos dos veces
+- [x] medir-lampara-completa · La lámpara pregunta cuál, qué zona y a qué distancia
+  → src/screens/Medir.tsx :: LaLampara
+- [x] medir-a-mano · Se puede apuntar un rato que ya pasó, con su hora
+  → src/screens/Medir.tsx :: AMano
+- [x] medir-entreno-en-marcha · El entreno empezado en «Hoy» se ve corriendo aquí
+  → src/screens/Medir.tsx :: findActiveSession
+- [x] medir-sin-color · Las baldosas no dependen del color para decir si están en marcha
+  → src/styles/theme.css :: se da la vuelta
 - [x] medir-olvido · Lo que se olvida abierto se cierra con media hora, y se dice
   → src/domain/medir.ts :: MINUTOS_SI_SE_OLVIDA
 - [x] medir-estimado-se-dice · Un rato estimado no se presenta como uno cronometrado
@@ -332,4 +344,4 @@ Estas también son promesas, y romperlas sería peor que no cumplir una función
 
 ---
 
-TOTAL: 120
+TOTAL: 126

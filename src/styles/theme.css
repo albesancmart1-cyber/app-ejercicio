@@ -3919,10 +3919,18 @@ textarea:focus {
   encontrar el que buscas. Una rejilla se lee de un vistazo, y la posición no
   cambia nunca: a la tercera vez el dedo va solo.
 
+  **Sin color.** Once colores distintos convertían esto en una bolsa de
+  caramelos: el ojo iba al más llamativo en vez de al que buscaba, y si algo
+  estaba en marcha acababa dependiendo del tono, que es lo que peor se ve al sol
+  de la calle. En gris, lo único que distingue una baldosa de otra es el dibujo,
+  y lo único que distingue apagada de encendida es que **se da la vuelta
+  entera** — fondo claro, tinta oscura—. Eso se ve de reojo, con el móvil a un
+  palmo y a pleno sol, que es donde se va a usar.
+
   Dos columnas en el móvil y no tres, porque los nombres largos —«Café o
   comida», «A oscuras»— tienen que caber en una línea; a partir de 480 px caben
-  tres. Las baldosas son cuadradas de verdad (`aspect-ratio`) hasta que el texto
-  pide más, que es lo que hace que la rejilla se lea como una rejilla.
+  tres. Las baldosas son cuadradas de verdad (`aspect-ratio`), que es lo que
+  hace que la rejilla se lea como una rejilla.
 */
 .medir-cabecera {
   padding: 0 var(--sp-1) var(--sp-2);
@@ -3963,23 +3971,10 @@ textarea:focus {
   text-align: left;
   overflow: hidden;
   transition:
-    background 0.25s var(--ease),
-    border-color 0.25s var(--ease),
+    background 0.22s var(--ease),
+    border-color 0.22s var(--ease),
+    color 0.22s var(--ease),
     transform 0.12s ease-out;
-}
-
-/*
-  La franja de color del borde izquierdo. Es lo que hace reconocible cada
-  baldosa antes que el texto, y por eso va siempre — encendida o apagada—: si
-  solo apareciera al activarse, habría que leer para encontrar la que buscas.
-*/
-.baldosa::before {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 3px;
-  background: var(--baldosa-color, var(--label-3));
-  opacity: 0.85;
 }
 
 .baldosa:active {
@@ -3988,8 +3983,7 @@ textarea:focus {
 
 .baldosa-icono {
   display: block;
-  color: var(--baldosa-color, var(--label-2));
-  opacity: 0.9;
+  color: var(--label-2);
 }
 
 .baldosa-icono svg {
@@ -4012,28 +4006,24 @@ textarea:focus {
 }
 
 /*
-  Encendida. El color entra en el fondo y en el pie, no solo en un puntito:
-  a la luz de la calle —que es donde se mira esta pantalla— un indicador
-  pequeño no se ve, y saber si algo está contando es justo lo que no puede
-  quedar en duda.
+  Encendida: se da la vuelta. No un borde más claro ni un puntito en una
+  esquina — la baldosa entera cambia de fondo y de tinta, que es lo único que se
+  distingue sin mirar y sin depender del color.
 */
 .baldosa-viva {
-  background: color-mix(in srgb, var(--baldosa-color) 14%, var(--surface));
-  border-color: color-mix(in srgb, var(--baldosa-color) 45%, transparent);
+  background: var(--label);
+  border-color: var(--label);
+  color: var(--bg);
 }
 
-.baldosa-viva::before {
-  width: 4px;
-  opacity: 1;
-}
-
-.baldosa-viva .baldosa-icono {
-  opacity: 1;
+.baldosa-viva .baldosa-icono,
+.baldosa-viva .baldosa-pie {
+  color: var(--bg);
 }
 
 .baldosa-viva .baldosa-pie {
-  color: var(--baldosa-color);
   font-weight: var(--w-semibold);
+  opacity: 0.72;
 }
 
 /* El latido dice «esto está corriendo» sin ocupar una palabra. */
@@ -4043,13 +4033,30 @@ textarea:focus {
 
 @keyframes baldosa-late {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.45; }
+  50% { opacity: 0.4; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .baldosa-viva .baldosa-icono {
     animation: none;
   }
+}
+
+/*
+  Incluida: «Fuera» mientras corre algo que ya implica estar fuera. Ni apagada
+  —porque sí está contando— ni encendida —porque no la has pulsado tú—. Se
+  queda a medio camino y sin poder pulsarse, que es exactamente lo que es.
+*/
+.baldosa-incluida {
+  border-style: dashed;
+  border-color: var(--separator-strong);
+  background: var(--fill-3);
+  opacity: 0.72;
+  cursor: default;
+}
+
+.baldosa-incluida:active {
+  transform: none;
 }
 
 /* La letra pequeña de la rejilla, pegada a ella y no flotando en medio. */

@@ -50,6 +50,7 @@ import {
 import { coordenadasDe, fichajeAbierto, queSirve } from '../domain/jornada'
 import {
   MINUTOS_SOSPECHOSOS,
+  NOMBRES_TIPO,
   abierto,
   abiertosDe,
   alParar,
@@ -57,7 +58,8 @@ import {
   minutosAbierto,
   minutosDeHoy,
   pareceOlvidado,
-  type Resultado
+  yaEstaFuera,
+  type Escritura
 } from '../domain/medir'
 import {
   ORDEN_PIEL,
@@ -71,35 +73,41 @@ import {
 import { CIELOS, ORDEN_CIELO, factorDeCielo } from '../domain/cielo'
 import { estadoDeHabito } from '../domain/habitos'
 import { conComida, diaDe } from '../domain/crononutricion'
+import { minutosDeHora } from '../domain/relojes'
+import { ZONAS } from '../domain/fotobiomodulacion'
+import { findActiveSession } from '../domain/activeSession'
+import { CampoNumero } from '../components/ui'
 import ParteDelDia from '../components/ParteDelDia'
 import type { Coordenadas } from '../domain/arcoSolar'
-import type { EnCurso, PielExpuesta, Profile, TipoEnCurso } from '../domain/types'
+import type { EnCurso, Lampara, PielExpuesta, Profile, TipoEnCurso, ZonaPBM } from '../domain/types'
 import type { EstadoDelCielo } from '../domain/cielo'
 import type { IconName } from '../components/Icon'
 
 /**
  * Las baldosas que se encienden y se apagan.
  *
- * `color` es una variable del tema y no un valor suelto: el borde de la baldosa
- * es lo que la hace reconocible de un vistazo, antes que el texto, y por eso
- * conviene que salga de la misma paleta que todo lo demás.
+ * Sin color. Once colores distintos convertían la rejilla en una bolsa de
+ * caramelos y hacían que el ojo fuera al más llamativo en vez de al que buscaba;
+ * y encendida o apagada acababa dependiendo del tono, que es lo que peor se ve
+ * al sol de la calle. En gris, lo único que cambia entre una baldosa y otra es
+ * el dibujo y el nombre, y lo único que cambia entre apagada y encendida es que
+ * se da la vuelta entera. No hay forma de confundirse.
  */
 interface Baldosa {
   tipo: TipoEnCurso
   nombre: string
   icono: IconName
-  color: string
 }
 
 const BALDOSAS: Baldosa[] = [
-  { tipo: 'amanecer', nombre: 'Amanecer', icono: 'amanecer', color: 'var(--st-alto)' },
-  { tipo: 'sol', nombre: 'Sol', icono: 'sun', color: 'var(--st-tuyo)' },
-  { tipo: 'fuera', nombre: 'Fuera', icono: 'fuera', color: 'var(--st-fresco)' },
-  { tipo: 'atardecer', nombre: 'Atardecer', icono: 'atardecer', color: 'var(--accent)' },
-  { tipo: 'lampara', nombre: 'Lámpara', icono: 'lampara', color: 'var(--st-pasado)' },
-  { tipo: 'oscuridad', nombre: 'A oscuras', icono: 'moon', color: 'var(--medir-noche)' },
-  { tipo: 'frio', nombre: 'Frío', icono: 'frio', color: 'var(--medir-frio)' },
-  { tipo: 'grounding', nombre: 'Descalzo', icono: 'descalzo', color: 'var(--medir-tierra)' }
+  { tipo: 'fuera', nombre: 'Fuera', icono: 'fuera' },
+  { tipo: 'sol', nombre: 'Sol', icono: 'sun' },
+  { tipo: 'amanecer', nombre: 'Amanecer', icono: 'amanecer' },
+  { tipo: 'atardecer', nombre: 'Atardecer', icono: 'atardecer' },
+  { tipo: 'grounding', nombre: 'Descalzo', icono: 'descalzo' },
+  { tipo: 'frio', nombre: 'Frío', icono: 'frio' },
+  { tipo: 'lampara', nombre: 'Lámpara', icono: 'lampara' },
+  { tipo: 'oscuridad', nombre: 'A oscuras', icono: 'moon' }
 ]
 
 const nuevoId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
@@ -113,8 +121,9 @@ export default function Medir({ onEntrenar }: { onEntrenar?: () => void }) {
   const hoy = useToday()
   const coord = coordenadasDe(data.profile)
   const [ahora, setAhora] = useState(minutosDeAhora())
-  /** Qué baldosa está preguntando algo antes de arrancar. Solo el sol lo hace. */
-  const [preguntando, setPreguntando] = useState<TipoEnCurso | null>(null)
+  /** Qué baldosa está preguntando algo antes de arrancar. Solo dos lo hacen. */
+  const [preguntando, setPreguntando] = useState<'sol' | 'lampara' | null>(null)
+  const [aMano, setAMano] = useState(false)
 
   /** El cronómetro se refresca solo, para que los minutos avancen a la vista. */
   useEffect(() => {
@@ -128,41 +137,32 @@ export default function Medir({ onEntrenar }: { onEntrenar?: () => void }) {
    * el cronómetro enseñara cuarenta horas.
    */
   useEffect(() => {
-    for (const { viejo, resultado } of loQueSeQuedoAbierto(data.enCurso, hoy)) {
-      guardarResultado(resultado)
+    for (const { viejo, escrituras } of loQueSeQuedoAbierto(data.enCurso, hoy)) {
+      guardar(escrituras, viejo.date)
       actions.cerrarEnCurso(viejo.tipo, viejo.date)
     }
   }, [data.enCurso, hoy])
 
   const abiertos = abiertosDe(data.enCurso, hoy)
   const fichaje = fichajeAbierto(data.fichajes, hoy)
+  const fuera = yaEstaFuera(data.enCurso, hoy)
+  /** El entreno no es una actividad de esta pantalla: se mira, no se maneja. */
+  const entreno = findActiveSession(data.sessions, hoy)
 
   function empezar(tipo: TipoEnCurso, extra: Partial<EnCurso> = {}) {
     actions.abrirEnCurso({ tipo, date: hoy, desde: minutosDeAhora(), ...extra })
   }
 
   function parar(x: EnCurso) {
-    const r = alParar(x, minutosDeAhora(), {
-      nivelHabito:
-        x.tipo === 'frio' || x.tipo === 'grounding'
-          ? (estadoDeHabito(x.tipo, data.habitos, hoy).actual?.nivel ?? 1)
-          : undefined
-    })
-    guardarResultado(r)
-
-    // El sol deja además su exposición, con la piel y el cielo de cuando empezó.
-    if (r.en === 'salida' && r.exposicionDeSol) {
-      actions.saveSol(
-        conExposicion(solDe(data.sol, hoy), hoy, {
-          minutos: r.salida.minutos,
-          // La franja solo la leen los registros viejos; aquí manda `desde`.
-          franja: 'mediodia',
-          piel: x.piel ?? 'brazos_piernas',
-          desde: x.desde,
-          ...(x.cielo ? { cielo: x.cielo } : {})
-        })
-      )
-    }
+    guardar(
+      alParar(x, minutosDeAhora(), {
+        nivelHabito:
+          x.tipo === 'frio' || x.tipo === 'grounding'
+            ? (estadoDeHabito(x.tipo, data.habitos, hoy).actual?.nivel ?? 1)
+            : undefined
+      }),
+      x.date
+    )
     actions.cerrarEnCurso(x.tipo, x.date)
   }
 
@@ -170,9 +170,9 @@ export default function Medir({ onEntrenar }: { onEntrenar?: () => void }) {
   function pulsar(b: Baldosa) {
     const enCurso = abierto(data.enCurso, b.tipo, hoy)
     if (enCurso) return parar(enCurso)
-    // Solo el sol pregunta algo antes de arrancar.
-    if (b.tipo === 'sol') return setPreguntando('sol')
-    empezar(b.tipo, b.tipo === 'lampara' ? { lamparaId: data.lamparas?.[0]?.id } : {})
+    // Solo dos preguntan algo antes de arrancar: el sol y la lámpara.
+    if (b.tipo === 'sol' || b.tipo === 'lampara') return setPreguntando(b.tipo)
+    empezar(b.tipo)
   }
 
   if (!coord) {
@@ -222,17 +222,22 @@ export default function Medir({ onEntrenar }: { onEntrenar?: () => void }) {
             key={b.tipo}
             baldosa={b}
             enCurso={abierto(data.enCurso, b.tipo, hoy)}
+            /*
+             * «Fuera» se enciende sola en cuanto hay algo que implique estar
+             * fuera. No se pulsa aparte porque ya estás contando, y pedir el
+             * segundo toque solo serviría para apuntar el rato dos veces.
+             */
+            incluidaPor={b.tipo === 'fuera' && !abierto(data.enCurso, 'fuera', hoy) ? fuera : undefined}
             ahora={ahora}
             hoyMin={minutosDeHoy(b.tipo, hoy, data)}
             onPulsar={() => pulsar(b)}
           />
         ))}
 
-        {/* Las tres que no son un cronómetro: un toque y queda apuntado. */}
+        {/* Las tres que no son un cronómetro de esta pantalla. */}
         <BaldosaSuelta
           nombre={fichaje ? 'Salgo' : 'Trabajo'}
           icono="trabajo"
-          color="var(--label-3)"
           pie={fichaje ? escribirDuracion(Math.max(0, ahora - fichaje.entrada)) : 'Fichar'}
           encendida={fichaje !== undefined}
           onPulsar={() => {
@@ -260,7 +265,6 @@ export default function Medir({ onEntrenar }: { onEntrenar?: () => void }) {
         <BaldosaSuelta
           nombre="Café o comida"
           icono="cafe"
-          color="var(--st-tuyo)"
           pie={`${(diaDe(data.comidas, hoy)?.comidas ?? []).length} hoy`}
           onPulsar={() =>
             actions.saveComidas(
@@ -273,11 +277,22 @@ export default function Medir({ onEntrenar }: { onEntrenar?: () => void }) {
           }
         />
 
+        {/*
+          El entreno se lleva desde su propia pantalla, y aquí solo se mira: la
+          sesión ya guarda cuándo empezó, así que el cronómetro sale de ahí sin
+          inventar un segundo sitio donde apuntar lo mismo.
+        */}
         <BaldosaSuelta
-          nombre="Entrenar"
+          nombre="Entreno"
           icono="body"
-          color="var(--st-fresco)"
-          pie={data.sessions.some((s) => s.date === hoy && s.completed) ? 'Hecho hoy' : 'Abre «Hoy»'}
+          pie={
+            entreno?.startedAt
+              ? escribirDuracion(Math.round((Date.now() - entreno.startedAt) / 60000))
+              : data.sessions.some((s) => s.date === hoy && s.completed)
+                ? 'Hecho hoy'
+                : 'Abre «Hoy»'
+          }
+          encendida={entreno?.startedAt !== undefined}
           onPulsar={() => onEntrenar?.()}
         />
       </ToggleGroup>
@@ -308,6 +323,38 @@ export default function Medir({ onEntrenar }: { onEntrenar?: () => void }) {
         />
       )}
 
+      {preguntando === 'lampara' && (
+        <LaLampara
+          lamparas={data.lamparas ?? []}
+          onEmpezar={(lamparaId, zona, distanciaCm) => {
+            empezar('lampara', { lamparaId, zona, distanciaCm })
+            setPreguntando(null)
+          }}
+          onDejarlo={() => setPreguntando(null)}
+        />
+      )}
+
+      {aMano ? (
+        <AMano
+          hoy={hoy}
+          lamparas={data.lamparas ?? []}
+          nivelDe={(t) =>
+            t === 'frio' || t === 'grounding'
+              ? (estadoDeHabito(t, data.habitos, hoy).actual?.nivel ?? 1)
+              : 1
+          }
+          onGuardar={(x, hasta, nivel) => {
+            guardar(alParar(x, hasta, { nivelHabito: nivel }), x.date)
+            setAMano(false)
+          }}
+          onDejarlo={() => setAMano(false)}
+        />
+      ) : (
+        <Boton tono="callado" onClick={() => setAMano(true)}>
+          Apuntar un rato a mano
+        </Boton>
+      )}
+
       <Avisos abiertos={abiertos} ahora={ahora} data={data} />
 
       <ParteDelDia hoy={hoy} />
@@ -315,23 +362,26 @@ export default function Medir({ onEntrenar }: { onEntrenar?: () => void }) {
   )
 }
 
-/** Guarda lo que devuelve `alParar` en el sitio que le toque. */
-function guardarResultado(r: Resultado) {
-  switch (r.en) {
-    case 'salida':
-      actions.saveSalida(r.salida)
-      break
-    case 'sesionPBM':
-      actions.saveSesionPBM(r.sesion)
-      break
-    case 'noche':
-      actions.saveNoche(r.noche)
-      break
-    case 'habito':
-      actions.saveHabito(r.registro)
-      break
-    case 'nada':
-      break
+/** Escribe cada cosa que deja una actividad en el sitio que le toca. */
+function guardar(escrituras: Escritura[], fecha: string) {
+  for (const e of escrituras) {
+    switch (e.en) {
+      case 'salida':
+        actions.saveSalida(e.salida)
+        break
+      case 'exposicion':
+        actions.saveExposicion(fecha, e.exposicion)
+        break
+      case 'sesionPBM':
+        actions.saveSesionPBM(e.sesion)
+        break
+      case 'noche':
+        actions.saveNoche(e.noche)
+        break
+      case 'habito':
+        actions.saveHabito(e.registro)
+        break
+    }
   }
 }
 
@@ -339,18 +389,25 @@ function guardarResultado(r: Resultado) {
 
 /**
  * Una baldosa con cronómetro. Tres datos y ni uno más: qué es, si está en
- * marcha, y cuánto llevas hoy. Todo lo que se pueda contar sin abrirla se
- * cuenta aquí; lo que haga falta explicar vive en el parte, más abajo.
+ * marcha, y cuánto llevas hoy.
+ *
+ * `incluidaPor` es el tercer estado y el que hace visible el entrelazado: la
+ * baldosa de «Fuera» se enciende sola en cuanto hay algo que implique estar
+ * fuera, y se enseña **atenuada y sin poder pulsarse**, porque ya estás
+ * contando. Poder pulsarla entonces solo serviría para apuntar el mismo rato
+ * dos veces.
  */
 function BaldosaBoton({
   baldosa,
   enCurso,
+  incluidaPor,
   ahora,
   hoyMin,
   onPulsar
 }: {
   baldosa: Baldosa
   enCurso: EnCurso | undefined
+  incluidaPor?: TipoEnCurso
   ahora: number
   hoyMin: number
   onPulsar: () => void
@@ -362,21 +419,25 @@ function BaldosaBoton({
    * contesta con un cero: parece que no ha cogido el toque, que es justo la
    * duda que este rediseño existe para quitar.
    */
-  const pie = corriendo
-    ? lleva < 1
-      ? 'Ahora mismo'
-      : escribirDuracion(lleva)
-    : hoyMin > 0
-      ? `${escribirDuracion(hoyMin)} hoy`
-      : 'Sin tiempo hoy'
+  const pie = incluidaPor
+    ? `Con ${BALDOSAS.find((b) => b.tipo === incluidaPor)?.nombre ?? NOMBRES_TIPO[incluidaPor]}`
+    : corriendo
+      ? lleva < 1
+        ? 'Ahora mismo'
+        : escribirDuracion(lleva)
+      : hoyMin > 0
+        ? `${escribirDuracion(hoyMin)} hoy`
+        : 'Sin tiempo hoy'
+
+  const estado = corriendo ? ', en marcha' : incluidaPor ? ', incluida' : ''
 
   return (
     <Toggle
       value={baldosa.tipo}
-      className={`baldosa ${corriendo ? 'baldosa-viva' : ''}`}
-      style={{ '--baldosa-color': baldosa.color } as React.CSSProperties}
+      disabled={incluidaPor !== undefined}
+      className={`baldosa ${corriendo ? 'baldosa-viva' : ''} ${incluidaPor ? 'baldosa-incluida' : ''}`}
       onClick={onPulsar}
-      aria-label={`${baldosa.nombre}${corriendo ? ', en marcha' : ''}`}
+      aria-label={`${baldosa.nombre}${estado}`}
     >
       <span className="baldosa-icono" aria-hidden="true">
         <Icon name={baldosa.icono} />
@@ -388,21 +449,19 @@ function BaldosaBoton({
 }
 
 /**
- * Una baldosa que no cronometra: fichar, apuntar un café, saltar al entreno.
- * Comparte forma con las demás a propósito — a la vista todas son «una cosa que
- * se toca», y separarlas visualmente obligaría a aprender dos reglas.
+ * Una baldosa que no cronometra aquí: fichar, apuntar un café, mirar el
+ * entreno. Comparte forma con las demás a propósito — a la vista todas son «una
+ * cosa que se toca», y separarlas obligaría a aprender dos reglas.
  */
 function BaldosaSuelta({
   nombre,
   icono,
-  color,
   pie,
   encendida = false,
   onPulsar
 }: {
   nombre: string
   icono: IconName
-  color: string
   pie: string
   encendida?: boolean
   onPulsar: () => void
@@ -411,7 +470,7 @@ function BaldosaSuelta({
     <button
       type="button"
       className={`baldosa ${encendida ? 'baldosa-viva' : ''}`}
-      style={{ '--baldosa-color': color } as React.CSSProperties}
+      aria-pressed={encendida}
       onClick={onPulsar}
     >
       <span className="baldosa-icono" aria-hidden="true">
@@ -479,6 +538,239 @@ function ElSol({
       <Regla />
       <Boton tono="primario" onClick={() => onEmpezar(piel, cielo)}>
         Empezar
+      </Boton>
+      <Boton tono="callado" onClick={onDejarlo}>
+        Dejarlo
+      </Boton>
+    </div>
+  )
+}
+
+/**
+ * La lámpara, con lo que hace falta para que la dosis signifique algo.
+ *
+ * Antes la baldosa arrancaba con la primera lámpara de la lista, el torso y
+ * quince centímetros puestos a dedo. Los julios que entrega un panel caen con
+ * el **cuadrado** de la distancia, así que la diferencia entre veinte y cuarenta
+ * centímetros es de cuatro veces: darla por supuesta convertía la dosis en un
+ * número inventado. Y sin la zona no se puede decir qué llevas repetido.
+ *
+ * Las tres vienen con lo último elegido puesto, así que a partir de la segunda
+ * vez son un vistazo y un botón.
+ */
+function LaLampara({
+  lamparas,
+  onEmpezar,
+  onDejarlo
+}: {
+  lamparas: Lampara[]
+  onEmpezar: (lamparaId: string, zona: ZonaPBM, distanciaCm: number) => void
+  onDejarlo: () => void
+}) {
+  const [lamparaId, setLamparaId] = useState(lamparas[0]?.id ?? '')
+  const [zona, setZona] = useState<ZonaPBM>('torso')
+  const [distancia, setDistancia] = useState<number | undefined>(
+    lamparas[0]?.distanciaRefCm ?? 15
+  )
+  const elegida = lamparas.find((l) => l.id === lamparaId)
+
+  if (lamparas.length === 0) {
+    return (
+      <div className="card">
+        <p className="eyebrow">Lámpara</p>
+        <p className="dim" style={{ marginTop: 8 }}>
+          Todavía no hay ninguna creada. Sin sus longitudes de onda y su irradiancia no hay dosis
+          que calcular, y guardar la sesión sin eso dejaría un registro que nunca podrá contar nada.
+          Se crea una vez en «Luz».
+        </p>
+        <Boton tono="callado" onClick={onDejarlo}>
+          Dejarlo
+        </Boton>
+      </div>
+    )
+  }
+
+  return (
+    <div className="card">
+      <p className="eyebrow">Con cuál</p>
+      <div className="options-col" style={{ marginTop: 10 }}>
+        {lamparas.map((l) => (
+          <Opcion
+            key={l.id}
+            activa={lamparaId === l.id}
+            onElegir={() => {
+              setLamparaId(l.id)
+              setDistancia(l.distanciaRefCm)
+            }}
+          >
+            {l.nombre}
+          </Opcion>
+        ))}
+      </div>
+
+      <Regla />
+      <p className="eyebrow">Qué zona</p>
+      <div className="options" style={{ marginTop: 10 }}>
+        {(Object.keys(ZONAS) as ZonaPBM[]).map((z) => (
+          <Opcion key={z} activa={zona === z} onElegir={() => setZona(z)}>
+            {ZONAS[z]}
+          </Opcion>
+        ))}
+      </div>
+
+      <Regla />
+      <label className="field">
+        <span className="bar-label">A qué distancia (cm)</span>
+        <CampoNumero valor={distancia} onCambiar={setDistancia} placeholder="15" />
+      </label>
+      {elegida && (
+        <p className="faint" style={{ marginTop: 8 }}>
+          Sus datos están medidos a {elegida.distanciaRefCm} cm. La irradiancia cae con el cuadrado
+          de la distancia, así que ponerte al doble te deja en la cuarta parte: por eso se pregunta
+          en vez de suponerlo.
+        </p>
+      )}
+
+      <Regla />
+      <Boton
+        tono="primario"
+        disabled={distancia === undefined || distancia <= 0}
+        onClick={() => onEmpezar(lamparaId, zona, distancia ?? 15)}
+      >
+        Empezar
+      </Boton>
+      <Boton tono="callado" onClick={onDejarlo}>
+        Dejarlo
+      </Boton>
+    </div>
+  )
+}
+
+/* ══════════════════════════════════════════════ A MANO ══ */
+
+/**
+ * Apuntar un rato que ya pasó.
+ *
+ * Hace falta porque la vida no espera a que saques el móvil: te acuerdas del
+ * paseo de esta mañana a la hora de comer, o se te olvidó parar y prefieres
+ * poner tú la hora buena en vez de quedarte con la media hora estimada que puso
+ * la app.
+ *
+ * No hay nada nuevo detrás: se construye un `EnCurso` con la hora que digas y
+ * se para al momento que digas, así que lo que se guarda es exactamente lo
+ * mismo que si lo hubieras cronometrado. Un rato apuntado a mano y uno
+ * cronometrado valen igual, porque los dos los pusiste tú.
+ */
+function AMano({
+  hoy,
+  lamparas,
+  nivelDe,
+  onGuardar,
+  onDejarlo
+}: {
+  hoy: string
+  lamparas: Lampara[]
+  nivelDe: (t: TipoEnCurso) => number
+  onGuardar: (x: EnCurso, hastaMin: number, nivel?: number) => void
+  onDejarlo: () => void
+}) {
+  const [tipo, setTipo] = useState<TipoEnCurso>('fuera')
+  const [desde, setDesde] = useState(escribirHora(Math.max(0, minutosDeAhora() - 60)))
+  const [minutos, setMinutos] = useState<number | undefined>(30)
+  const [piel, setPiel] = useState<PielExpuesta>('brazos_piernas')
+  const [cielo, setCielo] = useState<EstadoDelCielo>('limpio')
+  const [lamparaId, setLamparaId] = useState(lamparas[0]?.id ?? '')
+
+  const inicio = minutosDeHora(desde)
+  const vale = inicio !== undefined && minutos !== undefined && minutos > 0
+
+  return (
+    <div className="card">
+      <p className="eyebrow">Apuntar un rato a mano</p>
+      <p className="dim" style={{ marginTop: 8 }}>
+        Para lo que se te olvidó cronometrar. Se guarda igual que si lo hubieras medido: la hora es
+        la que digas, no la de ahora.
+      </p>
+
+      <div className="options" style={{ marginTop: 14 }}>
+        {BALDOSAS.map((b) => (
+          <Opcion key={b.tipo} activa={tipo === b.tipo} onElegir={() => setTipo(b.tipo)}>
+            {b.nombre}
+          </Opcion>
+        ))}
+      </div>
+
+      <div className="field-row" style={{ marginTop: 14 }}>
+        <label className="field">
+          <span className="bar-label">Empezó a las</span>
+          <input
+            type="time"
+            value={desde}
+            onChange={(e) => setDesde(e.target.value)}
+            aria-label="Hora a la que empezó"
+          />
+        </label>
+        <label className="field">
+          <span className="bar-label">Cuántos minutos</span>
+          <CampoNumero valor={minutos} onCambiar={setMinutos} placeholder="30" />
+        </label>
+      </div>
+
+      {tipo === 'sol' && (
+        <>
+          <Regla />
+          <p className="eyebrow">Cuánta piel</p>
+          <div className="options" style={{ marginTop: 10 }}>
+            {ORDEN_PIEL.map((x) => (
+              <Opcion key={x} activa={piel === x} onElegir={() => setPiel(x)}>
+                {PIELES[x]}
+              </Opcion>
+            ))}
+          </div>
+          <p className="eyebrow" style={{ marginTop: 14 }}>
+            Cómo estaba el cielo
+          </p>
+          <div className="options" style={{ marginTop: 10 }}>
+            {ORDEN_CIELO.map((x) => (
+              <Opcion key={x} activa={cielo === x} onElegir={() => setCielo(x)}>
+                {CIELOS[x].nombre}
+              </Opcion>
+            ))}
+          </div>
+        </>
+      )}
+
+      {tipo === 'lampara' && lamparas.length > 0 && (
+        <>
+          <Regla />
+          <p className="eyebrow">Con cuál</p>
+          <div className="options-col" style={{ marginTop: 10 }}>
+            {lamparas.map((l) => (
+              <Opcion key={l.id} activa={lamparaId === l.id} onElegir={() => setLamparaId(l.id)}>
+                {l.nombre}
+              </Opcion>
+            ))}
+          </div>
+        </>
+      )}
+
+      <Regla />
+      <Boton
+        tono="primario"
+        disabled={!vale}
+        onClick={() => {
+          if (inicio === undefined || minutos === undefined) return
+          const x: EnCurso = {
+            tipo,
+            date: hoy,
+            desde: inicio,
+            ...(tipo === 'sol' ? { piel, cielo } : {}),
+            ...(tipo === 'lampara' ? { lamparaId } : {})
+          }
+          onGuardar(x, inicio + minutos, nivelDe(tipo))
+        }}
+      >
+        Guardar el rato
       </Boton>
       <Boton tono="callado" onClick={onDejarlo}>
         Dejarlo

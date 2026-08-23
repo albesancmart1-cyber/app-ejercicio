@@ -26,6 +26,7 @@
  */
 import type {
   EnCurso,
+  ExposicionSolar,
   NocheRegistrada,
   SalidaAlExterior,
   SesionPBM,
@@ -56,6 +57,24 @@ export const MINUTOS_SI_SE_OLVIDA = 30
 
 /** A partir de aquí la pantalla avisa de que algo lleva demasiado abierto. */
 export const MINUTOS_SOSPECHOSOS = 240
+
+/**
+ * Lo que **implica estar fuera**.
+ *
+ * Tomar el sol es estar fuera. Ver el amanecer es estar fuera. Estar descalzo
+ * en la hierba es estar fuera. Pedir dos toques para decir una sola cosa es la
+ * clase de fricción que hace que la gente deje de apuntar, así que no se pide:
+ * cada una de estas cuatro **cuenta ya como rato fuera** y lo enseña.
+ *
+ * `frio` no está, y es a propósito: una ducha fría se da dentro de casa. Meterla
+ * aquí apuntaría minutos de calle que nunca ocurrieron.
+ */
+export const IMPLICA_FUERA: TipoEnCurso[] = ['sol', 'amanecer', 'atardecer', 'grounding']
+
+/** Si algo de lo que está en marcha ya te está contando como fuera. */
+export function yaEstaFuera(enCurso: EnCurso[] | undefined, fecha: string): TipoEnCurso | undefined {
+  return abiertosDe(enCurso, fecha).find((x) => IMPLICA_FUERA.includes(x.tipo))?.tipo
+}
 
 /** Lo que está abierto de un tipo, si lo está. */
 export function abierto(
@@ -106,13 +125,17 @@ export function cerrar(
  *
  * Se devuelve como una descripción de qué escribir y dónde, en vez de escribir
  * directamente, para que esto se pueda probar sin store y sin navegador.
+ *
+ * Es una **lista** y no una sola cosa porque una actividad puede dejar más de un
+ * rastro: un rato descalzo en la hierba es a la vez un hábito y un rato fuera, y
+ * un rato de sol es a la vez un rato fuera y una exposición para la vitamina D.
  */
-export type Resultado =
-  | { en: 'salida'; salida: SalidaAlExterior; exposicionDeSol?: true }
+export type Escritura =
+  | { en: 'salida'; salida: SalidaAlExterior }
+  | { en: 'exposicion'; exposicion: ExposicionSolar }
   | { en: 'sesionPBM'; sesion: SesionPBM }
   | { en: 'noche'; noche: NocheRegistrada }
   | { en: 'habito'; registro: RegistroHabito }
-  | { en: 'nada' }
 
 const nuevoId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
@@ -127,46 +150,65 @@ export function alParar(
   x: EnCurso,
   hastaMin: number,
   opciones: { estimado?: boolean; nivelHabito?: number } = {}
-): Resultado {
+): Escritura[] {
   const minutos = Math.max(0, hastaMin - x.desde)
 
+  /** El rato fuera que deja cualquiera de las cuatro que implican estar fuera. */
+  const salida = (): Escritura => ({
+    en: 'salida',
+    salida: {
+      id: nuevoId(),
+      date: x.date,
+      desde: x.desde,
+      minutos,
+      filtro: x.filtro ?? 'ninguno',
+      tipo: x.tipo,
+      ...(opciones.estimado ? { estimado: true } : {})
+    }
+  })
+
   switch (x.tipo) {
-    // Los cuatro de luz natural acaban en el mismo sitio. El sol además deja su
-    // exposición para la vitamina D, con la piel y el cielo de cuando empezó.
-    case 'sol':
     case 'amanecer':
     case 'atardecer':
     case 'fuera':
-      return {
-        en: 'salida',
-        salida: {
-          id: nuevoId(),
-          date: x.date,
-          desde: x.desde,
-          minutos,
-          filtro: x.filtro ?? 'ninguno',
-          tipo: x.tipo,
-          ...(opciones.estimado ? { estimado: true } : {})
-        },
-        ...(x.tipo === 'sol' ? { exposicionDeSol: true as const } : {})
-      }
+      return [salida()]
+
+    // El sol deja dos rastros: el rato fuera y la exposición, con la piel y el
+    // cielo de cuando empezó. Van juntos y por eso salen juntos.
+    case 'sol':
+      return [
+        salida(),
+        {
+          en: 'exposicion',
+          exposicion: {
+            minutos,
+            // La franja solo la leen los registros viejos; aquí manda `desde`.
+            franja: 'mediodia',
+            piel: x.piel ?? 'brazos_piernas',
+            desde: x.desde,
+            ...(x.cielo ? { cielo: x.cielo } : {})
+          }
+        }
+      ]
 
     case 'lampara':
       // Sin lámpara elegida no hay dosis que calcular, y guardar la sesión sin
       // ella dejaría un registro que nunca podrá contar nada.
-      if (!x.lamparaId) return { en: 'nada' }
-      return {
-        en: 'sesionPBM',
-        sesion: {
-          id: nuevoId(),
-          date: x.date,
-          lamparaId: x.lamparaId,
-          hora: x.desde,
-          minutos,
-          distanciaCm: x.distanciaCm ?? 15,
-          zona: x.zona ?? 'torso'
+      if (!x.lamparaId) return []
+      return [
+        {
+          en: 'sesionPBM',
+          sesion: {
+            id: nuevoId(),
+            date: x.date,
+            lamparaId: x.lamparaId,
+            hora: x.desde,
+            minutos,
+            distanciaCm: x.distanciaCm ?? 15,
+            zona: x.zona ?? 'torso'
+          }
         }
-      }
+      ]
 
     case 'oscuridad':
       /*
@@ -174,26 +216,30 @@ export function alParar(
        * el comentario de `NocheRegistrada`—, así que al apagar la luz a las 23:30
        * de un martes el registro es del miércoles.
        */
-      return {
-        en: 'noche',
-        noche: {
-          date: hastaMin < x.desde ? siguienteDia(x.date) : x.date,
-          apagado: x.desde,
-          levantado: hastaMin
+      return [
+        {
+          en: 'noche',
+          noche: {
+            date: hastaMin < x.desde ? siguienteDia(x.date) : x.date,
+            apagado: x.desde,
+            levantado: hastaMin
+          }
         }
-      }
+      ]
 
+    // El frío es solo un hábito: se hace dentro tan a menudo como fuera.
     case 'frio':
+      return [
+        { en: 'habito', registro: { date: x.date, habito: 'frio', nivel: opciones.nivelHabito ?? 1, minutos } }
+      ]
+
+    // El grounding es un hábito **y** un rato fuera. Antes solo era lo primero,
+    // y por eso una hora descalzo en la hierba no subía la amplitud del día.
     case 'grounding':
-      return {
-        en: 'habito',
-        registro: {
-          date: x.date,
-          habito: x.tipo,
-          nivel: opciones.nivelHabito ?? 1,
-          minutos
-        }
-      }
+      return [
+        { en: 'habito', registro: { date: x.date, habito: 'grounding', nivel: opciones.nivelHabito ?? 1, minutos } },
+        salida()
+      ]
   }
 }
 
@@ -214,12 +260,12 @@ function siguienteDia(iso: string): string {
 export function loQueSeQuedoAbierto(
   enCurso: EnCurso[] | undefined,
   hoy: string
-): { viejo: EnCurso; resultado: Resultado }[] {
+): { viejo: EnCurso; escrituras: Escritura[] }[] {
   return (enCurso ?? [])
     .filter((x) => x.date < hoy)
     .map((viejo) => ({
       viejo,
-      resultado: alParar(viejo, viejo.desde + MINUTOS_SI_SE_OLVIDA, { estimado: true })
+      escrituras: alParar(viejo, viejo.desde + MINUTOS_SI_SE_OLVIDA, { estimado: true })
     }))
 }
 
@@ -244,10 +290,17 @@ export function minutosDeHoy(
   const suma = (n: number[]) => n.reduce((a, b) => a + Math.max(0, b), 0)
 
   switch (tipo) {
+    /*
+     * «Fuera» es el paraguas: enseña **todo** el rato de calle del día, venga
+     * del botón que venga. Las otras tres enseñan lo suyo. El mismo rato de sol
+     * sale así en las dos baldosas, que es justo lo que se quiere ver —está
+     * guardado una sola vez, y en las cuentas del día entra una sola vez.
+     */
+    case 'fuera':
+      return suma((d.salidas ?? []).filter((s) => s.date === fecha).map((s) => s.minutos))
     case 'sol':
     case 'amanecer':
     case 'atardecer':
-    case 'fuera':
       return suma(
         (d.salidas ?? []).filter((s) => s.date === fecha && s.tipo === tipo).map((s) => s.minutos)
       )
