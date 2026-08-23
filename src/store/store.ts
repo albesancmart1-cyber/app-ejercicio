@@ -3,6 +3,7 @@ import { todayIsoAt } from './clock'
 import { VERSION_ACTUAL, migrar } from './migrate'
 import type { DiaDeComidas, DiaDeSol, EdicionAlimento, ExposicionSolar, AppData, BodyMeasurement, CheckIn, EnCurso, Fichaje, Lampara, PerfilDeLuz, Profile, Routine, NocheRegistrada, SalidaAlExterior, SesionPBM, Suplemento, Session, TipoEnCurso } from '../domain/types'
 import { claveDeMedicion, claveDeRutina, claveDeSesion, type Lapida } from '../domain/merge'
+import { decirleElSitio } from './reloj'
 
 const STORAGE_KEY = 'ritmo-data-v1'
 
@@ -86,6 +87,15 @@ function conLapida(s: AppData, clave: string): Lapida[] {
 export const actions = {
   saveProfile(profile: Profile) {
     setState((s) => ({ ...s, profile, profileUpdatedAt: Date.now() }))
+    /*
+     * Y si hay reloj, se le dice dónde vives. Es lo único que viaja hacia allá,
+     * y con eso calcula la altura del sol sin red — que es justo cuando hace
+     * falta saberla. Se manda aquí y no al arrancar porque es lo único que
+     * puede cambiarlo, y fuera del contenedor no hace nada.
+     */
+    if (typeof profile.lat === 'number' && typeof profile.lon === 'number') {
+      void decirleElSitio(profile.lat, profile.lon)
+    }
   },
   saveCheckIn(checkIn: CheckIn) {
     setState((s) => ({

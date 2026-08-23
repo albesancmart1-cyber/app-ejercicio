@@ -348,6 +348,27 @@ menos cuarto ya está fichado en una nave sin ventanas.
 - [x] instalar-firma-se-dice · Se dice que Capacitor no alarga los 7 días de la firma
   → docs/INSTALAR.md :: No alarga la firma
 
+## El reloj
+
+- [x] reloj-medir · Empezar y parar desde la muñeca, con la misma rejilla
+  → ios/RitmoWatch/Fuentes/Rejilla.swift :: Baldosa
+- [x] reloj-entrelazado · «Fuera» se enciende sola, igual que en el móvil
+  → ios/RitmoWatch/Fuentes/Estado.swift :: incluidaPor
+- [x] reloj-sol-sin-red · La altura del sol se calcula en el reloj, sin conexión
+  → ios/RitmoWatch/Fuentes/Sol.swift :: elevacionAhora
+- [x] reloj-traduccion-comprobada · El cálculo del sol se comprueba contra el TypeScript
+  → ios/RitmoWatch/Pruebas/SolTests.swift :: testTraduccionFielAlTypeScript
+- [x] reloj-sin-credenciales · El reloj no guarda ninguna credencial
+  → ios/RitmoWatch/Fuentes/Enlace.swift :: ninguna credencial en la muñeca
+- [x] reloj-entrega-garantizada · Lo medido llega aunque el móvil esté apagado
+  → ios/RitmoWatch/Fuentes/Enlace.swift :: transferUserInfo
+- [x] reloj-mismo-camino · Una medida del reloj deja los mismos rastros que una del móvil
+  → src/store/reloj.ts :: recogerDelReloj
+- [x] reloj-sin-verificar-se-dice · Se dice que el Swift no está compilado ni probado
+  → docs/RELOJ.md :: compilado ni una vez
+- [x] reloj-siete-dias-se-dice · Se avisa de que caduca a los 7 días
+  → docs/RELOJ.md :: deja de abrirse a los 7 días
+
 ## Lo que Ritmo NO hace
 
 Estas también son promesas, y romperlas sería peor que no cumplir una función.
@@ -369,4 +390,4 @@ Estas también son promesas, y romperlas sería peor que no cumplir una función
 
 ---
 
-TOTAL: 137
+TOTAL: 146

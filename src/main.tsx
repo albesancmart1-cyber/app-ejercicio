@@ -6,6 +6,7 @@ import App from './App'
 import './styles/appica.css'
 import { actions } from './store/store'
 import { estadoDeSync, iniciarSync, sincronizar } from './store/sync'
+import { hayReloj, recogerDelReloj } from './store/reloj'
 
 /**
  * La interfaz sigue la hora del día. De noche pasa a ámbar y baja el brillo:
@@ -32,6 +33,30 @@ setInterval(applyDaytime, 5 * 60 * 1000)
  */
 iniciarSync().then((haySesion) => {
   if (haySesion) sincronizar(actions.snapshot, actions.replaceAll)
+})
+
+/**
+ * Y lo que el reloj haya medido, si la app va dentro del contenedor nativo.
+ *
+ * Va aparte de la nube y antes que ella a propósito: el reloj mide sin
+ * cobertura y el móvil puede estar días sin sincronizar, así que lo del reloj
+ * tiene que entrar aunque no haya red. Fuera del contenedor esto no hace nada.
+ *
+ * También al volver del segundo plano: es el momento exacto en que llega lo
+ * que se midió con el móvil en el bolsillo y la app cerrada.
+ */
+function traerLoDelReloj() {
+  if (!hayReloj()) return
+  recogerDelReloj(actions.snapshot()).then(({ data, cuantas }) => {
+    if (cuantas === 0) return
+    actions.replaceAll(data)
+    const e = estadoDeSync()
+    if (e.estado === 'dentro') sincronizar(actions.snapshot, actions.replaceAll)
+  })
+}
+traerLoDelReloj()
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') traerLoDelReloj()
 })
 
 // Y al volver la conexión, se reintenta lo que quedó pendiente.
