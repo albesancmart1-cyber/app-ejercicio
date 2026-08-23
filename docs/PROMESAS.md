@@ -339,6 +339,14 @@ menos cuarto ya está fichado en una nave sin ventanas.
   → src/domain/buzon.test.ts :: exactamente lo mismo que una
 - [x] instalar-reloj-se-dice · Se dice sin rodeos que watchOS no admite webs
   → docs/INSTALAR.md :: No se puede instalar Ritmo tal cual
+- [x] instalar-capacitor · Hay proyecto de Xcode, con la misma app dentro
+  → capacitor.config.ts :: webDir
+- [x] instalar-capacitor-arranca · Se comprueba que el paquete nativo arranca desde la raíz
+  → scripts/check-ios.mjs :: sin rutas absolutas
+- [x] instalar-capacitor-sin-blanco · El contenedor no arranca en blanco
+  → scripts/generar-iconos.mjs :: recursos del contenedor nativo
+- [x] instalar-firma-se-dice · Se dice que Capacitor no alarga los 7 días de la firma
+  → docs/INSTALAR.md :: No alarga la firma
 
 ## Lo que Ritmo NO hace
 
@@ -361,4 +369,4 @@ Estas también son promesas, y romperlas sería peor que no cumplir una función
 
 ---
 
-TOTAL: 133
+TOTAL: 137

@@ -26,11 +26,62 @@ el aparato. La nube solo sirve para que los datos lleguen a otro dispositivo.
 - Se actualiza sola. En «Yo» sale la fecha de la versión que tiene puesta, por
   si quieres comprobar que ya cogió la última.
 
+## Como app nativa, con Capacitor
+
+Hay un proyecto de Xcode en `ios/`. Dentro va **exactamente la misma app**: el
+mismo `dist/`, el mismo `localStorage`, la misma nube. No hay una segunda
+versión que mantener.
+
+```bash
+npm run build:ios    # construye la web con rutas relativas y la copia a ios/
+npx cap open ios     # abre Xcode (solo en Mac)
+```
+
+`build:ios` hace dos cosas distintas del build de siempre, y las dos importan:
+deja las rutas **relativas** —en GitHub Pages la app vive bajo `/app-ejercicio/`
+y aquí se sirve desde la raíz de `capacitor://localhost`— y **quita el service
+worker**, que dentro del contenedor no añade nada y sí puede servir una versión
+vieja después de actualizar. `node scripts/check-ios.mjs` comprueba que el
+paquete arranca entero desde una raíz cualquiera.
+
+El icono y la pantalla de arranque salen del mismo SVG que los de Safari, con
+`node scripts/generar-iconos.mjs`. Capacitor los trae en blanco, y dejarlos así
+significaría que la app instalada desde Xcode arranca peor que la instalada
+desde el navegador.
+
+### Lo que Capacitor NO cambia
+
+**No alarga la firma.** Los 7 días de la cuenta gratuita los impone Apple al
+firmar, no el framework: una app hecha con Capacitor, con SwiftUI o con lo que
+sea, instalada desde Xcode con un Apple ID gratuito, deja de abrirse a los 7
+días exactamente igual.
+
+La confusión viene de **Live Updates**: Capacitor sí puede cambiar el HTML y el
+JavaScript por el aire sin volver a firmar, todo el tiempo que quieras. Pero eso
+actualiza el *contenido*; el contenedor sigue caducando. Actualizarías una app
+que ya no arranca.
+
+| Vía | Duración | Coste |
+|---|---|---|
+| Safari → Añadir a pantalla de inicio | Para siempre | 0 € |
+| Xcode + Apple ID gratuito | **7 días** | 0 € |
+| SideStore / AltStore (refirma sola) | Mientras aguante | 0 €, no oficial |
+| Apple Developer Program | 1 año por instalación | 99 €/año |
+| TestFlight | 90 días por compilación, por el aire | 99 €/año |
+
+Para el iPhone solo, **la web instalada desde Safari sigue siendo la mejor
+opción**: no caduca, no cuesta nada y no necesita Mac. El contenedor nativo
+merece la pena por dos cosas que la web no puede dar: acceso a HealthKit y la
+posibilidad de que exista una app de reloj.
+
 ## En el Apple Watch
 
 **No se puede instalar Ritmo tal cual.** watchOS no tiene navegador ni instala
 webs, así que no hay ninguna vía por la que esta app llegue al reloj. Una app de
 watchOS es obligatoriamente nativa y se compila con Xcode en un Mac.
+
+El proyecto de Xcode de `ios/` es el sitio donde vivirá cuando se escriba: una
+app de watchOS es una diana más dentro del mismo proyecto.
 
 Lo que sí está montado ya es **la vía de entrada**: la tabla `ritmo_medidas` de
 `supabase/esquema.sql` y `src/domain/buzon.ts`. Cualquier cosa que sepa hacer

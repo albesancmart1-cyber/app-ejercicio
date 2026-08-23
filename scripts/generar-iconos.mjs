@@ -15,7 +15,7 @@
  *   node scripts/generar-iconos.mjs
  */
 import { chromium } from 'playwright-core'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 
 const SVG = readFileSync(new URL('../public/icon.svg', import.meta.url), 'utf-8')
 const FONDO = '#000000'
@@ -102,10 +102,61 @@ for (const p of PANTALLAS) {
   )
 }
 
+/*
+ * Y lo mismo para el contenedor nativo, si está.
+ *
+ * Capacitor genera su icono y su pantalla de arranque **en blanco**, que es
+ * justo el destello que las de arriba existen para quitar: dejarlos como vienen
+ * significaría que la app instalada desde Xcode arranca peor que la instalada
+ * desde Safari.
+ *
+ * Van al catálogo de recursos de Xcode, no a `public/`, y por eso se escriben
+ * aquí y no a mano: son los mismos píxeles del mismo SVG.
+ */
+const IOS = new URL('../ios/App/App/Assets.xcassets/', import.meta.url)
+let iosHechos = 0
+if (existsSync(IOS)) {
+  const icono = async (px, transparente) => {
+    const page = await browser.newPage({ viewport: { width: px, height: px } })
+    await page.setContent(
+      `<style>html,body{margin:0;padding:0;background:${transparente ? 'transparent' : FONDO}}svg{display:block;width:${px}px;height:${px}px}</style>${SVG}`
+    )
+    const png = await page.screenshot({ omitBackground: transparente })
+    await page.close()
+    return png
+  }
+
+  // El icono de la app: 1024 y sin transparencia, que iOS no la admite aquí.
+  writeFileSync(new URL('AppIcon.appiconset/AppIcon-512@2x.png', IOS), await icono(1024, false))
+  iosHechos++
+
+  // La pantalla de arranque: cuadrada de 2732, que es como la quiere Xcode para
+  // poder recortarla a cualquier pantalla. El icono, al 22 % — más pequeño que
+  // en las de Safari porque aquí el lienzo es cuadrado y se recorta por los lados.
+  const lado = Math.round(2732 * 0.22)
+  const page = await browser.newPage({ viewport: { width: 2732, height: 2732 } })
+  await page.setContent(
+    `<style>
+       html,body{margin:0;padding:0;height:100%;background:${FONDO}}
+       body{display:flex;align-items:center;justify-content:center}
+       svg{display:block;width:${lado}px;height:${lado}px}
+     </style>${SVG}`
+  )
+  const arranque = await page.screenshot()
+  await page.close()
+  for (const n of ['splash-2732x2732.png', 'splash-2732x2732-1.png', 'splash-2732x2732-2.png']) {
+    writeFileSync(new URL(`Splash.imageset/${n}`, IOS), arranque)
+    iosHechos++
+  }
+}
+
 await browser.close()
 
 // Se deja escrito el bloque que va en index.html, para no teclearlo a mano ni
 // que se descuadre si algún día cambia la lista de pantallas.
 writeFileSync(new URL('../scripts/pantallas-de-carga.html', import.meta.url), listado.join('\n') + '\n')
 
-console.log(`✓ ${ICONOS.length} iconos y ${PANTALLAS.length} pantallas de carga`)
+console.log(
+  `✓ ${ICONOS.length} iconos, ${PANTALLAS.length} pantallas de carga` +
+    (iosHechos > 0 ? ` y ${iosHechos} recursos del contenedor nativo` : '')
+)

@@ -18,6 +18,12 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    /*
+     * Dentro del contenedor nativo no hay service worker: los archivos ya están
+     * en el aparato, así que no añadiría nada y sí podría servir una versión
+     * vieja después de actualizar. `npm run build:ios` pone `SIN_SW`.
+     */
+    ...(process.env.SIN_SW ? [] : [
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg'],
@@ -58,6 +64,7 @@ export default defineConfig({
         ]
       }
     })
+    ])
   ],
   test: {
     environment: 'node'
