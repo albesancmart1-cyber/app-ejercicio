@@ -21,18 +21,37 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg'],
+      workbox: {
+        /*
+         * Las pantallas de carga se quedan fuera del precacheado a propósito.
+         * Son 1,2 MB que la app **nunca pide**: quien las lee es iOS, al abrir
+         * desde la pantalla de inicio y antes de que el service worker exista.
+         * Meterlas dentro triplicaría lo que hay que descargar la primera vez a
+         * cambio de nada.
+         */
+        globIgnores: ['**/splash-*.png']
+      },
       manifest: {
         name: 'Ritmo — entrena con tu cuerpo',
         short_name: 'Ritmo',
         description:
           'Entrenamiento que acompaña: escucha tu cuerpo, respeta tus ritmos y te recomienda el entreno que necesitas hoy.',
         lang: 'es',
+        // `id` fija la identidad de la app instalada: sin él, cambiar el
+        // `start_url` algún día haría que el móvil la trate como otra app
+        // distinta y quien la tuviera puesta se quedaría con la vieja.
+        id: '/app-ejercicio/',
         display: 'standalone',
+        // Vertical y bloqueada: la app se usa con una mano, de pie en la calle,
+        // y girándola no hay nada que ganar.
+        orientation: 'portrait',
+        categories: ['health', 'fitness', 'lifestyle'],
         // Deben coincidir con --bg del tema, o la barra de estado y la pantalla
         // de carga del móvil desentonan con la app.
         background_color: '#000000',
         theme_color: '#000000',
         icons: [
+          { src: 'icon-180.png', sizes: '180x180', type: 'image/png' },
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }

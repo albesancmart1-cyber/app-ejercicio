@@ -323,6 +323,23 @@ menos cuarto ya está fichado en una nave sin ventanas.
 - [x] vitd-es-estimacion · Se presenta siempre como estimación, no como medida
   → src/domain/parte.ts :: estimación, no medida
 
+## Instalar
+
+- [x] instalar-iphone · Se instala en el iPhone sin App Store, a pantalla completa
+  → index.html :: apple-mobile-web-app-capable
+- [x] instalar-sin-destello · Arranca con su pantalla de carga, no con un flash blanco
+  → src/instalacion.test.ts :: hay una por cada iPhone en circulación
+- [x] instalar-nombre-corto · Bajo el icono pone «Ritmo», no el título entero
+  → index.html :: apple-mobile-web-app-title
+- [x] instalar-offline · Funciona entera sin conexión
+  → vite.config.ts :: VitePWA
+- [x] instalar-buzon · Otro aparato puede dejar una medida y el móvil la recoge
+  → src/domain/buzon.ts :: recoger
+- [x] instalar-buzon-sin-duplicar · Recoger dos veces deja lo mismo que recoger una
+  → src/domain/buzon.test.ts :: exactamente lo mismo que una
+- [x] instalar-reloj-se-dice · Se dice sin rodeos que watchOS no admite webs
+  → docs/INSTALAR.md :: No se puede instalar Ritmo tal cual
+
 ## Lo que Ritmo NO hace
 
 Estas también son promesas, y romperlas sería peor que no cumplir una función.
@@ -344,4 +361,4 @@ Estas también son promesas, y romperlas sería peor que no cumplir una función
 
 ---
 
-TOTAL: 126
+TOTAL: 133

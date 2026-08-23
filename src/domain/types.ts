@@ -734,6 +734,14 @@ export interface ExposicionSolar {
   desde?: number
   /** Cómo se veía el sol: atenúa la síntesis. Ver `domain/cielo.ts`. */
   cielo?: import('./cielo').EstadoDelCielo
+  /**
+   * Identificador, cuando la exposición vino de fuera —del reloj, de un atajo—.
+   *
+   * Las exposiciones de siempre se añaden a la lista y no lo necesitan. Las que
+   * llegan por el buzón sí: es lo que permite recoger dos veces sin acabar con
+   * el mismo rato de sol apuntado dos veces. Ver `domain/buzon.ts`.
+   */
+  id?: string
 }
 
 /**

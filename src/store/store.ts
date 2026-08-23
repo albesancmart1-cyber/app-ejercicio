@@ -179,10 +179,16 @@ export const actions = {
   saveExposicion(fecha: string, e: ExposicionSolar) {
     setState((s) => {
       const dia = (s.sol ?? []).find((d) => d.date === fecha)
+      /*
+       * Con `id` sustituye en vez de añadir. Es lo que hace que recoger el
+       * buzón dos veces —un fallo de red entre recoger y borrar— no deje el
+       * mismo rato de sol apuntado dos veces. Sin `id`, se añade como siempre.
+       */
+      const previas = (dia?.exposiciones ?? []).filter((x) => !e.id || x.id !== e.id)
       const nuevo: DiaDeSol = {
         ...(dia ?? {}),
         date: fecha,
-        exposiciones: [...(dia?.exposiciones ?? []), e],
+        exposiciones: [...previas, e],
         updatedAt: Date.now()
       }
       return {

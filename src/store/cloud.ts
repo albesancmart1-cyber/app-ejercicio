@@ -19,10 +19,12 @@
  * paquete es justo eso, pública: sin sesión no abre nada.
  */
 import type { AppData } from '../domain/types'
+import type { MedidaDeFuera } from '../domain/buzon'
 
 const URL_BASE = (import.meta.env.VITE_SUPABASE_URL ?? '').replace(/\/+$/, '')
 const CLAVE = import.meta.env.VITE_SUPABASE_ANON_KEY ?? ''
 const TABLA = 'ritmo_datos'
+const TABLA_MEDIDAS = 'ritmo_medidas'
 const CLAVE_SESION = 'ritmo-sesion'
 
 /** ¿Se ha configurado una nube? Sin esto la app funciona igual, pero local. */
@@ -390,5 +392,67 @@ export async function subir(data: AppData): Promise<void> {
   })
   if (!res.ok) {
     throw new ErrorNube(`No he podido guardar en la nube. ${quejaDeDatos(res.status, await res.text())}`)
+  }
+}
+
+
+/* ══════════════════════════════════════════════ EL BUZÓN DE MEDIDAS ══ */
+
+/**
+ * Las medidas que otro aparato haya dejado en el buzón.
+ *
+ * Se piden las cerradas y las abiertas por igual: `recoger` sabe distinguirlas
+ * y deja las que siguen en marcha donde estaban. Pedir solo las cerradas
+ * obligaría a filtrar aquí lo mismo que ya se decide allí, y a mantener las dos
+ * reglas en sitios distintos.
+ */
+export async function bajarMedidas(): Promise<MedidaDeFuera[]> {
+  const sesion = await sesionValida()
+  if (!sesion) throw new ErrorNube('No has iniciado sesión.')
+  const res = await pedir(
+    `/rest/v1/${TABLA_MEDIDAS}?select=id,tipo,date,desde,hasta,piel,cielo,filtro,lampara_id,zona,distancia_cm,origen&order=creado_en.asc`,
+    { headers: { Authorization: `Bearer ${sesion.accessToken}` } }
+  )
+  if (!res.ok) {
+    throw new ErrorNube(`No he podido leer el buzón. ${quejaDeDatos(res.status, await res.text())}`)
+  }
+  // La base de datos habla con guiones bajos y la app con mayúsculas.
+  return ((await res.json()) as Record<string, unknown>[]).map((f) => ({
+    id: String(f.id),
+    tipo: String(f.tipo),
+    date: String(f.date),
+    desde: Number(f.desde),
+    hasta: f.hasta === null || f.hasta === undefined ? null : Number(f.hasta),
+    piel: (f.piel as string) ?? null,
+    cielo: (f.cielo as string) ?? null,
+    filtro: (f.filtro as string) ?? null,
+    lamparaId: (f.lampara_id as string) ?? null,
+    zona: (f.zona as string) ?? null,
+    distanciaCm: f.distancia_cm === null || f.distancia_cm === undefined ? null : Number(f.distancia_cm),
+    origen: (f.origen as string) ?? null
+  }))
+}
+
+/**
+ * Vacía del buzón lo ya recogido.
+ *
+ * Se borra **después** de haberlo guardado en local, nunca antes. Si esto falla
+ * no se pierde nada: la próxima sincronización vuelve a recogerlas y, como cada
+ * escritura lleva el id de su medida, el resultado es el mismo.
+ */
+export async function borrarMedidas(ids: string[]): Promise<void> {
+  if (ids.length === 0) return
+  const sesion = await sesionValida()
+  if (!sesion) throw new ErrorNube('No has iniciado sesión.')
+  const lista = ids.map((x) => `"${x.replace(/"/g, '')}"`).join(',')
+  const res = await pedir(`/rest/v1/${TABLA_MEDIDAS}?id=in.(${encodeURIComponent(lista)})`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${sesion.accessToken}`,
+      Prefer: 'return=minimal'
+    }
+  })
+  if (!res.ok) {
+    throw new ErrorNube(`No he podido vaciar el buzón. ${quejaDeDatos(res.status, await res.text())}`)
   }
 }

@@ -20,8 +20,99 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <!--
+      El nombre que se ve bajo el icono en la pantalla de inicio. Sin esto iOS
+      coge el `<title>`, que es largo y sale cortado: «Ritmo — entren...».
+    -->
+    <meta name="apple-mobile-web-app-title" content="Ritmo" />
+    <!-- iOS usa 180×180 exactos. Con otro tamaño lo reescala y se ve blando. -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png" />
     <meta name="theme-color" content="#000000" />
+
+    <!--
+      Las pantallas de carga. Sin ellas, una web instalada en iOS arranca con un
+      destello en blanco hasta que el JavaScript pinta algo: es lo único que
+      delata que no es una app nativa, y en una app que se abre de madrugada
+      para ver el amanecer, un flash blanco a pantalla completa no es un detalle
+      estético.
+
+      iOS empareja por tamaño y densidad **exactos**, así que hay una por cada
+      iPhone en circulación; el que no encuentre la suya vuelve al blanco. Se
+      generan con `node scripts/generar-iconos.mjs` a partir del mismo SVG del
+      icono, así que no se pueden desviar del tema.
+    -->
+    <!-- SE 1.ª -->
+    <link
+      rel="apple-touch-startup-image"
+      media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+      href="/splash-640x1136.png"
+    />
+    <!-- 8, SE 2.ª y 3.ª -->
+    <link
+      rel="apple-touch-startup-image"
+      media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+      href="/splash-750x1334.png"
+    />
+    <!-- 8 Plus -->
+    <link
+      rel="apple-touch-startup-image"
+      media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+      href="/splash-1242x2208.png"
+    />
+    <!-- X, XS, 11 Pro, 12 mini, 13 mini -->
+    <link
+      rel="apple-touch-startup-image"
+      media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+      href="/splash-1125x2436.png"
+    />
+    <!-- XR, 11 -->
+    <link
+      rel="apple-touch-startup-image"
+      media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+      href="/splash-828x1792.png"
+    />
+    <!-- XS Max, 11 Pro Max -->
+    <link
+      rel="apple-touch-startup-image"
+      media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+      href="/splash-1242x2688.png"
+    />
+    <!-- 12, 13, 14 -->
+    <link
+      rel="apple-touch-startup-image"
+      media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+      href="/splash-1170x2532.png"
+    />
+    <!-- 12 y 13 Pro Max, 14 Plus -->
+    <link
+      rel="apple-touch-startup-image"
+      media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+      href="/splash-1284x2778.png"
+    />
+    <!-- 14 Pro, 15, 15 Pro, 16 -->
+    <link
+      rel="apple-touch-startup-image"
+      media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+      href="/splash-1179x2556.png"
+    />
+    <!-- 15 Plus, 15 Pro Max, 16 Plus -->
+    <link
+      rel="apple-touch-startup-image"
+      media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+      href="/splash-1290x2796.png"
+    />
+    <!-- 16 Pro -->
+    <link
+      rel="apple-touch-startup-image"
+      media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+      href="/splash-1206x2622.png"
+    />
+    <!-- 16 Pro Max -->
+    <link
+      rel="apple-touch-startup-image"
+      media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+      href="/splash-1320x2868.png"
+    />
     <title>Ritmo — entrena con tu cuerpo</title>
   </head>
   <body>
