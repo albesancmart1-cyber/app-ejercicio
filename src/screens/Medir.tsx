@@ -54,6 +54,8 @@ import {
   abierto,
   abiertosDe,
   alParar,
+  cambiarCielo,
+  tramosDeCielo,
   loQueSeQuedoAbierto,
   minutosAbierto,
   minutosDeHoy,
@@ -307,6 +309,18 @@ export default function Medir({ onEntrenar }: { onEntrenar?: () => void }) {
       <p className="faint medir-nota">
         El café cuenta. Abre la ventana igual que un plato, y por eso tiene su baldosa.
       </p>
+
+      {abierto(data.enCurso, 'sol', hoy) && (
+        <CieloEnMarcha
+          sol={abierto(data.enCurso, 'sol', hoy)!}
+          ahora={ahora}
+          onCambiar={(cielo) => {
+            const x = abierto(data.enCurso, 'sol', hoy)!
+            const nuevo = cambiarCielo(x, cielo, minutosDeAhora())
+            if (nuevo !== x) actions.abrirEnCurso(nuevo)
+          }}
+        />
+      )}
 
       {preguntando === 'sol' && (
         <ElSol
@@ -645,6 +659,77 @@ function LaLampara({
       <Boton tono="callado" onClick={onDejarlo}>
         Dejarlo
       </Boton>
+    </div>
+  )
+}
+
+/**
+ * El cielo, mientras el sol está en marcha.
+ *
+ * El sol no se está quieto: empiezas con el cielo cubierto, a los cinco minutos
+ * se despeja, y el resto del rato es otra cosa. Antes había que elegir cuál de
+ * los dos mentir, porque solo se guardaba uno.
+ *
+ * Cambiarlo aquí **no reescribe lo anterior**: cierra el tramo que llevabas y
+ * abre uno nuevo. Los cinco minutos cubiertos se guardan como cubiertos, y al
+ * parar cada tramo se convierte en su propia exposición con su propio factor.
+ *
+ * Se enseña lo que llevas de cada uno, y no solo el actual, porque es la única
+ * forma de comprobar de un vistazo que la app ha entendido tu rato.
+ */
+function CieloEnMarcha({
+  sol,
+  ahora,
+  onCambiar
+}: {
+  sol: EnCurso
+  ahora: number
+  onCambiar: (cielo: EstadoDelCielo) => void
+}) {
+  const tramos = tramosDeCielo(sol, Math.max(sol.desde, ahora))
+  const actual = tramos[tramos.length - 1]?.cielo
+
+  return (
+    <div className="card">
+      <div className="row">
+        <p className="eyebrow" style={{ margin: 0 }}>
+          Cómo está el cielo ahora
+        </p>
+        <Etiqueta acento>{escribirDuracion(minutosAbierto(sol, ahora))} al sol</Etiqueta>
+      </div>
+      <p className="dim" style={{ marginTop: 8 }}>
+        Si cambia mientras estás fuera, tócalo. Lo que llevabas se guarda con el cielo que
+        había; lo que venga después, con el nuevo.
+      </p>
+
+      <div className="options-col" style={{ marginTop: 12 }}>
+        {ORDEN_CIELO.map((x) => (
+          <Opcion key={x} activa={actual === x} onElegir={() => onCambiar(x)}>
+            {CIELOS[x].nombre}
+          </Opcion>
+        ))}
+      </div>
+
+      {tramos.length > 1 && (
+        <>
+          <Regla />
+          <p className="eyebrow">Lo que llevas de cada uno</p>
+          {tramos.map((t, i) => (
+            <div className="row" key={`${t.desde}-${i}`} style={{ padding: '5px 0' }}>
+              <span className="dim">
+                {t.cielo ? CIELOS[t.cielo].nombre : 'Sin apuntar'} · desde las{' '}
+                {escribirHora(t.desde)}
+              </span>
+              <span>{escribirDuracion(t.minutos)}</span>
+            </div>
+          ))}
+          <p className="faint" style={{ marginTop: 8 }}>
+            Cada tramo se guardará como su propia exposición. El factor del cielo multiplica y
+            no se promedia: cinco minutos cubiertos y cincuenta y cinco despejados no es lo
+            mismo que una hora a medio camino.
+          </p>
+        </>
+      )}
     </div>
   )
 }

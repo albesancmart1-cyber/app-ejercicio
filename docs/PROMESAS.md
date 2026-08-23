@@ -265,6 +265,12 @@ costar un toque, y ese toque tenía que alimentar todo lo ya construido.
   → src/domain/cielo.ts :: ORDEN_CIELO
 - [x] medir-cielo-es-anadido · El cielo se declara como añadido nuestro, no como parte de la fórmula
   → src/domain/cielo.ts :: un añadido nuestro sobre esa fórmula
+- [x] medir-cielo-cambia · El cielo se puede cambiar a mitad de sesión, y parte el rato en tramos
+  → src/domain/medir.ts :: cambiarCielo
+- [x] medir-cielo-tramos · Cada tramo se guarda con el cielo que había, y se ve mientras corre
+  → src/screens/Medir.tsx :: Lo que llevas de cada uno
+- [x] medir-cielo-sin-inflar · Partir el cielo no multiplica ni la vitamina D ni los minutos de calle
+  → src/domain/vitaminaD.ts :: conMinutosEficaces
 - [x] medir-quemadura · Cuánto tardarías en quemarte, con tu fototipo y este cielo
   → src/domain/vitaminaD.ts :: minutosParaQuemarse
 - [x] medir-fichar · Fichar y salir del trabajo desde el mismo sitio
@@ -421,4 +427,4 @@ Estas también son promesas, y romperlas sería peor que no cumplir una función
 
 ---
 
-TOTAL: 157
+TOTAL: 160

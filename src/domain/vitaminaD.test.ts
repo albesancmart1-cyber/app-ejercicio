@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  conMinutosEficaces,
   ELEVACION_MINIMA,
   F_FOTOTIPO,
   MED_J_M2,
@@ -24,7 +25,7 @@ import {
   type Fototipo,
   type QuienToma
 } from './vitaminaD'
-import { CIELOS, ORDEN_CIELO, factorDeCielo } from './cielo'
+import { CIELOS, ORDEN_CIELO, factorDeCielo, type EstadoDelCielo } from './cielo'
 import { arcoDelDia } from './arcoSolar'
 import type { DiaDeSol, ExposicionSolar, PielExpuesta } from './types'
 
@@ -414,5 +415,71 @@ describe('editar el día de sol', () => {
   it('y se encuentra el día por su fecha', () => {
     expect(solDe([dia(VERANO)], VERANO)?.date).toBe(VERANO)
     expect(solDe([dia(VERANO)], INVIERNO)).toBeUndefined()
+  })
+})
+
+
+describe('partir una sesión no infla la vitamina D', () => {
+  const MADRID = { lat: 40.4165, lon: -3.7026 }
+  const JUNIO = '2026-06-21'
+
+  const dia = (exposiciones: ExposicionSolar[]): DiaDeSol => ({ date: JUNIO, exposiciones })
+  const exp = (desde: number, minutos: number, cielo?: EstadoDelCielo): ExposicionSolar => ({
+    minutos,
+    franja: 'mediodia',
+    piel: 'banador',
+    desde,
+    ...(cielo ? { cielo } : {})
+  })
+
+  it('una hora seguida partida en tres da lo mismo que una hora de una pieza', () => {
+    // Es el agujero que abrió poder cambiar el cielo a media sesión: si cada
+    // trozo se quedara con su propio tope de cuarenta minutos, mirar al cielo
+    // dos veces habría multiplicado la vitamina D del día.
+    const entera = uiDelDia(dia([exp(840, 60, 'limpio')]), MADRID, {}, 120)
+    const partida = uiDelDia(
+      dia([exp(840, 20, 'limpio'), exp(860, 20, 'limpio'), exp(880, 20, 'limpio')]),
+      MADRID,
+      {},
+      120
+    )
+    expect(partida!.max).toBeCloseTo(entera!.max, -1)
+  })
+
+  it('pero dos salidas separadas por horas conservan cada una su tope', () => {
+    // En medio la piel ha tenido tiempo de recuperarse: no son la misma
+    // exposición y no deben compartir el tope.
+    const seguidas = uiDelDia(dia([exp(600, 60, 'limpio'), exp(660, 60, 'limpio')]), MADRID, {}, 120)
+    const separadas = uiDelDia(dia([exp(600, 60, 'limpio'), exp(900, 60, 'limpio')]), MADRID, {}, 120)
+    expect(separadas!.max).toBeGreaterThan(seguidas!.max)
+  })
+
+  it('el reparto respeta el orden: el primer tramo gasta primero', () => {
+    const r = conMinutosEficaces([exp(840, 30, 'limpio'), exp(870, 30, 'limpio')])
+    expect(r.map((e) => e.minutos)).toEqual([30, 10])
+  })
+
+  it('y lo que pase del tope se queda en cero, no en negativo', () => {
+    const r = conMinutosEficaces([exp(840, 50, 'limpio'), exp(890, 20, 'limpio')])
+    expect(r.map((e) => e.minutos)).toEqual([40, 0])
+  })
+
+  it('cada tramo mantiene su cielo al recortarse', () => {
+    const r = conMinutosEficaces([exp(840, 30, 'sin_sol'), exp(870, 30, 'limpio')])
+    expect(r.map((e) => e.cielo)).toEqual(['sin_sol', 'limpio'])
+  })
+
+  it('las exposiciones sin hora no se encadenan con nada', () => {
+    // No se puede saber si continúan a otra, así que conservan su tope.
+    const sinHora: ExposicionSolar = { minutos: 60, franja: 'mediodia', piel: 'banador' }
+    const r = conMinutosEficaces([exp(840, 40, 'limpio'), sinHora])
+    expect(r.find((e) => e.desde === undefined)?.minutos).toBe(60)
+  })
+
+  it('cinco minutos cubiertos y cincuenta y cinco limpios no es lo mismo que una hora a medias', () => {
+    // El factor de cielo multiplica, no se promedia.
+    const real = uiDelDia(dia([exp(840, 5, 'sin_sol'), exp(845, 55, 'limpio')]), MADRID, {}, 120)
+    const promediado = uiDelDia(dia([exp(840, 60, 'velado')]), MADRID, {}, 120)
+    expect(real!.max).not.toBeCloseTo(promediado!.max, -2)
   })
 })

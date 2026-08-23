@@ -973,7 +973,23 @@ export interface EnCurso {
   /** Minutos desde la medianoche local en que empezó. */
   desde: number
   piel?: PielExpuesta
+  /**
+   * El cielo con el que se empezó. Se conserva para lo ya guardado y para lo
+   * que no cambie en toda la sesión; cuando cambia, manda `tramosDeCielo`.
+   */
   cielo?: import('./cielo').EstadoDelCielo
+  /**
+   * Cómo ha ido cambiando el cielo durante la sesión.
+   *
+   * El sol no se está quieto: empiezas con el cielo cubierto, a los cinco
+   * minutos se despeja y el resto del rato es sol limpio. Guardar un único
+   * estado obligaba a elegir cuál de los dos mentir.
+   *
+   * Cada tramo vale desde su `desde` hasta el del siguiente, y el último hasta
+   * que se para. Al parar, cada tramo se guarda como **su propia exposición**,
+   * con su cielo y sus minutos.
+   */
+  tramosDeCielo?: { desde: number; cielo: import('./cielo').EstadoDelCielo }[]
   filtro?: Filtro
   lamparaId?: string
   distanciaCm?: number

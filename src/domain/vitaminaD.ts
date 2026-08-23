@@ -310,7 +310,8 @@ export function uiDelDia(
   if (!dia) return undefined
   if (dia.ui !== undefined) return { min: dia.ui, max: dia.ui }
   if (dia.exposiciones.length === 0) return undefined
-  const suma = dia.exposiciones.reduce(
+
+  const suma = conMinutosEficaces(dia.exposiciones).reduce(
     (a, e) => {
       const r = uiDeExposicion(e, dia.date, coord, quien, desfaseMin)
       return { min: a.min + r.min, max: a.max + r.max }
@@ -318,6 +319,47 @@ export function uiDelDia(
     { min: 0, max: 0 }
   )
   return { min: Math.min(suma.min, TOPE_UI_DIA), max: Math.min(suma.max, TOPE_UI_DIA) }
+}
+
+/**
+ * Reparte los minutos eficaces entre las exposiciones **seguidas**.
+ *
+ * Existe por un agujero que abrió el poder cambiar el cielo a media sesión. La
+ * piel satura a los cuarenta minutos, y ese tope se aplicaba por exposición:
+ * partir una hora de sol en tres trozos —porque el cielo cambió dos veces—
+ * habría dado tres topes de cuarenta en vez de uno, y la vitamina D del día
+ * habría salido inflada por haber mirado al cielo.
+ *
+ * Lo que define «la misma exposición» no es un identificador sino el reloj:
+ * dos ratos son el mismo si uno **empieza justo donde acaba el otro**. Así el
+ * tope se reparte entre los trozos de una sesión y, en cambio, dos salidas
+ * separadas por horas conservan cada una su cuarenta, que es lo correcto — la
+ * piel ha tenido tiempo de recuperarse en medio.
+ *
+ * Las exposiciones sin hora —las de antes de que se guardara— no pueden
+ * encadenarse con nada y se quedan cada una con su tope, como siempre.
+ */
+export function conMinutosEficaces(exposiciones: ExposicionSolar[]): ExposicionSolar[] {
+  const conHora = exposiciones
+    .filter((e) => e.desde !== undefined)
+    .sort((a, b) => a.desde! - b.desde!)
+  const sinHora = exposiciones.filter((e) => e.desde === undefined)
+
+  const out: ExposicionSolar[] = []
+  let finDeLaTanda: number | undefined
+  let gastados = 0
+
+  for (const e of conHora) {
+    // Una tanda nueva empieza cuando esta exposición no continúa la anterior.
+    if (finDeLaTanda === undefined || e.desde! !== finDeLaTanda) gastados = 0
+    const queda = Math.max(0, MINUTOS_EFICACES - gastados)
+    const minutos = Math.min(Math.max(0, e.minutos), queda)
+    gastados += minutos
+    finDeLaTanda = e.desde! + Math.max(0, e.minutos)
+    out.push({ ...e, minutos })
+  }
+
+  return [...out, ...sinHora]
 }
 
 /** Los minutos totales de sol del día: los manuales si están, si no la suma. */

@@ -33,6 +33,7 @@ import type {
   TipoEnCurso
 } from './types'
 import type { RegistroHabito } from './habitos'
+import type { EstadoDelCielo } from './cielo'
 import { minutosDe } from './reparto'
 
 export const NOMBRES_TIPO: Record<TipoEnCurso, string> = {
@@ -122,6 +123,70 @@ export function cerrar(
 }
 
 /**
+ * Cambia el cielo de una sesión de sol que está en marcha.
+ *
+ * No sustituye lo anterior: **abre un tramo nuevo**. Los cinco minutos que
+ * llevabas con el cielo cubierto se guardarán como cubiertos, y lo que venga
+ * después como lo que sea. Pisar el valor haría que un despeje a los cinco
+ * minutos reescribiera el rato entero, que es justo lo contrario de medir.
+ *
+ * Si el cielo que se elige es el que ya estaba, no se abre tramo: pulsar dos
+ * veces la misma opción no debería ensuciar el registro. Y si se cambia de
+ * idea dentro del mismo minuto, se corrige el último en vez de dejar un tramo
+ * de cero minutos.
+ */
+export function cambiarCielo(x: EnCurso, cielo: EstadoDelCielo, ahoraMin: number): EnCurso {
+  const tramos = tramosCrudos(x)
+  const ultimo = tramos[tramos.length - 1]
+
+  if (ultimo?.cielo === cielo) return x
+  if (ultimo && ultimo.desde >= ahoraMin) {
+    return { ...x, tramosDeCielo: [...tramos.slice(0, -1), { desde: ultimo.desde, cielo }] }
+  }
+  return { ...x, tramosDeCielo: [...tramos, { desde: ahoraMin, cielo }] }
+}
+
+/** Los tramos tal y como están guardados, con el de partida si no hay ninguno. */
+function tramosCrudos(x: EnCurso): { desde: number; cielo: EstadoDelCielo }[] {
+  if (x.tramosDeCielo && x.tramosDeCielo.length > 0) return x.tramosDeCielo
+  return x.cielo ? [{ desde: x.desde, cielo: x.cielo }] : []
+}
+
+/** Un trozo de sesión con un cielo constante. */
+export interface TramoDeCielo {
+  desde: number
+  minutos: number
+  cielo?: EstadoDelCielo
+}
+
+/**
+ * Parte la sesión en trozos de cielo constante.
+ *
+ * Cada tramo dura hasta que empieza el siguiente, y el último hasta que se
+ * para. Sin tramos —o con uno solo— sale un único trozo, que es exactamente lo
+ * que salía antes de que esto existiera.
+ *
+ * Los de cero minutos **sí** salen: el que acabas de elegir dura cero hasta que
+ * pasa el primer minuto, y esconderlo haría que la pantalla pareciera no
+ * haberte hecho caso. Quien los descarta es `alParar`, que no puede guardar una
+ * exposición que no ocurrió.
+ */
+export function tramosDeCielo(x: EnCurso, hastaMin: number): TramoDeCielo[] {
+  const crudos = tramosCrudos(x)
+  if (crudos.length === 0) {
+    return [{ desde: x.desde, minutos: Math.max(0, hastaMin - x.desde) }]
+  }
+
+  const out: TramoDeCielo[] = []
+  crudos.forEach((t, i) => {
+    const desde = Math.max(x.desde, t.desde)
+    const hasta = i + 1 < crudos.length ? Math.max(desde, crudos[i + 1].desde) : hastaMin
+    out.push({ desde, minutos: Math.max(0, hasta - desde), cielo: t.cielo })
+  })
+  return out
+}
+
+/**
  * Lo que hay que guardar al parar una actividad.
  *
  * Se devuelve como una descripción de qué escribir y dónde, en vez de escribir
@@ -174,22 +239,33 @@ export function alParar(
     case 'fuera':
       return [salida()]
 
-    // El sol deja dos rastros: el rato fuera y la exposición, con la piel y el
-    // cielo de cuando empezó. Van juntos y por eso salen juntos.
+    /*
+     * El sol deja el rato fuera **y una exposición por cada tramo de cielo**.
+     * Si el cielo no cambió, es un solo tramo y sale exactamente lo de antes.
+     *
+     * Van como exposiciones separadas y no como una con un promedio porque el
+     * factor de cielo multiplica, no se promedia: cinco minutos cubiertos y
+     * cincuenta y cinco despejados no es lo mismo que una hora a medio camino.
+     */
     case 'sol':
       return [
         salida(),
-        {
-          en: 'exposicion',
-          exposicion: {
-            minutos,
-            // La franja solo la leen los registros viejos; aquí manda `desde`.
-            franja: 'mediodia',
-            piel: x.piel ?? 'brazos_piernas',
-            desde: x.desde,
-            ...(x.cielo ? { cielo: x.cielo } : {})
-          }
-        }
+        // Los tramos de cero minutos no se guardan: no ocurrieron.
+        ...tramosDeCielo(x, hastaMin)
+          .filter((t) => t.minutos > 0)
+          .map(
+          (t): Escritura => ({
+            en: 'exposicion',
+            exposicion: {
+              minutos: t.minutos,
+              // La franja solo la leen los registros viejos; aquí manda `desde`.
+              franja: 'mediodia',
+              piel: x.piel ?? 'brazos_piernas',
+              desde: t.desde,
+              ...(t.cielo ? { cielo: t.cielo } : {})
+            }
+          })
+        )
       ]
 
     case 'lampara':

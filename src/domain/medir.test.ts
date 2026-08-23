@@ -9,6 +9,8 @@ import {
   alParar,
   cerrar,
   IMPLICA_FUERA,
+  cambiarCielo,
+  tramosDeCielo,
   loQueSeQuedoAbierto,
   minutosAbierto,
   minutosDeHoy,
@@ -329,5 +331,105 @@ describe('lo que llevas hoy de cada cosa', () => {
     for (const t of Object.keys(NOMBRES_TIPO) as TipoEnCurso[]) {
       expect(minutosDeHoy(t, HOY, {}), t).toBe(0)
     }
+  })
+})
+
+
+describe('el cielo cambia a media sesión', () => {
+  it('cambiarlo abre un tramo nuevo, no pisa lo anterior', () => {
+    // Empiezas cubierto, a los cinco minutos se despeja. Esos cinco minutos
+    // fueron cubiertos y así se guardan: pisar el valor reescribiría el rato.
+    const x = enCurso('sol', 600, { cielo: 'sin_sol' })
+    const tras = cambiarCielo(x, 'limpio', 605)
+    expect(tras.tramosDeCielo).toEqual([
+      { desde: 600, cielo: 'sin_sol' },
+      { desde: 605, cielo: 'limpio' }
+    ])
+  })
+
+  it('elegir el mismo cielo que ya estaba no ensucia el registro', () => {
+    const x = enCurso('sol', 600, { cielo: 'limpio' })
+    expect(cambiarCielo(x, 'limpio', 605)).toBe(x)
+  })
+
+  it('cambiar de idea en el mismo minuto corrige, no deja un tramo de cero', () => {
+    const x = cambiarCielo(enCurso('sol', 600, { cielo: 'limpio' }), 'velado', 610)
+    const otra = cambiarCielo(x, 'estelas', 610)
+    expect(otra.tramosDeCielo).toEqual([
+      { desde: 600, cielo: 'limpio' },
+      { desde: 610, cielo: 'estelas' }
+    ])
+  })
+
+  it('se pueden encadenar todos los cambios que haga el día', () => {
+    let x = enCurso('sol', 600, { cielo: 'sin_sol' })
+    x = cambiarCielo(x, 'filtrado', 605)
+    x = cambiarCielo(x, 'velado', 612)
+    x = cambiarCielo(x, 'limpio', 620)
+    expect(x.tramosDeCielo).toHaveLength(4)
+  })
+
+  it('cada tramo dura hasta que empieza el siguiente, y el último hasta parar', () => {
+    let x = enCurso('sol', 600, { cielo: 'sin_sol' })
+    x = cambiarCielo(x, 'limpio', 605)
+    expect(tramosDeCielo(x, 660)).toEqual([
+      { desde: 600, minutos: 5, cielo: 'sin_sol' },
+      { desde: 605, minutos: 55, cielo: 'limpio' }
+    ])
+  })
+
+  it('el tramo recién elegido sale aunque dure cero, para poder verlo', () => {
+    // Si se escondiera, la pantalla parecería no haber hecho caso al toque.
+    let x = enCurso('sol', 600, { cielo: 'sin_sol' })
+    x = cambiarCielo(x, 'limpio', 620)
+    expect(tramosDeCielo(x, 620)).toEqual([
+      { desde: 600, minutos: 20, cielo: 'sin_sol' },
+      { desde: 620, minutos: 0, cielo: 'limpio' }
+    ])
+  })
+
+  it('sin cambios sale un solo tramo, como antes de que esto existiera', () => {
+    const x = enCurso('sol', 600, { cielo: 'limpio' })
+    expect(tramosDeCielo(x, 640)).toEqual([{ desde: 600, minutos: 40, cielo: 'limpio' }])
+  })
+
+  it('y sin cielo ninguno, también', () => {
+    expect(tramosDeCielo(enCurso('sol', 600), 640)).toEqual([{ desde: 600, minutos: 40 }])
+  })
+})
+
+describe('al parar, cada tramo es su propia exposición', () => {
+  const de = <T extends Escritura['en']>(lista: Escritura[], en: T) =>
+    lista.filter((e): e is Extract<Escritura, { en: T }> => e.en === en)
+
+  it('los cinco minutos cubiertos y los cincuenta y cinco limpios van por separado', () => {
+    let x = enCurso('sol', 600, { cielo: 'sin_sol', piel: 'banador' })
+    x = cambiarCielo(x, 'limpio', 605)
+    const exp = de(alParar(x, 660), 'exposicion').map((e) => e.exposicion)
+
+    expect(exp).toHaveLength(2)
+    expect(exp[0]).toMatchObject({ desde: 600, minutos: 5, cielo: 'sin_sol', piel: 'banador' })
+    expect(exp[1]).toMatchObject({ desde: 605, minutos: 55, cielo: 'limpio', piel: 'banador' })
+  })
+
+  it('pero sigue habiendo un solo rato fuera, no uno por tramo', () => {
+    // Partir la sesión no puede duplicar los minutos de calle.
+    let x = enCurso('sol', 600, { cielo: 'sin_sol' })
+    x = cambiarCielo(x, 'limpio', 605)
+    const salidas = de(alParar(x, 660), 'salida')
+    expect(salidas).toHaveLength(1)
+    expect(salidas[0].salida.minutos).toBe(60)
+  })
+
+  it('un tramo de cero minutos no se guarda', () => {
+    // Cambiar el cielo justo al parar no deja una exposición que no ocurrió.
+    let x = enCurso('sol', 600, { cielo: 'limpio' })
+    x = cambiarCielo(x, 'velado', 660)
+    expect(de(alParar(x, 660), 'exposicion')).toHaveLength(1)
+  })
+
+  it('sin cambios, se guarda una sola exposición como siempre', () => {
+    const x = enCurso('sol', 600, { cielo: 'limpio' })
+    expect(de(alParar(x, 640), 'exposicion')).toHaveLength(1)
   })
 })

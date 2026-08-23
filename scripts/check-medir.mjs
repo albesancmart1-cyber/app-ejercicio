@@ -153,6 +153,91 @@ const exp = d2.sol?.[0].exposiciones?.[0]
 comprobar(exp?.piel === 'banador' && exp?.cielo === 'limpio', 'con la piel y el cielo de cuando empezó')
 comprobar(exp?.desde !== undefined, 'y con la hora, que es lo que permite usar la elevación real')
 
+// ── El cielo se puede cambiar a media sesión ─────────────────────────
+await page.getByRole('button', { name: 'Sol', exact: true }).click()
+await page.waitForTimeout(300)
+await page.getByRole('button', { name: 'Sin sol' }).click()
+await page.getByRole('button', { name: 'Empezar', exact: true }).click()
+await page.waitForTimeout(400)
+
+comprobar(
+  (await texto()).includes('Cómo está el cielo ahora'),
+  'con el sol en marcha debería poder cambiarse el cielo'
+)
+
+/*
+ * Se retrasa el inicio veinte minutos antes de tocar el cielo: si el cambio
+ * cae en el mismo minuto que el arranque no hay nada que partir —no ha pasado
+ * ningún rato bajo el cielo anterior— y `cambiarCielo` corrige el tramo en vez
+ * de abrir otro, que es justo lo que debe hacer.
+ */
+await page.evaluate(() => {
+  const d = JSON.parse(localStorage.getItem('ritmo-data-v1'))
+  const x = d.enCurso.find((y) => y.tipo === 'sol')
+  x.desde -= 20
+  localStorage.setItem('ritmo-data-v1', JSON.stringify(d))
+})
+await page.reload({ waitUntil: 'networkidle' })
+await pestana('Medir')
+
+// Se despeja: lo que llevaba tiene que quedarse con el cielo que había.
+await page.getByRole('button', { name: 'Sol limpio' }).click()
+await page.waitForTimeout(400)
+
+const dosTramos = await texto()
+comprobar(
+  dosTramos.includes('Lo que llevas de cada uno'),
+  'y enseñar lo que llevas de cada cielo, no solo el actual'
+)
+comprobar(
+  dosTramos.includes('no se promedia'),
+  'diciendo por qué van separados: el factor del cielo multiplica'
+)
+
+/*
+ * El segundo tramo acaba de empezar, así que se retrasa la sesión entera otros
+ * veinte minutos: así cada tramo dura veinte y se puede comprobar el reparto
+ * sin esperar cuarenta minutos de reloj. Y se vacía el sol del día, porque
+ * antes ya hubo una sesión y sus exposiciones estorbarían la cuenta.
+ */
+await page.evaluate(() => {
+  const d = JSON.parse(localStorage.getItem('ritmo-data-v1'))
+  const x = d.enCurso.find((y) => y.tipo === 'sol')
+  x.desde -= 20
+  for (const t of x.tramosDeCielo) t.desde -= 20
+  d.sol = []
+  localStorage.setItem('ritmo-data-v1', JSON.stringify(d))
+})
+await page.reload({ waitUntil: 'networkidle' })
+await pestana('Medir')
+await page.getByRole('button', { name: 'Sol, en marcha' }).click()
+await page.waitForTimeout(400)
+
+const hoyIso = new Date().toISOString().slice(0, 10)
+const tras = await datos()
+const expos = (tras.sol ?? []).find((d) => d.date === hoyIso)?.exposiciones ?? []
+comprobar(
+  expos.length === 2,
+  `deberían quedar dos exposiciones, una por cielo, y quedan ${expos.length}`
+)
+comprobar(
+  expos[0]?.cielo === 'sin_sol' && expos[1]?.cielo === 'limpio',
+  `en orden y con su cielo, y traen «${expos.map((e) => e.cielo).join(', ')}»`
+)
+comprobar(
+  expos[0]?.minutos >= 19 && expos[0]?.minutos <= 21,
+  `el primer tramo debería durar los veinte minutos que llevaba, y dura ${expos[0]?.minutos}`
+)
+comprobar(
+  expos[1]?.minutos >= 19 && expos[1]?.minutos <= 21,
+  `y el segundo los otros veinte, y dura ${expos[1]?.minutos}`
+)
+comprobar(
+  (tras.salidas ?? []).filter((s) => s.tipo === 'sol').length === 2,
+  'y un solo rato fuera por sesión: partir el cielo no puede duplicar los minutos de calle'
+)
+await page.screenshot({ path: `${OUT}/medir-10-cielo.png`, fullPage: true })
+
 // ── Varias a la vez, que es lo que la rejilla tiene que permitir ──────
 await page.getByRole('button', { name: 'Frío', exact: true }).click()
 await page.getByRole('button', { name: 'Grounding', exact: true }).click()
@@ -304,14 +389,16 @@ await pestana('Luz')
 const luz = await texto()
 comprobar(/\d{2}:\d{2}/.test(luz), 'Luz debería seguir enseñando el arco')
 /*
- * A estas alturas hay dos ratos de calle de media hora en horas distintas —el
- * sol de antes y el que se apuntó a mano a las 06:30—, así que el balance tiene
- * que decir una hora. No noventa: los ratos de grounding que se pararon al
- * instante duran cero, y sumar no es lo mismo que unir.
+ * A estas alturas hay tres ratos de calle: la media hora del primer sol, los
+ * cuarenta minutos de la sesión partida por el cielo —que empezó antes y acabó
+ * a la vez, o sea que se solapan— y la media hora apuntada a mano a las 06:30.
+ * Sumados salen cien minutos; unidos, setenta, que son los buenos. El solape no
+ * puede contarse dos veces, y los ratos de grounding parados al instante duran
+ * cero.
  */
 comprobar(
-  luz.includes('60 min fuera'),
-  `el balance de Luz debería contar la hora de calle, y dice «${
+  luz.includes('70 min fuera'),
+  `el balance de Luz debería unir los ratos de calle en setenta minutos, y dice «${
     luz.split('\n').find((l) => l.includes('fuera')) ?? 'nada de fuera'
   }»`
 )
