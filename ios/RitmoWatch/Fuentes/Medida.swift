@@ -13,7 +13,7 @@ enum Tipo: String, CaseIterable, Identifiable, Codable {
         case .sol: return "Sol"
         case .amanecer: return "Amanecer"
         case .atardecer: return "Atardecer"
-        case .grounding: return "Descalzo"
+        case .grounding: return "Grounding"
         case .frio: return "Frío"
         case .lampara: return "Lámpara"
         case .oscuridad: return "A oscuras"

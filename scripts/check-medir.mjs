@@ -155,7 +155,7 @@ comprobar(exp?.desde !== undefined, 'y con la hora, que es lo que permite usar l
 
 // ── Varias a la vez, que es lo que la rejilla tiene que permitir ──────
 await page.getByRole('button', { name: 'Frío', exact: true }).click()
-await page.getByRole('button', { name: 'Descalzo', exact: true }).click()
+await page.getByRole('button', { name: 'Grounding', exact: true }).click()
 await page.waitForTimeout(300)
 comprobar(
   (await page.getByRole('button', { name: /, en marcha$/ }).count()) === 2,
@@ -164,14 +164,14 @@ comprobar(
 await page.getByRole('button', { name: 'Frío, en marcha' }).click()
 await page.waitForTimeout(200)
 comprobar(
-  (await page.getByRole('button', { name: 'Descalzo, en marcha' }).count()) === 1,
+  (await page.getByRole('button', { name: 'Grounding, en marcha' }).count()) === 1,
   'y parar una no puede parar la otra'
 )
-await page.getByRole('button', { name: 'Descalzo, en marcha' }).click()
+await page.getByRole('button', { name: 'Grounding, en marcha' }).click()
 await page.waitForTimeout(300)
 
 // ── Entrelazado: estar descalzo ya es estar fuera ─────────────────────
-await page.getByRole('button', { name: 'Descalzo', exact: true }).click()
+await page.getByRole('button', { name: 'Grounding', exact: true }).click()
 await page.waitForTimeout(400)
 comprobar(
   (await page.getByRole('button', { name: /^Fuera/ }).getAttribute('aria-label')) ===
@@ -182,7 +182,7 @@ comprobar(
   await page.getByRole('button', { name: 'Fuera, incluida' }).isDisabled(),
   'y no poder pulsarse, porque pulsarla apuntaría el mismo rato dos veces'
 )
-await page.getByRole('button', { name: 'Descalzo, en marcha' }).click()
+await page.getByRole('button', { name: 'Grounding, en marcha' }).click()
 await page.waitForTimeout(400)
 const trasDescalzo = await datos()
 comprobar(

@@ -21,7 +21,7 @@ import { sumarDiaIso } from './arcoSolar'
 export type Habito = 'grounding' | 'frio' | 'ayuno'
 
 export const NOMBRES_HABITO: Record<Habito, string> = {
-  grounding: 'Contacto con el suelo',
+  grounding: 'Grounding',
   frio: 'Frío',
   ayuno: 'Ayuno estacional'
 }

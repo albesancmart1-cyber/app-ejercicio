@@ -43,7 +43,7 @@ export const NOMBRES_TIPO: Record<TipoEnCurso, string> = {
   lampara: 'Lámpara',
   oscuridad: 'A oscuras',
   frio: 'Frío',
-  grounding: 'Descalzo en el suelo'
+  grounding: 'Grounding'
 }
 
 /**

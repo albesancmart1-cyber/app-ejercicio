@@ -105,7 +105,7 @@ const BALDOSAS: Baldosa[] = [
   { tipo: 'sol', nombre: 'Sol', icono: 'sun' },
   { tipo: 'amanecer', nombre: 'Amanecer', icono: 'amanecer' },
   { tipo: 'atardecer', nombre: 'Atardecer', icono: 'atardecer' },
-  { tipo: 'grounding', nombre: 'Descalzo', icono: 'descalzo' },
+  { tipo: 'grounding', nombre: 'Grounding', icono: 'descalzo' },
   { tipo: 'frio', nombre: 'Frío', icono: 'frio' },
   { tipo: 'lampara', nombre: 'Lámpara', icono: 'lampara' },
   { tipo: 'oscuridad', nombre: 'A oscuras', icono: 'moon' }

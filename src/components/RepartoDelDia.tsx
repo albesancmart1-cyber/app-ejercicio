@@ -79,7 +79,7 @@ export default function RepartoDelDia({ hoy }: { hoy: string }) {
             {solapan(rama) && (
               <p className="faint reparto-nota">
                 Lo de dentro suma más que el total porque algunas ocurrieron a la vez. Estar al sol
-                y descalzo es un solo rato de calle, y así se cuenta.
+                y haciendo grounding es un solo rato de calle, y así se cuenta.
               </p>
             )}
           </div>

@@ -243,7 +243,7 @@ costar un toque, y ese toque tenía que alimentar todo lo ya construido.
   → src/domain/types.ts :: EnCurso
 - [x] medir-sin-estructuras-nuevas · Cada botón escribe donde ya escribía la app
   → src/domain/medir.ts :: Escritura
-- [x] medir-entrelazado · Tomar el sol o estar descalzo ya cuentan como estar fuera
+- [x] medir-entrelazado · Tomar el sol o hacer grounding ya cuentan como estar fuera
   → src/domain/medir.ts :: IMPLICA_FUERA
 - [x] medir-sin-doble-cuenta · Nada deja dos ratos fuera a la vez
   → src/domain/medir.test.ts :: contarlos dos veces

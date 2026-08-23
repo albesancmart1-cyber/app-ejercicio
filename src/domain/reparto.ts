@@ -95,7 +95,7 @@ const NOMBRES: Record<string, string> = {
   sol: 'Sol',
   amanecer: 'Amanecer',
   atardecer: 'Atardecer',
-  grounding: 'Descalzo',
+  grounding: 'Grounding',
   soloFuera: 'Sin nada más',
   lampara: 'Lámpara',
   frio: 'Frío',

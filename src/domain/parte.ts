@@ -638,7 +638,7 @@ function habitos(d: DatosDelParte, out: Punto[]): void {
         `habito-${h}`,
         'habitos',
         'favor',
-        h === 'frio' ? `Frío${cuanto}` : `Descalzo en el suelo${cuanto}`,
+        h === 'frio' ? `Frío${cuanto}` : `Grounding${cuanto}`,
         h === 'frio'
           ? `${racha} El frío sube noradrenalina y melatonina por una vía que no es la luz, y es la palanca que ocupa ese sitio cuando en tu latitud no hay sol.`
           : `${racha} Contacto directo con tierra, hierba o agua salada; la suela de goma no vale.`
