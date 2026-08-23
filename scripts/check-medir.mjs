@@ -76,8 +76,9 @@ await pestana('Medir')
 await page.screenshot({ path: `${OUT}/medir-01-botones.png`, fullPage: true })
 
 const inicio = await texto()
-comprobar(inicio.includes('Tomando el sol'), 'debería estar el botón del sol')
-comprobar(inicio.includes('Viendo el amanecer'), 'y el del amanecer')
+comprobar(inicio.includes('Sol'), 'debería estar la baldosa del sol')
+comprobar(inicio.includes('Amanecer'), 'y la del amanecer')
+comprobar(inicio.includes('Sin tiempo hoy'), 'con lo que llevas hoy de cada una')
 comprobar(inicio.includes('El sol ahora'), 'con lo que ofrece el sol en este momento')
 comprobar(inicio.includes('El parte del día'), 'y el parte debajo')
 
@@ -88,7 +89,7 @@ comprobar(
 )
 
 // ── Empezar el sol: pregunta piel y cielo, y nada más ──────────────────
-await page.getByRole('button', { name: 'Tomando el sol' }).click()
+await page.getByRole('button', { name: 'Sol', exact: true }).click()
 await page.waitForTimeout(300)
 const preguntas = await texto()
 comprobar(preguntas.includes('Cuánta piel'), 'el sol debería preguntar cuánta piel')
@@ -104,9 +105,15 @@ await page.getByRole('button', { name: 'Sol limpio' }).click()
 await page.getByRole('button', { name: 'Empezar', exact: true }).click()
 await page.waitForTimeout(400)
 
-const enMarcha = await texto()
-comprobar(enMarcha.includes('En marcha'), 'debería aparecer el cronómetro')
-comprobar(enMarcha.includes('En bañador'), 'con la piel elegida a la vista')
+comprobar(
+  (await page.getByRole('button', { name: 'Sol, en marcha' }).count()) === 1,
+  'la baldosa del sol debería quedar marcada como en marcha, y decirlo también para un lector de pantalla'
+)
+comprobar(
+  (await page.getByRole('button', { name: 'Sol, en marcha' }).getAttribute('aria-pressed')) ===
+    'true',
+  'con aria-pressed, que es lo que `ToggleGroup` aporta y no hay que reinventar'
+)
 
 const d1 = await datos()
 comprobar(d1.enCurso?.length === 1, 'debería haber exactamente una actividad abierta')
@@ -127,7 +134,7 @@ await page.evaluate(() => {
 })
 await page.reload({ waitUntil: 'networkidle' })
 await pestana('Medir')
-await page.getByRole("button", { name: /^Parar · tomando el sol/ }).click()
+await page.getByRole('button', { name: 'Sol, en marcha' }).click()
 await page.waitForTimeout(400)
 
 const d2 = await datos()
@@ -145,6 +152,42 @@ comprobar(
 const exp = d2.sol?.[0].exposiciones?.[0]
 comprobar(exp?.piel === 'banador' && exp?.cielo === 'limpio', 'con la piel y el cielo de cuando empezó')
 comprobar(exp?.desde !== undefined, 'y con la hora, que es lo que permite usar la elevación real')
+
+// ── Varias a la vez, que es lo que la rejilla tiene que permitir ──────
+await page.getByRole('button', { name: 'Frío', exact: true }).click()
+await page.getByRole('button', { name: 'Descalzo', exact: true }).click()
+await page.waitForTimeout(300)
+comprobar(
+  (await page.getByRole('button', { name: /, en marcha$/ }).count()) === 2,
+  'dos baldosas deberían poder estar en marcha a la vez: el día se solapa de verdad'
+)
+await page.getByRole('button', { name: 'Frío, en marcha' }).click()
+await page.waitForTimeout(200)
+comprobar(
+  (await page.getByRole('button', { name: 'Descalzo, en marcha' }).count()) === 1,
+  'y parar una no puede parar la otra'
+)
+await page.getByRole('button', { name: 'Descalzo, en marcha' }).click()
+await page.waitForTimeout(300)
+
+// ── La rejilla es una rejilla de verdad, no una fila que se desborda ───
+const rejilla = await page.evaluate(() => {
+  const g = document.querySelector('.baldosas')
+  const cs = getComputedStyle(g)
+  const uno = g.firstElementChild.getBoundingClientRect()
+  return {
+    display: cs.display,
+    columnas: cs.gridTemplateColumns.split(' ').length,
+    ancho: Math.round(uno.width),
+    alto: Math.round(uno.height)
+  }
+})
+comprobar(rejilla.display === 'grid', `la rejilla debería ser grid y es ${rejilla.display}`)
+comprobar(rejilla.columnas === 2, `a 390 px deberían caber dos columnas, y salen ${rejilla.columnas}`)
+comprobar(
+  Math.abs(rejilla.ancho - rejilla.alto) <= 2,
+  `las baldosas deberían ser cuadradas, y miden ${rejilla.ancho}×${rejilla.alto}`
+)
 
 // ── El mismo rato, visto desde las otras pantallas ─────────────────────
 await pestana('Luz')
@@ -183,9 +226,9 @@ comprobar(
 await page.screenshot({ path: `${OUT}/medir-06-parte.png`, fullPage: true })
 
 // ── La noche, con la fecha de la mañana en que uno se levanta ──────────
-await page.getByRole('button', { name: 'A oscuras' }).click()
+await page.getByRole('button', { name: 'A oscuras', exact: true }).click()
 await page.waitForTimeout(300)
-await page.getByRole('button', { name: /^Parar · a oscuras/ }).click()
+await page.getByRole('button', { name: 'A oscuras, en marcha' }).click()
 await page.waitForTimeout(300)
 const d3 = await datos()
 comprobar(d3.noches?.length === 1, 'la noche debería quedar apuntada')

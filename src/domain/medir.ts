@@ -145,6 +145,7 @@ export function alParar(
           desde: x.desde,
           minutos,
           filtro: x.filtro ?? 'ninguno',
+          tipo: x.tipo,
           ...(opciones.estimado ? { estimado: true } : {})
         },
         ...(x.tipo === 'sol' ? { exposicionDeSol: true as const } : {})
@@ -220,4 +221,49 @@ export function loQueSeQuedoAbierto(
       viejo,
       resultado: alParar(viejo, viejo.desde + MINUTOS_SI_SE_OLVIDA, { estimado: true })
     }))
+}
+
+/**
+ * Cuánto llevas hoy de una cosa concreta, en minutos.
+ *
+ * Cada baldosa de «Medir» enseña lo suyo, y por eso hace falta saber de qué
+ * botón salió cada rato. Los ratos de antes de que existiera `tipo` no se
+ * reparten entre las cuatro baldosas de luz: se dejan fuera, porque adivinar
+ * de cuál eran sería inventar el pasado.
+ */
+export function minutosDeHoy(
+  tipo: TipoEnCurso,
+  fecha: string,
+  d: {
+    salidas?: SalidaAlExterior[]
+    sesionesPBM?: SesionPBM[]
+    noches?: NocheRegistrada[]
+    habitos?: RegistroHabito[]
+  }
+): number {
+  const suma = (n: number[]) => n.reduce((a, b) => a + Math.max(0, b), 0)
+
+  switch (tipo) {
+    case 'sol':
+    case 'amanecer':
+    case 'atardecer':
+    case 'fuera':
+      return suma(
+        (d.salidas ?? []).filter((s) => s.date === fecha && s.tipo === tipo).map((s) => s.minutos)
+      )
+    case 'lampara':
+      return suma((d.sesionesPBM ?? []).filter((s) => s.date === fecha).map((s) => s.minutos))
+    case 'oscuridad': {
+      const n = (d.noches ?? []).find((x) => x.date === fecha)
+      if (!n) return 0
+      return n.levantado >= n.apagado ? n.levantado - n.apagado : 1440 - n.apagado + n.levantado
+    }
+    case 'frio':
+    case 'grounding':
+      return suma(
+        (d.habitos ?? [])
+          .filter((h) => h.date === fecha && h.habito === tipo)
+          .map((h) => h.minutos ?? 0)
+      )
+  }
 }

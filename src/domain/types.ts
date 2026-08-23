@@ -869,6 +869,15 @@ export interface SalidaAlExterior {
    * distinto, y presentarlos igual sería falsa precisión.
    */
   estimado?: boolean
+  /**
+   * Con qué botón se apuntó: sol, amanecer, atardecer o simplemente fuera.
+   *
+   * Los cuatro son el mismo rato fuera y así se siguen contando —el balance,
+   * los relojes y la amplitud no se enteran de esto—. Está solo para poder
+   * enseñar cada baldosa con su propio tiempo de hoy, y para que dentro de un
+   * año se pueda saber cuántos amaneceres se cogieron de verdad.
+   */
+  tipo?: TipoEnCurso
 }
 
 /**

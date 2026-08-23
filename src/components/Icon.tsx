@@ -20,6 +20,80 @@ const paths: Record<string, JSX.Element> = {
       <path d="M12 4.2v2.4M5.6 7.4l1.7 1.7M18.4 7.4l-1.7 1.7M2.9 13.6h2.4M18.7 13.6h2.4" />
     </>
   ),
+  /*
+   * Los de la rejilla de «Medir». Mismo trazo y misma rejilla que los de la
+   * barra: a tamaño de baldosa lo que hace que se distingan de un vistazo es la
+   * silueta, no el detalle, así que ninguno pasa de cuatro trazos.
+   */
+  /* Sol saliendo por detrás del horizonte, con la flecha hacia arriba. */
+  amanecer: (
+    <>
+      <path d="M3.2 19.2h17.6" />
+      <path d="M7.6 15.4a4.4 4.4 0 0 1 8.8 0" />
+      <path d="M12 2.8v4.2M12 2.8L9.7 5.1M12 2.8l2.3 2.3" />
+      <path d="M4.3 9.1l1.6 1.6M19.7 9.1l-1.6 1.6" />
+    </>
+  ),
+  /* El mismo, con la flecha hacia abajo. Es la única diferencia, y basta. */
+  atardecer: (
+    <>
+      <path d="M3.2 19.2h17.6" />
+      <path d="M7.6 15.4a4.4 4.4 0 0 1 8.8 0" />
+      <path d="M12 7.4V3.2M12 7.4L9.7 5.1M12 7.4l2.3-2.3" />
+      <path d="M4.3 9.1l1.6 1.6M19.7 9.1l-1.6 1.6" />
+    </>
+  ),
+  /* Una puerta abierta: estar fuera. */
+  fuera: (
+    <>
+      <path d="M14.4 3.4H5.2v17.2h9.2" />
+      <path d="M18.8 12H10.2" />
+      <path d="M15.2 8.4L18.8 12l-3.6 3.6" />
+    </>
+  ),
+  /* Una nave con su tejado de dientes de sierra: el sitio de trabajo. */
+  trabajo: (
+    <>
+      <rect x="3.2" y="7.4" width="17.6" height="12.8" rx="2.4" />
+      <path d="M8.8 7.4V5.6a2.2 2.2 0 0 1 2.2-2.2h2a2.2 2.2 0 0 1 2.2 2.2v1.8" />
+      <path d="M3.2 12.6h17.6" />
+    </>
+  ),
+  /* Un foco con su haz: la lámpara de fotobiomodulación. */
+  lampara: (
+    <>
+      <path d="M7.4 3.6h9.2l1.8 5.2H5.6z" />
+      <path d="M12 8.8v4.4" />
+      <path d="M8.6 16.6h6.8M9.8 20.4h4.4" />
+    </>
+  ),
+  /* Copo de nieve: el frío. */
+  frio: (
+    <>
+      <path d="M12 2.8v18.4M4 7.4l16 9.2M20 7.4L4 16.6" />
+      <path d="M9.6 5.2L12 7.6l2.4-2.4M9.6 18.8L12 16.4l2.4 2.4" />
+    </>
+  ),
+  /* Dos pisadas: descalzo en el suelo. */
+  descalzo: (
+    <>
+      {/* La planta del pie, y encima sus cinco dedos. */}
+      <path d="M15.4 20.8c-2.7 0-4.4-1.7-4.4-4.3 0-2.1 1-3.4 1-5.1 0-1-.4-1.9-.4-1.9h7.6s-.4.9-.4 1.9c0 1.7 1 3 1 5.1 0 2.6-1.7 4.3-4.4 4.3z" />
+      <circle cx="11.2" cy="6.9" r="1" />
+      <circle cx="14" cy="5.5" r="1" />
+      <circle cx="16.8" cy="5.2" r="1" />
+      <circle cx="19.2" cy="5.9" r="1" />
+      <circle cx="21" cy="7.4" r="1" />
+    </>
+  ),
+  /* Una taza: el café o lo que abra la ventana de comida. */
+  cafe: (
+    <>
+      <path d="M4.4 8.6h12.2v6a4 4 0 0 1-4 4H8.4a4 4 0 0 1-4-4z" />
+      <path d="M16.6 10.4h1.8a2.4 2.4 0 0 1 0 4.8h-1.8" />
+      <path d="M8 5.4V3.2M12.4 5.4V3.2" />
+    </>
+  ),
   /* Cronómetro: la pestaña de medir, que va de empezar y parar. */
   medir: (
     <>
@@ -90,7 +164,10 @@ const paths: Record<string, JSX.Element> = {
   )
 }
 
-export default function Icon({ name, className }: { name: keyof typeof paths; className?: string }) {
+/** Los nombres que hay. Exportado para que quien pinte iconos no invente uno. */
+export type IconName = keyof typeof paths
+
+export default function Icon({ name, className }: { name: IconName; className?: string }) {
   return (
     <svg
       className={className}

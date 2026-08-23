@@ -227,6 +227,14 @@ costar un toque, y ese toque tenía que alimentar todo lo ya construido.
 
 - [x] medir-pestana · Una pestaña para apuntar, la primera de la barra
   → src/screens/Medir.tsx :: Medir
+- [x] medir-rejilla · Una rejilla de baldosas cuadradas, no una lista de botones
+  → src/screens/Medir.tsx :: BALDOSAS
+- [x] medir-tres-datos · Cada baldosa dice tres cosas y ninguna más
+  → src/screens/Medir.tsx :: BaldosaBoton
+- [x] medir-tiempo-propio · Cada baldosa lleva su propia cuenta del día
+  → src/domain/medir.ts :: minutosDeHoy
+- [x] medir-no-inventa-el-pasado · Los ratos de antes no se reparten a dedo entre baldosas
+  → src/domain/medir.test.ts :: inventar el pasado
 - [x] medir-empezar-parar · Empezar y parar, con el cronómetro a la vista
   → src/domain/medir.ts :: minutosAbierto
 - [x] medir-varios-a-la-vez · Varias cosas a la vez, porque se solapan de verdad
@@ -248,7 +256,7 @@ costar un toque, y ese toque tenía que alimentar todo lo ya construido.
 - [x] medir-quemadura · Cuánto tardarías en quemarte, con tu fototipo y este cielo
   → src/domain/vitaminaD.ts :: minutosParaQuemarse
 - [x] medir-fichar · Fichar y salir del trabajo desde el mismo sitio
-  → src/screens/Medir.tsx :: Jornada
+  → src/screens/Medir.tsx :: saveFichaje
 - [x] medir-cafe-cuenta · El café abre la ventana, y se dice que cuenta
   → src/screens/Medir.tsx :: El café cuenta
 
@@ -324,4 +332,4 @@ Estas también son promesas, y romperlas sería peor que no cumplir una función
 
 ---
 
-TOTAL: 116
+TOTAL: 120

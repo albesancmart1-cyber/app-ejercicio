@@ -82,6 +82,15 @@
   --st-pasado-soft: rgba(224, 104, 95, 0.16);
 
   /*
+    Los dos que le faltaban a la rejilla de «Medir». La paleta de estado va de
+    fresco a pasado y no tenía ni un azul frío ni un tono de tierra, que son
+    justo los de las dos cosas que se hacen con el cuerpo y no con la luz.
+  */
+  --medir-frio: #7aa7ff;
+  --medir-tierra: #c9a227;
+  --medir-noche: #9b8cd8;
+
+  /*
    * Radios: el radio marca la jerarquía. 24 para contenedores, 18 para todo lo
    * que se toca —botones, campos, etiquetas—, 10 para lo anidado y 6 para
    * detalles. Nada entre medias.
@@ -3901,4 +3910,149 @@ textarea:focus {
 
 .parte-contra .parte-marca {
   background: var(--st-pasado);
+}
+
+/*
+  ═══════════════════════════════════════════════════ LA REJILLA DE MEDIR
+
+  Una columna de once botones anchos se lee de arriba abajo y obliga a leer para
+  encontrar el que buscas. Una rejilla se lee de un vistazo, y la posición no
+  cambia nunca: a la tercera vez el dedo va solo.
+
+  Dos columnas en el móvil y no tres, porque los nombres largos —«Café o
+  comida», «A oscuras»— tienen que caber en una línea; a partir de 480 px caben
+  tres. Las baldosas son cuadradas de verdad (`aspect-ratio`) hasta que el texto
+  pide más, que es lo que hace que la rejilla se lea como una rejilla.
+*/
+.medir-cabecera {
+  padding: 0 var(--sp-1) var(--sp-2);
+}
+
+.medir-titulo {
+  font-size: var(--text-heading-lg);
+  line-height: var(--leading-heading-lg);
+  letter-spacing: var(--tracking-heading-lg);
+  font-weight: var(--w-semibold);
+  margin: var(--sp-1) 0 var(--sp-2);
+}
+
+/*
+  La rejilla en sí la montan utilidades puestas en el componente, porque
+  `ToggleGroup` llega con las suyas y solo `tailwind-merge` sabe quitarlas. Aquí
+  queda lo que no depende de eso: a partir de 480 px caben tres columnas.
+*/
+@media (min-width: 480px) {
+  .baldosas {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.baldosa {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: var(--sp-2);
+  aspect-ratio: 1;
+  padding: var(--sp-4);
+  border: 1px solid var(--separator);
+  border-radius: var(--r-control);
+  background: var(--surface);
+  color: var(--label);
+  text-align: left;
+  overflow: hidden;
+  transition:
+    background 0.25s var(--ease),
+    border-color 0.25s var(--ease),
+    transform 0.12s ease-out;
+}
+
+/*
+  La franja de color del borde izquierdo. Es lo que hace reconocible cada
+  baldosa antes que el texto, y por eso va siempre — encendida o apagada—: si
+  solo apareciera al activarse, habría que leer para encontrar la que buscas.
+*/
+.baldosa::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--baldosa-color, var(--label-3));
+  opacity: 0.85;
+}
+
+.baldosa:active {
+  transform: scale(0.97);
+}
+
+.baldosa-icono {
+  display: block;
+  color: var(--baldosa-color, var(--label-2));
+  opacity: 0.9;
+}
+
+.baldosa-icono svg {
+  width: 22px;
+  height: 22px;
+}
+
+.baldosa-nombre {
+  margin-top: auto;
+  font-size: var(--text-body);
+  line-height: 1.25;
+  font-weight: var(--w-semibold);
+}
+
+.baldosa-pie {
+  font-size: var(--text-caption);
+  line-height: 1.3;
+  color: var(--label-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+  Encendida. El color entra en el fondo y en el pie, no solo en un puntito:
+  a la luz de la calle —que es donde se mira esta pantalla— un indicador
+  pequeño no se ve, y saber si algo está contando es justo lo que no puede
+  quedar en duda.
+*/
+.baldosa-viva {
+  background: color-mix(in srgb, var(--baldosa-color) 14%, var(--surface));
+  border-color: color-mix(in srgb, var(--baldosa-color) 45%, transparent);
+}
+
+.baldosa-viva::before {
+  width: 4px;
+  opacity: 1;
+}
+
+.baldosa-viva .baldosa-icono {
+  opacity: 1;
+}
+
+.baldosa-viva .baldosa-pie {
+  color: var(--baldosa-color);
+  font-weight: var(--w-semibold);
+}
+
+/* El latido dice «esto está corriendo» sin ocupar una palabra. */
+.baldosa-viva .baldosa-icono {
+  animation: baldosa-late 2.4s ease-in-out infinite;
+}
+
+@keyframes baldosa-late {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .baldosa-viva .baldosa-icono {
+    animation: none;
+  }
+}
+
+/* La letra pequeña de la rejilla, pegada a ella y no flotando en medio. */
+.medir-nota {
+  margin: calc(var(--sp-4) * -1) var(--sp-1) var(--sp-4);
 }

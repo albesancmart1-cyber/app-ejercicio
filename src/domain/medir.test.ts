@@ -10,6 +10,7 @@ import {
   cerrar,
   loQueSeQuedoAbierto,
   minutosAbierto,
+  minutosDeHoy,
   pareceOlvidado
 } from './medir'
 import type { EnCurso, TipoEnCurso } from './types'
@@ -203,5 +204,61 @@ describe('cuando se olvida parar', () => {
 
   it('sin nada abierto no hay nada que cerrar', () => {
     expect(loQueSeQuedoAbierto(undefined, HOY)).toEqual([])
+  })
+})
+
+
+describe('lo que llevas hoy de cada cosa', () => {
+  const salida = (tipo: TipoEnCurso | undefined, minutos: number, date = HOY) => ({
+    id: `${tipo}-${minutos}`,
+    date,
+    desde: 600,
+    minutos,
+    filtro: 'ninguno' as const,
+    ...(tipo ? { tipo } : {})
+  })
+
+  it('cada baldosa cuenta lo suyo, no lo de las otras', () => {
+    const salidas = [salida('sol', 20), salida('amanecer', 10), salida('sol', 15)]
+    expect(minutosDeHoy('sol', HOY, { salidas })).toBe(35)
+    expect(minutosDeHoy('amanecer', HOY, { salidas })).toBe(10)
+    expect(minutosDeHoy('fuera', HOY, { salidas })).toBe(0)
+  })
+
+  it('los ratos de antes de que existiera el tipo no se reparten a dedo', () => {
+    // Adivinar de qué botón salieron sería inventar el pasado.
+    expect(minutosDeHoy('sol', HOY, { salidas: [salida(undefined, 40)] })).toBe(0)
+  })
+
+  it('no cuenta lo de otros días', () => {
+    expect(minutosDeHoy('sol', HOY, { salidas: [salida('sol', 30, AYER)] })).toBe(0)
+  })
+
+  it('la lámpara suma sus sesiones del día', () => {
+    const sesionesPBM = [
+      { id: 'a', date: HOY, lamparaId: 'p', minutos: 10, distanciaCm: 15, zona: 'torso' as const },
+      { id: 'b', date: HOY, lamparaId: 'p', minutos: 8, distanciaCm: 15, zona: 'cara' as const }
+    ]
+    expect(minutosDeHoy('lampara', HOY, { sesionesPBM })).toBe(18)
+  })
+
+  it('la noche cuenta aunque cruce la medianoche', () => {
+    const noches = [{ date: HOY, apagado: 23 * 60, levantado: 7 * 60 }]
+    expect(minutosDeHoy('oscuridad', HOY, { noches })).toBe(8 * 60)
+  })
+
+  it('el frío y el grounding cuentan sus minutos, y cada uno el suyo', () => {
+    const habitos = [
+      { date: HOY, habito: 'frio' as const, nivel: 2, minutos: 3 },
+      { date: HOY, habito: 'grounding' as const, nivel: 1, minutos: 12 }
+    ]
+    expect(minutosDeHoy('frio', HOY, { habitos })).toBe(3)
+    expect(minutosDeHoy('grounding', HOY, { habitos })).toBe(12)
+  })
+
+  it('sin nada apuntado da cero, no undefined', () => {
+    for (const t of Object.keys(NOMBRES_TIPO) as TipoEnCurso[]) {
+      expect(minutosDeHoy(t, HOY, {}), t).toBe(0)
+    }
   })
 })
