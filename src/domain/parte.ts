@@ -317,7 +317,7 @@ function vitaminaDelDia(d: DatosDelParte, out: Punto[]): void {
         'mediodia',
         'no_habia',
         'Hoy no había UVB',
-        `El sol no pasa de ${arco.elevacionMaxima.toLocaleString('es-ES', { maximumFractionDigits: 0 })}° en tu sitio, y por debajo de ${ELEVACION_MINIMA}° la atmósfera se come el UVB entero. No es que no salieras: es que hoy no estaba.`
+        `El sol no pasa de ${arco.elevacionMaxima.toLocaleString('es-ES', { maximumFractionDigits: 0 })}° en tu sitio, y por debajo de ${ELEVACION_MINIMA}° la atmósfera se come casi todo el UVB. No es que no salieras: es que hoy apenas estaba.`
       )
     )
     return
@@ -325,7 +325,7 @@ function vitaminaDelDia(d: DatosDelParte, out: Punto[]): void {
 
   const dia = solDe(d.sol, d.hoy)
   const ui = uiDelDia(dia, d.coord, d.quien ?? {}, d.desfaseMin)
-  if (ui && ui.max > 100) {
+  if (ui !== undefined && ui > 100) {
     out.push(
       p(
         'vitamina-d',

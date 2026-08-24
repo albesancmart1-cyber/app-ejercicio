@@ -80,6 +80,7 @@ import {
   solDe
 } from '../domain/vitaminaD'
 import { CIELOS, ORDEN_CIELO, factorDeCielo } from '../domain/cielo'
+import { ozonoDU } from '../domain/atmosfera'
 import { estadoDeHabito } from '../domain/habitos'
 import { conComida, diaDe } from '../domain/crononutricion'
 import { minutosDeHora } from '../domain/relojes'
@@ -1017,7 +1018,8 @@ function SolAhora({
   const quemarse = minutosParaQuemarse(
     elevacion,
     deElPerfil(perfil),
-    factorDeCielo(perfil?.cieloHabitual)
+    factorDeCielo(perfil?.cieloHabitual),
+    ozonoDU(coord.lat, hoy)
   )
 
   return (

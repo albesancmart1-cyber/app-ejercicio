@@ -50,8 +50,8 @@ Marcar una casilla sin escribir el código **rompe la suite**. Es deliberado.
   → src/domain/arcoSolar.ts :: duracionDiaMin
 - [x] luz-sol-por-tramo · Sol por tramo, minutos, piel y a través de qué
   → src/domain/vitaminaD.ts :: FRANJAS
-- [x] luz-vitamina-d-rango · Vitamina D estimada en rango, e invierno vitamínico
-  → src/domain/vitaminaD.ts :: UI_POR_MINUTO
+- [x] luz-vitamina-d-cifra · Vitamina D estimada con una cifra, y nota de temporada
+  → src/domain/vitaminaD.ts :: uiDelDia
 - [x] luz-higiene-noche · Higiene de luz de la noche
   → src/domain/estaciones.ts :: higieneDeNoche
 - [x] luz-skygazing · Skygazing y atardecer
@@ -270,7 +270,19 @@ costar un toque, y ese toque tenía que alimentar todo lo ya construido.
 - [x] medir-cielo-tramos · Cada tramo se guarda con el cielo que había, y se ve mientras corre
   → src/screens/Medir.tsx :: Lo que llevas de cada uno
 - [x] medir-cielo-sin-inflar · Partir el cielo no multiplica ni la vitamina D ni los minutos de calle
-  → src/domain/vitaminaD.ts :: conMinutosEficaces
+  → src/domain/vitaminaD.ts :: uiDeExposicion
+- [x] vitd-sin-tope · Ni techo diario ni corte de minutos: se cuenta todo lo sintetizado
+  → src/domain/vitaminaD.ts :: No hay techo diario
+- [x] vitd-una-cifra · Una cifra, no un intervalo, y sin redondear a cientos
+  → src/domain/vitaminaD.ts :: escribirUI
+- [x] vitd-sin-acantilado · La síntesis baja sola con el sol: no hay corte en ninguna altura
+  → src/domain/vitaminaD.ts :: factorVitaminaD
+- [x] vitd-ozono · El ozono se modela por latitud y estación, no se esconde en un margen
+  → src/domain/atmosfera.ts :: ozonoDU
+- [x] vitd-camino-real · El camino por la atmósfera se calcula con Kasten y Young, no con 1/cos
+  → src/domain/atmosfera.ts :: masaDeAire
+- [x] vitd-bruta-se-dice · Se dice que la cifra es síntesis bruta, no lo que sobrevive en sangre
+  → src/domain/vitaminaD.ts :: síntesis bruta
 - [x] medir-quemadura · Cuánto tardarías en quemarte, con tu fototipo y este cielo
   → src/domain/vitaminaD.ts :: minutosParaQuemarse
 - [x] medir-fichar · Fichar y salir del trabajo desde el mismo sitio
@@ -435,4 +447,4 @@ Estas también son promesas, y romperlas sería peor que no cumplir una función
 
 ---
 
-TOTAL: 164
+TOTAL: 170

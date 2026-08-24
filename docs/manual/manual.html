@@ -176,7 +176,11 @@
       </ul>
     </li>
     <li><span class="n">7</span> Progreso y Yo</li>
-    <li><span class="n">8</span> Todas las cifras, en tablas</li>
+    <li><span class="n">8</span> Todas las cifras, en tablas
+      <ul>
+        <li>La vitamina D, pieza a pieza · Dónde el modelo es más flojo</li>
+      </ul>
+    </li>
     <li><span class="n">9</span> Lo que la app no hace, y por qué</li>
   </ol>
 </section>
@@ -468,9 +472,10 @@ máquina porque serían el fallo evidente:</p>
 <ul>
   <li><strong>No duplica los minutos de calle.</strong> Una salida es una salida: los tramos
   parten la exposición solar, no el rato fuera.</li>
-  <li><strong>No multiplica la vitamina D.</strong> El tope de cuarenta minutos eficaces
-  (ver «La vitamina D, por dentro») se reparte <em>entre</em> los tramos seguidos, no se
-  aplica a cada uno. Cortar la sesión en cinco trozos no da cinco veces el tope.</li>
+  <li><strong>No multiplica la vitamina D.</strong> Cada minuto real se integra una vez, con
+  la altura que tenía el sol en ese minuto, así que partir la sesión no puede cambiar el
+  total. Está comprobado hasta el extremo: una hora partida en sesenta trozos de un minuto
+  da la misma cifra, dígito a dígito, que la misma hora de una pieza.</li>
 </ul>
 <p>Un tramo de cero minutos no se guarda: si tocas dos cielos seguidos porque te
 equivocaste, se corrige el que había en vez de abrir uno vacío.</p>
@@ -524,7 +529,8 @@ bañador, el dato que necesitas en ese momento no es la vitamina D acumulada, es
 queda. Enseña:</p>
 <ul>
   <li>La <strong>altura del sol</strong> en este instante, en grados.</li>
-  <li>Qué ofrece a esa altura: UVB (por encima de 30°), UVA (por encima de 10°), azul que
+  <li>Qué ofrece a esa altura: UVB (a partir de unos 30°, que es donde deja de ser
+  residual), UVA (por encima de 10°), azul que
   pone el reloj en hora (por encima de −6°), o nada de eso.</li>
   <li><strong>A cuántos minutos empezarías a enrojecer</strong> con tu fototipo y el cielo
   que tengas guardado.</li>
@@ -1086,18 +1092,103 @@ Si alguna vez te preguntas de dónde sale una cifra, está aquí.</p>
 <p>La fórmula completa, que se integra <strong>minuto a minuto</strong> con la altura real
 del sol:</p>
 <div class="caja">
-  <p><code>UI/min = UVI × k × f_fototipo × f_piel × f_edad × f_altitud × f_cielo</code></p>
-  <p><code>UVI = 12,5 · cos(SZA)^1,5</code>, y <strong>cero por debajo de 30°</strong> de
-  altura del sol.<br />
-  <code>k = 21 UI/min·UVI</code> — referencia: fototipo II, 25&nbsp;% de piel, 30 años.<br />
+  <p><code>UI/min = UVIvitD × k × f_fototipo × f_piel × f_edad × f_altitud × f_cielo</code></p>
+  <p><code>UVIvitD = UVI(elevación, ozono) × G</code><br />
+  <code>UVI = 12,5 · μ^2,42 · (Ω/300)^−1,23</code> &nbsp; con <code>μ = cos(SZA)</code> y
+  <code>Ω</code> el ozono en unidades Dobson<br />
+  <code>G = exp( 0,00685 · (300 − Ω · m) )</code> &nbsp; con <code>m</code> el camino por la
+  atmósfera<br />
+  <code>m = 1 / (cos z + 0,50572 · (96,08 − z)^−1,6364)</code> — Kasten y Young<br />
+  <code>k = 21 UI/min·UVI</code> — referencia: fototipo II, 25&nbsp;% de piel, 20 años, sol
+  en la vertical y 300 DU<br />
   <code>f_piel = % de piel / 25</code><br />
   <code>f_edad = máx(0,25 ; 1 − 0,012 · (edad − 20))</code><br />
   <code>f_altitud = 1 + 0,10 · (metros / 1000)</code></p>
 </div>
-<p>Referencias: Webb 2006, Holick, MacLaughlin &amp; Holick 1985, Blumthaler 1997.</p>
-<p>El umbral de 30° hace que en Madrid en diciembre el resultado <strong>salga cero
-solo</strong>, sin ninguna lista de meses escrita a mano — y que en Quito o en Tromsø
-funcione igual de bien.</p>
+<p>Referencias: Webb 2006, Holick, MacLaughlin &amp; Holick 1985, Blumthaler 1997, Kasten
+&amp; Young 1989.</p>
+
+<h4>Qué significa cada pieza</h4>
+<p><strong>El índice UV</strong> es un ajuste empírico a medidas de cielo despejado, no una
+derivación. Eso es justo lo que lo hace útil aquí: lleva dentro la dispersión de Rayleigh,
+los aerosoles y la luz difusa, que son las tres cosas que un cálculo escrito a mano se deja
+fuera. Se comprueba contra valores conocidos —Madrid da ~10 en junio y ~1,5 en diciembre— y
+esa comprobación está en las pruebas, así que si alguien toca un exponente, salta.</p>
+
+<p><strong><code>G</code> es la corrección de la vitamina D</strong>, y es la pieza nueva.
+El índice UV está pesado con la curva de la <em>quemadura</em>. La vitamina D se fabrica con
+luz más corta —alrededor de 298 nm, contra los ~308 nm efectivos del eritema— y el ozono
+absorbe mucho más fuerte ahí. <code>G</code> es exactamente esa absorción de más a lo largo
+del camino real. Que sea una <em>diferencia</em> entre dos longitudes de onda vecinas es lo
+que la hace fiable: todo lo demás es casi igual a 298 y a 308 nm y se cancela.</p>
+
+<p><strong><code>m</code>, el camino por la atmósfera.</strong> La cuenta ingenua sería
+<code>1/cos(z)</code>, pero se dispara al infinito en el horizonte porque supone la Tierra
+plana. Kasten y Young corrigen la curvatura. Importa más de lo que parece: casi todo el sol
+de quien tiene un trabajo es sol bajo, que es donde la cuenta ingenua se equivoca.</p>
+
+<p><strong>El ozono</strong> es, con diferencia, lo que más mueve el UVB, y hasta ahora no
+estaba. La columna sobre tu cabeza cambia un 25&nbsp;% entre marzo y octubre a nuestra
+latitud. Se modela por climatología —no hay ningún satélite respondiendo a esta app—
+siguiendo el patrón que sí es estable año tras año: <strong>más ozono cuanto más lejos del
+ecuador</strong> (unos 260 DU en el trópico, 335 a 40°, 375 a 60°) y <strong>máximo en
+primavera</strong>, mínimo en otoño, con una amplitud que también crece con la latitud. En
+el hemisferio sur la primavera es la otra, y sale solo.</p>
+
+<h4>Lo que cambió, y por qué</h4>
+<p>La versión anterior usaba <code>UVI = 12,5 · cos(SZA)^1,5</code> y <strong>cero por
+debajo de 30°</strong>. Tenía dos problemas, y los dos importan cuando lo que se quiere es
+una cifra:</p>
+<ul>
+  <li><strong>El corte en 30° era un acantilado.</strong> A 30,0° de altura el índice valía
+  4,4 y a 29,9° valía cero. Ninguna de las dos cosas es verdad: el UVB no se apaga de golpe,
+  se desploma. Ahora la curva baja sola y un mediodía de diciembre en Madrid da lo poco que
+  da —unas decenas de UI por hora— en vez de dar cero.</li>
+  <li><strong>Un <code>k</code> fijo por punto de índice UV</strong> daba por hecho que la
+  proporción entre vitamina D y quemadura no cambia. Cambia mucho: del sol en la vertical al
+  sol a 30° de altura, la vitamina D cae unas ocho veces más deprisa que la quemadura. Ese
+  error era precisamente la razón de ser del acantilado —un parche para que el modelo no
+  inventara vitamina D por la tarde—, y quitando la causa se puede quitar el parche.</li>
+</ul>
+
+<h4>Ni techo ni intervalo</h4>
+<p><strong>No hay tope diario.</strong> Había uno de 20&nbsp;000 UI y ya no está. Tampoco se
+cortan los minutos: había un tope de cuarenta minutos eficaces por rato seguido, y también
+se fue. Se integra todo el rato que estuviste, minuto a minuto, con la altura que tenía el
+sol en cada uno.</p>
+<p>Lo que sale es entonces la <strong>síntesis bruta</strong>: todo lo que la piel fabricó.
+Conviene saber lo que eso quiere decir, porque es una decisión y no un descuido. Pasado un
+rato largo al sol, la propia luz empieza a romper la previtamina D recién hecha, así que lo
+que acaba llegando a la sangre se aplana aunque sigas fuera. <strong>Esta cifra no descuenta
+eso</strong>: dice lo fabricado, no lo que sobrevive. En una exposición corta son la misma
+cosa; en tres horas al sol de agosto, no.</p>
+<p>Y sale <strong>un número, no un intervalo</strong>. Antes se daba ±30&nbsp;%, y buena
+parte de esa horquilla era el ozono, que ahora se modela en vez de esconderse dentro de
+ella. Sigue siendo una estimación —la piel, la hidratación y la postura mueven el resultado,
+y nadie lleva un espectrorradiómetro encima— pero es la mejor cifra que se puede dar con lo
+que la app sabe, y darla entera permite compararla consigo misma de un día para otro, que es
+para lo que sirve.</p>
+
+<h4>Dónde el modelo es más flojo</h4>
+<p>Un modelo que no diga dónde falla no es honesto, así que:</p>
+<ul>
+  <li><strong>Con el sol muy bajo se queda corto.</strong> <code>G</code> usa una sola
+  longitud de onda efectiva, y en la realidad esa longitud se desplaza hacia el rojo cuando
+  el camino es larguísimo, porque lo más corto ya se ha absorbido entero. En pleno invierno
+  la cifra tira a baja. Es el régimen donde la respuesta es «casi nada» de todas formas.</li>
+  <li><strong>El ozono es climatología, no el de hoy.</strong> Un día concreto puede
+  apartarse fácilmente un 10&nbsp;% de la media de su fecha.</li>
+  <li><strong>El cielo lo declaras tú</strong>, y sigue siendo la pieza menos fina de todas:
+  el sol y el ozono se calculan, el cielo se estima a ojo. Por eso va aparte, como factor
+  nuestro, en vez de escondido dentro de la fórmula.</li>
+</ul>
+
+<h4>La comprobación que ata las dos mitades</h4>
+<p><code>k</code> no está elegido a ojo. Sale de cruzar dos cifras que ya estaban en el
+código: una MED de fototipo II son 250 J/m², y la literatura sitúa la síntesis de una MED a
+cuerpo entero en torno a 12&nbsp;000 UI. En la referencia eso da 20 UI/min para el 25&nbsp;%
+de piel, contra los 21 que se usan. Está escrito como prueba: si alguien mueve una constante
+y rompe la coherencia entre el modelo de la quemadura y el de la síntesis, la suite falla.</p>
 
 <h4>Cuánta piel</h4>
 <table>
@@ -1123,21 +1214,16 @@ aerosoles. Los factores salen de la atenuación medida del UV eritemático, que 
   <tr><td>Sin sol</td><td>Cubierto cerrado, o a la sombra</td><td class="num-col">3&nbsp;%</td></tr>
 </table>
 
-<h4>Topes y saturación</h4>
-<table>
-  <tr><td>Minutos eficaces por rato seguido</td><td class="num-col">40</td><td>Pasada media
-  hora larga, la propia piel degrada la previtamina D y seguir ya no suma en proporción. El
-  tope va por <strong>rato seguido</strong>, no por exposición guardada: si una salida se
-  parte en tramos porque cambió el cielo, los tramos se reparten esos cuarenta minutos entre
-  ellos.</td></tr>
-  <tr><td>Tope diario</td><td class="num-col">20 000 UI</td><td>Techo razonable de síntesis.</td></tr>
-  <tr><td>Dispersión del rango</td><td class="num-col">±30&nbsp;%</td><td>La piel, la
-  hidratación, el ozono del día y la postura mueven el resultado tanto que darlo con
-  decimales sería mentir.</td></tr>
-</table>
-<p>El tiempo hasta quemarse sale de la dosis eritemática por fototipo:
-<code>minutos = MED / (UVI × 0,025) / 60</code>. Con UVI 11,7 son 11 minutos para el
-fototipo I y 57 para el VI.</p>
+<h4>Quemarse</h4>
+<p>El tiempo hasta empezar a enrojecer sale de la dosis eritemática por fototipo, sobre el
+índice UV —el de la quemadura, no el de la vitamina D—:</p>
+<div class="caja">
+  <p><code>minutos = MED / (UVI × 0,025) / 60</code></p>
+</div>
+<p>Con el sol de junio en Madrid son unos 12 minutos para el fototipo I y unos 59 para el
+VI. Por debajo de <strong>un punto de índice UV</strong> la app no da número y dice que no
+aplica: no es que tardes mucho, es que no te quemas, y «te quemas en cuatro horas» sería
+verdad y no serviría de nada.</p>
 
 <h3>La luz y el reloj</h3>
 <table>
@@ -1173,7 +1259,7 @@ cuenta</strong>.</p>
 <h3>Las bandas del espectro</h3>
 <table>
   <tr><th>Banda</th><th class="num-col">nm</th><th>Qué hace</th></tr>
-  <tr><td>UVB</td><td class="num-col">280–315</td><td>Vitamina D. Solo por encima de 30° de altura.</td></tr>
+  <tr><td>UVB</td><td class="num-col">280–315</td><td>Vitamina D. En la práctica, por encima de 30° de altura: más abajo la atmósfera se come casi todo.</td></tr>
   <tr><td>UVA</td><td class="num-col">315–400</td><td>Óxido nítrico y vasodilatación. Desde 10°.</td></tr>
   <tr><td>Violeta</td><td class="num-col">400–450</td><td>Parte de la señal de la mañana.</td></tr>
   <tr><td>Azul</td><td class="num-col">450–495</td><td>La melanopsina responde en 480 nm.</td></tr>

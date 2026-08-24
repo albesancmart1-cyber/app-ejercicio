@@ -3,49 +3,86 @@
  *
  * ## La fórmula
  *
- * Se calcula la síntesis a partir del índice UV, que a su vez sale de la altura
- * real del sol. Es el modelo de referencia habitual:
- *
  * ```
- * UI/min = UVI × k × f_fototipo × f_piel × f_edad × f_altitud
+ * UI/min = UVIvitD × k × f_fototipo × f_piel × f_edad × f_altitud × f_cielo
  *
- * UVI  = 12,5 · cos(SZA)^1,5     con SZA = 90° − elevación (cielo despejado)
- *      = 0                        por debajo de 30° de elevación
- * k    = 21 UI/min·UVI            referencia: fototipo II, 25 % piel, 30 años
+ * UVIvitD = UVI(elevación, ozono) × G(elevación, ozono)
+ * k       = 21 UI/min·UVI    referencia: fototipo II, 25 % piel, 20 años,
+ *                            sol en la vertical y 300 DU de ozono
  * ```
  *
- * El corte en 30° es la regla de Holick: por debajo de esa altura el camino que
- * la luz recorre por la atmósfera es tan largo que el UVB se absorbe casi
- * entero, y la piel no sintetiza por mucho que se note el calor.
+ * El índice UV sale de `atmosfera.ts` y está pesado con la curva de la
+ * quemadura, que es lo que significa. La vitamina D se sintetiza con luz **más
+ * corta** —alrededor de 298 nm, contra los ~308 nm efectivos del eritema—, y el
+ * ozono absorbe mucho más fuerte ahí. `G` es exactamente esa diferencia: la
+ * absorción de ozono *de más* que sufre la banda de la vitamina D a lo largo
+ * del camino real por la atmósfera.
  *
- * Referencias: Webb 2006; Holick; MacLaughlin & Holick 1985; Blumthaler 1997.
+ * ```
+ * G = exp( Δσ · (300 − Ω · m) )        Δσ = 6,85·10⁻³ por DU
+ * ```
  *
- * ## Qué arregla esto respecto a lo que había
+ * Que sea una **diferencia** entre dos longitudes de onda vecinas es lo que la
+ * hace fiable: el Rayleigh, los aerosoles y la luz difusa son casi iguales a
+ * 298 y a 308 nm, así que se cancelan y no hay que modelarlos. Vale 1 en la
+ * referencia por construcción.
  *
- * La versión anterior repartía por franjas horarias —«mediodía» de 12 a 16 h
- * valía uno y el resto un cuarto— y llevaba una función `esInviernoVitaminico()`
- * con los meses de noviembre a febrero **escritos a mano**. Eso significaba dos
- * cosas malas: que el mediodía de diciembre sintetizaba casi como el de junio, y
- * que alguien en Quito o en Tromsø recibía las suposiciones de 40° N.
+ * ## Qué arregla esto
  *
- * Con la elevación real las dos desaparecen solas. En Madrid en diciembre el sol
- * no pasa de 26°, así que el resultado es cero **sin que nadie tenga que saber
- * que diciembre es invierno**, y en el hemisferio sur funciona sin tocar nada.
- * Por eso `esInviernoVitaminico()` ya no existe.
+ * Antes había un `k` fijo por punto de índice UV, y eso da por hecho que la
+ * proporción entre vitamina D y quemadura es siempre la misma. No lo es, ni de
+ * lejos: del sol en la vertical al sol a 30° de altura, la vitamina D cae unas
+ * ocho veces más deprisa que la quemadura. Ese error era la razón de ser del
+ * corte en 30° —un parche para que el modelo no inventara vitamina D por la
+ * tarde—, y quitando la causa se puede quitar el parche. Ahora la curva baja
+ * sola, sin acantilado, y un rato de sol de invierno da lo poco que da en vez
+ * de dar cero.
  *
- * ## Lo que la fórmula no incluye, y lo que hacemos con ello
+ * ## Ni tope ni rango
  *
- * La referencia es de cielo despejado y lo dice: sin nubes, ozono ni aerosoles.
- * Lo que se ve en el cielo se aplica encima como **un factor nuestro**, desde
- * `domain/cielo.ts`, separado a propósito para que se distinga la referencia
- * publicada de nuestra estimación.
+ * **No hay techo diario.** Había uno de 20 000 UI y ya no está. Tampoco se
+ * cortan los minutos: se integra minuto a minuto todo el rato que estuviste,
+ * con la altura real del sol en cada uno.
  *
- * Y sigue siendo una **estimación, no una medida**. Por eso todo lo que sale de
- * aquí se da como rango y se escribe con «unas».
+ * Lo que sale es entonces la **síntesis bruta**: todo lo que la piel fabricó.
+ * Conviene saber lo que eso quiere decir, porque es una decisión y no un
+ * descuido. Pasado un rato largo al sol, la propia luz empieza a romper la
+ * previtamina D recién hecha, así que lo que acaba llegando a la sangre se
+ * aplana aunque sigas fuera. Esta cifra **no descuenta eso**: dice lo
+ * fabricado, no lo que sobrevive. En exposiciones cortas son lo mismo; en tres
+ * horas al sol de agosto, no.
+ *
+ * Y sale **un número**, no un intervalo. Antes se daba ±30 %, y buena parte de
+ * esa horquilla era el ozono, que ahora se modela en vez de esconderse dentro
+ * de ella. Sigue siendo una estimación —la piel, la hidratación y la postura
+ * mueven el resultado y nadie lleva un espectrorradiómetro— pero es la mejor
+ * cifra que se puede dar con lo que la app sabe, y darla entera permite
+ * compararla consigo misma de un día para otro, que es para lo que sirve.
+ *
+ * ## La comprobación que lo ata todo
+ *
+ * `k` no está elegido a ojo. Sale de cruzar dos cosas que ya estaban en este
+ * fichero: una MED de fototipo II son 250 J/m², y la literatura sitúa la
+ * síntesis de una MED a cuerpo entero en torno a 12 000 UI. En la referencia
+ * eso da 20 UI/min para el 25 % de piel, contra los 21 que se usan. Está
+ * escrito como prueba, así que si alguien mueve una constante y rompe la
+ * coherencia, salta.
+ *
+ * ## Lo que la fórmula no incluye
+ *
+ * El cielo. La referencia es de cielo despejado y lo dice. Lo que se ve encima
+ * se aplica como **un factor nuestro**, desde `domain/cielo.ts`, separado a
+ * propósito para que se distinga la referencia publicada de nuestra estimación.
+ *
+ * Referencias: Webb 2006; Holick; MacLaughlin & Holick 1985; Blumthaler 1997;
+ * Kasten & Young 1989.
  */
 import type { DiaDeSol, ExposicionSolar, FranjaSolar, PielExpuesta, Profile } from './types'
 import { elevacionSolar, type Coordenadas } from './arcoSolar'
 import { factorDeCielo } from './cielo'
+import { OZONO_DE_REFERENCIA, indiceUV, masaDeAire, ozonoDU } from './atmosfera'
+
+export { OZONO_DE_REFERENCIA, indiceUV, masaDeAire, ozonoDU } from './atmosfera'
 
 export const FRANJAS: Record<FranjaSolar, string> = {
   manana: 'Por la mañana',
@@ -118,29 +155,52 @@ export const FOTOTIPO_POR_DEFECTO: Fototipo = 'III'
 
 /* ══════════════════════════════════════════════ LA FÓRMULA ══ */
 
-const RAD = Math.PI / 180
-
-/** UI por minuto y por unidad de índice UV, en la referencia. */
+/** UI por minuto y por unidad de índice UV efectivo, en la referencia. */
 export const K_UI_POR_MIN_UVI = 21
 
-/** La altura mínima a la que hay síntesis. Regla de Holick. */
+/**
+ * La altura por debajo de la cual la síntesis es residual.
+ *
+ * **Ya no es un corte**: la fórmula no la usa para nada y devuelve la cifra que
+ * toque a cualquier altura. Se conserva como umbral *de aviso*, para decidir
+ * cuándo la app menciona que hoy el sol no da para vitamina D, y ese es el
+ * único sitio donde aparece.
+ */
 export const ELEVACION_MINIMA = 30
 
 /** El porcentaje de piel de la referencia de `k`. */
 const PIEL_DE_REFERENCIA = 25
 
 /**
- * El índice UV de cielo despejado a una altura del sol.
+ * La absorción de ozono *de más* que sufre la banda de la vitamina D, por DU.
  *
- * Por debajo de 30° devuelve cero, y ahí hay un salto: justo en el umbral el
- * valor no es pequeño, es 4,4. El corte es el de la referencia y se respeta tal
- * cual — suavizarlo sería inventarse una curva que nadie ha publicado — pero
- * queda dicho para que nadie lo lea como un error.
+ * Sale de la diferencia de sección eficaz del ozono entre las dos longitudes de
+ * onda efectivas —unos 2,55·10⁻¹⁹ cm² entre 298 y 308 nm— multiplicada por las
+ * 2,687·10¹⁶ moléculas por cm² que tiene una unidad Dobson.
  */
-export function indiceUV(elevacionGrados: number): number {
-  if (elevacionGrados < ELEVACION_MINIMA) return 0
-  const sza = 90 - elevacionGrados
-  return 12.5 * Math.cos(sza * RAD) ** 1.5
+const DELTA_TAU_POR_DU = 6.85e-3
+
+/**
+ * Cuánto se aparta la vitamina D del índice UV en estas condiciones.
+ *
+ * Vale 1 con el sol en la vertical y 300 DU, y baja deprisa según el sol cae o
+ * el ozono sube, porque el camino se alarga y la banda de la vitamina D paga
+ * ese camino mucho más cara que la de la quemadura.
+ */
+export function factorVitaminaD(elevacionGrados: number, ozono = OZONO_DE_REFERENCIA): number {
+  if (elevacionGrados <= 0) return 0
+  return Math.exp(DELTA_TAU_POR_DU * (OZONO_DE_REFERENCIA - ozono * masaDeAire(elevacionGrados)))
+}
+
+/**
+ * El índice UV *pesado para la vitamina D*: lo que de verdad la sintetiza.
+ *
+ * No es el índice UV que dan los partes, y no debe enseñarse como si lo fuera.
+ * El de los partes está pesado con la curva de la quemadura y es el que usa
+ * `minutosParaQuemarse`.
+ */
+export function uviVitaminaD(elevacionGrados: number, ozono = OZONO_DE_REFERENCIA): number {
+  return indiceUV(elevacionGrados, ozono) * factorVitaminaD(elevacionGrados, ozono)
 }
 
 /** Cuánto pierde la piel con la edad. Nunca baja de un cuarto. */
@@ -179,10 +239,11 @@ export function uiPorMinuto(
   elevacionGrados: number,
   piel: PielExpuesta,
   quien: QuienToma,
-  factorCielo = 1
+  factorCielo = 1,
+  ozono = OZONO_DE_REFERENCIA
 ): number {
-  const uvi = indiceUV(elevacionGrados)
-  if (uvi === 0) return 0
+  const uvi = uviVitaminaD(elevacionGrados, ozono)
+  if (uvi <= 0) return 0
   return (
     uvi *
     K_UI_POR_MIN_UVI *
@@ -193,34 +254,6 @@ export function uiPorMinuto(
     factorCielo
   )
 }
-
-export interface RangoUI {
-  min: number
-  max: number
-}
-
-/**
- * El rango alrededor de la cifra.
- *
- * La fórmula da un número, pero la piel, la hidratación, el ozono del día y la
- * postura mueven el resultado tanto que darlo con decimales sería mentir. Se
- * abre un ±30 %, que es el orden de la dispersión que reconocen las propias
- * referencias.
- */
-const DISPERSION = 0.3
-
-function comoRango(ui: number): RangoUI {
-  return { min: Math.round(ui * (1 - DISPERSION)), max: Math.round(ui * (1 + DISPERSION)) }
-}
-
-/**
- * La piel satura: pasada media hora eficaz, la propia piel degrada la
- * previtamina D y seguir al sol ya no suma en proporción.
- */
-export const MINUTOS_EFICACES = 40
-
-/** Techo diario razonable de síntesis. */
-export const TOPE_UI_DIA = 20000
 
 /* ══════════════════════════════════════════════ UNA EXPOSICIÓN ══ */
 
@@ -251,20 +284,21 @@ export function uiDeExposicion(
   coord?: Coordenadas,
   quien: QuienToma = {},
   desfaseMin?: number
-): RangoUI {
-  const minutos = Math.min(Math.max(0, e.minutos), MINUTOS_EFICACES)
-  if (minutos === 0) return { min: 0, max: 0 }
+): number {
+  const minutos = Math.max(0, Math.round(e.minutos))
+  if (minutos === 0) return 0
 
   // Camino viejo: sin hora o sin coordenadas no hay elevación que calcular.
   if (e.desde === undefined || !coord) return porFranja(e, minutos, mesDe(fecha))
 
   const cielo = factorDeCielo(e.cielo)
+  const ozono = ozonoDU(coord.lat, fecha)
   let ui = 0
   for (let i = 0; i < minutos; i++) {
     const elev = elevacionSolar(fecha, coord, e.desde + i, desfaseMin)
-    ui += uiPorMinuto(elev, e.piel, quien, cielo)
+    ui += uiPorMinuto(elev, e.piel, quien, cielo, ozono)
   }
-  return comoRango(ui)
+  return ui
 }
 
 /**
@@ -273,8 +307,13 @@ export function uiDeExposicion(
  * Vive aquí y no se borra porque hay exposiciones guardadas que no tienen hora,
  * y recalcularlas con la fórmula nueva les inventaría un dato que nadie apuntó.
  * Lo viejo se lee como se escribió.
+ *
+ * Lo único que cambia es que aquello daba una horquilla y ahora hay que dar un
+ * número: se toma **el centro** de la que daba. No se elige el extremo bajo ni
+ * el alto porque las dos cosas serían una opinión sobre datos que ya no se
+ * pueden mejorar.
  */
-const UI_POR_MINUTO_VIEJO: Record<PielExpuesta, RangoUI> = {
+const UI_POR_MINUTO_VIEJO: Record<PielExpuesta, { min: number; max: number }> = {
   cara_manos: { min: 40, max: 100 },
   antebrazos: { min: 90, max: 220 },
   brazos_piernas: { min: 150, max: 350 },
@@ -283,16 +322,13 @@ const UI_POR_MINUTO_VIEJO: Record<PielExpuesta, RangoUI> = {
   entero: { min: 600, max: 1300 }
 }
 
-function porFranja(e: ExposicionSolar, minutos: number, mes: number): RangoUI {
+function porFranja(e: ExposicionSolar, minutos: number, mes: number): number {
   const base = UI_POR_MINUTO_VIEJO[e.piel]
   // La misma corrección de temporada que tenía: de noviembre a febrero, a
   // nuestra latitud, la síntesis era residual.
   const invierno = mes === 11 || mes === 12 || mes === 1 || mes === 2
   const factor = FACTOR_FRANJA[e.franja] * (invierno ? 0.05 : 1)
-  return {
-    min: Math.round(base.min * minutos * factor),
-    max: Math.round(base.max * minutos * factor)
-  }
+  return ((base.min + base.max) / 2) * minutos * factor
 }
 
 /* ══════════════════════════════════════════════ EL DÍA ══ */
@@ -300,66 +336,27 @@ function porFranja(e: ExposicionSolar, minutos: number, mes: number): RangoUI {
 /**
  * Las UI del día. La cifra manual manda: si el usuario la trae de una app que
  * la calcula con más datos que nosotros, estimar por encima sería empeorarla.
+ *
+ * Se suman las exposiciones y ya está: **sin techo y sin repartir nada**. Antes
+ * había que repartir cuarenta minutos eficaces entre las exposiciones seguidas,
+ * porque el tope se aplicaba a cada una y partir una sesión en trozos —al
+ * cambiar el cielo— la habría multiplicado. Sin tope no hay nada que repartir:
+ * cada minuto real cuenta una vez, así que partir la sesión no puede inflar
+ * nada por construcción. `conMinutosEficaces` se fue con el tope.
  */
 export function uiDelDia(
   dia: DiaDeSol | undefined,
   coord?: Coordenadas,
   quien: QuienToma = {},
   desfaseMin?: number
-): RangoUI | undefined {
+): number | undefined {
   if (!dia) return undefined
-  if (dia.ui !== undefined) return { min: dia.ui, max: dia.ui }
+  if (dia.ui !== undefined) return dia.ui
   if (dia.exposiciones.length === 0) return undefined
-
-  const suma = conMinutosEficaces(dia.exposiciones).reduce(
-    (a, e) => {
-      const r = uiDeExposicion(e, dia.date, coord, quien, desfaseMin)
-      return { min: a.min + r.min, max: a.max + r.max }
-    },
-    { min: 0, max: 0 }
+  return dia.exposiciones.reduce(
+    (a, e) => a + uiDeExposicion(e, dia.date, coord, quien, desfaseMin),
+    0
   )
-  return { min: Math.min(suma.min, TOPE_UI_DIA), max: Math.min(suma.max, TOPE_UI_DIA) }
-}
-
-/**
- * Reparte los minutos eficaces entre las exposiciones **seguidas**.
- *
- * Existe por un agujero que abrió el poder cambiar el cielo a media sesión. La
- * piel satura a los cuarenta minutos, y ese tope se aplicaba por exposición:
- * partir una hora de sol en tres trozos —porque el cielo cambió dos veces—
- * habría dado tres topes de cuarenta en vez de uno, y la vitamina D del día
- * habría salido inflada por haber mirado al cielo.
- *
- * Lo que define «la misma exposición» no es un identificador sino el reloj:
- * dos ratos son el mismo si uno **empieza justo donde acaba el otro**. Así el
- * tope se reparte entre los trozos de una sesión y, en cambio, dos salidas
- * separadas por horas conservan cada una su cuarenta, que es lo correcto — la
- * piel ha tenido tiempo de recuperarse en medio.
- *
- * Las exposiciones sin hora —las de antes de que se guardara— no pueden
- * encadenarse con nada y se quedan cada una con su tope, como siempre.
- */
-export function conMinutosEficaces(exposiciones: ExposicionSolar[]): ExposicionSolar[] {
-  const conHora = exposiciones
-    .filter((e) => e.desde !== undefined)
-    .sort((a, b) => a.desde! - b.desde!)
-  const sinHora = exposiciones.filter((e) => e.desde === undefined)
-
-  const out: ExposicionSolar[] = []
-  let finDeLaTanda: number | undefined
-  let gastados = 0
-
-  for (const e of conHora) {
-    // Una tanda nueva empieza cuando esta exposición no continúa la anterior.
-    if (finDeLaTanda === undefined || e.desde! !== finDeLaTanda) gastados = 0
-    const queda = Math.max(0, MINUTOS_EFICACES - gastados)
-    const minutos = Math.min(Math.max(0, e.minutos), queda)
-    gastados += minutos
-    finDeLaTanda = e.desde! + Math.max(0, e.minutos)
-    out.push({ ...e, minutos })
-  }
-
-  return [...out, ...sinHora]
 }
 
 /** Los minutos totales de sol del día: los manuales si están, si no la suma. */
@@ -369,15 +366,17 @@ export function minutosDelDia(dia: DiaDeSol | undefined): number {
 }
 
 /**
- * Cómo se escriben las UI. Un rango estimado va redondeado y con «unas» —la
- * precisión sería mentira—; una cifra exacta (min = max: la trajo el usuario)
- * se escribe tal cual, sin redondear lo que no es nuestro.
+ * Cómo se escriben las UI: la cifra entera, sin redondear a cientos y sin
+ * «unas» delante.
+ *
+ * Antes se redondeaba al centenar porque lo que había detrás era una horquilla
+ * de ±30 % y fingir precisión habría sido mentir. Ahora hay una cifra, así que
+ * esconderle los dos últimos dígitos sería tirar información que el usuario ha
+ * pedido ver. Sigue siendo una estimación —eso se dice donde toca— pero es
+ * *esta* estimación y no un rango que él tenga que promediar de cabeza.
  */
-export function escribirUI(r: RangoUI): string {
-  if (r.min === r.max) return `${r.min.toLocaleString('es-ES')} UI`
-  const red = (n: number) => (Math.round(n / 100) * 100).toLocaleString('es-ES')
-  if (r.max < 100) return 'una síntesis mínima'
-  return `unas ${red(r.min)}–${red(r.max)} UI`
+export function escribirUI(ui: number): string {
+  return `${Math.round(ui).toLocaleString('es-ES')} UI`
 }
 
 /* ══════════════════════════════════════════════ QUEMARSE ══ */
@@ -409,18 +408,29 @@ export const MED_J_M2: Record<Fototipo, number> = {
 const W_POR_UVI = 0.025
 
 /**
+ * Por debajo de este índice UV no se habla de quemarse.
+ *
+ * Uno es el escalón más bajo que reportan los servicios meteorológicos, y por
+ * debajo de él no es que tardes mucho: es que no te quemas.
+ */
+const UVI_QUE_QUEMA = 1
+
+/**
  * Minutos hasta empezar a enrojecer con el sol a esa altura.
  *
- * `null` cuando no hay UV que queme: de noche, o con el sol tan bajo que el
- * índice es cero. Devolver un número enorme sería peor que decir que no aplica.
+ * `null` cuando no hay UV que queme de verdad: de noche, o con el sol tan bajo
+ * que harían falta horas. Antes ese `null` salía del corte en 30°, que ya no
+ * existe; ahora sale de un índice UV mínimo, que es la razón de verdad. Decir
+ * «te quemas en once horas» es peor que decir que no aplica.
  */
 export function minutosParaQuemarse(
   elevacionGrados: number,
   quien: QuienToma,
-  cieloFactor = 1
+  cieloFactor = 1,
+  ozono = OZONO_DE_REFERENCIA
 ): number | null {
-  const uvi = indiceUV(elevacionGrados) * cieloFactor
-  if (uvi <= 0) return null
+  const uvi = indiceUV(elevacionGrados, ozono) * cieloFactor
+  if (uvi < UVI_QUE_QUEMA) return null
   const med = MED_J_M2[quien.fototipo ?? FOTOTIPO_POR_DEFECTO]
   return med / (uvi * W_POR_UVI) / 60
 }
@@ -461,8 +471,8 @@ export function sinExposicion(dia: DiaDeSol, indice: number): DiaDeSol {
 }
 
 export interface ResumenSolar {
-  /** UI acumuladas en la ventana, como rango. */
-  ui: RangoUI
+  /** UI acumuladas en la ventana. */
+  ui: number
   /** Días con al menos un rato de sol apuntado. */
   diasConSol: number
   /** Días con síntesis de verdad: con el sol por encima del umbral. */
@@ -483,22 +493,13 @@ export function resumenSemanal(
     .toISOString()
     .slice(0, 10)
   const ventana = (sol ?? []).filter((d) => d.date >= desde && d.date <= todayIso)
-  const ui = ventana.reduce(
-    (a, d) => {
-      const r = uiDelDia(d, coord, quien)
-      return r ? { min: a.min + r.min, max: a.max + r.max } : a
-    },
-    { min: 0, max: 0 }
-  )
+  const ui = ventana.reduce((a, d) => a + (uiDelDia(d, coord, quien) ?? 0), 0)
   return {
     ui,
     diasConSol: ventana.filter((d) => minutosDelDia(d) > 0).length,
     // Con la fórmula nueva «día que sintetiza» ya no es una franja horaria:
     // es que de verdad hubiera UVB, que es lo único que importaba de la franja.
-    diasQueSintetizan: ventana.filter((d) => {
-      const r = uiDelDia(d, coord, quien)
-      return r !== undefined && r.max > 100
-    }).length,
+    diasQueSintetizan: ventana.filter((d) => (uiDelDia(d, coord, quien) ?? 0) > 100).length,
     dias
   }
 }
@@ -517,5 +518,5 @@ export function notaDeTemporada(
 ): string | undefined {
   if (!coord || elevacionMaxima === undefined) return undefined
   if (elevacionMaxima >= ELEVACION_MINIMA) return undefined
-  return `Hoy el sol no pasa de ${elevacionMaxima.toLocaleString('es-ES', { maximumFractionDigits: 0 })}° en tu sitio, y por debajo de ${ELEVACION_MINIMA}° la piel no sintetiza vitamina D. El rato fuera sigue contando —ancla tu reloj y tu leptina— pero la vitamina D de estos días sale de lo que guardaste en verano, del pescado azul o de un suplemento.`
+  return `Hoy el sol no pasa de ${elevacionMaxima.toLocaleString('es-ES', { maximumFractionDigits: 0 })}° en tu sitio, y por debajo de ${ELEVACION_MINIMA}° el camino por la atmósfera es tan largo que la piel apenas sintetiza: lo que salga hoy serán unas pocas decenas de UI, no miles. El rato fuera sigue contando —ancla tu reloj y tu leptina— pero la vitamina D de estos días sale de lo que guardaste en verano, del pescado azul o de un suplemento.`
 }

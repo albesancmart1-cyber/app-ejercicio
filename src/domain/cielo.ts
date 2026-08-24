@@ -21,7 +21,9 @@
  * el cielo abierto encima, queda la componente difusa —un pequeño porcentaje—,
  * que no es cero pero casi.
  *
- * Son **órdenes de magnitud**, y por eso el resultado se sigue dando como rango.
+ * Son **órdenes de magnitud**, y siguen siendo la parte menos fina del cálculo:
+ * el sol y el ozono se modelan, el cielo se declara a ojo. Por eso va aparte,
+ * como factor nuestro, en vez de escondido dentro de la fórmula.
  * La etiqueta describe lo que se ve en el cielo y nada más: de dónde salga lo
  * que haya delante del sol no es asunto de esta app, y modelar la atenuación no
  * requiere ninguna opinión sobre su origen.
