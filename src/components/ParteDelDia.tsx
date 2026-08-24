@@ -77,6 +77,7 @@ export default function ParteDelDia({ hoy }: { hoy: string }) {
     comidas: diaDe(data.comidas, hoy),
     suplementos: data.suplementos,
     sesionesPBM: data.sesionesPBM,
+    lamparas: data.lamparas,
     noche: (data.noches ?? []).find((n) => n.date === hoy),
     habitos: data.habitos,
     entreno: {

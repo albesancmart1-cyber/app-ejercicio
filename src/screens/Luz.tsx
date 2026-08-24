@@ -16,6 +16,12 @@ import { useAppData, actions } from '../store/store'
 import { useToday } from '../store/clock'
 import { Boton, Etiqueta, Regla, CampoNumero } from '../components/ui'
 import QueHaceEstaOnda, { TablaDelEspectro } from '../components/QueHaceEstaOnda'
+import {
+  deElPerfil,
+  minutosParaQuemarseConLampara,
+  tieneUVB,
+  uiPorMinutoDeLampara
+} from '../domain/vitaminaD'
 import SelectorDeLamparas, {
   lamparasListas,
   type LamparaPuesta
@@ -72,7 +78,15 @@ import {
   Skygazing,
   minutosDeNoche
 } from '../components/Estaciones'
-import type { Filtro, Lampara, OndaLampara, PerfilDeLuz, SesionPBM, ZonaPBM } from '../domain/types'
+import type {
+  Filtro,
+  Lampara,
+  OndaLampara,
+  PerfilDeLuz,
+  Profile,
+  SesionPBM,
+  ZonaPBM
+} from '../domain/types'
 
 const UMBRALES_A_ENSEÑAR: Umbral[] = ['civil', 'orto', 'uva', 'uvb']
 
@@ -775,6 +789,7 @@ function Lamparas({ hoy }: { hoy: string }) {
                 {PICOS_KARU.length - faltan.length} de {PICOS_KARU.length}
               </span>
             </div>
+            <LoQueDaDeUVB lampara={l} perfil={data.profile} />
             <div style={{ display: 'flex', gap: 8 }}>
               <Boton tono="callado" suelto onClick={() => abrirCon(l)} style={{ flex: 1 }}>
                 {abierto ? 'Cerrar' : 'Apuntar una sesión'}
@@ -1023,6 +1038,44 @@ function Lamparas({ hoy }: { hoy: string }) {
   )
 }
 
+
+/**
+ * Lo que una lámpara con UVB hace, y lo que hay que mirar mientras lo hace.
+ *
+ * Solo aparece si la lámpara emite en la banda de la vitamina D, que es el caso
+ * raro: los paneles de fotobiomodulación son rojo e infrarrojo y aquí no dicen
+ * nada. Cuando aparece, van **las dos cifras juntas y a propósito** —lo que
+ * fabrica y en cuánto te quema—, porque una lámpara de UVB sin atmósfera
+ * delante quema mucho antes de lo que uno intuye, y enseñar solo la buena
+ * sería vender.
+ */
+function LoQueDaDeUVB({ lampara, perfil }: { lampara: Lampara; perfil: Profile | null }) {
+  if (!tieneUVB(lampara)) return null
+  const quien = deElPerfil(perfil)
+  const porMinuto = uiPorMinutoDeLampara(lampara, lampara.distanciaRefCm, 'torso', quien)
+  const quemarse = minutosParaQuemarseConLampara(lampara, lampara.distanciaRefCm, quien)
+
+  return (
+    <>
+      <div className="row" style={{ padding: '4px 0' }}>
+        <span className="faint">Vitamina D, con el torso descubierto</span>
+        <span className="accent">{Math.round(porMinuto).toLocaleString('es-ES')} UI/min</span>
+      </div>
+      {quemarse !== null && (
+        <div className="row" style={{ padding: '4px 0' }}>
+          <span className="faint">Empezarías a enrojecer a los</span>
+          <span className="faint">{escribirDuracion(Math.round(quemarse))}</span>
+        </div>
+      )}
+      <p className="faint" style={{ marginTop: 6 }}>
+        A {lampara.distanciaRefCm} cm y con tu fototipo. Esta lámpara sí fabrica vitamina D: la
+        molécula que absorbe es la misma, le da igual si el fotón viene del sol o de un tubo. Lo
+        que no trae es la parte del espectro que bajo el sol frena la síntesis sola, así que aquí
+        el que manda es el tiempo hasta enrojecer.
+      </p>
+    </>
+  )
+}
 
 /* ══════════════════════════════════════════════ COMPENSACIONES ══ */
 

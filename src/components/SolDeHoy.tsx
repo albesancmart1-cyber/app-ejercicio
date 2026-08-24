@@ -3,7 +3,7 @@ import { conManual, escribirUI, minutosDelDia, notaDeTemporada, solDe, uiDelDia 
 import type { QuienToma } from '../domain/vitaminaD'
 import type { Coordenadas } from '../domain/arcoSolar'
 import { arcoDelDia } from '../domain/arcoSolar'
-import type { DiaDeSol } from '../domain/types'
+import type { DiaDeSol, Lampara, SesionPBM } from '../domain/types'
 import { actions } from '../store/store'
 import { Boton, CampoNumero } from './ui'
 
@@ -24,13 +24,17 @@ export default function SolDeHoy({
   sol,
   todayIso,
   coord,
-  quien
+  quien,
+  sesionesPBM,
+  lamparas
 }: {
   sol: DiaDeSol[] | undefined
   todayIso: string
   /** Para calcular la síntesis con la altura real del sol, si hay coordenadas. */
   coord?: Coordenadas
   quien?: QuienToma
+  sesionesPBM?: SesionPBM[]
+  lamparas?: Lampara[]
 }) {
   const dia = solDe(sol, todayIso)
   const [editando, setEditando] = useState(false)
@@ -38,7 +42,16 @@ export default function SolDeHoy({
   const [ui, setUi] = useState<number | undefined>(dia?.ui)
 
   const guardadoMin = minutosDelDia(dia)
-  const guardadoUi = uiDelDia(dia, coord, quien)
+  /*
+   * Las lámparas con UVB también cuentan. La mayoría de los paneles son rojo e
+   * infrarrojo y no suman nada aquí, pero quien tenga una de UVB sí fabrica
+   * vitamina D con ella y sería absurdo que la app se lo negara.
+   */
+  const guardadoUi = uiDelDia(dia, coord, quien, undefined, {
+    sesiones: sesionesPBM,
+    catalogo: lamparas,
+    fecha: todayIso
+  })
   // La nota de invierno sale del arco de este sitio y no de una lista de meses,
   // así que sin coordenadas no se dice nada en vez de suponer una latitud.
   const nota = coord

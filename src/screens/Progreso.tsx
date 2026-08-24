@@ -387,7 +387,10 @@ export default function Progreso() {
   const cobertura = explicarCobertura(leptin)
   const coordPerfil = coordenadasDe(data.profile)
   const quienToma = deElPerfil(data.profile)
-  const solSemana = resumenSemanal(data.sol, today, 7, coordPerfil ?? undefined, quienToma)
+  const solSemana = resumenSemanal(data.sol, today, 7, coordPerfil ?? undefined, quienToma, {
+    sesiones: data.sesionesPBM,
+    catalogo: data.lamparas
+  })
   /*
    * La nota de invierno ya no sale de una lista de meses: sale de que el arco
    * de hoy, en este sitio, no llegue al umbral de síntesis. Así aparece en

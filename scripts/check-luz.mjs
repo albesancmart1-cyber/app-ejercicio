@@ -311,6 +311,62 @@ comprobar(
 )
 await page.screenshot({ path: `${OUT}/luz-05b-dos-lamparas.png`, fullPage: true })
 
+// ── Una lámpara con UVB sí fabrica vitamina D ──────────────────────────
+/*
+ * Era un fallo, no una limitación: la app daba por hecho que ninguna lámpara
+ * emite UVB. A la piel le da igual si el fotón viene del sol o de un tubo.
+ */
+await page.evaluate(() => {
+  const d = JSON.parse(localStorage.getItem('ritmo-data-v1'))
+  d.lamparas = [
+    ...d.lamparas,
+    {
+      id: 'uvb',
+      nombre: 'Lámpara de UVB',
+      distanciaRefCm: 30,
+      ondas: [
+        { nm: 297, irradiancia: 0.05 },
+        { nm: 310, irradiancia: 0.03 }
+      ]
+    }
+  ]
+  localStorage.setItem('ritmo-data-v1', JSON.stringify(d))
+})
+await page.reload({ waitUntil: 'networkidle' })
+await page.locator('.tab', { hasText: 'Luz' }).click()
+await page.waitForTimeout(400)
+
+const conUVB = await texto()
+comprobar(
+  conUVB.includes('Vitamina D, con el torso descubierto'),
+  'una lámpara con UVB debería decir cuánta vitamina D fabrica'
+)
+comprobar(
+  /\d+ UI\/min/.test(conUVB),
+  'con su cifra por minuto'
+)
+comprobar(
+  conUVB.includes('Empezarías a enrojecer'),
+  'y al lado, en cuánto quema: sin atmósfera delante quema antes de lo que uno intuye'
+)
+comprobar(
+  conUVB.includes('frena la síntesis sola'),
+  'diciendo lo que una lámpara de banda estrecha no trae'
+)
+comprobar(
+  conUVB.includes('0,05 mW/cm²'),
+  'y la irradiancia sin redondearse a cero, que es lo que pasaba con un decimal'
+)
+await page.screenshot({ path: `${OUT}/luz-08-uvb.png`, fullPage: true })
+
+// El panel de rojo e infrarrojo sigue sin decir nada de vitamina D, y ahí sí
+// es verdad: no emite en esa banda.
+comprobar(
+  (conUVB.match(/Vitamina D, con el torso descubierto/g) ?? []).length === 1,
+  'y un panel de rojo e infrarrojo no debería decirlo: ahí el cero es verdad'
+)
+
+
 // ── El balance ─────────────────────────────────────────────────────────
 const balance = await texto()
 comprobar(balance.includes('Rojo e infrarrojo'), 'el balance debería traer sus cuatro barras')

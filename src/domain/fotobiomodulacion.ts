@@ -296,5 +296,12 @@ export function escribirJulios(j: number): string {
 
 /** La irradiancia: «12 mW/cm²». */
 export function escribirIrradiancia(mw: number): string {
-  return `${mw.toLocaleString('es-ES', { maximumFractionDigits: 1 })} mW/cm²`
+  /*
+   * Un decimal basta para un panel de rojo, que anda por los 18 mW/cm², y
+   * borra del mapa una lámpara de UVB, que anda por los 0,05: se quedaba en
+   * «0,1» y la de al lado en «0». Se dan tres decimales cuando el número es
+   * pequeño, que es exactamente cuando hacen falta.
+   */
+  const decimales = mw < 1 ? 3 : 1
+  return `${mw.toLocaleString('es-ES', { maximumFractionDigits: decimales })} mW/cm²`
 }

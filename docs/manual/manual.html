@@ -1318,6 +1318,63 @@ aerosoles. Los factores salen de la atenuación medida del UV eritemático, que 
   <tr><td>Sin sol</td><td>Cubierto cerrado, o a la sombra</td><td class="num-col">3&nbsp;%</td></tr>
 </table>
 
+<h4>Lámparas con UVB</h4>
+<p>La app daba por hecho que ninguna lámpara emite UVB y por eso una sesión de lámpara nunca
+producía vitamina D. Eso vale para los paneles de rojo e infrarrojo, que son casi todos, y es
+<strong>falso</strong> en cuanto tienes una de UVB. A la piel le da igual de dónde venga el
+fotón: 7-dehidrocolesterol más UVB da previtamina D₃, salga del sol o de un tubo.</p>
+<p>Lo que se hace con ella:</p>
+<ul>
+  <li>Se pesa cada onda de la lámpara con la <strong>curva de la vitamina D</strong>, se
+  corrige por la distancia real —cuadrado inverso, como siempre— y el resultado entra en las
+  mismas unidades en que está calibrado el sol. De ahí en adelante el camino es idéntico:
+  mismo <code>k</code>, mismos factores de fototipo, piel y edad. No se aplican ni el factor
+  de cielo ni el de altitud: una lámpara no tiene atmósfera encima.</li>
+  <li><strong>La única suposición que se añade</strong> es que un vatio por metro cuadrado de
+  UV pesado para la vitamina D vale lo mismo venga del sol o de una lámpara. Es lo que dice la
+  fotoquímica: la molécula que absorbe es la misma.</li>
+  <li>Sus UI <strong>se suman a las del sol</strong> en el día y en la semana. Un día sin sol
+  pero con lámpara de UVB deja de ser un día sin cifra.</li>
+</ul>
+<p>En la ficha de cada lámpara con UVB salen <strong>dos cifras juntas y a propósito</strong>:
+lo que fabrica por minuto y en cuánto empezarías a enrojecer. Enseñar solo la primera sería
+vender: una lámpara de UVB sin atmósfera delante quema mucho antes de lo que uno intuye.</p>
+<p><strong>Y algo que una lámpara no trae.</strong> Bajo el sol, la propia luz frena la
+síntesis: la previtamina D₃ recién hecha se isomeriza con las ondas largas del UVB y el UVA
+corto, y la piel se autorregula sola. Las lámparas de banda estrecha no emiten en esa zona
+—se ha señalado en la literatura de iluminación de reptiles, que es donde más se ha
+estudiado—, así que <strong>esa autorregulación no la tienes</strong>. La app no pone ningún
+tope, pero el aviso de quemadura es el que manda.</p>
+<div class="caja">
+  <span class="et">Hasta dónde llega esta cifra</span>
+  <p>La curva oficial de la previtamina D₃ es la CIE 174:2006, que es una tabla de pago y no
+  está en el código. Lo que hay es una <strong>reconstrucción a trazo grueso</strong> de lo
+  que sí está publicado: máximo en 297 nm, casi todo entre 295 y 300, y nada apreciable por
+  encima de 315. Entre esos puntos se interpola en logaritmo.</p>
+  <p>La consecuencia, sin adornos: <strong>esto es bueno para un factor, no para un
+  porcentaje</strong>. Una lámpara centrada en 297 nm y otra en 310 salen bien separadas, que
+  es lo que hace falta para no confundirlas; pedirle la diferencia entre 296 y 298 sería
+  pedirle lo que no tiene. Si tu lámpara trae su rendimiento medido, mete las UI del día a
+  mano: esa cifra manda sobre cualquier estimación de la app.</p>
+</div>
+
+<h4>Las dos curvas, y por qué no basta una</h4>
+<p>Una longitud de onda no «hace UV» a secas: hace una cosa u otra según la curva con la que
+se pese.</p>
+<table>
+  <tr><th>Longitud</th><th class="num-col">Quemadura</th><th class="num-col">Vitamina D</th></tr>
+  <tr><td>297 nm</td><td class="num-col">1,00</td><td class="num-col">1,00</td></tr>
+  <tr><td>305 nm</td><td class="num-col">0,22</td><td class="num-col">0,45</td></tr>
+  <tr><td>310 nm</td><td class="num-col">0,074</td><td class="num-col">0,13</td></tr>
+  <tr><td>320 nm</td><td class="num-col">0,0086</td><td class="num-col">0,004</td></tr>
+  <tr><td>330 nm</td><td class="num-col">0,0014</td><td class="num-col">0</td></tr>
+  <tr><td>360 nm</td><td class="num-col">0,00048</td><td class="num-col">0</td></tr>
+</table>
+<p>Mira la última fila: a 360 nm todavía quemas y ya no sintetizas nada. Por eso hay que
+pesarlas por separado en vez de multiplicar «el UVB» por una constante, y por eso el mismo
+aparato puede ser bueno para una cosa y caro para la otra. La curva de la quemadura sí es una
+fórmula publicada y está escrita entera en el código (McKinlay &amp; Diffey 1987, norma CIE).</p>
+
 <h4>Quemarse</h4>
 <p>El tiempo hasta empezar a enrojecer sale de la dosis eritemática por fototipo, sobre el
 índice UV —el de la quemadura, no el de la vitamina D—:</p>
@@ -1412,7 +1469,7 @@ ahí y no aguanta una lectura.</p>
     <li>La misma luz que la fabrica la destruye: pasado un rato, la previtamina D₃ recién hecha se isomeriza a lumisterol y taquisterol. Es una autorregulación, no un fallo, y es la razón de que la síntesis se aplane sola (MacLaughlin, Anderson &amp; Holick, <em>Science</em> 1982).</li>
     <li>Induce POMC en los queratinocitos y de ahí β-endorfina, y activa el eje HPA de forma sistémica. Es el mecanismo endocrino que explica por qué el sol se «nota» y también la inmunosupresión que produce (Slominski et al., <em>Endocrinology</em> 2018).</li>
   </ul>
-  <p class="faint"><strong>Ojo:</strong> Ninguna lámpara doméstica de las que se venden como «de espectro completo» emite aquí. La vitamina D de la piel sale del sol, y solo del sol.</p>
+  <p class="faint"><strong>Ojo:</strong> Casi ninguna lámpara doméstica emite aquí: los paneles «de espectro completo» que se venden para fotobiomodulación son rojo e infrarrojo y no llegan al UVB. Pero <strong>haberlas, haylas</strong>, y si la tuya emite en este tramo fabrica vitamina D de verdad —la molécula que absorbe es la misma, le da igual si el fotón viene del sol o de un tubo—. La app la cuenta. Lo que una lámpara de banda estrecha no trae es la parte larga del UVB y el UVA corto, que bajo el sol degradan la previtamina D₃ recién hecha y frenan la síntesis solos: esa autorregulación no la tienes, así que el aviso de quemadura es el que manda.</p>
 </div>
 
 <div class="ficha">

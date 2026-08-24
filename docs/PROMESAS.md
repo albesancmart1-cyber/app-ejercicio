@@ -484,6 +484,16 @@ Estas también son promesas, y romperlas sería peor que no cumplir una función
   → src/domain/compensaciones.ts :: sinRemedio
 - [x] no-cronotipo · No te asigna un cronotipo
   → src/ui-copy.test.ts :: no hay búhos ni alondras
+- [x] uvb-lampara-cuenta · Una lámpara con UVB sí fabrica vitamina D, y la app la cuenta
+  → src/domain/vitaminaD.ts :: uiPorMinutoDeLampara
+- [x] uvb-dos-curvas · Quemar y sintetizar se pesan con curvas distintas, no con una constante
+  → src/domain/espectroAccion.ts :: pesoEritematico
+- [x] uvb-quema-se-dice · Al lado de lo que fabrica va en cuánto quema
+  → src/domain/vitaminaD.ts :: minutosParaQuemarseConLampara
+- [x] uvb-sin-autorregulacion · Se dice que una lámpara estrecha no trae el freno que trae el sol
+  → src/domain/vitaminaD.ts :: autorregulación no la tienes
+- [x] uvb-curva-es-gruesa · La curva de la vitamina D se declara reconstruida a trazo grueso
+  → src/domain/espectroAccion.ts :: reconstruido a trazo grueso
 - [x] no-vende-lamparas · No recomienda marcas, dosis ni aparatos
   → src/domain/compensaciones.test.ts :: no recomienda marcas
 - [x] no-dejes-tu-trabajo · Da por hecha tu jornada y trabaja con los huecos que tienes
@@ -491,4 +501,4 @@ Estas también son promesas, y romperlas sería peor que no cumplir una función
 
 ---
 
-TOTAL: 192
+TOTAL: 197

@@ -77,10 +77,21 @@
  * Referencias: Webb 2006; Holick; MacLaughlin & Holick 1985; Blumthaler 1997;
  * Kasten & Young 1989.
  */
-import type { DiaDeSol, ExposicionSolar, FranjaSolar, PielExpuesta, Profile } from './types'
+import type {
+  DiaDeSol,
+  ExposicionSolar,
+  FranjaSolar,
+  Lampara,
+  PielExpuesta,
+  Profile,
+  SesionPBM,
+  ZonaPBM
+} from './types'
 import { elevacionSolar, type Coordenadas } from './arcoSolar'
 import { factorDeCielo } from './cielo'
 import { OZONO_DE_REFERENCIA, indiceUV, masaDeAire, ozonoDU } from './atmosfera'
+import { W_M2_POR_UVI, mwCm2AWm2, pesoEritematico, pesoVitaminaD } from './espectroAccion'
+import { factorDistancia, tramosDe } from './fotobiomodulacion'
 
 export { OZONO_DE_REFERENCIA, indiceUV, masaDeAire, ozonoDU } from './atmosfera'
 
@@ -331,6 +342,127 @@ function porFranja(e: ExposicionSolar, minutos: number, mes: number): number {
   return ((base.min + base.max) / 2) * minutos * factor
 }
 
+/* ══════════════════════════════════════════════ LÁMPARAS CON UVB ══ */
+
+/**
+ * Las UI que fabrica una lámpara con UVB.
+ *
+ * ## Por qué esto existe
+ *
+ * La app daba por hecho que ninguna lámpara emite UVB, así que una sesión de
+ * lámpara nunca producía vitamina D. Eso vale para los paneles de rojo e
+ * infrarrojo, que son casi todos, y es **falso** en cuanto alguien tiene una de
+ * UVB. A la piel le da igual de dónde venga el fotón: 7-dehidrocolesterol más
+ * UVB da previtamina D₃, salga el fotón del sol o de un tubo.
+ *
+ * ## La única suposición que se añade
+ *
+ * Que **un vatio por metro cuadrado de UV pesado para la vitamina D vale lo
+ * mismo venga del sol o de una lámpara**. Es lo que dice la fotoquímica —la
+ * molécula que absorbe es la misma— y es la suposición que hay que hacer para
+ * poder usar la misma calibración: se convierte la irradiancia de la lámpara a
+ * las mismas unidades en que está el `uviVitaminaD` del sol, y de ahí en
+ * adelante el camino es el idéntico, con el mismo `k` y los mismos factores de
+ * fototipo, piel y edad.
+ *
+ * No se aplican ni el factor de cielo ni el de altitud: una lámpara no tiene
+ * atmósfera encima.
+ *
+ * ## Lo que una lámpara no trae, y conviene saber
+ *
+ * Bajo el sol, la propia luz **frena** la síntesis: la previtamina D₃ recién
+ * hecha se isomeriza con las ondas largas del UVB y el UVA corto, y por eso la
+ * piel se autorregula. Las lámparas de banda estrecha no emiten en esa zona
+ * —se ha señalado en la literatura de iluminación de reptiles, que es donde más
+ * se ha estudiado— así que **esa autorregulación no la tienes**. La app no
+ * pone ningún tope, porque tú pediste que no lo hubiera, pero el aviso de
+ * quemadura de la lámpara sí está y es el que hay que mirar.
+ */
+export function uiPorMinutoDeLampara(
+  lampara: Lampara,
+  distanciaCm: number,
+  piel: PielExpuesta,
+  quien: QuienToma = {}
+): number {
+  const factor = factorDistancia(distanciaCm, lampara.distanciaRefCm)
+  const wM2 = lampara.ondas.reduce(
+    (t, o) => t + mwCm2AWm2(o.irradiancia * factor) * pesoVitaminaD(o.nm),
+    0
+  )
+  if (wM2 <= 0) return 0
+  return (
+    (wM2 / W_M2_POR_UVI) *
+    K_UI_POR_MIN_UVI *
+    F_FOTOTIPO[quien.fototipo ?? FOTOTIPO_POR_DEFECTO] *
+    factorPiel(piel) *
+    factorEdad(quien.edad)
+  )
+}
+
+/** Si una lámpara emite algo que sirva para la vitamina D. */
+export function tieneUVB(lampara: Lampara): boolean {
+  return lampara.ondas.some((o) => o.irradiancia > 0 && pesoVitaminaD(o.nm) > 0)
+}
+
+/**
+ * Las UI de una sesión de lámpara, tramo a tramo.
+ *
+ * Cada tramo aporta las suyas con las lámparas que tenía encendidas y los
+ * minutos que duró, igual que con los julios. Sin UVB en ninguna, cero — y ese
+ * cero sí es verdad.
+ */
+export function uiDeSesionPBM(
+  sesion: SesionPBM,
+  catalogo: Lampara[],
+  piel: PielExpuesta,
+  quien: QuienToma = {}
+): number {
+  let ui = 0
+  for (const tramo of tramosDe(sesion)) {
+    for (const puesta of tramo.lamparas) {
+      const lampara = catalogo.find((l) => l.id === puesta.lamparaId)
+      if (!lampara) continue
+      ui += uiPorMinutoDeLampara(lampara, puesta.distanciaCm, piel, quien) * Math.max(0, tramo.minutos)
+    }
+  }
+  return ui
+}
+
+/** Las UI que dieron todas las lámparas de un día. */
+export function uiDeLamparasDelDia(
+  sesiones: SesionPBM[] | undefined,
+  catalogo: Lampara[] | undefined,
+  fecha: string,
+  quien: QuienToma = {}
+): number {
+  return (sesiones ?? [])
+    .filter((s) => s.date === fecha)
+    .reduce((t, s) => t + uiDeSesionPBM(s, catalogo ?? [], pielDeLaZona(s.zona), quien), 0)
+}
+
+/**
+ * Cuánta piel descubre cada zona de fotobiomodulación.
+ *
+ * Una sesión de lámpara ya dice qué zona te estabas dando, así que no hace
+ * falta volver a preguntarlo: se traduce a la misma escala de superficie que
+ * usa el sol, por la regla de los nueves.
+ */
+export function pielDeLaZona(zona: ZonaPBM): PielExpuesta {
+  switch (zona) {
+    case 'cara':
+    case 'cuello':
+    case 'articulacion':
+      return 'cara_manos'
+    case 'abdomen':
+      return 'antebrazos'
+    case 'torso':
+    case 'espalda':
+      return 'torso'
+    case 'piernas':
+      return 'brazos_piernas'
+  }
+}
+
 /* ══════════════════════════════════════════════ EL DÍA ══ */
 
 /**
@@ -348,14 +480,31 @@ export function uiDelDia(
   dia: DiaDeSol | undefined,
   coord?: Coordenadas,
   quien: QuienToma = {},
-  desfaseMin?: number
+  desfaseMin?: number,
+  /**
+   * Las lámparas del día, si las hubo.
+   *
+   * Va como parámetro suelto y opcional para no romper a quien solo tiene sol
+   * que sumar. Si tu lámpara emite UVB, sus UI se suman a las del sol: son la
+   * misma molécula fabricando lo mismo.
+   */
+  conLamparas?: { sesiones?: SesionPBM[]; catalogo?: Lampara[]; fecha?: string }
 ): number | undefined {
-  if (!dia) return undefined
+  const fecha = dia?.date ?? conLamparas?.fecha
+  const deLampara = fecha
+    ? uiDeLamparasDelDia(conLamparas?.sesiones, conLamparas?.catalogo, fecha, quien)
+    : 0
+
+  if (!dia) return deLampara > 0 ? deLampara : undefined
+  // La cifra manual manda sobre todo: si la trae de fuera, es mejor que la nuestra.
   if (dia.ui !== undefined) return dia.ui
-  if (dia.exposiciones.length === 0) return undefined
-  return dia.exposiciones.reduce(
-    (a, e) => a + uiDeExposicion(e, dia.date, coord, quien, desfaseMin),
-    0
+  if (dia.exposiciones.length === 0) return deLampara > 0 ? deLampara : undefined
+
+  return (
+    dia.exposiciones.reduce(
+      (a, e) => a + uiDeExposicion(e, dia.date, coord, quien, desfaseMin),
+      0
+    ) + deLampara
   )
 }
 
@@ -435,6 +584,30 @@ export function minutosParaQuemarse(
   return med / (uvi * W_POR_UVI) / 60
 }
 
+/**
+ * Minutos hasta empezar a enrojecer bajo una lámpara.
+ *
+ * Va con la curva de la quemadura, no con la de la vitamina D, porque son
+ * cosas distintas y una lámpara de UVB puede quemar mucho antes de lo que
+ * intuyes: la del sol la modera la atmósfera, y aquí no hay atmósfera.
+ *
+ * `null` cuando la lámpara no emite nada que queme, que es el caso de casi
+ * todos los paneles de rojo e infrarrojo.
+ */
+export function minutosParaQuemarseConLampara(
+  lampara: Lampara,
+  distanciaCm: number,
+  quien: QuienToma = {}
+): number | null {
+  const factor = factorDistancia(distanciaCm, lampara.distanciaRefCm)
+  const wM2 = lampara.ondas.reduce(
+    (t, o) => t + mwCm2AWm2(o.irradiancia * factor) * pesoEritematico(o.nm),
+    0
+  )
+  if (wM2 <= 0) return null
+  return MED_J_M2[quien.fototipo ?? FOTOTIPO_POR_DEFECTO] / wM2 / 60
+}
+
 /* ══════════════════════════════════════════════ LA SEMANA ══ */
 
 /** El día de una fecha, del registro completo. */
@@ -487,19 +660,40 @@ export function resumenSemanal(
   todayIso: string,
   dias = 7,
   coord?: Coordenadas,
-  quien: QuienToma = {}
+  quien: QuienToma = {},
+  /** Las lámparas de la semana, para que las de UVB también sumen. */
+  conLamparas?: { sesiones?: SesionPBM[]; catalogo?: Lampara[] }
 ): ResumenSolar {
   const desde = new Date(Date.parse(`${todayIso}T00:00:00Z`) - (dias - 1) * 86400000)
     .toISOString()
     .slice(0, 10)
   const ventana = (sol ?? []).filter((d) => d.date >= desde && d.date <= todayIso)
-  const ui = ventana.reduce((a, d) => a + (uiDelDia(d, coord, quien) ?? 0), 0)
+
+  /*
+   * Los días se recorren por fecha y no por lo que haya en `sol`, porque un día
+   * puede tener lámpara de UVB y ni un minuto de sol apuntado: mirar solo `sol`
+   * lo dejaría fuera.
+   */
+  const fechas = new Set(ventana.map((d) => d.date))
+  for (const s of conLamparas?.sesiones ?? []) {
+    if (s.date >= desde && s.date <= todayIso) fechas.add(s.date)
+  }
+
+  const delDia = (fecha: string) =>
+    uiDelDia(
+      ventana.find((d) => d.date === fecha),
+      coord,
+      quien,
+      undefined,
+      { sesiones: conLamparas?.sesiones, catalogo: conLamparas?.catalogo, fecha }
+    ) ?? 0
+
   return {
-    ui,
+    ui: [...fechas].reduce((a, f) => a + delDia(f), 0),
     diasConSol: ventana.filter((d) => minutosDelDia(d) > 0).length,
     // Con la fórmula nueva «día que sintetiza» ya no es una franja horaria:
     // es que de verdad hubiera UVB, que es lo único que importaba de la franja.
-    diasQueSintetizan: ventana.filter((d) => (uiDelDia(d, coord, quien) ?? 0) > 100).length,
+    diasQueSintetizan: [...fechas].filter((f) => delDia(f) > 100).length,
     dias
   }
 }

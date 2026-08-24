@@ -79,7 +79,7 @@ export const ESPECTRO: TramoEspectral[] = [
       'La misma luz que la fabrica la destruye: pasado un rato, la previtamina D₃ recién hecha se isomeriza a lumisterol y taquisterol. Es una autorregulación, no un fallo, y es la razón de que la síntesis se aplane sola (MacLaughlin, Anderson & Holick, *Science* 1982).',
       'Induce POMC en los queratinocitos y de ahí β-endorfina, y activa el eje HPA de forma sistémica. Es el mecanismo endocrino que explica por qué el sol se «nota» y también la inmunosupresión que produce (Slominski et al., *Endocrinology* 2018).'
     ],
-    ojo: 'Ninguna lámpara doméstica de las que se venden como «de espectro completo» emite aquí. La vitamina D de la piel sale del sol, y solo del sol.'
+    ojo: 'Casi ninguna lámpara doméstica emite aquí: los paneles «de espectro completo» que se venden para fotobiomodulación son rojo e infrarrojo y no llegan al UVB. Pero **haberlas, haylas**, y si la tuya emite en este tramo fabrica vitamina D de verdad —la molécula que absorbe es la misma, le da igual si el fotón viene del sol o de un tubo—. La app la cuenta. Lo que una lámpara de banda estrecha no trae es la parte larga del UVB y el UVA corto, que bajo el sol degradan la previtamina D₃ recién hecha y frenan la síntesis solos: esa autorregulación no la tienes, así que el aviso de quemadura es el que manda.'
   },
   {
     desde: 300,

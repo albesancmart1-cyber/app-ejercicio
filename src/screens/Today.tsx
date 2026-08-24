@@ -416,6 +416,8 @@ export default function Today() {
             todayIso={today}
             coord={coordenadasDe(data.profile) ?? undefined}
             quien={deElPerfil(data.profile)}
+            sesionesPBM={data.sesionesPBM}
+            lamparas={data.lamparas}
           />
         </div>
       )}

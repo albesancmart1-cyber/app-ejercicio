@@ -53,6 +53,7 @@ import type { VentanaYTuJornada } from './jornada'
 import type {
   DiaDeComidas,
   DiaDeSol,
+  Lampara,
   NocheRegistrada,
   SalidaAlExterior,
   SesionPBM,
@@ -134,6 +135,8 @@ export interface DatosDelParte {
   comidas?: DiaDeComidas
   suplementos?: Suplemento[]
   sesionesPBM?: SesionPBM[]
+  /** El armario de lámparas, para poder contar la vitamina D de las de UVB. */
+  lamparas?: Lampara[]
   /** La noche guardada con la fecha de hoy: la de esta madrugada. */
   noche?: NocheRegistrada
   habitos?: RegistroHabito[]
@@ -324,7 +327,11 @@ function vitaminaDelDia(d: DatosDelParte, out: Punto[]): void {
   }
 
   const dia = solDe(d.sol, d.hoy)
-  const ui = uiDelDia(dia, d.coord, d.quien ?? {}, d.desfaseMin)
+  const ui = uiDelDia(dia, d.coord, d.quien ?? {}, d.desfaseMin, {
+    sesiones: d.sesionesPBM,
+    catalogo: d.lamparas,
+    fecha: d.hoy
+  })
   if (ui !== undefined && ui > 100) {
     out.push(
       p(

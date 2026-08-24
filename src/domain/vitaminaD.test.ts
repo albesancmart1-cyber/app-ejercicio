@@ -21,6 +21,11 @@ import {
   uiDeExposicion,
   uiDelDia,
   uiPorMinuto,
+  uiPorMinutoDeLampara,
+  uiDeSesionPBM,
+  pielDeLaZona,
+  tieneUVB,
+  minutosParaQuemarseConLampara,
   uviVitaminaD,
   factorVitaminaD,
   type Fototipo,
@@ -29,7 +34,7 @@ import {
 import { CIELOS, ORDEN_CIELO, factorDeCielo, type EstadoDelCielo } from './cielo'
 import { OZONO_DE_REFERENCIA, indiceUV, ozonoDU } from './atmosfera'
 import { arcoDelDia } from './arcoSolar'
-import type { DiaDeSol, ExposicionSolar, PielExpuesta } from './types'
+import type { DiaDeSol, ExposicionSolar, Lampara, PielExpuesta, SesionPBM } from './types'
 
 const MADRID = { lat: 40.4165, lon: -3.7026 }
 const QUITO = { lat: -0.1807, lon: -78.4678 }
@@ -550,5 +555,162 @@ describe('partir una sesión no infla la vitamina D', () => {
     const real = uiDelDia(dia([exp(840, 5, 'sin_sol'), exp(845, 55, 'limpio')]), MADRID, {}, 120)!
     const promediado = uiDelDia(dia([exp(840, 60, 'velado')]), MADRID, {}, 120)!
     expect(real).not.toBeCloseTo(promediado, -2)
+  })
+})
+
+describe('las lámparas con UVB también fabrican vitamina D', () => {
+  const UVB: Lampara = {
+    id: 'uvb',
+    nombre: 'Lámpara de UVB',
+    distanciaRefCm: 30,
+    ondas: [
+      { nm: 297, irradiancia: 0.05 },
+      { nm: 310, irradiancia: 0.03 }
+    ]
+  }
+  const ROJA: Lampara = {
+    id: 'roja',
+    nombre: 'Panel rojo',
+    distanciaRefCm: 15,
+    ondas: [
+      { nm: 660, irradiancia: 18 },
+      { nm: 850, irradiancia: 14 }
+    ]
+  }
+  const sesion = (extra: Partial<SesionPBM> = {}): SesionPBM => ({
+    id: 's1',
+    date: VERANO,
+    lamparaId: 'uvb',
+    minutos: 10,
+    distanciaCm: 30,
+    zona: 'torso',
+    ...extra
+  })
+
+  it('una lámpara de UVB da una cifra creíble, no cero', () => {
+    // Es el fallo que esto arregla: la app daba por hecho que ninguna lámpara
+    // emite UVB, y a la piel le da igual si el fotón viene del sol o de un tubo.
+    const porMin = uiPorMinutoDeLampara(UVB, 30, 'torso', ALBERTO)
+    expect(porMin).toBeGreaterThan(100)
+    expect(porMin).toBeLessThan(2000)
+  })
+
+  it('y un panel de rojo e infrarrojo sigue dando cero, que ahí sí es verdad', () => {
+    expect(uiPorMinutoDeLampara(ROJA, 15, 'entero', ALBERTO)).toBe(0)
+    expect(tieneUVB(ROJA)).toBe(false)
+    expect(tieneUVB(UVB)).toBe(true)
+  })
+
+  it('al doble de distancia, la cuarta parte: la luz cae con el cuadrado', () => {
+    const cerca = uiPorMinutoDeLampara(UVB, 30, 'torso', ALBERTO)
+    const lejos = uiPorMinutoDeLampara(UVB, 60, 'torso', ALBERTO)
+    expect(lejos).toBeCloseTo(cerca / 4, 5)
+  })
+
+  it('más piel descubierta, más síntesis, en la misma proporción que con el sol', () => {
+    const torso = uiPorMinutoDeLampara(UVB, 30, 'torso', ALBERTO)
+    const cara = uiPorMinutoDeLampara(UVB, 30, 'cara_manos', ALBERTO)
+    expect(torso / cara).toBeCloseTo(PIEL_PCT.torso / PIEL_PCT.cara_manos, 5)
+  })
+
+  it('la zona de la sesión decide cuánta piel, sin volver a preguntarlo', () => {
+    expect(pielDeLaZona('torso')).toBe('torso')
+    expect(pielDeLaZona('cara')).toBe('cara_manos')
+    expect(pielDeLaZona('piernas')).toBe('brazos_piernas')
+  })
+
+  it('una sesión suma sus minutos, y los tramos los suyos', () => {
+    const diez = uiDeSesionPBM(sesion(), [UVB], 'torso', ALBERTO)
+    expect(diez).toBeCloseTo(uiPorMinutoDeLampara(UVB, 30, 'torso', ALBERTO) * 10, 5)
+
+    // Con tramos: cinco minutos con la UVB y cinco con la roja.
+    const partida = uiDeSesionPBM(
+      sesion({
+        minutos: 10,
+        tramos: [
+          { minutos: 5, lamparas: [{ lamparaId: 'uvb', distanciaCm: 30 }] },
+          { minutos: 5, lamparas: [{ lamparaId: 'roja', distanciaCm: 15 }] }
+        ]
+      }),
+      [UVB, ROJA],
+      'torso',
+      ALBERTO
+    )
+    expect(partida).toBeCloseTo(diez / 2, 5)
+  })
+
+  it('se suman a las del sol en el día, en vez de vivir en otro sitio', () => {
+    const soloSol = uiDelDia(dia(VERANO, exp(20, MEDIODIA_JUNIO)), MADRID, ALBERTO, TZ_VERANO)!
+    const conLampara = uiDelDia(dia(VERANO, exp(20, MEDIODIA_JUNIO)), MADRID, ALBERTO, TZ_VERANO, {
+      sesiones: [sesion()],
+      catalogo: [UVB]
+    })!
+    expect(conLampara).toBeGreaterThan(soloSol)
+    expect(conLampara - soloSol).toBeCloseTo(uiDeSesionPBM(sesion(), [UVB], 'torso', ALBERTO), 5)
+  })
+
+  it('un día sin sol pero con lámpara de UVB ya no es un día sin cifra', () => {
+    const r = uiDelDia(undefined, MADRID, ALBERTO, TZ_VERANO, {
+      sesiones: [sesion()],
+      catalogo: [UVB],
+      fecha: VERANO
+    })
+    expect(r).toBeGreaterThan(0)
+  })
+
+  it('pero un día con solo panel rojo sigue sin cifra que dar', () => {
+    const r = uiDelDia(undefined, MADRID, ALBERTO, TZ_VERANO, {
+      sesiones: [sesion({ lamparaId: 'roja', distanciaCm: 15 })],
+      catalogo: [ROJA],
+      fecha: VERANO
+    })
+    expect(r).toBeUndefined()
+  })
+
+  it('la cifra manual sigue mandando sobre todo, lámpara incluida', () => {
+    const d: DiaDeSol = { ...dia(VERANO, exp(30, MEDIODIA_JUNIO)), ui: 6400 }
+    expect(uiDelDia(d, MADRID, ALBERTO, TZ_VERANO, { sesiones: [sesion()], catalogo: [UVB] })).toBe(
+      6400
+    )
+  })
+})
+
+describe('quemarse con una lámpara', () => {
+  const UVB: Lampara = {
+    id: 'uvb',
+    nombre: 'Lámpara de UVB',
+    distanciaRefCm: 30,
+    ondas: [{ nm: 297, irradiancia: 0.05 }]
+  }
+
+  it('una de UVB quema, y hay que decir en cuánto', () => {
+    // Sin atmósfera delante, una lámpara de UVB quema mucho antes de lo que
+    // uno intuye: es la cifra que tiene que ir al lado de la de vitamina D.
+    const min = minutosParaQuemarseConLampara(UVB, 30, { fototipo: 'III' })!
+    expect(min).toBeGreaterThan(1)
+    expect(min).toBeLessThan(60)
+  })
+
+  it('la piel más oscura tarda más, como con el sol', () => {
+    const tiempos = ORDEN_FOTOTIPO.map(
+      (f) => minutosParaQuemarseConLampara(UVB, 30, { fototipo: f })!
+    )
+    expect(tiempos).toEqual([...tiempos].sort((a, b) => a - b))
+  })
+
+  it('al doble de distancia se tarda cuatro veces más', () => {
+    const cerca = minutosParaQuemarseConLampara(UVB, 30, { fototipo: 'III' })!
+    const lejos = minutosParaQuemarseConLampara(UVB, 60, { fototipo: 'III' })!
+    expect(lejos).toBeCloseTo(cerca * 4, 3)
+  })
+
+  it('y un panel de rojo e infrarrojo no quema: no aplica, en vez de un número', () => {
+    const roja: Lampara = {
+      id: 'r',
+      nombre: 'Panel',
+      distanciaRefCm: 15,
+      ondas: [{ nm: 660, irradiancia: 18 }]
+    }
+    expect(minutosParaQuemarseConLampara(roja, 15, { fototipo: 'III' })).toBeNull()
   })
 })
