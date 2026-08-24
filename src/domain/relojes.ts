@@ -220,9 +220,7 @@ export function huboPulsoDeTarde(
   salidas: SalidaAlExterior[] | undefined,
   desfaseMin?: number
 ): boolean {
-  const arco = arcoDelDia(fechaIso, coord, desfaseMin)
-  const desde = arco.pasos.orto.tarde
-  const hasta = arco.pasos.civil.tarde
+  const { desde, hasta } = ventanaDeAtardecer(fechaIso, coord, desfaseMin)
   if (desde === null || hasta === null) return false
   return (salidas ?? []).some(
     (s) =>
@@ -231,6 +229,47 @@ export function huboPulsoDeTarde(
       s.desde + Math.max(0, s.minutos) > desde &&
       PASO_DE_AZUL[s.filtro] > 0.5
   )
+}
+
+/**
+ * La ventana del atardecer: del ocaso al final del crepúsculo civil.
+ *
+ * Es la franja en que el sol ya se ha puesto pero todavía queda azul en el
+ * cielo, y es la que importa por los dos extremos: es cuando el pulso de tarde
+ * sujeta la fase, y es **cuando empieza la noche**. Lo que venga después ya es
+ * oscuridad, la tenga uno apuntada o no.
+ *
+ * Vive aquí y no repartida por tres sitios porque tenerla escrita dos veces era
+ * la forma segura de que un día dejaran de coincidir.
+ */
+export function ventanaDeAtardecer(
+  fechaIso: string,
+  coord: Coordenadas,
+  desfaseMin?: number
+): { desde: number | null; hasta: number | null } {
+  const arco = arcoDelDia(fechaIso, coord, desfaseMin)
+  return { desde: arco.pasos.orto.tarde, hasta: arco.pasos.civil.tarde }
+}
+
+/**
+ * Si ahora mismo estamos dentro de la ventana del atardecer.
+ *
+ * Se da un margen **antes** del ocaso porque quien sale a ver ponerse el sol
+ * sale un poco antes de que se ponga, no en el minuto exacto. Sin el margen,
+ * pulsar «Atardecer» a las 20:55 con el ocaso a las 21:00 no encendería la
+ * noche, y nadie va a volver a pulsarlo cinco minutos después.
+ */
+export const MARGEN_ANTES_DEL_OCASO = 30
+
+export function enVentanaDeAtardecer(
+  fechaIso: string,
+  coord: Coordenadas,
+  ahoraMin: number,
+  desfaseMin?: number
+): boolean {
+  const { desde, hasta } = ventanaDeAtardecer(fechaIso, coord, desfaseMin)
+  if (desde === null || hasta === null) return false
+  return ahoraMin >= desde - MARGEN_ANTES_DEL_OCASO && ahoraMin <= hasta
 }
 
 /** La distancia, dicha como se dice: «1 h 20 antes de ver luz». */

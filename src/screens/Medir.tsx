@@ -57,6 +57,7 @@ import {
 } from '../domain/jornada'
 import {
   MINUTOS_SOSPECHOSOS,
+  MINUTOS_SOSPECHOSOS_DE_NOCHE,
   NOMBRES_TIPO,
   abierto,
   abiertosDe,
@@ -67,7 +68,9 @@ import {
   tramosDeLamparas,
   loQueSeQuedoAbierto,
   minutosAbierto,
+  minutosAbiertoDesde,
   minutosDeHoy,
+  nocheEnCurso,
   pareceOlvidado,
   yaEstaFuera,
   type Escritura
@@ -85,7 +88,7 @@ import { CIELOS, ORDEN_CIELO, factorDeCielo } from '../domain/cielo'
 import { ozonoDU } from '../domain/atmosfera'
 import { estadoDeHabito } from '../domain/habitos'
 import { conComida, diaDe } from '../domain/crononutricion'
-import { minutosDeHora } from '../domain/relojes'
+import { enVentanaDeAtardecer, minutosDeHora } from '../domain/relojes'
 import { ZONAS } from '../domain/fotobiomodulacion'
 import { findActiveSession } from '../domain/activeSession'
 import { CampoNumero } from '../components/ui'
@@ -171,7 +174,16 @@ export default function Medir({ onEntrenar }: { onEntrenar?: () => void }) {
     }
   }, [data.enCurso, hoy])
 
-  const abiertos = abiertosDe(data.enCurso, hoy)
+  /*
+   * Lo abierto hoy, más la noche si viene de ayer: es la única que cruza la
+   * medianoche a propósito y dejarla fuera la haría invisible justo la mañana
+   * en que hay que apagarla.
+   */
+  const laNoche = nocheEnCurso(data.enCurso, hoy)
+  const abiertos = [
+    ...abiertosDe(data.enCurso, hoy),
+    ...(laNoche && laNoche.date !== hoy ? [laNoche] : [])
+  ]
   const fichaje = fichajeAbierto(data.fichajes, hoy)
   const trabajoHoy = minutosDeTrabajo(data.fichajes, hoy, ahora)
   const sitios = data.perfilesLuz ?? []
@@ -198,13 +210,33 @@ export default function Medir({ onEntrenar }: { onEntrenar?: () => void }) {
     actions.cerrarEnCurso(x.tipo, x.date)
   }
 
+  /**
+   * La noche empieza cuando empieza la ventana del atardecer.
+   *
+   * Salir a ver ponerse el sol **es** el principio de la noche: a partir de ahí
+   * y hasta el amanecer siguiente, lo que cuenta es la oscuridad. Antes había
+   * que acordarse de encender dos baldosas seguidas, y la segunda se olvidaba
+   * siempre — precisamente la noche en que uno había hecho lo correcto.
+   *
+   * No se para con el atardecer. Cuando entras en casa el atardecer se acaba y
+   * la noche sigue, que es lo que pasa de verdad.
+   */
+  function encenderLaNocheSiTocaba() {
+    if (nocheEnCurso(data.enCurso, hoy)) return
+    if (!coord || !enVentanaDeAtardecer(hoy, coord, ahora, desfaseHorario(hoy))) return
+    actions.abrirEnCurso({ tipo: 'oscuridad', date: hoy, desde: minutosDeAhora() })
+  }
+
   /** Pulsar una baldosa: si está en marcha la para; si no, la arranca. */
   function pulsar(b: Baldosa) {
-    const enCurso = abierto(data.enCurso, b.tipo, hoy)
+    // La noche puede haber empezado ayer, así que se busca en dos días.
+    const enCurso =
+      b.tipo === 'oscuridad' ? nocheEnCurso(data.enCurso, hoy) : abierto(data.enCurso, b.tipo, hoy)
     if (enCurso) return parar(enCurso)
     // Solo dos preguntan algo antes de arrancar: el sol y la lámpara.
     if (b.tipo === 'sol' || b.tipo === 'lampara') return setPreguntando(b.tipo)
     empezar(b.tipo)
+    if (b.tipo === 'atardecer') encenderLaNocheSiTocaba()
   }
 
   if (!coord) {
@@ -253,7 +285,11 @@ export default function Medir({ onEntrenar }: { onEntrenar?: () => void }) {
           <BaldosaBoton
             key={b.tipo}
             baldosa={b}
-            enCurso={abierto(data.enCurso, b.tipo, hoy)}
+            enCurso={
+              b.tipo === 'oscuridad'
+                ? nocheEnCurso(data.enCurso, hoy)
+                : abierto(data.enCurso, b.tipo, hoy)
+            }
             /*
              * «Fuera» se enciende sola en cuanto hay algo que implique estar
              * fuera. No se pulsa aparte porque ya estás contando, y pedir el
@@ -261,6 +297,7 @@ export default function Medir({ onEntrenar }: { onEntrenar?: () => void }) {
              */
             incluidaPor={b.tipo === 'fuera' && !abierto(data.enCurso, 'fuera', hoy) ? fuera : undefined}
             ahora={ahora}
+            hoy={hoy}
             hoyMin={minutosDeHoy(b.tipo, hoy, data)}
             onPulsar={() => pulsar(b)}
           />
@@ -287,6 +324,14 @@ export default function Medir({ onEntrenar }: { onEntrenar?: () => void }) {
             if (fichaje) return actions.saveFichaje({ ...fichaje, salida: minutosDeAhora() })
             const sitio = sitioHabitual
             if (!sitio) return
+            /*
+             * Entrar a trabajar cierra la noche. Es el gesto que mejor marca que
+             * se acabó: quien ficha lleva ya un rato levantado y con luz, y
+             * dejar la oscuridad corriendo hasta que se acuerde de apagarla
+             * convertiría media mañana en noche.
+             */
+            const noche = nocheEnCurso(data.enCurso, hoy)
+            if (noche) parar(noche)
             actions.saveFichaje({
               id: nuevoId(),
               date: hoy,
@@ -440,7 +485,7 @@ export default function Medir({ onEntrenar }: { onEntrenar?: () => void }) {
         </Boton>
       )}
 
-      <Avisos abiertos={abiertos} ahora={ahora} data={data} />
+      <Avisos abiertos={abiertos} ahora={ahora} hoy={hoy} data={data} />
 
       <RepartoDelDia hoy={hoy} />
 
@@ -489,6 +534,7 @@ function BaldosaBoton({
   enCurso,
   incluidaPor,
   ahora,
+  hoy,
   hoyMin,
   onPulsar
 }: {
@@ -496,11 +542,13 @@ function BaldosaBoton({
   enCurso: EnCurso | undefined
   incluidaPor?: TipoEnCurso
   ahora: number
+  hoy: string
   hoyMin: number
   onPulsar: () => void
 }) {
   const corriendo = enCurso !== undefined
-  const lleva = corriendo ? minutosAbierto(enCurso, ahora) : 0
+  // Se cuenta desde el día en que empezó: la noche cruza la medianoche.
+  const lleva = corriendo ? minutosAbiertoDesde(enCurso, hoy, ahora) : 0
   /*
    * El primer minuto no se escribe «0 min». Acabas de pulsar y la baldosa te
    * contesta con un cero: parece que no ha cogido el toque, que es justo la
@@ -1153,13 +1201,15 @@ function SolAhora({
 function Avisos({
   abiertos,
   ahora,
+  hoy,
   data
 }: {
   abiertos: EnCurso[]
   ahora: number
+  hoy: string
   data: ReturnType<typeof useAppData>
 }) {
-  const olvidados = abiertos.filter((x) => pareceOlvidado(x, ahora))
+  const olvidados = abiertos.filter((x) => pareceOlvidado(x, ahora, hoy))
   const lamparaSinCrear =
     abiertos.some((x) => x.tipo === 'lampara' && !x.lamparaId) || !data.lamparas?.length
   const sinSitio = !data.perfilesLuz?.length
@@ -1171,8 +1221,11 @@ function Avisos({
       <p className="eyebrow">Ojo</p>
       {olvidados.map((x) => (
         <p key={x.tipo} className="dim" style={{ marginTop: 8 }}>
-          Algo lleva más de {Math.round(MINUTOS_SOSPECHOSOS / 60)} horas en marcha, desde las{' '}
-          {escribirHora(x.desde)}. Si se te olvidó pararlo, páralo ahora: al cambiar de día la app lo
+          {NOMBRES_TIPO[x.tipo]} lleva más de{' '}
+          {Math.round(
+            (x.tipo === 'oscuridad' ? MINUTOS_SOSPECHOSOS_DE_NOCHE : MINUTOS_SOSPECHOSOS) / 60
+          )}{' '}
+          horas en marcha, desde las {escribirHora(x.desde)}. Si se te olvidó pararlo, páralo ahora: al cambiar de día la app lo
           cierra solo con media hora y lo marca como estimado, para no apuntar una jornada entera de
           sol que no ocurrió.
         </p>

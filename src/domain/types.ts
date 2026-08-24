@@ -981,6 +981,13 @@ export interface NocheRegistrada {
   apagado: number
   /** Y en que se levantó, ya del día siguiente. */
   levantado: number
+  /**
+   * La puso la app al cerrar algo que se quedó abierto, no el usuario.
+   *
+   * Una noche inventada por un despiste no puede parecerse a una medida: se
+   * enseña marcada y se dice de dónde salió.
+   */
+  estimado?: boolean
 }
 
 /**

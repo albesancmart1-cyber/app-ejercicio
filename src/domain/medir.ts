@@ -105,9 +105,50 @@ export function minutosAbierto(x: EnCurso, ahoraMin: number): number {
   return Math.max(0, ahoraMin - x.desde)
 }
 
+/**
+ * Cuánto lleva abierto contando desde el día en que empezó.
+ *
+ * Hace falta para lo único que cruza la medianoche a propósito: la noche. Con
+ * `minutosAbierto` a secas, una oscuridad encendida ayer a las 21:30 y mirada
+ * hoy a las 07:00 daría cero, porque 420 es menor que 1 290.
+ */
+export function minutosAbiertoDesde(x: EnCurso, hoy: string, ahoraMin: number): number {
+  if (x.date === hoy) return minutosAbierto(x, ahoraMin)
+  return Math.max(0, 1440 * diasEntre(x.date, hoy) - x.desde + ahoraMin)
+}
+
+function diasEntre(desde: string, hasta: string): number {
+  return Math.round(
+    (Date.parse(`${hasta}T00:00:00Z`) - Date.parse(`${desde}T00:00:00Z`)) / 86400000
+  )
+}
+
+/**
+ * La noche en curso, que pudo empezar **ayer**.
+ *
+ * Es la única actividad que se busca en dos días: se enciende al anochecer y se
+ * apaga a la mañana siguiente, así que a las siete de la mañana la que está
+ * corriendo lleva la fecha de ayer y `abierto(…, hoy)` no la encontraría.
+ */
+export function nocheEnCurso(enCurso: EnCurso[] | undefined, hoy: string): EnCurso | undefined {
+  return (enCurso ?? []).find(
+    (x) => x.tipo === 'oscuridad' && (x.date === hoy || x.date === diaAnterior(hoy))
+  )
+}
+
+/**
+ * Una noche puede durar diez horas de verdad; un rato al sol, no.
+ *
+ * Con el tope general, la oscuridad saltaría como «lleva mucho abierto» todas
+ * las noches a las cuatro horas, que es cuando más razón tiene de estar abierta.
+ */
+export const MINUTOS_SOSPECHOSOS_DE_NOCHE = 16 * 60
+
 /** Si algo lleva tanto tiempo abierto que seguramente se olvidó. */
-export function pareceOlvidado(x: EnCurso, ahoraMin: number): boolean {
-  return minutosAbierto(x, ahoraMin) >= MINUTOS_SOSPECHOSOS
+export function pareceOlvidado(x: EnCurso, ahoraMin: number, hoy?: string): boolean {
+  const tope = x.tipo === 'oscuridad' ? MINUTOS_SOSPECHOSOS_DE_NOCHE : MINUTOS_SOSPECHOSOS
+  const llevaAbierto = hoy ? minutosAbiertoDesde(x, hoy, ahoraMin) : minutosAbierto(x, ahoraMin)
+  return llevaAbierto >= tope
 }
 
 /** Abre una actividad, sustituyendo la del mismo tipo si ya hubiera una. */
@@ -418,7 +459,8 @@ export function alParar(
           noche: {
             date: hastaMin < x.desde ? siguienteDia(x.date) : x.date,
             apagado: x.desde,
-            levantado: hastaMin
+            levantado: hastaMin,
+            ...(opciones.estimado ? { estimado: true } : {})
           }
         }
       ]
@@ -458,11 +500,33 @@ export function loQueSeQuedoAbierto(
   hoy: string
 ): { viejo: EnCurso; escrituras: Escritura[] }[] {
   return (enCurso ?? [])
-    .filter((x) => x.date < hoy)
+    .filter((x) => x.date < hoy && !siguePudiendoCorrer(x, hoy))
     .map((viejo) => ({
       viejo,
       escrituras: alParar(viejo, viejo.desde + MINUTOS_SI_SE_OLVIDA, { estimado: true })
     }))
+}
+
+/**
+ * Si una actividad de ayer puede seguir corriendo hoy sin que sea un despiste.
+ *
+ * Solo la noche. Todas las demás abiertas de un día anterior son un olvido —
+ * nadie toma el sol catorce horas—, pero **la oscuridad cruza la medianoche por
+ * definición**: se enciende al anochecer de un día y se apaga a la mañana del
+ * siguiente. Cerrarla con la media hora de los despistes convertiría la noche
+ * entera en treinta minutos, todas las noches.
+ *
+ * Se le da un día de margen y ni uno más: la de anteayer sí es un olvido, y esa
+ * se cierra como las demás y se marca como estimada.
+ */
+function siguePudiendoCorrer(x: EnCurso, hoy: string): boolean {
+  return x.tipo === 'oscuridad' && x.date === diaAnterior(hoy)
+}
+
+function diaAnterior(iso: string): string {
+  const d = new Date(`${iso}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() - 1)
+  return d.toISOString().slice(0, 10)
 }
 
 /**

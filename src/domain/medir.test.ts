@@ -13,12 +13,19 @@ import {
   cambiarCielo,
   tramosDeCielo,
   loQueSeQuedoAbierto,
+  minutosAbiertoDesde,
+  nocheEnCurso,
   minutosAbierto,
   minutosDeHoy,
   pareceOlvidado,
   yaEstaFuera,
   type Escritura
 } from './medir'
+import {
+  MARGEN_ANTES_DEL_OCASO,
+  enVentanaDeAtardecer,
+  ventanaDeAtardecer
+} from './relojes'
 import type { EnCurso, TipoEnCurso } from './types'
 
 const HOY = '2026-06-21'
@@ -266,6 +273,14 @@ describe('lo que se guarda al parar', () => {
       1210
     )
     expect(de(r, 'sesionPBM')!.sesion.lamparas).toBeUndefined()
+  })
+
+  it('una noche cerrada por la app se marca como estimada, para no parecer medida', () => {
+    const x = enCurso('oscuridad', 23 * 60)
+    const normal = de(alParar(x, 7 * 60), 'noche')!.noche
+    const puesta = de(alParar(x, 7 * 60, { estimado: true }), 'noche')!.noche
+    expect(normal.estimado).toBeUndefined()
+    expect(puesta.estimado).toBe(true)
   })
 
   it('la oscuridad se guarda con la fecha de la mañana en que uno se levanta', () => {
@@ -540,5 +555,88 @@ describe('al parar, cada tramo es su propia exposición', () => {
   it('sin cambios, se guarda una sola exposición como siempre', () => {
     const x = enCurso('sol', 600, { cielo: 'limpio' })
     expect(de(alParar(x, 640), 'exposicion')).toHaveLength(1)
+  })
+})
+
+describe('la noche, que es la única que cruza la medianoche', () => {
+  const de = <T extends Escritura['en']>(lista: Escritura[], en: T) =>
+    lista.find((e): e is Extract<Escritura, { en: T }> => e.en === en)
+
+  const HOY = '2026-08-24'
+  const AYER = '2026-08-23'
+  const ANTEAYER = '2026-08-22'
+
+  const noche = (date: string, desde = 23 * 60): EnCurso => ({ tipo: 'oscuridad', date, desde })
+
+  it('la de ayer sigue corriendo hoy: no es un olvido, es lo normal', () => {
+    // Con la regla general se habría cerrado con media hora, y una noche entera
+    // se convertiría en treinta minutos todas las noches.
+    expect(loQueSeQuedoAbierto([noche(AYER)], HOY)).toEqual([])
+  })
+
+  it('pero la de anteayer sí lo es, y se cierra marcada como estimada', () => {
+    const [cerrada] = loQueSeQuedoAbierto([noche(ANTEAYER)], HOY)
+    expect(cerrada).toBeDefined()
+    expect(de(cerrada.escrituras, 'noche')!.noche.estimado).toBe(true)
+  })
+
+  it('y a lo demás abierto de ayer no se le da margen ninguno', () => {
+    const sol: EnCurso = { tipo: 'sol', date: AYER, desde: 11 * 60, piel: 'torso' }
+    expect(loQueSeQuedoAbierto([sol], HOY)).toHaveLength(1)
+  })
+
+  it('se encuentra aunque lleve la fecha de ayer, que es lo que la hacía invisible', () => {
+    expect(nocheEnCurso([noche(AYER)], HOY)?.date).toBe(AYER)
+    expect(nocheEnCurso([noche(HOY)], HOY)?.date).toBe(HOY)
+    expect(nocheEnCurso([noche(ANTEAYER)], HOY)).toBeUndefined()
+    expect(nocheEnCurso([], HOY)).toBeUndefined()
+  })
+
+  it('y el cronómetro cuenta la vuelta al reloj en vez de dar cero', () => {
+    // Encendida ayer a las 23:00 y mirada hoy a las 07:00 son ocho horas, no
+    // cero: 420 es menor que 1 380 y la resta a secas daba negativo.
+    expect(minutosAbiertoDesde(noche(AYER), HOY, 7 * 60)).toBe(8 * 60)
+    expect(minutosAbiertoDesde(noche(HOY, 22 * 60), HOY, 23 * 60)).toBe(60)
+  })
+
+  it('no salta el aviso de «lleva mucho abierto» a las cuatro horas de noche', () => {
+    // Con el tope general saltaría todas las noches, justo cuando más razón
+    // tiene de estar encendida.
+    expect(pareceOlvidado(noche(AYER), 3 * 60, HOY)).toBe(false)
+    expect(pareceOlvidado(noche(AYER), 7 * 60, HOY)).toBe(false)
+    // Pero a las dieciséis horas ya no es una noche.
+    expect(pareceOlvidado(noche(AYER), 16 * 60, HOY)).toBe(true)
+  })
+
+  it('un rato de sol sí salta a las cuatro horas, como siempre', () => {
+    const sol: EnCurso = { tipo: 'sol', date: HOY, desde: 10 * 60, piel: 'torso' }
+    expect(pareceOlvidado(sol, 14 * 60 + 1, HOY)).toBe(true)
+  })
+})
+
+describe('la ventana del atardecer', () => {
+  const MADRID = { lat: 40.4165, lon: -3.7026 }
+  const JUNIO = '2026-06-21'
+
+  it('empieza en el ocaso y acaba con el crepúsculo civil', () => {
+    const v = ventanaDeAtardecer(JUNIO, MADRID, 120)
+    expect(v.desde).not.toBeNull()
+    expect(v.hasta).not.toBeNull()
+    expect(v.hasta!).toBeGreaterThan(v.desde!)
+  })
+
+  it('con margen antes del ocaso, porque a ver ponerse el sol se sale antes', () => {
+    const { desde } = ventanaDeAtardecer(JUNIO, MADRID, 120)
+    expect(enVentanaDeAtardecer(JUNIO, MADRID, desde! - 10, 120)).toBe(true)
+    expect(enVentanaDeAtardecer(JUNIO, MADRID, desde! - MARGEN_ANTES_DEL_OCASO - 1, 120)).toBe(false)
+  })
+
+  it('y al mediodía no estamos en ella, por mucho que se pulse', () => {
+    expect(enVentanaDeAtardecer(JUNIO, MADRID, 14 * 60, 120)).toBe(false)
+  })
+
+  it('pasado el crepúsculo civil ya no: eso es noche cerrada, no atardecer', () => {
+    const { hasta } = ventanaDeAtardecer(JUNIO, MADRID, 120)
+    expect(enVentanaDeAtardecer(JUNIO, MADRID, hasta! + 1, 120)).toBe(false)
   })
 })

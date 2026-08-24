@@ -319,6 +319,16 @@ costar un toque, y ese toque tenía que alimentar todo lo ya construido.
   → src/domain/vitaminaD.ts :: síntesis bruta
 - [x] medir-quemadura · Cuánto tardarías en quemarte, con tu fototipo y este cielo
   → src/domain/vitaminaD.ts :: minutosParaQuemarse
+- [x] noche-empieza-en-el-atardecer · Salir a ver el atardecer enciende también la noche
+  → src/screens/Medir.tsx :: encenderLaNocheSiTocaba
+- [x] noche-no-para-con-el-atardecer · Entrar en casa acaba el atardecer, no la noche
+  → src/domain/medir.ts :: nocheEnCurso
+- [x] noche-cruza-la-medianoche · La noche de ayer sigue corriendo hoy, no se cierra con media hora
+  → src/domain/medir.ts :: siguePudiendoCorrer
+- [x] noche-se-apaga-al-fichar · Entrar a trabajar apaga la noche
+  → src/screens/Medir.tsx :: cierra la noche
+- [x] noche-estimada-se-dice · Una noche cerrada por la app se marca, no se hace pasar por medida
+  → src/domain/types.ts :: estimado
 - [x] medir-fichar · Fichar y salir del trabajo desde el mismo sitio
   → src/screens/Medir.tsx :: saveFichaje
 - [x] medir-trabajo-a-mano · La jornada se puede apuntar a mano, porque fichar se olvida
@@ -481,4 +491,4 @@ Estas también son promesas, y romperlas sería peor que no cumplir una función
 
 ---
 
-TOTAL: 187
+TOTAL: 192

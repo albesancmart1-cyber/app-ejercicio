@@ -214,6 +214,7 @@ await page.getByRole('button', { name: 'Sol, en marcha' }).click()
 await page.waitForTimeout(400)
 
 const hoyIso = new Date().toISOString().slice(0, 10)
+const manianaIso = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
 const tras = await datos()
 const expos = (tras.sol ?? []).find((d) => d.date === hoyIso)?.exposiciones ?? []
 comprobar(
@@ -588,6 +589,103 @@ comprobar(
 )
 await page.screenshot({ path: `${OUT}/medir-11-trabajo.png`, fullPage: true })
 
+// ── La noche empieza con el atardecer y acaba al fichar ───────────────
+/*
+ * El reloj se congela dentro de la ventana del atardecer. El navegador va en
+ * UTC, así que a Madrid le cae el ocaso hacia las 18:57 y las 19:10 quedan
+ * dentro. Sin congelarlo, esta parte pasaría o fallaría según la hora a la que
+ * se ejecutara el recorrido.
+ */
+await page.clock.setFixedTime(new Date(`${hoyIso}T19:10:00Z`))
+await page.evaluate(() => {
+  const d = JSON.parse(localStorage.getItem('ritmo-data-v1'))
+  d.enCurso = []
+  d.noches = []
+  localStorage.setItem('ritmo-data-v1', JSON.stringify(d))
+})
+await page.reload({ waitUntil: 'networkidle' })
+await pestana('Medir')
+
+await page.getByRole('button', { name: 'Atardecer', exact: true }).click()
+await page.waitForTimeout(400)
+
+const conAtardecer = (await datos()).enCurso ?? []
+comprobar(
+  conAtardecer.some((x) => x.tipo === 'oscuridad'),
+  'salir a ver el atardecer debería encender también la noche: ahí es donde empieza'
+)
+
+// Y al parar el atardecer, la noche se queda. Es lo que pasa de verdad: entras
+// en casa y la noche sigue.
+await page.getByRole('button', { name: 'Atardecer, en marcha' }).click()
+await page.waitForTimeout(400)
+const trasElAtardecer = (await datos()).enCurso ?? []
+comprobar(
+  trasElAtardecer.some((x) => x.tipo === 'oscuridad'),
+  'y al parar el atardecer la noche debería seguir corriendo'
+)
+comprobar(
+  !trasElAtardecer.some((x) => x.tipo === 'atardecer'),
+  'aunque el atardecer sí se pare'
+)
+comprobar(
+  (await texto()).includes('A oscuras'),
+  'con la baldosa de A oscuras encendida'
+)
+await page.screenshot({ path: `${OUT}/medir-14-noche.png`, fullPage: true })
+
+// ── A la mañana siguiente, fichar la apaga ────────────────────────────
+/*
+ * La noche lleva la fecha de ayer y sigue abierta: es la única actividad que
+ * cruza la medianoche a propósito, y no se cierra con la media hora de los
+ * despistes.
+ */
+await page.clock.setFixedTime(new Date(`${manianaIso}T06:45:00Z`))
+await page.reload({ waitUntil: 'networkidle' })
+await pestana('Medir')
+
+const porLaManiana = (await datos()).enCurso ?? []
+comprobar(
+  porLaManiana.some((x) => x.tipo === 'oscuridad' && x.date === hoyIso),
+  'la noche de ayer debería seguir abierta por la mañana, no cerrada con media hora'
+)
+comprobar(
+  (await texto()).includes('11 h 35 min'),
+  'y el cronómetro debería contar la vuelta al reloj, no dar cero al pasar la medianoche'
+)
+
+await page.getByRole('button', { name: 'Trabajo' }).click()
+await page.waitForTimeout(400)
+
+const trasFichar = await datos()
+comprobar(
+  !(trasFichar.enCurso ?? []).some((x) => x.tipo === 'oscuridad'),
+  'entrar a trabajar debería apagar la noche'
+)
+const laNoche = (trasFichar.noches ?? []).at(-1)
+comprobar(
+  laNoche?.date === manianaIso,
+  `y guardarla con la fecha de la mañana en que uno se levanta, y trae ${laNoche?.date}`
+)
+comprobar(
+  laNoche?.estimado === undefined,
+  'sin marcarla como estimada: la apagó un gesto tuyo, no un despiste de la app'
+)
+await page.screenshot({ path: `${OUT}/medir-15-noche-cerrada.png`, fullPage: true })
+/*
+ * Se devuelve el reloj a su hora y se recarga: si no, la app se queda pensando
+ * que es mañana y el resto del recorrido miraría el día equivocado.
+ */
+await page.clock.setFixedTime(new Date())
+await page.evaluate(() => {
+  const d = JSON.parse(localStorage.getItem('ritmo-data-v1'))
+  // El fichaje de mañana estorba a lo que viene después, que es de hoy.
+  d.fichajes = (d.fichajes ?? []).filter((f) => f.date !== new Date(Date.now() + 86400000).toISOString().slice(0, 10))
+  localStorage.setItem('ritmo-data-v1', JSON.stringify(d))
+})
+await page.reload({ waitUntil: 'networkidle' })
+await pestana('Medir')
+
 // ── Sin color: encendida se distingue por fondo y tinta, no por tono ──
 await page.getByRole('button', { name: 'Frío', exact: true }).click()
 await page.waitForTimeout(300)
@@ -681,13 +779,17 @@ comprobar(
 )
 await page.screenshot({ path: `${OUT}/medir-06-parte.png`, fullPage: true })
 
-// ── La noche, con la fecha de la mañana en que uno se levanta ──────────
+// ── La noche a mano, encendida y apagada al momento ────────────────────
+const nochesAntes = ((await datos()).noches ?? []).length
 await page.getByRole('button', { name: 'A oscuras', exact: true }).click()
 await page.waitForTimeout(300)
 await page.getByRole('button', { name: 'A oscuras, en marcha' }).click()
 await page.waitForTimeout(300)
 const d3 = await datos()
-comprobar(d3.noches?.length === 1, 'la noche debería quedar apuntada')
+comprobar(
+  (d3.noches ?? []).length === nochesAntes + 1,
+  'la noche debería quedar apuntada'
+)
 
 // ── El reparto del día, con el anidamiento a la vista ─────────────────
 // Dos ratos a la vez —al sol y descalzo— para comprobar lo que más importa:
