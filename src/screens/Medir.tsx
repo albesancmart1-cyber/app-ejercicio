@@ -47,7 +47,14 @@ import {
   escribirHora,
   minutosDeAhora
 } from '../domain/arcoSolar'
-import { coordenadasDe, fichajeAbierto, queSirve } from '../domain/jornada'
+import {
+  coordenadasDe,
+  fichajeAbierto,
+  minutosDeTrabajo,
+  problemaDelTramoDeTrabajo,
+  queSirve,
+  tramoDeTrabajo
+} from '../domain/jornada'
 import {
   MINUTOS_SOSPECHOSOS,
   NOMBRES_TIPO,
@@ -82,7 +89,16 @@ import { CampoNumero } from '../components/ui'
 import ParteDelDia from '../components/ParteDelDia'
 import RepartoDelDia from '../components/RepartoDelDia'
 import type { Coordenadas } from '../domain/arcoSolar'
-import type { EnCurso, Lampara, PielExpuesta, Profile, TipoEnCurso, ZonaPBM } from '../domain/types'
+import type {
+  EnCurso,
+  Fichaje,
+  Lampara,
+  PerfilDeLuz,
+  PielExpuesta,
+  Profile,
+  TipoEnCurso,
+  ZonaPBM
+} from '../domain/types'
 import type { EstadoDelCielo } from '../domain/cielo'
 import type { IconName } from '../components/Icon'
 
@@ -148,6 +164,10 @@ export default function Medir({ onEntrenar }: { onEntrenar?: () => void }) {
 
   const abiertos = abiertosDe(data.enCurso, hoy)
   const fichaje = fichajeAbierto(data.fichajes, hoy)
+  const trabajoHoy = minutosDeTrabajo(data.fichajes, hoy, ahora)
+  const sitios = data.perfilesLuz ?? []
+  const sitioHabitual =
+    sitios.find((p) => p.id === data.profile?.perfilLuzHabitualId) ?? sitios[0]
   const fuera = yaEstaFuera(data.enCurso, hoy)
   /** El entreno no es una actividad de esta pantalla: se mira, no se maneja. */
   const entreno = findActiveSession(data.sessions, hoy)
@@ -241,13 +261,22 @@ export default function Medir({ onEntrenar }: { onEntrenar?: () => void }) {
         <BaldosaSuelta
           nombre={fichaje ? 'Salgo' : 'Trabajo'}
           icono="trabajo"
-          pie={fichaje ? escribirDuracion(Math.max(0, ahora - fichaje.entrada)) : 'Fichar'}
+          /*
+           * Apagada enseña la jornada de hoy, como cualquier otra baldosa. Antes
+           * decía «Fichar» y nada más, así que un tramo apuntado a mano no se
+           * veía por ninguna parte y parecía que no había entrado.
+           */
+          pie={
+            fichaje
+              ? escribirDuracion(Math.max(0, ahora - fichaje.entrada))
+              : trabajoHoy > 0
+                ? escribirDuracion(trabajoHoy)
+                : 'Fichar'
+          }
           encendida={fichaje !== undefined}
           onPulsar={() => {
             if (fichaje) return actions.saveFichaje({ ...fichaje, salida: minutosDeAhora() })
-            const sitio =
-              (data.perfilesLuz ?? []).find((p) => p.id === data.profile?.perfilLuzHabitualId) ??
-              (data.perfilesLuz ?? [])[0]
+            const sitio = sitioHabitual
             if (!sitio) return
             actions.saveFichaje({
               id: nuevoId(),
@@ -352,7 +381,11 @@ export default function Medir({ onEntrenar }: { onEntrenar?: () => void }) {
       {aMano ? (
         <AMano
           hoy={hoy}
+          ahora={ahora}
           lamparas={data.lamparas ?? []}
+          sitios={sitios}
+          sitioHabitual={sitioHabitual}
+          fichajes={data.fichajes}
           nivelDe={(t) =>
             t === 'frio' || t === 'grounding'
               ? (estadoDeHabito(t, data.habitos, hoy).actual?.nivel ?? 1)
@@ -360,6 +393,10 @@ export default function Medir({ onEntrenar }: { onEntrenar?: () => void }) {
           }
           onGuardar={(x, hasta, nivel) => {
             guardar(alParar(x, hasta, { nivelHabito: nivel }), x.date)
+            setAMano(false)
+          }}
+          onGuardarTrabajo={(entrada, salida, sitio) => {
+            actions.saveFichaje(tramoDeTrabajo(nuevoId(), hoy, entrada, salida, sitio))
             setAMano(false)
           }}
           onDejarlo={() => setAMano(false)}
@@ -748,36 +785,69 @@ function CieloEnMarcha({
  * se para al momento que digas, así que lo que se guarda es exactamente lo
  * mismo que si lo hubieras cronometrado. Un rato apuntado a mano y uno
  * cronometrado valen igual, porque los dos los pusiste tú.
+ *
+ * ## El trabajo también
+ *
+ * La jornada no es un `EnCurso` —el fichaje ya sabía estar abierto por su
+ * cuenta—, así que va por su lado, pero está aquí y no en otra pantalla porque
+ * el olvido es el mismo olvido: entras a trabajar con las manos ocupadas y el
+ * móvil en el bolsillo. Y se pide **entré / salí** en vez de una duración,
+ * porque de un turno uno se acuerda por sus dos horas, no por lo que duró.
  */
+type TipoAMano = TipoEnCurso | 'trabajo'
+
 function AMano({
   hoy,
+  ahora,
   lamparas,
+  sitios,
+  sitioHabitual,
+  fichajes,
   nivelDe,
   onGuardar,
+  onGuardarTrabajo,
   onDejarlo
 }: {
   hoy: string
+  ahora: number
   lamparas: Lampara[]
+  sitios: PerfilDeLuz[]
+  sitioHabitual?: PerfilDeLuz
+  fichajes?: Fichaje[]
   nivelDe: (t: TipoEnCurso) => number
   onGuardar: (x: EnCurso, hastaMin: number, nivel?: number) => void
+  onGuardarTrabajo: (entrada: number, salida: number, sitio: PerfilDeLuz) => void
   onDejarlo: () => void
 }) {
-  const [tipo, setTipo] = useState<TipoEnCurso>('fuera')
+  const [tipo, setTipo] = useState<TipoAMano>('fuera')
   const [desde, setDesde] = useState(escribirHora(Math.max(0, minutosDeAhora() - 60)))
   const [minutos, setMinutos] = useState<number | undefined>(30)
+  const [hasta, setHasta] = useState(escribirHora(minutosDeAhora()))
   const [piel, setPiel] = useState<PielExpuesta>('brazos_piernas')
   const [cielo, setCielo] = useState<EstadoDelCielo>('limpio')
   const [lamparaId, setLamparaId] = useState(lamparas[0]?.id ?? '')
+  const [sitioId, setSitioId] = useState(sitioHabitual?.id ?? '')
 
   const inicio = minutosDeHora(desde)
-  const vale = inicio !== undefined && minutos !== undefined && minutos > 0
+  const fin = minutosDeHora(hasta)
+  const sitio = sitios.find((x) => x.id === sitioId) ?? sitioHabitual
+  const esTrabajo = tipo === 'trabajo'
+
+  const problema = esTrabajo
+    ? (sitios.length === 0
+        ? 'Primero hace falta un sitio de trabajo con su luz, en Luz.'
+        : problemaDelTramoDeTrabajo(inicio, fin, fichajes, hoy, ahora))
+    : undefined
+  const vale = esTrabajo
+    ? problema === undefined
+    : inicio !== undefined && minutos !== undefined && minutos > 0
 
   return (
     <div className="card">
       <p className="eyebrow">Apuntar un rato a mano</p>
       <p className="dim" style={{ marginTop: 8 }}>
-        Para lo que se te olvidó cronometrar. Se guarda igual que si lo hubieras medido: la hora es
-        la que digas, no la de ahora.
+        Para lo que se te olvidó cronometrar, la jornada incluida. Se guarda igual que si lo
+        hubieras medido: la hora es la que digas, no la de ahora.
       </p>
 
       <div className="options" style={{ marginTop: 14 }}>
@@ -786,23 +856,73 @@ function AMano({
             {b.nombre}
           </Opcion>
         ))}
+        <Opcion activa={esTrabajo} onElegir={() => setTipo('trabajo')}>
+          Trabajo
+        </Opcion>
       </div>
 
-      <div className="field-row" style={{ marginTop: 14 }}>
-        <label className="field">
-          <span className="bar-label">Empezó a las</span>
-          <input
-            type="time"
-            value={desde}
-            onChange={(e) => setDesde(e.target.value)}
-            aria-label="Hora a la que empezó"
-          />
-        </label>
-        <label className="field">
-          <span className="bar-label">Cuántos minutos</span>
-          <CampoNumero valor={minutos} onCambiar={setMinutos} placeholder="30" />
-        </label>
-      </div>
+      {esTrabajo ? (
+        <div className="field-row" style={{ marginTop: 14 }}>
+          <label className="field">
+            <span className="bar-label">Entré a las</span>
+            <input
+              type="time"
+              value={desde}
+              onChange={(e) => setDesde(e.target.value)}
+              aria-label="Hora a la que entré"
+            />
+          </label>
+          <label className="field">
+            <span className="bar-label">Salí a las</span>
+            <input
+              type="time"
+              value={hasta}
+              onChange={(e) => setHasta(e.target.value)}
+              aria-label="Hora a la que salí"
+            />
+          </label>
+        </div>
+      ) : (
+        <div className="field-row" style={{ marginTop: 14 }}>
+          <label className="field">
+            <span className="bar-label">Empezó a las</span>
+            <input
+              type="time"
+              value={desde}
+              onChange={(e) => setDesde(e.target.value)}
+              aria-label="Hora a la que empezó"
+            />
+          </label>
+          <label className="field">
+            <span className="bar-label">Cuántos minutos</span>
+            <CampoNumero valor={minutos} onCambiar={setMinutos} placeholder="30" />
+          </label>
+        </div>
+      )}
+
+      {esTrabajo && sitios.length > 1 && (
+        <>
+          <Regla />
+          <p className="eyebrow">En qué sitio</p>
+          <p className="faint" style={{ marginTop: 6 }}>
+            De aquí sale la luz que se guarda con el tramo: no vale lo mismo un taller sin
+            ventanas que una oficina al lado del cristal.
+          </p>
+          <div className="options-col" style={{ marginTop: 10 }}>
+            {sitios.map((x) => (
+              <Opcion key={x.id} activa={sitio?.id === x.id} onElegir={() => setSitioId(x.id)}>
+                {x.nombre}
+              </Opcion>
+            ))}
+          </div>
+        </>
+      )}
+
+      {esTrabajo && problema !== undefined && inicio !== undefined && fin !== undefined && (
+        <p className="dim" style={{ marginTop: 12 }}>
+          {problema}
+        </p>
+      )}
 
       {tipo === 'sol' && (
         <>
@@ -847,6 +967,10 @@ function AMano({
         tono="primario"
         disabled={!vale}
         onClick={() => {
+          if (esTrabajo) {
+            if (inicio === undefined || fin === undefined || !sitio) return
+            return onGuardarTrabajo(inicio, fin, sitio)
+          }
           if (inicio === undefined || minutos === undefined) return
           const x: EnCurso = {
             tipo,
@@ -858,7 +982,7 @@ function AMano({
           onGuardar(x, inicio + minutos, nivelDe(tipo))
         }}
       >
-        Guardar el rato
+        {esTrabajo ? 'Guardar el tramo de trabajo' : 'Guardar el rato'}
       </Boton>
       <Boton tono="callado" onClick={onDejarlo}>
         Dejarlo

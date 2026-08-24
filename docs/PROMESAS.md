@@ -275,6 +275,14 @@ costar un toque, y ese toque tenía que alimentar todo lo ya construido.
   → src/domain/vitaminaD.ts :: minutosParaQuemarse
 - [x] medir-fichar · Fichar y salir del trabajo desde el mismo sitio
   → src/screens/Medir.tsx :: saveFichaje
+- [x] medir-trabajo-a-mano · La jornada se puede apuntar a mano, porque fichar se olvida
+  → src/domain/jornada.ts :: tramoDeTrabajo
+- [x] medir-trabajo-dos-horas · Se piden las dos horas, entré y salí, no una duración
+  → src/screens/Medir.tsx :: Salí a las
+- [x] medir-trabajo-sin-pisarse · Dos tramos que se pisan no se guardan, y se dice con cuál
+  → src/domain/jornada.ts :: problemaDelTramoDeTrabajo
+- [x] medir-trabajo-hoy · La baldosa de Trabajo enseña la jornada del día, como las demás
+  → src/domain/jornada.ts :: minutosDeTrabajo
 - [x] medir-cafe-cuenta · El café abre la ventana, y se dice que cuenta
   → src/screens/Medir.tsx :: El café cuenta
 
@@ -427,4 +435,4 @@ Estas también son promesas, y romperlas sería peor que no cumplir una función
 
 ---
 
-TOTAL: 160
+TOTAL: 164

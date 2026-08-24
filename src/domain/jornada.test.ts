@@ -7,13 +7,17 @@ import {
   entradaHabitual,
   esLaborable,
   fichajeAbierto,
+  fichajesDe,
   filtroCuestaAmplitud,
   juzgarHueco,
+  minutosDeTrabajo,
   minutosDentro,
   nombreDiaSemana,
+  problemaDelTramoDeTrabajo,
   queSirve,
   resumenDeJornada,
   tieneSitio,
+  tramoDeTrabajo,
   tramosConLuzALaEntrada,
   ventanaContraTuJornada
 } from './jornada'
@@ -405,5 +409,99 @@ describe('de quién es la ventana de la mañana', () => {
   it('donde no amanece no hay ventana que repartir', () => {
     const r = ventanaContraTuJornada(LUNES, { desde: null, hasta: null }, perfil, conEntrada(6 * 60))
     expect(r.de).toBe('tuya')
+  })
+})
+
+describe('apuntar la jornada a mano', () => {
+  const HOY = '2026-08-24'
+  const SITIO: PerfilDeLuz = { id: 'taller', ...TALLER }
+  const ficha = (id: string, entrada: number, salida?: number): Fichaje => ({
+    id,
+    date: HOY,
+    entrada,
+    salida,
+    luz: TALLER
+  })
+
+  it('guarda el tramo con la luz del sitio congelada, no con una referencia', () => {
+    const f = tramoDeTrabajo('x', HOY, 6 * 60 + 45, 8 * 60 + 48, SITIO)
+    expect(f.entrada).toBe(405)
+    expect(f.salida).toBe(528)
+    expect(f.perfilLuzId).toBe('taller')
+    expect(f.luz.lux).toBe(450)
+    expect(f.luz.filtro).toBe('ambar')
+  })
+
+  it('un tramo normal vale', () => {
+    expect(problemaDelTramoDeTrabajo(405, 528, [], HOY, 20 * 60)).toBeUndefined()
+  })
+
+  it('sin las dos horas no hay tramo', () => {
+    expect(problemaDelTramoDeTrabajo(undefined, 528, [], HOY, 20 * 60)).toMatch(/Faltan/)
+    expect(problemaDelTramoDeTrabajo(405, undefined, [], HOY, 20 * 60)).toMatch(/Faltan/)
+  })
+
+  it('salir antes de entrar no es un turno, y se manda partirlo por la medianoche', () => {
+    const q = problemaDelTramoDeTrabajo(22 * 60, 6 * 60, [], HOY, 23 * 60)
+    expect(q).toMatch(/después de la de entrar/)
+    expect(q).toMatch(/medianoche/)
+  })
+
+  it('un tramo de duración cero tampoco', () => {
+    expect(problemaDelTramoDeTrabajo(405, 405, [], HOY, 20 * 60)).toBeDefined()
+  })
+
+  it('no deja que dos tramos se pisen, y dice con cuál', () => {
+    const ya = [ficha('a', 405, 528)]
+    const q = problemaDelTramoDeTrabajo(8 * 60, 10 * 60, ya, HOY, 20 * 60)
+    expect(q).toMatch(/06:45/)
+    expect(q).toMatch(/08:48/)
+  })
+
+  it('pero dos turnos seguidos del mismo día sí valen: tocarse no es pisarse', () => {
+    const manana = [ficha('a', 405, 528)]
+    expect(problemaDelTramoDeTrabajo(528, 15 * 60, manana, HOY, 20 * 60)).toBeUndefined()
+    expect(problemaDelTramoDeTrabajo(16 * 60, 20 * 60, manana, HOY, 20 * 60)).toBeUndefined()
+  })
+
+  it('el tramo abierto ocupa hasta ahora mismo, así que tampoco se le puede meter encima', () => {
+    const dentro = [ficha('a', 9 * 60)]
+    expect(problemaDelTramoDeTrabajo(10 * 60, 11 * 60, dentro, HOY, 12 * 60)).toBeDefined()
+    // Antes de entrar sí cabe.
+    expect(problemaDelTramoDeTrabajo(6 * 60, 8 * 60, dentro, HOY, 12 * 60)).toBeUndefined()
+  })
+
+  it('el que se corrige no se pisa consigo mismo', () => {
+    const ya = [ficha('a', 405, 528)]
+    expect(problemaDelTramoDeTrabajo(405, 9 * 60, ya, HOY, 20 * 60, 'a')).toBeUndefined()
+  })
+
+  it('un tramo de otro día no estorba al de hoy', () => {
+    const ayer: Fichaje = { ...ficha('a', 405, 528), date: '2026-08-23' }
+    expect(problemaDelTramoDeTrabajo(405, 528, [ayer], HOY, 20 * 60)).toBeUndefined()
+  })
+
+  it('la jornada del día suma todos los tramos', () => {
+    const dos = [ficha('a', 405, 528), ficha('b', 16 * 60, 20 * 60)]
+    expect(minutosDeTrabajo(dos, HOY, 21 * 60)).toBe(123 + 240)
+  })
+
+  it('y el tramo abierto cuenta hasta ahora', () => {
+    expect(minutosDeTrabajo([ficha('a', 9 * 60)], HOY, 11 * 60)).toBe(120)
+  })
+
+  it('sin fichajes son cero minutos, no un hueco raro', () => {
+    expect(minutosDeTrabajo(undefined, HOY, 11 * 60)).toBe(0)
+    expect(minutosDeTrabajo([], HOY, 11 * 60)).toBe(0)
+  })
+
+  it('une en vez de sumar, por si acaso llegaran dos pisados de otra parte', () => {
+    const pisados = [ficha('a', 8 * 60, 12 * 60), ficha('b', 10 * 60, 14 * 60)]
+    expect(minutosDeTrabajo(pisados, HOY, 20 * 60)).toBe(360)
+  })
+
+  it('los tramos del día salen ordenados por la hora de entrar', () => {
+    const revueltos = [ficha('b', 16 * 60, 20 * 60), ficha('a', 405, 528)]
+    expect(fichajesDe(revueltos, HOY).map((f) => f.id)).toEqual(['a', 'b'])
   })
 })

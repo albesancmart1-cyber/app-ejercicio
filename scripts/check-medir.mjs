@@ -324,18 +324,120 @@ comprobar(conPBM[0]?.zona === 'espalda', `con la zona elegida, y trae «${conPBM
 comprobar(conPBM[0]?.distanciaCm === 15, 'y la distancia, no una supuesta')
 
 // ── Un rato a mano, con su hora ───────────────────────────────────────
+/*
+ * La hora se elige lejos de las sesiones de sol de antes, que ocupan los
+ * cuarenta minutos anteriores a ahora mismo. Si se dejara fija, el recorrido
+ * pasaría o fallaría según la hora a la que se ejecutara: a las ocho de la
+ * tarde un rato a las 06:30 está suelto, y a las siete de la mañana se pisa con
+ * ellas. Media noche vale salvo de madrugada, y entonces vale el mediodía.
+ */
+const ahoraMin = await page.evaluate(() => new Date().getHours() * 60 + new Date().getMinutes())
+const sueltoMin = ahoraMin >= 120 ? 0 : 12 * 60
+const suelto = `${String(Math.floor(sueltoMin / 60)).padStart(2, '0')}:${String(sueltoMin % 60).padStart(2, '0')}`
+
 await page.getByRole('button', { name: 'Apuntar un rato a mano' }).click()
 await page.waitForTimeout(300)
-await page.getByLabel('Hora a la que empezó').fill('06:30')
+await page.getByLabel('Hora a la que empezó').fill(suelto)
 await page.getByRole('button', { name: 'Guardar el rato' }).click()
 await page.waitForTimeout(400)
-const aMano = ((await datos()).salidas ?? []).find((s) => s.desde === 390)
+const aMano = ((await datos()).salidas ?? []).find((s) => s.desde === sueltoMin)
 comprobar(aMano !== undefined, 'el rato apuntado a mano debería guardarse con la hora que se puso')
 comprobar(aMano?.minutos === 30, `y con sus minutos, y trae ${aMano?.minutos}`)
 comprobar(
   aMano?.estimado === undefined,
   'y sin marcarse como estimado: lo puso el usuario, no lo adivinó la app'
 )
+
+// ── La jornada, a mano, porque fichar se olvida ───────────────────────
+/*
+ * Hace falta un sitio de trabajo con su luz: lo que se guarda con el tramo es
+ * la luz congelada, no una referencia al perfil, que podría cambiar después.
+ */
+await page.evaluate(() => {
+  const d = JSON.parse(localStorage.getItem('ritmo-data-v1'))
+  d.perfilesLuz = [
+    { id: 'taller', nombre: 'Taller', temperaturaK: 5700, lux: 450, ventana: false, filtro: 'ambar' }
+  ]
+  d.profile.perfilLuzHabitualId = 'taller'
+  localStorage.setItem('ritmo-data-v1', JSON.stringify(d))
+})
+await page.reload({ waitUntil: 'networkidle' })
+await pestana('Medir')
+
+const panel = () => page.locator('.card').filter({ hasText: 'Apuntar un rato a mano' })
+await page.getByRole('button', { name: 'Apuntar un rato a mano' }).click()
+await page.waitForTimeout(300)
+await panel().getByRole('button', { name: 'Trabajo' }).click()
+await page.waitForTimeout(300)
+
+const conTrabajo = await panel().innerText()
+comprobar(conTrabajo.includes('Entré a las'), 'el trabajo debería pedir la hora de entrar')
+comprobar(
+  conTrabajo.includes('Salí a las'),
+  'y la de salir, no una duración: de un turno uno se acuerda por sus dos horas'
+)
+
+await page.getByLabel('Hora a la que entré').fill('06:45')
+await page.getByLabel('Hora a la que salí').fill('08:48')
+await page.getByRole('button', { name: 'Guardar el tramo de trabajo' }).click()
+await page.waitForTimeout(400)
+
+const conFichaje = await datos()
+const puesto = (conFichaje.fichajes ?? []).find((f) => f.entrada === 405)
+comprobar(puesto !== undefined, 'el tramo de trabajo debería guardarse con la hora que se puso')
+comprobar(puesto?.salida === 528, `y con la de salir, y trae ${puesto?.salida}`)
+comprobar(
+  puesto?.luz?.lux === 450 && puesto?.luz?.filtro === 'ambar',
+  'con la luz del sitio congelada dentro, no con una referencia que el perfil pueda cambiar'
+)
+
+/*
+ * Y tiene que verse: antes la baldosa apagada decía «Fichar» y nada más, así
+ * que un tramo apuntado a mano no aparecía por ninguna parte.
+ */
+const rejillaConTrabajo = await texto()
+comprobar(
+  rejillaConTrabajo.includes('2 h 03 min'),
+  'la baldosa de Trabajo debería enseñar la jornada de hoy, como las demás'
+)
+
+// Y el reparto del día tiene que contarlo como trabajo.
+comprobar(
+  rejillaConTrabajo.includes('Trabajo'),
+  'y el reparto del día debería tener su rama de trabajo'
+)
+
+// ── Dos tramos que se pisan no se guardan, y se dice con cuál ─────────
+await page.getByRole('button', { name: 'Apuntar un rato a mano' }).click()
+await page.waitForTimeout(300)
+await panel().getByRole('button', { name: 'Trabajo' }).click()
+await page.getByLabel('Hora a la que entré').fill('08:00')
+await page.getByLabel('Hora a la que salí').fill('10:00')
+await page.waitForTimeout(300)
+
+const pisado = await panel().innerText()
+comprobar(pisado.includes('Se pisa con el tramo'), 'un tramo que se pisa con otro debería quejarse')
+comprobar(pisado.includes('06:45'), 'diciendo con cuál, por sus horas')
+comprobar(
+  await panel().getByRole('button', { name: 'Guardar el tramo de trabajo' }).isDisabled(),
+  'y no dejar guardarlo'
+)
+
+// Corregido, sí entra: un segundo turno que empieza donde acabó el primero.
+await page.getByLabel('Hora a la que entré').fill('16:00')
+await page.getByLabel('Hora a la que salí').fill('20:00')
+await page.waitForTimeout(300)
+await page.getByRole('button', { name: 'Guardar el tramo de trabajo' }).click()
+await page.waitForTimeout(400)
+comprobar(
+  ((await datos()).fichajes ?? []).length === 2,
+  'dos turnos en el mismo día son normales y tienen que caber'
+)
+comprobar(
+  (await texto()).includes('6 h 03 min'),
+  'y la baldosa tiene que sumar los dos, no enseñar solo el último'
+)
+await page.screenshot({ path: `${OUT}/medir-11-trabajo.png`, fullPage: true })
 
 // ── Sin color: encendida se distingue por fondo y tinta, no por tono ──
 await page.getByRole('button', { name: 'Frío', exact: true }).click()
@@ -391,15 +493,15 @@ comprobar(/\d{2}:\d{2}/.test(luz), 'Luz debería seguir enseñando el arco')
 /*
  * A estas alturas hay tres ratos de calle: la media hora del primer sol, los
  * cuarenta minutos de la sesión partida por el cielo —que empezó antes y acabó
- * a la vez, o sea que se solapan— y la media hora apuntada a mano a las 06:30.
- * Sumados salen cien minutos; unidos, setenta, que son los buenos. El solape no
- * puede contarse dos veces, y los ratos de grounding parados al instante duran
- * cero.
+ * a la vez, o sea que se solapan— y la media hora apuntada a mano en una hora
+ * suelta. Sumados salen cien minutos; unidos, setenta, que son los buenos. El
+ * solape no puede contarse dos veces, y los ratos de grounding parados al
+ * instante duran cero.
  */
 comprobar(
   luz.includes('70 min fuera'),
   `el balance de Luz debería unir los ratos de calle en setenta minutos, y dice «${
-    luz.split('\n').find((l) => l.includes('fuera')) ?? 'nada de fuera'
+    luz.split('\n').find((l) => l.includes('min fuera')) ?? 'nada de fuera'
   }»`
 )
 await page.screenshot({ path: `${OUT}/medir-04-en-luz.png`, fullPage: true })

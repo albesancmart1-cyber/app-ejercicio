@@ -30,10 +30,12 @@ import {
   ALTURAS,
   arcoDelDia,
   elevacionSolar,
+  escribirHora,
   sumarDiaIso,
   type ArcoDelDia,
   type Coordenadas
 } from './arcoSolar'
+import { minutosDe } from './reparto'
 
 export const FILTROS: Record<Filtro, string> = {
   ninguno: 'Sin gafas',
@@ -215,7 +217,93 @@ export function minutosDentro(fichaje: Fichaje, ahoraMin: number): number {
   return Math.max(0, fin - fichaje.entrada)
 }
 
-/** El fichaje abierto de un día, si lo hay. */
+/** Los fichajes de un día, del primero al último. */
+export function fichajesDe(fichajes: Fichaje[] | undefined, fechaIso: string): Fichaje[] {
+  return (fichajes ?? []).filter((f) => f.date === fechaIso).sort((a, b) => a.entrada - b.entrada)
+}
+
+/**
+ * Cuánta jornada llevas apuntada hoy, contando todos los tramos.
+ *
+ * Se unen en vez de sumarse por la misma razón que los ratos de calle: si dos
+ * tramos se pisaran, sumarlos daría más horas de las que tiene el día. La
+ * entrada a mano no deja que se pisen, pero la cuenta no depende de eso.
+ */
+export function minutosDeTrabajo(
+  fichajes: Fichaje[] | undefined,
+  fechaIso: string,
+  ahoraMin: number
+): number {
+  return minutosDe(
+    fichajesDe(fichajes, fechaIso).map((f) => ({ desde: f.entrada, hasta: f.salida ?? ahoraMin }))
+  )
+}
+
+/**
+ * Por qué no se puede guardar este tramo de jornada a mano, si es que no.
+ *
+ * Existe porque **olvidarse de fichar es lo normal**, no la excepción: se entra
+ * a trabajar con las manos ocupadas y el móvil en el bolsillo. Si la única
+ * forma de tener una jornada apuntada fuese acordarse de pulsar dos veces al
+ * minuto exacto, la mitad de los días quedarían en blanco —y un día en blanco
+ * no es un día sin trabajar, es un día sin saber, que es muy distinto.
+ *
+ * Lo que sí se comprueba es que el tramo sea posible. Un tramo que se pisa con
+ * otro ya apuntado no es un despiste que valga la pena guardar: o sobra uno o
+ * las horas están mal, y las dos cosas se arreglan mejor antes de guardar que
+ * después.
+ *
+ * Devuelve la queja escrita para enseñarla tal cual, o `undefined` si el tramo
+ * vale. `salvo` es el fichaje que se está corrigiendo, que obviamente no se
+ * pisa consigo mismo.
+ */
+export function problemaDelTramoDeTrabajo(
+  entrada: number | undefined,
+  salida: number | undefined,
+  fichajes: Fichaje[] | undefined,
+  fechaIso: string,
+  ahoraMin: number,
+  salvo?: string
+): string | undefined {
+  if (entrada === undefined || salida === undefined) return 'Faltan las horas de entrar y de salir.'
+  if (salida <= entrada) {
+    return 'La hora de salir tiene que ir después de la de entrar. Un turno que cruza la medianoche se apunta en dos tramos, uno en cada día.'
+  }
+
+  const pisado = fichajesDe(fichajes, fechaIso)
+    .filter((f) => f.id !== salvo)
+    .find((f) => entrada < (f.salida ?? ahoraMin) && salida > f.entrada)
+  if (pisado) {
+    const fin = pisado.salida === undefined ? 'todavía sin cerrar' : `las ${escribirHora(pisado.salida)}`
+    return `Se pisa con el tramo de las ${escribirHora(pisado.entrada)} a ${fin} que ya tienes hoy.`
+  }
+  return undefined
+}
+
+/** Un tramo de jornada tal y como se guarda, con la luz del sitio congelada. */
+export function tramoDeTrabajo(
+  id: string,
+  fechaIso: string,
+  entrada: number,
+  salida: number,
+  sitio: PerfilDeLuz
+): Fichaje {
+  return {
+    id,
+    date: fechaIso,
+    entrada,
+    salida,
+    perfilLuzId: sitio.id,
+    luz: {
+      nombre: sitio.nombre,
+      temperaturaK: sitio.temperaturaK,
+      lux: sitio.lux,
+      ventana: sitio.ventana,
+      filtro: sitio.filtro
+    }
+  }
+}
+
 /* ══════════════════════════════════════════════ ¿ES TUYA ESA VENTANA? ══ */
 
 /**
@@ -304,6 +392,7 @@ export function ventanaContraTuJornada(
   return { de: 'parte', hastaQue: entrada, entrada }
 }
 
+/** El fichaje abierto de un día, si lo hay. */
 export function fichajeAbierto(fichajes: Fichaje[] | undefined, fechaIso: string): Fichaje | undefined {
   return fichajes?.find((f) => f.date === fechaIso && f.salida === undefined)
 }
