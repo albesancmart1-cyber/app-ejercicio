@@ -181,6 +181,51 @@ await page.getByRole('button', { name: 'Guardar sesión' }).click()
 await page.waitForTimeout(400)
 comprobar(((await datos()).sesionesPBM ?? []).length === 1, 'la sesión debería guardarse')
 
+// ── Corregir una lámpara sin borrarla y volver a escribirla ────────────
+/*
+ * El dato que más se equivoca uno al teclear es la irradiancia, y es justo el
+ * que multiplica toda la dosis. Antes la única salida era borrar la lámpara, y
+ * eso dejaba sin calcular todas las sesiones que la usaban.
+ */
+await page.getByRole('button', { name: 'Editar Panel del salón' }).click()
+await page.waitForTimeout(300)
+
+const editando = await texto()
+comprobar(editando.includes('Corregir la lámpara'), 'debería poder corregirse una lámpara')
+comprobar(
+  editando.includes('se recalculan'),
+  'avisando de que las sesiones ya apuntadas se recalculan: la dosis no va congelada'
+)
+comprobar(
+  editando.includes('Guardar cambios'),
+  'y el botón debería decir que corrige, no que crea otra'
+)
+
+// Se le cambia el nombre y se guarda: ni se duplica ni se va al final.
+await page.getByPlaceholder('Panel del salón').fill('Panel corregido')
+await page.getByRole('button', { name: 'Guardar cambios' }).click()
+await page.waitForTimeout(400)
+
+const trasEditar = (await datos()).lamparas ?? []
+comprobar(trasEditar.length === 1, `corregir no debería duplicar la lámpara, y hay ${trasEditar.length}`)
+comprobar(trasEditar[0]?.nombre === 'Panel corregido', 'con el nombre nuevo')
+comprobar(
+  trasEditar[0]?.ondas?.length === 4,
+  'y sus cuatro ondas intactas: corregir el nombre no borra lo demás'
+)
+comprobar(
+  ((await datos()).sesionesPBM ?? []).length === 1,
+  'y la sesión que la usaba sigue ahí, en vez de quedarse huérfana'
+)
+
+// Se le devuelve el nombre, que el resto del recorrido lo busca por él.
+await page.getByRole('button', { name: 'Editar Panel corregido' }).click()
+await page.waitForTimeout(300)
+await page.getByPlaceholder('Panel del salón').fill('Panel del salón')
+await page.getByRole('button', { name: 'Guardar cambios' }).click()
+await page.waitForTimeout(400)
+await page.screenshot({ path: `${OUT}/luz-05c-editar.png`, fullPage: true })
+
 // ── Dos lámparas a la vez en la misma sesión ───────────────────────────
 await page.evaluate(() => {
   const d = JSON.parse(localStorage.getItem('ritmo-data-v1'))
@@ -205,7 +250,7 @@ await page.waitForTimeout(400)
 await page.getByRole('button', { name: 'Apuntar una sesión' }).first().click()
 await page.waitForTimeout(300)
 await page.getByLabel('Minutos').fill('10')
-await page.getByRole('button', { name: 'Bombilla de mano' }).click()
+await page.getByRole('button', { name: 'Bombilla de mano', exact: true }).click()
 await page.waitForTimeout(300)
 
 const conDos = await texto()

@@ -7,6 +7,7 @@ import {
   abiertosDe,
   abrir,
   alParar,
+  cambiarLamparas,
   cerrar,
   IMPLICA_FUERA,
   cambiarCielo,
@@ -194,6 +195,69 @@ describe('lo que se guarda al parar', () => {
     const s = de(r, 'sesionPBM')!.sesion
     expect(s.lamparaId).toBe('panel')
     expect(s.distanciaCm).toBe(40)
+  })
+
+  it('lo que se enciende y se apaga a mitad queda como tramos de una sola sesión', () => {
+    // Diez minutos con el panel, y a partir de ahí también con la bombilla.
+    let x = enCurso('lampara', 1200, { lamparaId: 'panel', distanciaCm: 15, zona: 'espalda' })
+    x = cambiarLamparas(
+      x,
+      [
+        { lamparaId: 'panel', distanciaCm: 15 },
+        { lamparaId: 'bombilla', distanciaCm: 10 }
+      ],
+      1210
+    )
+    const s = de(alParar(x, 1230), 'sesionPBM')!.sesion
+    expect(s.tramos?.map((t) => [t.minutos, t.lamparas.length])).toEqual([
+      [10, 1],
+      [20, 2]
+    ])
+    // Una sesión, no dos: estuviste debajo una vez y la piel no descansó en medio.
+    expect(s.minutos).toBe(30)
+  })
+
+  it('apagarlas todas a mitad deja su tramo vacío, y los minutos siguen contando', () => {
+    // Cambiar de una lámpara a otra son dos toques, y en medio no hay ninguna.
+    let x = enCurso('lampara', 1200, { lamparaId: 'panel', distanciaCm: 15, zona: 'espalda' })
+    x = cambiarLamparas(x, [], 1210)
+    const s = de(alParar(x, 1220), 'sesionPBM')!.sesion
+    expect(s.tramos?.map((t) => t.lamparas.length)).toEqual([1, 0])
+    expect(s.minutos).toBe(20)
+  })
+
+  it('si no hubo lámpara encendida en ningún momento no se guarda nada', () => {
+    let x = enCurso('lampara', 1200, { lamparaId: 'panel', distanciaCm: 15, zona: 'espalda' })
+    x = cambiarLamparas(x, [], 1200) // se apaga en el mismo minuto de empezar
+    expect(alParar(x, 1220)).toEqual([])
+  })
+
+  it('elegir lo mismo que ya estaba no abre un tramo', () => {
+    const x = enCurso('lampara', 1200, { lamparaId: 'panel', distanciaCm: 15, zona: 'espalda' })
+    expect(cambiarLamparas(x, [{ lamparaId: 'panel', distanciaCm: 15 }], 1210)).toBe(x)
+  })
+
+  it('pero moverla de sitio sí, porque la distancia cambia la dosis', () => {
+    const x = enCurso('lampara', 1200, { lamparaId: 'panel', distanciaCm: 15, zona: 'espalda' })
+    const y = cambiarLamparas(x, [{ lamparaId: 'panel', distanciaCm: 30 }], 1210)
+    expect(y).not.toBe(x)
+    expect(y.tramosDeLamparas).toHaveLength(2)
+  })
+
+  it('cambiar de idea en el mismo minuto corrige el tramo en vez de dejar uno de cero', () => {
+    let x = enCurso('lampara', 1200, { lamparaId: 'panel', distanciaCm: 15, zona: 'espalda' })
+    x = cambiarLamparas(x, [{ lamparaId: 'bombilla', distanciaCm: 10 }], 1210)
+    x = cambiarLamparas(x, [{ lamparaId: 'otra', distanciaCm: 20 }], 1210)
+    expect(x.tramosDeLamparas).toHaveLength(2)
+    expect(x.tramosDeLamparas?.[1].lamparas[0].lamparaId).toBe('otra')
+  })
+
+  it('sin cambios no se guardan tramos, para no repetir lo que ya está arriba', () => {
+    const r = alParar(
+      enCurso('lampara', 1200, { lamparaId: 'panel', distanciaCm: 30, zona: 'espalda' }),
+      1210
+    )
+    expect(de(r, 'sesionPBM')!.sesion.tramos).toBeUndefined()
   })
 
   it('con una sola no se guarda la lista, para no repetir lo que ya está arriba', () => {

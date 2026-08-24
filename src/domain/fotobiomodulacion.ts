@@ -32,7 +32,7 @@
  * inventarlo. Lo que hay es la cuenta de lo entregado, honesta, para que quien
  * la use sepa qué se está dando.
  */
-import type { Lampara, LamparaEnSesion, SesionPBM, ZonaPBM } from './types'
+import type { Lampara, LamparaEnSesion, SesionPBM, TramoDeLamparas, ZonaPBM } from './types'
 import { BANDAS, bandaDe, picosCubiertos, PICOS_KARU } from './luz'
 
 export const ZONAS: Record<ZonaPBM, string> = {
@@ -53,13 +53,21 @@ export interface DosisDeOnda {
   julios: number
 }
 
-/** Lo que puso cada lámpara, cuando hubo varias a la vez. */
+/**
+ * Lo que puso cada lámpara, cuando hubo varias a la vez.
+ *
+ * Va **por lámpara y por distancia**, no solo por lámpara: si a mitad de sesión
+ * la acercaste, son dos filas del mismo aparato con sus minutos y su factor
+ * cada una. Promediarlas daría un factor que no ocurrió en ningún momento.
+ */
 export interface DosisDeLampara {
   lamparaId: string
   nombre: string
   distanciaCm: number
   /** Cuánto se ha multiplicado o dividido su irradiancia por la distancia. */
   factorDistancia: number
+  /** Cuántos minutos estuvo encendida así. */
+  minutos: number
   julios: number
   juliosMitocondria: number
 }
@@ -100,11 +108,36 @@ export function factorDistancia(distanciaCm: number, referenciaCm: number): numb
  * dentro. Todo lo que calcula pasa por aquí.
  */
 export function lamparasDe(
-  sesion: Pick<SesionPBM, 'lamparaId' | 'distanciaCm' | 'lamparas'>
+  sesion: Pick<SesionPBM, 'lamparaId' | 'distanciaCm' | 'lamparas' | 'tramos'>
 ): LamparaEnSesion[] {
+  // Con tramos, «las lámparas de la sesión» son todas las que se encendieron en
+  // algún momento, sin repetir: es lo que hay que nombrar en una lista.
+  if (sesion.tramos && sesion.tramos.length > 0) {
+    const vistas = new Map<string, LamparaEnSesion>()
+    for (const t of sesion.tramos) {
+      for (const l of t.lamparas) {
+        if (!vistas.has(`${l.lamparaId}@${l.distanciaCm}`)) {
+          vistas.set(`${l.lamparaId}@${l.distanciaCm}`, l)
+        }
+      }
+    }
+    return [...vistas.values()]
+  }
   if (sesion.lamparas && sesion.lamparas.length > 0) return sesion.lamparas
   if (!sesion.lamparaId) return []
   return [{ lamparaId: sesion.lamparaId, distanciaCm: sesion.distanciaCm }]
+}
+
+/**
+ * Los trozos de una sesión, en las dos formas en que puede venir.
+ *
+ * Una sesión sin cambios de lámpara es un trozo único con todos sus minutos, y
+ * así el cálculo es el mismo para las dos. Nadie tiene que preguntarse si esta
+ * sesión tiene tramos o no.
+ */
+export function tramosDe(sesion: SesionPBM): TramoDeLamparas[] {
+  if (sesion.tramos && sesion.tramos.length > 0) return sesion.tramos
+  return [{ minutos: Math.max(0, sesion.minutos), lamparas: lamparasDe(sesion) }]
 }
 
 /**
@@ -133,54 +166,73 @@ export function lamparasDe(
  * y la suma lo refleja.
  */
 export function dosisDeSesion(sesion: SesionPBM, catalogo: Lampara[]): DosisSesion {
-  const segundos = Math.max(0, sesion.minutos) * 60
-  const puestas = lamparasDe(sesion)
-
-  const porLampara: DosisDeLampara[] = []
-  /** Las irradiancias por longitud de onda, ya sumadas entre lámparas. */
-  const porNm = new Map<number, number>()
-  let perdidas = 0
+  /** Una fila por lámpara **y distancia**: moverla a mitad son dos filas. */
+  const filas = new Map<string, DosisDeLampara>()
+  /** Las irradiancias por longitud de onda, ponderadas por el rato que duró cada tramo. */
+  const juliosPorNm = new Map<number, number>()
   const nmsCubiertos: number[] = []
+  const perdidas = new Set<string>()
+  let minutosTotales = 0
 
-  for (const puesta of puestas) {
-    const lampara = catalogo.find((l) => l.id === puesta.lamparaId)
-    // Una lámpara que se borró no se puede calcular, y sumar cero es más
-    // honesto que inventarle una lámpara media. Se dice cuántas faltan.
-    if (!lampara) {
-      perdidas++
-      continue
-    }
+  for (const tramo of tramosDe(sesion)) {
+    const minutos = Math.max(0, tramo.minutos)
+    const segundos = minutos * 60
+    minutosTotales += minutos
 
-    const factor = factorDistancia(puesta.distanciaCm, lampara.distanciaRefCm)
-    let julios = 0
-    let juliosMitocondria = 0
-
-    for (const o of lampara.ondas) {
-      const irradiancia = o.irradiancia * factor
-      porNm.set(o.nm, (porNm.get(o.nm) ?? 0) + irradiancia)
-      nmsCubiertos.push(o.nm)
-
-      const j = (irradiancia * segundos) / 1000
-      julios += j
-      const banda = bandaDe(o.nm)
-      if (banda && BANDAS[banda].proposito === 'mitocondria') {
-        juliosMitocondria += j * BANDAS[banda].peso
+    for (const puesta of tramo.lamparas) {
+      const lampara = catalogo.find((l) => l.id === puesta.lamparaId)
+      // Una lámpara que se borró no se puede calcular, y sumar cero es más
+      // honesto que inventarle una lámpara media. Se dice cuántas faltan.
+      if (!lampara) {
+        perdidas.add(puesta.lamparaId)
+        continue
       }
-    }
 
-    porLampara.push({
-      lamparaId: lampara.id,
-      nombre: lampara.nombre,
-      distanciaCm: puesta.distanciaCm,
-      factorDistancia: factor,
-      julios,
-      juliosMitocondria
-    })
+      const factor = factorDistancia(puesta.distanciaCm, lampara.distanciaRefCm)
+      const clave = `${lampara.id}@${puesta.distanciaCm}`
+      const fila = filas.get(clave) ?? {
+        lamparaId: lampara.id,
+        nombre: lampara.nombre,
+        distanciaCm: puesta.distanciaCm,
+        factorDistancia: factor,
+        minutos: 0,
+        julios: 0,
+        juliosMitocondria: 0
+      }
+      fila.minutos += minutos
+
+      for (const o of lampara.ondas) {
+        const j = (o.irradiancia * factor * segundos) / 1000
+        juliosPorNm.set(o.nm, (juliosPorNm.get(o.nm) ?? 0) + j)
+        nmsCubiertos.push(o.nm)
+
+        fila.julios += j
+        const banda = bandaDe(o.nm)
+        if (banda && BANDAS[banda].proposito === 'mitocondria') {
+          fila.juliosMitocondria += j * BANDAS[banda].peso
+        }
+      }
+
+      filas.set(clave, fila)
+    }
   }
 
-  const porOnda: DosisDeOnda[] = [...porNm.entries()]
+  const segundosTotales = minutosTotales * 60
+  const porOnda: DosisDeOnda[] = [...juliosPorNm.entries()]
     .sort((a, b) => a[0] - b[0])
-    .map(([nm, irradiancia]) => ({ nm, irradiancia, julios: (irradiancia * segundos) / 1000 }))
+    .map(([nm, julios]) => ({
+      nm,
+      /*
+       * La irradiancia que se enseña es la **media del rato**: los julios entre
+       * los segundos que duró la sesión. Con las lámparas fijas sale la de
+       * siempre; con una encendida solo la mitad del tiempo sale la mitad, que
+       * es lo honesto — no estuvo dándote eso todo el rato.
+       */
+      irradiancia: segundosTotales > 0 ? (julios * 1000) / segundosTotales : 0,
+      julios
+    }))
+
+  const porLampara = [...filas.values()]
 
   return {
     julios: porLampara.reduce((t, l) => t + l.julios, 0),
@@ -188,7 +240,7 @@ export function dosisDeSesion(sesion: SesionPBM, catalogo: Lampara[]): DosisSesi
     juliosMitocondria: porLampara.reduce((t, l) => t + l.juliosMitocondria, 0),
     picos: picosCubiertos(nmsCubiertos),
     porLampara,
-    lamparasPerdidas: perdidas
+    lamparasPerdidas: perdidas.size
   }
 }
 

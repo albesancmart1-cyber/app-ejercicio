@@ -27,10 +27,12 @@
 import type {
   EnCurso,
   ExposicionSolar,
+  LamparaEnSesion,
   NocheRegistrada,
   SalidaAlExterior,
   SesionPBM,
-  TipoEnCurso
+  TipoEnCurso,
+  TramoDeLamparas
 } from './types'
 import type { RegistroHabito } from './habitos'
 import type { EstadoDelCielo } from './cielo'
@@ -186,6 +188,88 @@ export function tramosDeCielo(x: EnCurso, hastaMin: number): TramoDeCielo[] {
   return out
 }
 
+/* ══════════════════════════════════════════════ LAS LÁMPARAS, A MITAD ══ */
+
+/**
+ * Encender o apagar lámparas sin parar el cronómetro.
+ *
+ * Es el mismo mecanismo que el del cielo y existe por lo mismo: **cambiar de
+ * lámpara a mitad es lo normal**. Se empieza con el panel grande en la espalda,
+ * a los diez minutos uno se da la vuelta y enciende además el pequeño para la
+ * rodilla, y al final apaga el grande y se queda cinco minutos solo con el otro.
+ * Si la app se quedara con lo que elegiste al empezar, los julios de esos tres
+ * trozos serían los del primero repetidos tres veces.
+ *
+ * Tocar no reescribe nada: cierra el trozo que llevabas y abre otro. Lo de antes
+ * se queda con las lámparas que había; lo que venga después, con las nuevas.
+ *
+ * Si el conjunto elegido es el que ya estaba —las mismas lámparas a las mismas
+ * distancias— no se abre tramo. Y si se cambia de idea dentro del mismo minuto
+ * se corrige el último, en vez de dejar un tramo de cero.
+ */
+export function cambiarLamparas(
+  x: EnCurso,
+  lamparas: LamparaEnSesion[],
+  ahoraMin: number
+): EnCurso {
+  const tramos = tramosCrudosDeLamparas(x)
+  const ultimo = tramos[tramos.length - 1]
+
+  if (ultimo && mismasLamparas(ultimo.lamparas, lamparas)) return x
+  if (ultimo && ultimo.desde >= ahoraMin) {
+    return {
+      ...x,
+      tramosDeLamparas: [...tramos.slice(0, -1), { desde: ultimo.desde, lamparas }]
+    }
+  }
+  return { ...x, tramosDeLamparas: [...tramos, { desde: ahoraMin, lamparas }] }
+}
+
+/** Dos conjuntos son el mismo si son las mismas lámparas a las mismas distancias. */
+function mismasLamparas(a: LamparaEnSesion[], b: LamparaEnSesion[]): boolean {
+  if (a.length !== b.length) return false
+  const clave = (l: LamparaEnSesion[]) =>
+    l
+      .map((x) => `${x.lamparaId}@${x.distanciaCm}`)
+      .sort()
+      .join('|')
+  return clave(a) === clave(b)
+}
+
+function tramosCrudosDeLamparas(x: EnCurso): { desde: number; lamparas: LamparaEnSesion[] }[] {
+  if (x.tramosDeLamparas && x.tramosDeLamparas.length > 0) return x.tramosDeLamparas
+  const iniciales =
+    x.lamparas && x.lamparas.length > 0
+      ? x.lamparas
+      : x.lamparaId
+        ? [{ lamparaId: x.lamparaId, distanciaCm: x.distanciaCm ?? 15 }]
+        : []
+  return iniciales.length > 0 ? [{ desde: x.desde, lamparas: iniciales }] : []
+}
+
+/**
+ * Parte la sesión en trozos con las mismas lámparas encendidas.
+ *
+ * Como con el cielo, los de cero minutos **sí** salen: el que acabas de elegir
+ * dura cero hasta que pasa el primer minuto, y esconderlo haría que la pantalla
+ * pareciera no haberte hecho caso. Quien los descarta es `alParar`.
+ */
+export interface TramoDeLamparasEnCurso extends TramoDeLamparas {
+  /** Aquí sí se sabe la hora: la sesión está corriendo y se conoce su reloj. */
+  desde: number
+}
+
+export function tramosDeLamparas(x: EnCurso, hastaMin: number): TramoDeLamparasEnCurso[] {
+  const crudos = tramosCrudosDeLamparas(x)
+  if (crudos.length === 0) return []
+
+  return crudos.map((t, i) => {
+    const desde = Math.max(x.desde, t.desde)
+    const hasta = i + 1 < crudos.length ? Math.max(desde, crudos[i + 1].desde) : hastaMin
+    return { desde, minutos: Math.max(0, hasta - desde), lamparas: t.lamparas }
+  })
+}
+
 /**
  * Lo que hay que guardar al parar una actividad.
  *
@@ -275,32 +359,48 @@ export function alParar(
        * que es lo único que puede ser: la irradiancia cae con el cuadrado y no
        * existe una «distancia de la sesión» cuando hay dos aparatos.
        *
-       * La primera se guarda además suelta en `lamparaId` y `distanciaCm`.
-       * Cuesta dos campos repetidos y a cambio todo lo que ya leía sesiones de
-       * una lámpara —incluido el buzón del reloj— sigue leyéndolas.
+       * Y pueden cambiar a mitad. Los tramos se guardan **dentro de una sola
+       * sesión**, no como sesiones separadas: estuviste debajo una vez, y
+       * partirlo en tres diría que hiciste tres sesiones y que la piel descansó
+       * en medio, que es falso. Los tramos de cero minutos no se guardan.
        */
-      const puestas =
-        x.lamparas && x.lamparas.length > 0
-          ? x.lamparas
-          : x.lamparaId
-            ? [{ lamparaId: x.lamparaId, distanciaCm: x.distanciaCm ?? 15 }]
-            : []
+      const todos = tramosDeLamparas(x, hastaMin)
 
-      // Sin lámpara elegida no hay dosis que calcular, y guardar la sesión sin
-      // ella dejaría un registro que nunca podrá contar nada.
-      if (puestas.length === 0) return []
+      // Sin ninguna lámpara encendida en ningún momento no hay dosis que
+      // calcular, y guardar la sesión dejaría un registro que nunca contará nada.
+      const conLampara = todos.filter((t) => t.lamparas.length > 0)
+      if (conLampara.length === 0) return []
+
+      /*
+       * Los tramos de cero minutos no se guardan, pero una sesión entera de cero
+       * minutos —parada en el mismo minuto en que se empezó— **sí**: es un rato
+       * de verdad que duró menos de un minuto, y borrarlo sería decirle a quien
+       * lo apuntó que no ha pasado nada.
+       */
+      const tramos = todos.filter((t) => t.minutos > 0)
+
+      /*
+       * El primer conjunto va además suelto en `lamparaId` y `distanciaCm`, y
+       * en `lamparas` si fueron varias. Cuesta unos campos repetidos y a cambio
+       * todo lo que ya leía sesiones de una lámpara —incluido el buzón del
+       * reloj— sigue leyéndolas.
+       */
+      const primeras = (tramos.find((t) => t.lamparas.length > 0) ?? conLampara[0]).lamparas
+      const huboCambios = tramos.length > 1
+
       return [
         {
           en: 'sesionPBM',
           sesion: {
             id: nuevoId(),
             date: x.date,
-            lamparaId: puestas[0].lamparaId,
+            lamparaId: primeras[0].lamparaId,
             hora: x.desde,
             minutos,
-            distanciaCm: puestas[0].distanciaCm,
+            distanciaCm: primeras[0].distanciaCm,
             zona: x.zona ?? 'torso',
-            ...(puestas.length > 1 ? { lamparas: puestas } : {})
+            ...(primeras.length > 1 ? { lamparas: primeras } : {}),
+            ...(huboCambios ? { tramos } : {})
           }
         }
       ]

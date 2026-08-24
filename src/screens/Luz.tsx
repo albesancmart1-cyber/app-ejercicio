@@ -659,11 +659,41 @@ function Lamparas({ hoy }: { hoy: string }) {
   const data = useAppData()
   const lamparas = data.lamparas ?? []
   const [creando, setCreando] = useState(false)
+  /** El id que se está corrigiendo, o null si es una lámpara nueva. */
+  const [editandoId, setEditandoId] = useState<string | null>(null)
   const [nombre, setNombre] = useState('')
   const [refCm, setRefCm] = useState<number | undefined>(15)
   const [ondas, setOndas] = useState<OndaLampara[]>([])
   const [nm, setNm] = useState<number | undefined>()
   const [mw, setMw] = useState<number | undefined>()
+
+  const cerrarFormulario = () => {
+    setCreando(false)
+    setEditandoId(null)
+    setNombre('')
+    setRefCm(15)
+    setOndas([])
+    setNm(undefined)
+    setMw(undefined)
+  }
+
+  /**
+   * Abre el formulario con los datos de una lámpara para corregirlos.
+   *
+   * Hace falta porque el dato que más se equivoca uno al teclear —la
+   * irradiancia— es justo el que multiplica toda la dosis, y hasta ahora la
+   * única salida era borrar la lámpara y volver a escribirla entera, lo que
+   * dejaba sin calcular todas las sesiones que la usaban.
+   */
+  const editar = (l: Lampara) => {
+    setEditandoId(l.id)
+    setNombre(l.nombre)
+    setRefCm(l.distanciaRefCm)
+    setOndas([...l.ondas].sort((a, b) => a.nm - b.nm))
+    setNm(undefined)
+    setMw(undefined)
+    setCreando(true)
+  }
 
   /* Abierto o cerrado. Se abre desde una lámpara concreta, que queda encendida
    * de partida, pero dentro se pueden encender las demás: una sesión puede
@@ -743,9 +773,20 @@ function Lamparas({ hoy }: { hoy: string }) {
                 {PICOS_KARU.length - faltan.length} de {PICOS_KARU.length}
               </span>
             </div>
-            <Boton tono="callado" onClick={() => abrirCon(l)}>
-              {abierto ? 'Cerrar' : 'Apuntar una sesión'}
-            </Boton>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Boton tono="callado" suelto onClick={() => abrirCon(l)} style={{ flex: 1 }}>
+                {abierto ? 'Cerrar' : 'Apuntar una sesión'}
+              </Boton>
+              <Boton
+                tono="callado"
+                suelto
+                onClick={() => editar(l)}
+                aria-label={`Editar ${l.nombre}`}
+                style={{ flex: 1 }}
+              >
+                Editar
+              </Boton>
+            </div>
           </div>
         )
       })}
@@ -870,6 +911,16 @@ function Lamparas({ hoy }: { hoy: string }) {
         </Boton>
       ) : (
         <div className="fade-in">
+          {editandoId !== null && (
+            <>
+              <p className="eyebrow">Corregir la lámpara</p>
+              <p className="faint" style={{ marginTop: 6, marginBottom: 10 }}>
+                Las sesiones ya apuntadas con ella <strong>se recalculan</strong>: la dosis se
+                saca de la lámpara cada vez, no se guarda congelada. Es lo que quieres si
+                estás arreglando una errata, y conviene saberlo si no.
+              </p>
+            </>
+          )}
           <label className="field">
             <span className="bar-label">Nombre</span>
             <input
@@ -947,20 +998,18 @@ function Lamparas({ hoy }: { hoy: string }) {
             disabled={!nombre.trim() || ondas.length === 0 || !refCm}
             onClick={() => {
               const l: Lampara = {
-                id: nuevoId(),
+                id: editandoId ?? nuevoId(),
                 nombre: nombre.trim(),
                 distanciaRefCm: refCm!,
                 ondas
               }
               actions.saveLampara(l)
-              setCreando(false)
-              setNombre('')
-              setOndas([])
+              cerrarFormulario()
             }}
           >
-            Guardar lámpara
+            {editandoId !== null ? 'Guardar cambios' : 'Guardar lámpara'}
           </Boton>
-          <Boton tono="callado" onClick={() => setCreando(false)}>
+          <Boton tono="callado" onClick={cerrarFormulario}>
             Cancelar
           </Boton>
         </div>

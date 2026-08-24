@@ -258,7 +258,17 @@ costar un toque, y ese toque tenía que alimentar todo lo ya construido.
 - [x] pbm-picos-se-unen · Dos lámparas cubren juntas picos que ninguna cubre sola
   → src/domain/fotobiomodulacion.ts :: picosCubiertos
 - [x] pbm-una-sesion-no-dos · Estar bajo dos lámparas es una sesión, no dos ratos seguidos
-  → src/domain/medir.ts :: puestas
+  → src/domain/medir.ts :: conLampara
+- [x] pbm-encender-y-apagar · Se puede encender y apagar una lámpara sin parar el cronómetro
+  → src/domain/medir.ts :: cambiarLamparas
+- [x] pbm-tramos-no-son-sesiones · Los cambios parten la sesión en tramos, no en sesiones
+  → src/domain/fotobiomodulacion.ts :: tramosDe
+- [x] pbm-minutos-por-lampara · Cada lámpara dice cuántos minutos estuvo encendida
+  → src/domain/fotobiomodulacion.ts :: DosisDeLampara
+- [x] pbm-editar-lampara · Una lámpara se puede corregir sin borrarla y volver a escribirla
+  → src/screens/Luz.tsx :: Corregir la lámpara
+- [x] pbm-editar-avisa · Y se avisa de que las sesiones ya apuntadas se recalculan
+  → src/screens/Luz.tsx :: se recalculan
 - [x] medir-a-mano · Se puede apuntar un rato que ya pasó, con su hora
   → src/screens/Medir.tsx :: AMano
 - [x] medir-entreno-en-marcha · El entreno empezado en «Hoy» se ve corriendo aquí
@@ -457,4 +467,4 @@ Estas también son promesas, y romperlas sería peor que no cumplir una función
 
 ---
 
-TOTAL: 175
+TOTAL: 180

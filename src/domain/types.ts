@@ -843,6 +843,23 @@ export interface SesionPBM {
    * arriba.
    */
   lamparas?: LamparaEnSesion[]
+  /**
+   * Los trozos de la sesión, cuando se encendió o se apagó alguna a mitad.
+   *
+   * Presente solo si hubo cambios: una sesión en la que las lámparas fueron
+   * las mismas de principio a fin no lo lleva, porque `lamparas` ya lo dice
+   * todo. Los minutos de los tramos suman `minutos`.
+   */
+  tramos?: TramoDeLamparas[]
+}
+
+/** Un trozo de sesión con las mismas lámparas encendidas. */
+export interface TramoDeLamparas {
+  /** Minutos desde medianoche en que empezó, si se sabe. */
+  desde?: number
+  minutos: number
+  /** Las que estaban encendidas. Puede estar vacío: cambiar de una a otra. */
+  lamparas: LamparaEnSesion[]
 }
 
 /**
@@ -1023,6 +1040,13 @@ export interface EnCurso {
   zona?: ZonaPBM
   /** Las lámparas puestas a la vez, cuando hay más de una. */
   lamparas?: LamparaEnSesion[]
+  /**
+   * Los cambios de lámpara mientras la sesión corre.
+   *
+   * Mismo mecanismo que `tramosDeCielo`, y por la misma razón: apagar una y
+   * encender otra a mitad no reescribe lo que llevabas, abre un trozo nuevo.
+   */
+  tramosDeLamparas?: { desde: number; lamparas: LamparaEnSesion[] }[]
 }
 
 export interface AppData {

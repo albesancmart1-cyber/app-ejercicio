@@ -62,7 +62,9 @@ import {
   abiertosDe,
   alParar,
   cambiarCielo,
+  cambiarLamparas,
   tramosDeCielo,
+  tramosDeLamparas,
   loQueSeQuedoAbierto,
   minutosAbierto,
   minutosDeHoy,
@@ -353,6 +355,19 @@ export default function Medir({ onEntrenar }: { onEntrenar?: () => void }) {
           onCambiar={(cielo) => {
             const x = abierto(data.enCurso, 'sol', hoy)!
             const nuevo = cambiarCielo(x, cielo, minutosDeAhora())
+            if (nuevo !== x) actions.abrirEnCurso(nuevo)
+          }}
+        />
+      )}
+
+      {abierto(data.enCurso, 'lampara', hoy) && (data.lamparas ?? []).length > 0 && (
+        <LamparasEnMarcha
+          sesion={abierto(data.enCurso, 'lampara', hoy)!}
+          lamparas={data.lamparas ?? []}
+          ahora={ahora}
+          onCambiar={(puestas) => {
+            const x = abierto(data.enCurso, 'lampara', hoy)!
+            const nuevo = cambiarLamparas(x, puestas, minutosDeAhora())
             if (nuevo !== x) actions.abrirEnCurso(nuevo)
           }}
         />
@@ -695,6 +710,80 @@ function LaLampara({
       <Boton tono="callado" onClick={onDejarlo}>
         Dejarlo
       </Boton>
+    </div>
+  )
+}
+
+/**
+ * Encender y apagar lámparas con la sesión en marcha.
+ *
+ * Cambiar de lámpara a mitad es lo normal: empiezas con el panel grande en la
+ * espalda, a los diez minutos te das la vuelta y enciendes además el pequeño
+ * para la rodilla, y al final apagas el grande. Si la app se quedara con lo que
+ * elegiste al empezar, los julios de esos tres trozos serían los del primero
+ * repetidos tres veces.
+ *
+ * Igual que con el cielo, tocar **no reescribe lo anterior**: cierra el trozo
+ * que llevabas y abre otro. Y se enseña lo que llevas de cada uno, porque es la
+ * única forma de comprobar de un vistazo que la app ha entendido tu rato.
+ */
+function LamparasEnMarcha({
+  sesion,
+  lamparas,
+  ahora,
+  onCambiar
+}: {
+  sesion: EnCurso
+  lamparas: Lampara[]
+  ahora: number
+  onCambiar: (puestas: LamparaEnSesion[]) => void
+}) {
+  const tramos = tramosDeLamparas(sesion, Math.max(sesion.desde, ahora))
+  const actuales = tramos[tramos.length - 1]?.lamparas ?? []
+  const puestas: LamparaPuesta[] = actuales.map((l) => ({ ...l }))
+  const nombreDe = (id: string) => lamparas.find((l) => l.id === id)?.nombre ?? 'Lámpara borrada'
+
+  return (
+    <div className="card">
+      <div className="row">
+        <p className="eyebrow" style={{ margin: 0 }}>
+          Qué tienes encendido ahora
+        </p>
+        <Etiqueta acento>{escribirDuracion(minutosAbierto(sesion, ahora))} de lámpara</Etiqueta>
+      </div>
+      <p className="dim" style={{ marginTop: 8 }}>
+        Enciende o apaga las que quieras sin parar el cronómetro. Lo que llevabas se guarda con
+        las que había; lo que venga después, con las nuevas.
+      </p>
+
+      <SelectorDeLamparas
+        lamparas={lamparas}
+        puestas={puestas}
+        onCambiar={(p) => onCambiar(lamparasListas(p))}
+      />
+
+      {tramos.length > 1 && (
+        <>
+          <Regla />
+          <p className="eyebrow">Lo que llevas de cada uno</p>
+          {tramos.map((t, i) => (
+            <div className="row" key={`${t.desde}-${i}`} style={{ padding: '5px 0' }}>
+              <span className="dim">
+                {t.lamparas.length > 0
+                  ? t.lamparas.map((l) => nombreDe(l.lamparaId)).join(' + ')
+                  : 'Todas apagadas'}{' '}
+                · desde las {escribirHora(t.desde)}
+              </span>
+              <span>{escribirDuracion(t.minutos)}</span>
+            </div>
+          ))}
+          <p className="faint" style={{ marginTop: 8 }}>
+            Cada tramo entrega sus julios con las lámparas que tenía. Sigue siendo una sola
+            sesión: estuviste debajo una vez, y partirla en tres diría que la piel descansó en
+            medio.
+          </p>
+        </>
+      )}
     </div>
   )
 }

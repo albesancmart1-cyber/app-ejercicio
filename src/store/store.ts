@@ -239,14 +239,24 @@ export const actions = {
    * Luz. Todas siguen el mismo patrón que las de arriba: reemplazar por id y
    * poner `updatedAt`, para que la fusión entre dispositivos sepa cuál gana.
    */
+  /**
+   * Guarda una lámpara nueva o corrige una que ya está.
+   *
+   * Al corregir **se queda donde estaba** en la lista, en vez de irse al final:
+   * arreglar una errata en la irradiancia no debería mover la lámpara de sitio
+   * y obligar a buscarla otra vez.
+   */
   saveLampara(lampara: Lampara) {
-    setState((s) => ({
-      ...s,
-      lamparas: [
-        ...(s.lamparas ?? []).filter((l) => l.id !== lampara.id),
-        { ...lampara, updatedAt: Date.now() }
-      ]
-    }))
+    setState((s) => {
+      const lista = s.lamparas ?? []
+      const conFecha = { ...lampara, updatedAt: Date.now() }
+      return {
+        ...s,
+        lamparas: lista.some((l) => l.id === lampara.id)
+          ? lista.map((l) => (l.id === lampara.id ? conFecha : l))
+          : [...lista, conFecha]
+      }
+    })
   },
   deleteLampara(id: string) {
     setState((s) => ({ ...s, lamparas: (s.lamparas ?? []).filter((l) => l.id !== id) }))

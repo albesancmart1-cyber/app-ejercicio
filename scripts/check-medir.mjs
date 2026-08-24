@@ -388,6 +388,90 @@ comprobar(
 )
 await page.screenshot({ path: `${OUT}/medir-12-dos-lamparas.png`, fullPage: true })
 
+// ── Encender y apagar sin parar el cronómetro ─────────────────────────
+await page.evaluate(() => {
+  const d = JSON.parse(localStorage.getItem('ritmo-data-v1'))
+  d.sesionesPBM = []
+  localStorage.setItem('ritmo-data-v1', JSON.stringify(d))
+})
+await page.reload({ waitUntil: 'networkidle' })
+await pestana('Medir')
+await page.getByRole('button', { name: 'Lámpara', exact: true }).click()
+await page.waitForTimeout(400)
+await page.getByRole('button', { name: 'Empezar', exact: true }).click()
+await page.waitForTimeout(400)
+
+/*
+ * Se retrasa el inicio doce minutos: un cambio en el mismo minuto en que se
+ * empieza corrige el tramo en vez de abrir otro, que es lo correcto —no ha
+ * pasado ningún rato bajo las lámparas anteriores— pero no es lo que se prueba.
+ */
+await page.evaluate(() => {
+  const d = JSON.parse(localStorage.getItem('ritmo-data-v1'))
+  d.enCurso.find((x) => x.tipo === 'lampara').desde -= 12
+  localStorage.setItem('ritmo-data-v1', JSON.stringify(d))
+})
+await page.reload({ waitUntil: 'networkidle' })
+await pestana('Medir')
+
+const enMarcha = page.locator('.card').filter({ hasText: 'Qué tienes encendido ahora' })
+comprobar(
+  await enMarcha.count(),
+  'con la lámpara en marcha debería poder encenderse y apagarse sin parar'
+)
+await enMarcha.getByRole('button', { name: 'Bombilla de mano' }).click()
+await page.waitForTimeout(400)
+
+const conTramos = await enMarcha.innerText()
+comprobar(
+  conTramos.includes('Lo que llevas de cada uno'),
+  'y verse lo que llevas de cada conjunto, no solo el actual'
+)
+comprobar(
+  conTramos.includes('Panel del salón + Bombilla de mano'),
+  'nombrando las que hay encendidas en cada tramo'
+)
+
+/*
+ * El segundo tramo acaba de empezar y duraría cero minutos, que es justo lo que
+ * `alParar` descarta —y hace bien—. Se retrasa la sesión entera otros ocho
+ * minutos para que el tramo nuevo tenga rato de verdad, en vez de esperarlos.
+ */
+await page.evaluate(() => {
+  const d = JSON.parse(localStorage.getItem('ritmo-data-v1'))
+  const x = d.enCurso.find((y) => y.tipo === 'lampara')
+  x.desde -= 8
+  for (const t of x.tramosDeLamparas) t.desde -= 8
+  localStorage.setItem('ritmo-data-v1', JSON.stringify(d))
+})
+await page.reload({ waitUntil: 'networkidle' })
+await pestana('Medir')
+await page.getByRole('button', { name: 'Lámpara, en marcha' }).click()
+await page.waitForTimeout(400)
+
+const conCambio = ((await datos()).sesionesPBM ?? []).at(-1)
+comprobar(
+  conCambio?.tramos?.length === 2,
+  `los cambios deberían quedar como tramos, y quedan ${conCambio?.tramos?.length}`
+)
+comprobar(
+  conCambio?.tramos?.[0].lamparas.length === 1 && conCambio?.tramos?.[1].lamparas.length === 2,
+  'el primero con una lámpara y el segundo con dos'
+)
+comprobar(
+  ((await datos()).sesionesPBM ?? []).length === 1,
+  'y una sola sesión: cambiar de lámpara no parte el rato en dos sesiones'
+)
+comprobar(
+  conCambio?.minutos >= 20 && conCambio?.minutos <= 21,
+  `con todos los minutos del rato, doce más ocho, y trae ${conCambio?.minutos}`
+)
+comprobar(
+  conCambio?.tramos?.reduce((t, x) => t + x.minutos, 0) === conCambio?.minutos,
+  'y los tramos sumando exactamente esos minutos, sin perder ni inventar ninguno'
+)
+await page.screenshot({ path: `${OUT}/medir-13-lamparas-en-marcha.png`, fullPage: true })
+
 // ── Un rato a mano, con su hora ───────────────────────────────────────
 /*
  * La hora se elige lejos de las sesiones de sol de antes, que ocupan los

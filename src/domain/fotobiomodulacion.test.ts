@@ -7,7 +7,8 @@ import {
   factorDistancia,
   lamparaCalculable,
   lamparasDe,
-  picosQueFaltan
+  picosQueFaltan,
+  tramosDe
 } from './fotobiomodulacion'
 import type { Lampara, SesionPBM } from './types'
 
@@ -263,6 +264,129 @@ describe('varias lámparas a la vez', () => {
     const total = dosisAcumulada([dos()], [PANEL])
     expect(total.sesiones).toBe(1)
     expect(total.julios).toBeCloseTo(36, 6)
+  })
+})
+
+describe('encender y apagar a mitad de sesión', () => {
+  const BOMBILLA: Lampara = {
+    id: 'bombilla',
+    nombre: 'Bombilla de mano',
+    distanciaRefCm: 10,
+    ondas: [
+      { nm: 660, irradiancia: 20 },
+      { nm: 760, irradiancia: 10 }
+    ]
+  }
+
+  /** Diez minutos con el panel, diez con los dos, diez solo con la bombilla. */
+  const enTres = (): SesionPBM =>
+    sesion({
+      minutos: 30,
+      tramos: [
+        { minutos: 10, lamparas: [{ lamparaId: 'panel', distanciaCm: 15 }] },
+        {
+          minutos: 10,
+          lamparas: [
+            { lamparaId: 'panel', distanciaCm: 15 },
+            { lamparaId: 'bombilla', distanciaCm: 10 }
+          ]
+        },
+        { minutos: 10, lamparas: [{ lamparaId: 'bombilla', distanciaCm: 10 }] }
+      ]
+    })
+
+  it('cada tramo entrega los julios de las lámparas que tenía', () => {
+    // Panel 60 mW/cm² veinte minutos = 72 J. Bombilla 30 mW/cm² veinte = 36 J.
+    const d = dosisDeSesion(enTres(), [PANEL, BOMBILLA])
+    expect(d.julios).toBeCloseTo(72 + 36, 6)
+  })
+
+  it('y no los del primer tramo repetidos, que es lo que pasaba antes', () => {
+    /*
+     * Congelar el conjunto inicial —treinta minutos de solo panel— da aquí los
+     * mismos 108 J por pura casualidad aritmética, así que el total no sirve
+     * para distinguirlos. Lo que sí distingue es **de qué están hechos** esos
+     * julios: sin la bombilla no hay ni un julio a 760 nm, y con ella el panel
+     * aporta un tercio menos porque estuvo apagado el último tercio.
+     */
+    const congelado = dosisDeSesion(sesion({ minutos: 30 }), [PANEL, BOMBILLA])
+    const real = dosisDeSesion(enTres(), [PANEL, BOMBILLA])
+
+    expect(congelado.porOnda.find((o) => o.nm === 760)).toBeUndefined()
+    expect(real.porOnda.find((o) => o.nm === 760)?.julios).toBeCloseTo(12, 6)
+
+    const delPanel = (d: typeof real) => d.porLampara.find((l) => l.lamparaId === 'panel')!.julios
+    expect(delPanel(congelado)).toBeCloseTo(108, 6)
+    expect(delPanel(real)).toBeCloseTo(72, 6)
+  })
+
+  it('cada lámpara dice cuántos minutos estuvo encendida', () => {
+    const d = dosisDeSesion(enTres(), [PANEL, BOMBILLA])
+    expect(d.porLampara.map((l) => [l.nombre, l.minutos])).toEqual([
+      ['Panel del salón', 20],
+      ['Bombilla de mano', 20]
+    ])
+  })
+
+  it('moverla de sitio a mitad son dos filas, no un factor promediado', () => {
+    // Promediar daría un factor que no ocurrió en ningún momento.
+    const movida = sesion({
+      minutos: 20,
+      tramos: [
+        { minutos: 10, lamparas: [{ lamparaId: 'panel', distanciaCm: 15 }] },
+        { minutos: 10, lamparas: [{ lamparaId: 'panel', distanciaCm: 30 }] }
+      ]
+    })
+    const d = dosisDeSesion(movida, [PANEL])
+    expect(d.porLampara).toHaveLength(2)
+    expect(d.porLampara.map((l) => l.distanciaCm)).toEqual([15, 30])
+    // Diez minutos a 15 cm son 36 J; diez a 30 cm, la cuarta parte: 9.
+    expect(d.julios).toBeCloseTo(45, 6)
+  })
+
+  it('un tramo sin ninguna encendida no entrega nada, pero tampoco revienta', () => {
+    const conHueco = sesion({
+      minutos: 20,
+      tramos: [
+        { minutos: 10, lamparas: [{ lamparaId: 'panel', distanciaCm: 15 }] },
+        { minutos: 10, lamparas: [] }
+      ]
+    })
+    const d = dosisDeSesion(conHueco, [PANEL])
+    expect(d.julios).toBeCloseTo(36, 6)
+    expect(d.porLampara[0].minutos).toBe(10)
+  })
+
+  it('la irradiancia que se enseña es la media del rato, no la de un tramo', () => {
+    // La bombilla estuvo encendida veinte de los treinta minutos, así que su
+    // 760 nm no te estuvo dando 10 mW/cm² todo el rato: te dio dos tercios.
+    const d = dosisDeSesion(enTres(), [PANEL, BOMBILLA])
+    const setecientos60 = d.porOnda.find((o) => o.nm === 760)!
+    expect(setecientos60.irradiancia).toBeCloseTo((10 * 20) / 30, 6)
+    // Y los julios siguen siendo los de verdad: 10 mW/cm² × 1200 s ÷ 1000.
+    expect(setecientos60.julios).toBeCloseTo(12, 6)
+  })
+
+  it('los picos se unen a lo largo de la sesión, aunque nunca coincidieran', () => {
+    // El panel cubre 620, 680 y 820; la bombilla trae el de 760. En esta sesión
+    // los cuatro se cubrieron, aunque el tercer tramo ya no tuviera el panel.
+    expect(dosisDeSesion(enTres(), [PANEL, BOMBILLA]).picos).toEqual([620, 680, 760, 820])
+  })
+
+  it('una sesión con tramos sigue contando como una en el acumulado', () => {
+    const total = dosisAcumulada([enTres()], [PANEL, BOMBILLA])
+    expect(total.sesiones).toBe(1)
+    expect(total.minutos).toBe(30)
+  })
+
+  it('las lámparas de la sesión son todas las que se encendieron alguna vez', () => {
+    expect(lamparasDe(enTres()).map((l) => l.lamparaId)).toEqual(['panel', 'bombilla'])
+  })
+
+  it('y una sin tramos se lee como un tramo único, para no tener dos caminos', () => {
+    expect(tramosDe(sesion())).toEqual([
+      { minutos: 10, lamparas: [{ lamparaId: 'panel', distanciaCm: 15 }] }
+    ])
   })
 })
 
