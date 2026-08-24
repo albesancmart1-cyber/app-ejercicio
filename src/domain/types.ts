@@ -805,10 +805,31 @@ export interface Lampara {
 export type ZonaPBM = 'cara' | 'cuello' | 'torso' | 'espalda' | 'abdomen' | 'piernas' | 'articulacion'
 
 /** Una sesión de fotobiomodulación ya hecha. */
+/**
+ * Una lámpara puesta en una sesión, con la distancia a la que estuvo.
+ *
+ * La distancia va **por lámpara** y no por sesión porque es lo único que puede
+ * ser: si tienes el panel grande a cuarenta centímetros y el pequeño apoyado en
+ * la rodilla, no hay una «distancia de la sesión» que signifique nada. Y como
+ * la irradiancia cae con el cuadrado, suponer una común multiplicaría o
+ * dividiría la dosis por cuatro sin avisar.
+ */
+export interface LamparaEnSesion {
+  lamparaId: string
+  distanciaCm: number
+}
+
 export interface SesionPBM {
   id: string
   date: string
   updatedAt?: number
+  /**
+   * La primera lámpara, y la única cuando solo hubo una.
+   *
+   * Se conserva aunque exista `lamparas` porque hay sesiones guardadas que solo
+   * tienen esto, y porque es lo que viaja por el buzón del reloj. Quien quiera
+   * la lista completa usa `lamparasDe()`, que se encarga de las dos formas.
+   */
   lamparaId: string
   /** Minutos desde la medianoche local en que se hizo. */
   hora?: number
@@ -816,6 +837,12 @@ export interface SesionPBM {
   /** A qué distancia real se puso, que casi nunca es la de referencia. */
   distanciaCm: number
   zona: ZonaPBM
+  /**
+   * Todas las lámparas cuando hubo **más de una a la vez**, la primera
+   * incluida. Ausente cuando solo hubo una, para no repetir lo que ya está
+   * arriba.
+   */
+  lamparas?: LamparaEnSesion[]
 }
 
 /**
@@ -994,6 +1021,8 @@ export interface EnCurso {
   lamparaId?: string
   distanciaCm?: number
   zona?: ZonaPBM
+  /** Las lámparas puestas a la vez, cuando hay más de una. */
+  lamparas?: LamparaEnSesion[]
 }
 
 export interface AppData {

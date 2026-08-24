@@ -87,6 +87,11 @@ import { minutosDeHora } from '../domain/relojes'
 import { ZONAS } from '../domain/fotobiomodulacion'
 import { findActiveSession } from '../domain/activeSession'
 import { CampoNumero } from '../components/ui'
+import SelectorDeLamparas, {
+  lamparasListas,
+  puestaInicial,
+  type LamparaPuesta
+} from '../components/SelectorDeLamparas'
 import ParteDelDia from '../components/ParteDelDia'
 import RepartoDelDia from '../components/RepartoDelDia'
 import type { Coordenadas } from '../domain/arcoSolar'
@@ -94,6 +99,7 @@ import type {
   EnCurso,
   Fichaje,
   Lampara,
+  LamparaEnSesion,
   PerfilDeLuz,
   PielExpuesta,
   Profile,
@@ -371,8 +377,19 @@ export default function Medir({ onEntrenar }: { onEntrenar?: () => void }) {
       {preguntando === 'lampara' && (
         <LaLampara
           lamparas={data.lamparas ?? []}
-          onEmpezar={(lamparaId, zona, distanciaCm) => {
-            empezar('lampara', { lamparaId, zona, distanciaCm })
+          onEmpezar={(puestas, zona) => {
+            /*
+             * La primera va además suelta en `lamparaId` y `distanciaCm`. Cuesta
+             * dos campos repetidos y a cambio todo lo que ya leía una sesión de
+             * una lámpara —el aviso de abajo, el buzón del reloj— sigue
+             * funcionando sin enterarse de que ahora pueden ser varias.
+             */
+            empezar('lampara', {
+              lamparaId: puestas[0].lamparaId,
+              distanciaCm: puestas[0].distanciaCm,
+              lamparas: puestas,
+              zona
+            })
             setPreguntando(null)
           }}
           onDejarlo={() => setPreguntando(null)}
@@ -612,6 +629,11 @@ function ElSol({
  *
  * Las tres vienen con lo último elegido puesto, así que a partir de la segunda
  * vez son un vistazo y un botón.
+ *
+ * **Pueden ser varias a la vez.** Quien tiene dos aparatos los enciende los
+ * dos, y partirlo en dos sesiones seguidas habría contado el doble de minutos
+ * de los que estuvo. Cada una lleva su propia distancia, que es lo único que
+ * puede ser cuando hay dos aparatos en sitios distintos.
  */
 function LaLampara({
   lamparas,
@@ -619,15 +641,12 @@ function LaLampara({
   onDejarlo
 }: {
   lamparas: Lampara[]
-  onEmpezar: (lamparaId: string, zona: ZonaPBM, distanciaCm: number) => void
+  onEmpezar: (puestas: LamparaEnSesion[], zona: ZonaPBM) => void
   onDejarlo: () => void
 }) {
-  const [lamparaId, setLamparaId] = useState(lamparas[0]?.id ?? '')
+  const [puestas, setPuestas] = useState<LamparaPuesta[]>(() => puestaInicial(lamparas))
   const [zona, setZona] = useState<ZonaPBM>('torso')
-  const [distancia, setDistancia] = useState<number | undefined>(
-    lamparas[0]?.distanciaRefCm ?? 15
-  )
-  const elegida = lamparas.find((l) => l.id === lamparaId)
+  const listas = lamparasListas(puestas)
 
   if (lamparas.length === 0) {
     return (
@@ -647,21 +666,8 @@ function LaLampara({
 
   return (
     <div className="card">
-      <p className="eyebrow">Con cuál</p>
-      <div className="options-col" style={{ marginTop: 10 }}>
-        {lamparas.map((l) => (
-          <Opcion
-            key={l.id}
-            activa={lamparaId === l.id}
-            onElegir={() => {
-              setLamparaId(l.id)
-              setDistancia(l.distanciaRefCm)
-            }}
-          >
-            {l.nombre}
-          </Opcion>
-        ))}
-      </div>
+      <p className="eyebrow">Con cuál o con cuáles</p>
+      <SelectorDeLamparas lamparas={lamparas} puestas={puestas} onCambiar={setPuestas} />
 
       <Regla />
       <p className="eyebrow">Qué zona</p>
@@ -673,24 +679,16 @@ function LaLampara({
         ))}
       </div>
 
-      <Regla />
-      <label className="field">
-        <span className="bar-label">A qué distancia (cm)</span>
-        <CampoNumero valor={distancia} onCambiar={setDistancia} placeholder="15" />
-      </label>
-      {elegida && (
-        <p className="faint" style={{ marginTop: 8 }}>
-          Sus datos están medidos a {elegida.distanciaRefCm} cm. La irradiancia cae con el cuadrado
-          de la distancia, así que ponerte al doble te deja en la cuarta parte: por eso se pregunta
-          en vez de suponerlo.
-        </p>
-      )}
+      <p className="faint" style={{ marginTop: 10 }}>
+        La irradiancia cae con el cuadrado de la distancia, así que ponerte al doble te deja en
+        la cuarta parte: por eso se pregunta en vez de suponerlo.
+      </p>
 
       <Regla />
       <Boton
         tono="primario"
-        disabled={distancia === undefined || distancia <= 0}
-        onClick={() => onEmpezar(lamparaId, zona, distancia ?? 15)}
+        disabled={listas.length === 0}
+        onClick={() => onEmpezar(listas, zona)}
       >
         Empezar
       </Boton>
@@ -826,7 +824,7 @@ function AMano({
   const [hasta, setHasta] = useState(escribirHora(minutosDeAhora()))
   const [piel, setPiel] = useState<PielExpuesta>('brazos_piernas')
   const [cielo, setCielo] = useState<EstadoDelCielo>('limpio')
-  const [lamparaId, setLamparaId] = useState(lamparas[0]?.id ?? '')
+  const [puestas, setPuestas] = useState<LamparaPuesta[]>(() => puestaInicial(lamparas))
   const [sitioId, setSitioId] = useState(sitioHabitual?.id ?? '')
 
   const inicio = minutosDeHora(desde)
@@ -841,7 +839,12 @@ function AMano({
     : undefined
   const vale = esTrabajo
     ? problema === undefined
-    : inicio !== undefined && minutos !== undefined && minutos > 0
+    : inicio !== undefined &&
+      minutos !== undefined &&
+      minutos > 0 &&
+      // Sin lámpara encendida la dosis sería un número inventado, así que no se
+      // guarda: es la misma regla que en la baldosa.
+      (tipo !== 'lampara' || lamparasListas(puestas).length > 0)
 
   return (
     <div className="card">
@@ -952,14 +955,8 @@ function AMano({
       {tipo === 'lampara' && lamparas.length > 0 && (
         <>
           <Regla />
-          <p className="eyebrow">Con cuál</p>
-          <div className="options-col" style={{ marginTop: 10 }}>
-            {lamparas.map((l) => (
-              <Opcion key={l.id} activa={lamparaId === l.id} onElegir={() => setLamparaId(l.id)}>
-                {l.nombre}
-              </Opcion>
-            ))}
-          </div>
+          <p className="eyebrow">Con cuál o con cuáles</p>
+          <SelectorDeLamparas lamparas={lamparas} puestas={puestas} onCambiar={setPuestas} />
         </>
       )}
 
@@ -973,12 +970,20 @@ function AMano({
             return onGuardarTrabajo(inicio, fin, sitio)
           }
           if (inicio === undefined || minutos === undefined) return
+          const conLampara =
+            tipo === 'lampara' && lamparasListas(puestas).length > 0
+              ? {
+                  lamparaId: lamparasListas(puestas)[0].lamparaId,
+                  distanciaCm: lamparasListas(puestas)[0].distanciaCm,
+                  lamparas: lamparasListas(puestas)
+                }
+              : {}
           const x: EnCurso = {
             tipo,
             date: hoy,
             desde: inicio,
             ...(tipo === 'sol' ? { piel, cielo } : {}),
-            ...(tipo === 'lampara' ? { lamparaId } : {})
+            ...conLampara
           }
           onGuardar(x, inicio + minutos, nivelDe(tipo))
         }}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ALIMENTOS, alimentoResuelto, buscarAlimentos, escribirUnidades } from './alimentos'
 import { CETOSIS_G, carbosDelDia, estadoDeCetosis } from '../domain/crononutricion'
+import { nutrientesDe } from './nutrientes'
 import type { DiaDeComidas, EdicionAlimento } from '../domain/types'
 
 describe('el catálogo', () => {
@@ -46,6 +47,14 @@ describe('el catálogo', () => {
 })
 
 describe('el buscador', () => {
+  it('encuentra el Philadelphia y la hamburguesa de cordero', () => {
+    expect(buscarAlimentos('philadelphia')[0]?.id).toBe('queso_philadelphia')
+    expect(buscarAlimentos('cordero').map((x) => x.id)).toContain('cordero_hamburguesa_romero')
+    // Y con los dos datos que hacen que sirvan de algo en la mesa.
+    expect(nutrientesDe('queso_philadelphia')?.leucinaPor100).toBeGreaterThan(0)
+    expect(nutrientesDe('cordero_hamburguesa_romero')?.leucinaPor100).toBeGreaterThan(0)
+  })
+
   it('encuentra sin tildes: «platano» da con el plátano', () => {
     expect(buscarAlimentos('platano')[0]?.id).toBe('platano')
     expect(buscarAlimentos('jamon')[0]?.nombre).toMatch(/Jamón/)

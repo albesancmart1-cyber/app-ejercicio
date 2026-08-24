@@ -322,6 +322,71 @@ const conPBM = (await datos()).sesionesPBM ?? []
 comprobar(conPBM.length === 1, 'la sesión de fotobiomodulación debería quedar guardada')
 comprobar(conPBM[0]?.zona === 'espalda', `con la zona elegida, y trae «${conPBM[0]?.zona}»`)
 comprobar(conPBM[0]?.distanciaCm === 15, 'y la distancia, no una supuesta')
+comprobar(
+  conPBM[0]?.lamparas === undefined,
+  'con una sola lámpara no se guarda la lista, para no repetir lo que ya está'
+)
+
+// ── Dos lámparas a la vez, que es lo que se hace de verdad ────────────
+await page.evaluate(() => {
+  const d = JSON.parse(localStorage.getItem('ritmo-data-v1'))
+  d.lamparas = [
+    ...d.lamparas,
+    {
+      id: 'bombilla',
+      nombre: 'Bombilla de mano',
+      distanciaRefCm: 10,
+      ondas: [
+        { nm: 660, irradiancia: 20 },
+        { nm: 760, irradiancia: 10 }
+      ]
+    }
+  ]
+  d.sesionesPBM = []
+  localStorage.setItem('ritmo-data-v1', JSON.stringify(d))
+})
+await page.reload({ waitUntil: 'networkidle' })
+await pestana('Medir')
+await page.getByRole('button', { name: 'Lámpara', exact: true }).click()
+await page.waitForTimeout(400)
+
+const dosLamparas = page.locator('.card').filter({ hasText: 'Con cuál o con cuáles' })
+await dosLamparas.getByRole('button', { name: 'Bombilla de mano' }).click()
+await page.waitForTimeout(300)
+
+const conDos = await dosLamparas.innerText()
+comprobar(
+  (conDos.match(/A qué distancia/g) ?? []).length === 2,
+  'cada lámpara encendida debería pedir su propia distancia: la irradiancia cae con el cuadrado'
+)
+comprobar(
+  conDos.includes('los julios se suman'),
+  'y decirse que con dos los julios se suman, porque es energía y no una nota media'
+)
+
+await page.getByRole('button', { name: 'Empezar', exact: true }).click()
+await page.waitForTimeout(400)
+await page.getByRole('button', { name: 'Lámpara, en marcha' }).click()
+await page.waitForTimeout(400)
+
+const conDosGuardada = ((await datos()).sesionesPBM ?? []).at(-1)
+comprobar(
+  conDosGuardada?.lamparas?.length === 2,
+  `una sesión con dos lámparas debería guardar las dos, y guarda ${conDosGuardada?.lamparas?.length}`
+)
+comprobar(
+  conDosGuardada?.lamparas?.[1]?.distanciaCm === 10,
+  'cada una con su distancia de referencia puesta de partida, no una común'
+)
+comprobar(
+  conDosGuardada?.lamparaId === 'l1',
+  'y la primera suelta arriba, para que lo que leía una lámpara siga leyendo'
+)
+comprobar(
+  ((await datos()).sesionesPBM ?? []).length === 1,
+  'y una sola sesión: estuviste debajo de las dos a la vez, no dos ratos seguidos'
+)
+await page.screenshot({ path: `${OUT}/medir-12-dos-lamparas.png`, fullPage: true })
 
 // ── Un rato a mano, con su hora ───────────────────────────────────────
 /*

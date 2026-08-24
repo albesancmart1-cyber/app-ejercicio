@@ -15,6 +15,10 @@ import { useState } from 'react'
 import { useAppData, actions } from '../store/store'
 import { useToday } from '../store/clock'
 import { Boton, Etiqueta, Regla, CampoNumero } from '../components/ui'
+import SelectorDeLamparas, {
+  lamparasListas,
+  type LamparaPuesta
+} from '../components/SelectorDeLamparas'
 import {
   NOMBRES_UMBRAL,
   QUE_TRAE,
@@ -50,6 +54,7 @@ import { BANDAS, bandaDe, colorDe, escribirNm, nombreDe } from '../domain/luz'
 import {
   ZONAS,
   dosisDeSesion,
+  lamparasDe,
   escribirIrradiancia,
   escribirJulios,
   picosQueFaltan
@@ -660,26 +665,36 @@ function Lamparas({ hoy }: { hoy: string }) {
   const [nm, setNm] = useState<number | undefined>()
   const [mw, setMw] = useState<number | undefined>()
 
-  const [usando, setUsando] = useState<string | null>(null)
+  /* Abierto o cerrado. Se abre desde una lámpara concreta, que queda encendida
+   * de partida, pero dentro se pueden encender las demás: una sesión puede
+   * tener varias a la vez. */
+  const [abierto, setAbierto] = useState(false)
+  const [puestas, setPuestas] = useState<LamparaPuesta[]>([])
   const [minutos, setMinutos] = useState<number | undefined>(10)
-  const [distancia, setDistancia] = useState<number | undefined>(15)
   const [zona, setZona] = useState<ZonaPBM>('espalda')
 
   const deHoy = (data.sesionesPBM ?? []).filter((s) => s.date === hoy)
-  const lamparaEnUso = lamparas.find((l) => l.id === usando)
+  const listas = lamparasListas(puestas)
 
   const previa: SesionPBM | null =
-    lamparaEnUso && minutos !== undefined && distancia !== undefined
+    abierto && listas.length > 0 && minutos !== undefined
       ? {
           id: 'previa',
           date: hoy,
-          lamparaId: lamparaEnUso.id,
+          lamparaId: listas[0].lamparaId,
           minutos,
-          distanciaCm: distancia,
-          zona
+          distanciaCm: listas[0].distanciaCm,
+          zona,
+          ...(listas.length > 1 ? { lamparas: listas } : {})
         }
       : null
-  const dosis = previa && lamparaEnUso ? dosisDeSesion(previa, lamparaEnUso) : null
+  const dosis = previa ? dosisDeSesion(previa, lamparas) : null
+
+  const abrirCon = (l: Lampara) => {
+    if (abierto) return setAbierto(false)
+    setPuestas([{ lamparaId: l.id, distanciaCm: l.distanciaRefCm }])
+    setAbierto(true)
+  }
 
   return (
     <div className="card">
@@ -728,26 +743,24 @@ function Lamparas({ hoy }: { hoy: string }) {
                 {PICOS_KARU.length - faltan.length} de {PICOS_KARU.length}
               </span>
             </div>
-            <Boton tono="callado" onClick={() => setUsando(usando === l.id ? null : l.id)}>
-              {usando === l.id ? 'Cerrar' : 'Apuntar una sesión'}
+            <Boton tono="callado" onClick={() => abrirCon(l)}>
+              {abierto ? 'Cerrar' : 'Apuntar una sesión'}
             </Boton>
           </div>
         )
       })}
 
-      {lamparaEnUso && (
+      {abierto && (
         <div className="fade-in" style={{ marginTop: 10 }}>
           <Regla />
-          <div className="field-row">
-            <label className="field">
-              <span className="bar-label">Minutos</span>
-              <CampoNumero valor={minutos} onCambiar={setMinutos} />
-            </label>
-            <label className="field">
-              <span className="bar-label">Distancia (cm)</span>
-              <CampoNumero valor={distancia} onCambiar={setDistancia} />
-            </label>
-          </div>
+          <p className="eyebrow">Con cuál o con cuáles</p>
+          <SelectorDeLamparas lamparas={lamparas} puestas={puestas} onCambiar={setPuestas} />
+
+          <Regla />
+          <label className="field">
+            <span className="bar-label">Minutos</span>
+            <CampoNumero valor={minutos} onCambiar={setMinutos} />
+          </label>
           <div
             style={{
               display: 'flex',
@@ -783,13 +796,30 @@ function Lamparas({ hoy }: { hoy: string }) {
                   <span className="faint">{escribirJulios(o.julios)}</span>
                 </div>
               ))}
-              {Math.abs(dosis.factorDistancia - 1) > 0.01 && (
-                <p className="faint" style={{ marginTop: 8 }}>
-                  A {distancia} cm de una lámpara medida a {lamparaEnUso.distanciaRefCm} cm llega el{' '}
-                  {Math.round(dosis.factorDistancia * 100)} % de su irradiancia. La luz cae con el
-                  cuadrado de la distancia.
-                </p>
+              {dosis.porLampara.length > 1 && (
+                <>
+                  <p className="eyebrow" style={{ marginTop: 12 }}>
+                    Lo que pone cada una
+                  </p>
+                  {dosis.porLampara.map((l) => (
+                    <div className="row" key={l.lamparaId} style={{ padding: '4px 0' }}>
+                      <span className="faint">
+                        {l.nombre} · {l.distanciaCm} cm
+                      </span>
+                      <span className="faint">{escribirJulios(l.julios)}</span>
+                    </div>
+                  ))}
+                </>
               )}
+              {dosis.porLampara
+                .filter((l) => Math.abs(l.factorDistancia - 1) > 0.01)
+                .map((l) => (
+                  <p className="faint" key={l.lamparaId} style={{ marginTop: 8 }}>
+                    De {l.nombre}, a {l.distanciaCm} cm, llega el{' '}
+                    {Math.round(l.factorDistancia * 100)} % de su irradiancia. La luz cae con el
+                    cuadrado de la distancia.
+                  </p>
+                ))}
             </>
           )}
 
@@ -799,7 +829,7 @@ function Lamparas({ hoy }: { hoy: string }) {
             onClick={() => {
               if (!previa) return
               actions.saveSesionPBM({ ...previa, id: nuevoId(), hora: minutosDeAhora() })
-              setUsando(null)
+              setAbierto(false)
             }}
           >
             Guardar sesión
@@ -814,15 +844,18 @@ function Lamparas({ hoy }: { hoy: string }) {
             Hoy
           </p>
           {deHoy.map((s) => {
-            const l = lamparas.find((x) => x.id === s.lamparaId)
+            const d = dosisDeSesion(s, lamparas)
+            const nombres = lamparasDe(s)
+              .map((x) => lamparas.find((l) => l.id === x.lamparaId)?.nombre ?? 'Lámpara borrada')
+              .join(' + ')
             return (
               <div className="row" key={s.id} style={{ padding: '5px 0' }}>
                 <span className="dim">
-                  {l?.nombre ?? 'Lámpara borrada'} · {ZONAS[s.zona]}
+                  {nombres} · {ZONAS[s.zona]}
                 </span>
                 <span className="faint">
                   {s.minutos} min
-                  {l ? ` · ${escribirJulios(dosisDeSesion(s, l).julios)}` : ''}
+                  {d.porLampara.length > 0 ? ` · ${escribirJulios(d.julios)}` : ''}
                 </span>
               </div>
             )

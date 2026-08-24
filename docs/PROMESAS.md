@@ -249,6 +249,16 @@ costar un toque, y ese toque tenía que alimentar todo lo ya construido.
   → src/domain/medir.test.ts :: contarlos dos veces
 - [x] medir-lampara-completa · La lámpara pregunta cuál, qué zona y a qué distancia
   → src/screens/Medir.tsx :: LaLampara
+- [x] pbm-varias-a-la-vez · Se pueden encender varias lámparas en la misma sesión
+  → src/components/SelectorDeLamparas.tsx :: SelectorDeLamparas
+- [x] pbm-distancia-por-lampara · Cada lámpara con su distancia, que es lo único que puede ser
+  → src/domain/types.ts :: LamparaEnSesion
+- [x] pbm-julios-se-suman · Los julios de varias lámparas se suman y las ondas iguales se juntan
+  → src/domain/fotobiomodulacion.ts :: dosisDeSesion
+- [x] pbm-picos-se-unen · Dos lámparas cubren juntas picos que ninguna cubre sola
+  → src/domain/fotobiomodulacion.ts :: picosCubiertos
+- [x] pbm-una-sesion-no-dos · Estar bajo dos lámparas es una sesión, no dos ratos seguidos
+  → src/domain/medir.ts :: puestas
 - [x] medir-a-mano · Se puede apuntar un rato que ya pasó, con su hora
   → src/screens/Medir.tsx :: AMano
 - [x] medir-entreno-en-marcha · El entreno empezado en «Hoy» se ve corriendo aquí
@@ -447,4 +457,4 @@ Estas también son promesas, y romperlas sería peor que no cumplir una función
 
 ---
 
-TOTAL: 170
+TOTAL: 175

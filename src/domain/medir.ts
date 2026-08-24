@@ -268,24 +268,43 @@ export function alParar(
         )
       ]
 
-    case 'lampara':
+    case 'lampara': {
+      /*
+       * Pueden ser varias a la vez —el panel grande en la espalda y el pequeño
+       * en la rodilla, o dos apuntando a lo mismo—, y cada una con su distancia,
+       * que es lo único que puede ser: la irradiancia cae con el cuadrado y no
+       * existe una «distancia de la sesión» cuando hay dos aparatos.
+       *
+       * La primera se guarda además suelta en `lamparaId` y `distanciaCm`.
+       * Cuesta dos campos repetidos y a cambio todo lo que ya leía sesiones de
+       * una lámpara —incluido el buzón del reloj— sigue leyéndolas.
+       */
+      const puestas =
+        x.lamparas && x.lamparas.length > 0
+          ? x.lamparas
+          : x.lamparaId
+            ? [{ lamparaId: x.lamparaId, distanciaCm: x.distanciaCm ?? 15 }]
+            : []
+
       // Sin lámpara elegida no hay dosis que calcular, y guardar la sesión sin
       // ella dejaría un registro que nunca podrá contar nada.
-      if (!x.lamparaId) return []
+      if (puestas.length === 0) return []
       return [
         {
           en: 'sesionPBM',
           sesion: {
             id: nuevoId(),
             date: x.date,
-            lamparaId: x.lamparaId,
+            lamparaId: puestas[0].lamparaId,
             hora: x.desde,
             minutos,
-            distanciaCm: x.distanciaCm ?? 15,
-            zona: x.zona ?? 'torso'
+            distanciaCm: puestas[0].distanciaCm,
+            zona: x.zona ?? 'torso',
+            ...(puestas.length > 1 ? { lamparas: puestas } : {})
           }
         }
       ]
+    }
 
     case 'oscuridad':
       /*

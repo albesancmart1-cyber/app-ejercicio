@@ -6,6 +6,7 @@ import {
   escribirJulios,
   factorDistancia,
   lamparaCalculable,
+  lamparasDe,
   picosQueFaltan
 } from './fotobiomodulacion'
 import type { Lampara, SesionPBM } from './types'
@@ -36,12 +37,12 @@ const sesion = (extra: Partial<SesionPBM> = {}): SesionPBM => ({
 describe('la dosis de una sesión', () => {
   it('es potencia por tiempo: 60 mW/cm² diez minutos son 36 J/cm²', () => {
     // 60 mW/cm² × 600 s ÷ 1 000 = 36 J/cm². Es la cuenta entera, a mano.
-    const d = dosisDeSesion(sesion(), PANEL)
+    const d = dosisDeSesion(sesion(), [PANEL])
     expect(d.julios).toBeCloseTo(36, 6)
   })
 
   it('se reparte por onda, que es lo que hace que el dato sirva', () => {
-    const d = dosisDeSesion(sesion(), PANEL)
+    const d = dosisDeSesion(sesion(), [PANEL])
     expect(d.porOnda.map((o) => [o.nm, Number(o.julios.toFixed(1))])).toEqual([
       [630, 7.2],
       [660, 10.8],
@@ -53,31 +54,31 @@ describe('la dosis de una sesión', () => {
   })
 
   it('el doble de distancia entrega la cuarta parte', () => {
-    const cerca = dosisDeSesion(sesion({ distanciaCm: 15 }), PANEL)
-    const lejos = dosisDeSesion(sesion({ distanciaCm: 30 }), PANEL)
+    const cerca = dosisDeSesion(sesion({ distanciaCm: 15 }), [PANEL])
+    const lejos = dosisDeSesion(sesion({ distanciaCm: 30 }), [PANEL])
     expect(lejos.julios).toBeCloseTo(cerca.julios / 4, 6)
     expect(lejos.julios).toBeCloseTo(9, 6)
   })
 
   it('y la mitad de distancia, el cuádruple', () => {
-    const d = dosisDeSesion(sesion({ distanciaCm: 7.5 }), PANEL)
+    const d = dosisDeSesion(sesion({ distanciaCm: 7.5 }), [PANEL])
     expect(d.julios).toBeCloseTo(144, 6)
   })
 
   it('el doble de minutos es el doble de dosis, sin más misterio', () => {
-    const diez = dosisDeSesion(sesion({ minutos: 10 }), PANEL)
-    const veinte = dosisDeSesion(sesion({ minutos: 20 }), PANEL)
+    const diez = dosisDeSesion(sesion({ minutos: 10 }), [PANEL])
+    const veinte = dosisDeSesion(sesion({ minutos: 20 }), [PANEL])
     expect(veinte.julios).toBeCloseTo(diez.julios * 2, 6)
   })
 
   it('una sesión de cero minutos no entrega nada', () => {
-    expect(dosisDeSesion(sesion({ minutos: 0 }), PANEL).julios).toBe(0)
+    expect(dosisDeSesion(sesion({ minutos: 0 }), [PANEL]).julios).toBe(0)
   })
 
   it('pegar la lámpara a la piel no da una dosis infinita', () => {
     // Sin protección, distancia cero daría Infinity y envenenaría toda suma
     // posterior. Se trata como un centímetro.
-    const d = dosisDeSesion(sesion({ distanciaCm: 0 }), PANEL)
+    const d = dosisDeSesion(sesion({ distanciaCm: 0 }), [PANEL])
     expect(Number.isFinite(d.julios)).toBe(true)
     expect(d.julios).toBeGreaterThan(0)
   })
@@ -85,7 +86,7 @@ describe('la dosis de una sesión', () => {
 
 describe('lo que va a la mitocondria', () => {
   it('en un panel de rojo e infrarrojo es casi todo', () => {
-    const d = dosisDeSesion(sesion(), PANEL)
+    const d = dosisDeSesion(sesion(), [PANEL])
     expect(d.juliosMitocondria).toBeCloseTo(36, 6)
   })
 
@@ -99,7 +100,7 @@ describe('lo que va a la mitocondria', () => {
         { nm: 660, irradiancia: 30 }
       ]
     }
-    const d = dosisDeSesion(sesion({ lamparaId: 'mixta' }), mixta)
+    const d = dosisDeSesion(sesion({ lamparaId: 'mixta' }), [mixta])
     expect(d.julios).toBeCloseTo(36, 6)
     expect(d.juliosMitocondria).toBeCloseTo(18, 6) // solo la mitad roja
   })
@@ -111,7 +112,7 @@ describe('lo que va a la mitocondria', () => {
       distanciaRefCm: 15,
       ondas: [{ nm: 1500, irradiancia: 60 }]
     }
-    const d = dosisDeSesion(sesion({ lamparaId: 'estufa' }), estufa)
+    const d = dosisDeSesion(sesion({ lamparaId: 'estufa' }), [estufa])
     expect(d.julios).toBeCloseTo(36, 6)
     expect(d.juliosMitocondria).toBeLessThan(d.julios)
     expect(d.juliosMitocondria).toBeGreaterThan(0)
@@ -120,7 +121,7 @@ describe('lo que va a la mitocondria', () => {
 
 describe('los picos de Karu', () => {
   it('el panel de cuatro ondas cubre tres, y falta el de 760', () => {
-    const d = dosisDeSesion(sesion(), PANEL)
+    const d = dosisDeSesion(sesion(), [PANEL])
     expect(d.picos).toEqual([620, 680, 820])
     expect(picosQueFaltan(PANEL)).toEqual([760])
   })
@@ -163,6 +164,125 @@ describe('acumular varias sesiones', () => {
       sesiones: 0,
       minutos: 0
     })
+  })
+})
+
+describe('varias lámparas a la vez', () => {
+  /** Una segunda, con un pico que al panel le falta y otro que comparte. */
+  const BOMBILLA: Lampara = {
+    id: 'bombilla',
+    nombre: 'Bombilla de mano',
+    distanciaRefCm: 10,
+    ondas: [
+      { nm: 660, irradiancia: 20 },
+      { nm: 760, irradiancia: 10 }
+    ]
+  }
+  const dos = (extra: Partial<SesionPBM> = {}): SesionPBM =>
+    sesion({
+      lamparas: [
+        { lamparaId: 'panel', distanciaCm: 15 },
+        { lamparaId: 'bombilla', distanciaCm: 10 }
+      ],
+      ...extra
+    })
+
+  it('los julios se suman, porque es energía y no una nota media', () => {
+    // Panel: 60 mW/cm² a su referencia. Bombilla: 30 a la suya. Diez minutos.
+    const d = dosisDeSesion(dos(), [PANEL, BOMBILLA])
+    expect(d.julios).toBeCloseTo(36 + 18, 6)
+  })
+
+  it('cada una con su distancia, que es lo único que puede ser', () => {
+    // El panel se va al doble y aporta la cuarta parte; la bombilla no se mueve.
+    const d = dosisDeSesion(
+      dos({
+        lamparas: [
+          { lamparaId: 'panel', distanciaCm: 30 },
+          { lamparaId: 'bombilla', distanciaCm: 10 }
+        ]
+      }),
+      [PANEL, BOMBILLA]
+    )
+    expect(d.julios).toBeCloseTo(9 + 18, 6)
+  })
+
+  it('lo que coincide en la misma onda se junta, no se enseña dos veces', () => {
+    // Las dos tienen 660 nm: 18 mW/cm² del panel más 20 de la bombilla.
+    const d = dosisDeSesion(dos(), [PANEL, BOMBILLA])
+    const seiscientos60 = d.porOnda.filter((o) => o.nm === 660)
+    expect(seiscientos60).toHaveLength(1)
+    expect(seiscientos60[0].irradiancia).toBeCloseTo(38, 6)
+    // Y las partes siguen sumando el todo.
+    expect(d.porOnda.reduce((t, o) => t + o.julios, 0)).toBeCloseTo(d.julios, 6)
+  })
+
+  it('las ondas salen ordenadas por longitud, vengan de donde vengan', () => {
+    const d = dosisDeSesion(dos(), [PANEL, BOMBILLA])
+    expect(d.porOnda.map((o) => o.nm)).toEqual([630, 660, 760, 810, 850])
+  })
+
+  it('los picos se unen, que es la razón de encender dos', () => {
+    // Al panel le faltaba el de 760 y la bombilla lo trae: juntas, los cuatro.
+    expect(dosisDeSesion(sesion(), [PANEL]).picos).toEqual([620, 680, 820])
+    expect(dosisDeSesion(dos(), [PANEL, BOMBILLA]).picos).toEqual([620, 680, 760, 820])
+  })
+
+  it('se puede ver lo que puso cada una por separado', () => {
+    const d = dosisDeSesion(dos(), [PANEL, BOMBILLA])
+    expect(d.porLampara.map((l) => l.nombre)).toEqual(['Panel del salón', 'Bombilla de mano'])
+    expect(d.porLampara[0].julios).toBeCloseTo(36, 6)
+    expect(d.porLampara[1].julios).toBeCloseTo(18, 6)
+    expect(d.porLampara.reduce((t, l) => t + l.julios, 0)).toBeCloseTo(d.julios, 6)
+  })
+
+  it('si se borra una de las dos se cuenta la que queda, y se dice que falta una', () => {
+    // Callarse la que falta sería peor que no contarla: la cifra parecería entera.
+    const d = dosisDeSesion(dos(), [PANEL])
+    expect(d.julios).toBeCloseTo(36, 6)
+    expect(d.lamparasPerdidas).toBe(1)
+    expect(d.porLampara).toHaveLength(1)
+  })
+
+  it('y si se borran las dos no queda nada que calcular', () => {
+    const d = dosisDeSesion(dos(), [])
+    expect(d.julios).toBe(0)
+    expect(d.porLampara).toHaveLength(0)
+    expect(d.lamparasPerdidas).toBe(2)
+  })
+
+  it('la sesión con dos cuenta una vez en el acumulado, no dos', () => {
+    // Son diez minutos, no veinte: estuviste debajo de las dos a la vez.
+    const total = dosisAcumulada([dos()], [PANEL, BOMBILLA])
+    expect(total.sesiones).toBe(1)
+    expect(total.minutos).toBe(10)
+    expect(total.julios).toBeCloseTo(54, 6)
+  })
+
+  it('una sesión a la que le queda una lámpara sí se cuenta', () => {
+    const total = dosisAcumulada([dos()], [PANEL])
+    expect(total.sesiones).toBe(1)
+    expect(total.julios).toBeCloseTo(36, 6)
+  })
+})
+
+describe('las lámparas de una sesión, en sus dos formas', () => {
+  it('una sesión de las de antes trae la suya suelta y se lee igual', () => {
+    expect(lamparasDe(sesion())).toEqual([{ lamparaId: 'panel', distanciaCm: 15 }])
+  })
+
+  it('una con varias trae la lista, y la primera está dentro', () => {
+    const puestas = [
+      { lamparaId: 'panel', distanciaCm: 15 },
+      { lamparaId: 'otra', distanciaCm: 40 }
+    ]
+    expect(lamparasDe(sesion({ lamparas: puestas }))).toEqual(puestas)
+  })
+
+  it('una lista vacía no borra la lámpara suelta', () => {
+    // Guardar `lamparas: []` sería un error de otro sitio, y perder la sesión
+    // por eso sería peor que leer lo que sí está.
+    expect(lamparasDe(sesion({ lamparas: [] }))).toHaveLength(1)
   })
 })
 

@@ -152,13 +152,19 @@ comprobar(conLampara.includes('3 de 4'), 'con los picos de Karu que cubre')
 await page.getByRole('button', { name: 'Apuntar una sesión' }).click()
 await page.waitForTimeout(200)
 await page.getByLabel('Minutos').fill('10')
-await page.getByLabel('Distancia (cm)').fill('15')
+/*
+ * La distancia va por lámpara y por eso el campo lleva su nombre: en una sesión
+ * con dos aparatos no existe una distancia común, y suponerla multiplicaría o
+ * dividiría por cuatro media dosis sin avisar.
+ */
+const distanciaDelPanel = page.getByLabel('Distancia de Panel del salón en centímetros')
+await distanciaDelPanel.fill('15')
 await page.waitForTimeout(200)
 
 const aQuince = await texto()
 comprobar(aQuince.includes('36,0 J/cm²'), `60 mW/cm² diez minutos son 36 J/cm²: ${aQuince.match(/[\d,]+ J\/cm²/)?.[0]}`)
 
-await page.getByLabel('Distancia (cm)').fill('30')
+await distanciaDelPanel.fill('30')
 await page.waitForTimeout(250)
 const aTreinta = await texto()
 comprobar(
@@ -174,6 +180,54 @@ await page.screenshot({ path: `${OUT}/luz-05-sesion.png` })
 await page.getByRole('button', { name: 'Guardar sesión' }).click()
 await page.waitForTimeout(400)
 comprobar(((await datos()).sesionesPBM ?? []).length === 1, 'la sesión debería guardarse')
+
+// ── Dos lámparas a la vez en la misma sesión ───────────────────────────
+await page.evaluate(() => {
+  const d = JSON.parse(localStorage.getItem('ritmo-data-v1'))
+  d.lamparas = [
+    ...d.lamparas,
+    {
+      id: 'bombilla',
+      nombre: 'Bombilla de mano',
+      distanciaRefCm: 10,
+      ondas: [
+        { nm: 660, irradiancia: 20 },
+        { nm: 760, irradiancia: 10 }
+      ]
+    }
+  ]
+  d.sesionesPBM = []
+  localStorage.setItem('ritmo-data-v1', JSON.stringify(d))
+})
+await page.reload({ waitUntil: 'networkidle' })
+await page.locator('.tab', { hasText: 'Luz' }).click()
+await page.waitForTimeout(400)
+await page.getByRole('button', { name: 'Apuntar una sesión' }).first().click()
+await page.waitForTimeout(300)
+await page.getByLabel('Minutos').fill('10')
+await page.getByRole('button', { name: 'Bombilla de mano' }).click()
+await page.waitForTimeout(300)
+
+const conDos = await texto()
+comprobar(
+  conDos.includes('54,0 J/cm²'),
+  `los julios de las dos deberían sumarse: 36 + 18 = 54, y sale ${conDos.match(/[\d,]+ J\/cm²/)?.[0]}`
+)
+comprobar(conDos.includes('Lo que pone cada una'), 'y poder verse lo que pone cada una')
+comprobar(
+  conDos.includes('4 de 4') || conDos.includes('Picos'),
+  'la lista de lámparas sigue enseñando sus picos'
+)
+
+await page.getByRole('button', { name: 'Guardar sesión' }).click()
+await page.waitForTimeout(400)
+const conDosPBM = ((await datos()).sesionesPBM ?? []).at(-1)
+comprobar(conDosPBM?.lamparas?.length === 2, 'y guardarse las dos lámparas de la sesión')
+comprobar(
+  (await texto()).includes('Panel del salón + Bombilla de mano'),
+  'y la lista de hoy debería nombrar las dos, no solo la primera'
+)
+await page.screenshot({ path: `${OUT}/luz-05b-dos-lamparas.png`, fullPage: true })
 
 // ── El balance ─────────────────────────────────────────────────────────
 const balance = await texto()

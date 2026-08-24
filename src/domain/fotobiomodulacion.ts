@@ -32,7 +32,7 @@
  * inventarlo. Lo que hay es la cuenta de lo entregado, honesta, para que quien
  * la use sepa qué se está dando.
  */
-import type { Lampara, SesionPBM, ZonaPBM } from './types'
+import type { Lampara, LamparaEnSesion, SesionPBM, ZonaPBM } from './types'
 import { BANDAS, bandaDe, picosCubiertos, PICOS_KARU } from './luz'
 
 export const ZONAS: Record<ZonaPBM, string> = {
@@ -53,16 +53,29 @@ export interface DosisDeOnda {
   julios: number
 }
 
+/** Lo que puso cada lámpara, cuando hubo varias a la vez. */
+export interface DosisDeLampara {
+  lamparaId: string
+  nombre: string
+  distanciaCm: number
+  /** Cuánto se ha multiplicado o dividido su irradiancia por la distancia. */
+  factorDistancia: number
+  julios: number
+  juliosMitocondria: number
+}
+
 export interface DosisSesion {
   /** Suma de todas las ondas, en J/cm². */
   julios: number
   porOnda: DosisDeOnda[]
   /** Solo lo que va a la mitocondria: rojo e infrarrojo. */
   juliosMitocondria: number
-  /** Cuáles de los cuatro picos de Karu cubre la lámpara usada. */
+  /** Cuáles de los cuatro picos de Karu cubren, juntas, las lámparas usadas. */
   picos: number[]
-  /** Cuánto se ha multiplicado o dividido la irradiancia por la distancia. */
-  factorDistancia: number
+  /** Lo que puso cada lámpara. Con una sola, un elemento. */
+  porLampara: DosisDeLampara[]
+  /** Lámparas de la sesión que ya no están en el armario y no se han podido contar. */
+  lamparasPerdidas: number
 }
 
 /**
@@ -78,29 +91,104 @@ export function factorDistancia(distanciaCm: number, referenciaCm: number): numb
   return (ref / d) ** 2
 }
 
-/** La dosis de una sesión con una lámpara concreta. */
-export function dosisDeSesion(sesion: SesionPBM, lampara: Lampara): DosisSesion {
-  const factor = factorDistancia(sesion.distanciaCm, lampara.distanciaRefCm)
+/**
+ * Las lámparas de una sesión, en las dos formas en que puede venir.
+ *
+ * Existe para que nadie tenga que acordarse de mirar los dos sitios. Una sesión
+ * de antes de que se pudiera poner más de una trae solo `lamparaId` y
+ * `distanciaCm`; una de ahora con varias trae además `lamparas`, con la primera
+ * dentro. Todo lo que calcula pasa por aquí.
+ */
+export function lamparasDe(
+  sesion: Pick<SesionPBM, 'lamparaId' | 'distanciaCm' | 'lamparas'>
+): LamparaEnSesion[] {
+  if (sesion.lamparas && sesion.lamparas.length > 0) return sesion.lamparas
+  if (!sesion.lamparaId) return []
+  return [{ lamparaId: sesion.lamparaId, distanciaCm: sesion.distanciaCm }]
+}
+
+/**
+ * La dosis de una sesión, con una lámpara o con varias a la vez.
+ *
+ * ## Por qué se suman, y por qué eso no es hacer trampa
+ *
+ * Dos paneles apuntando a la misma piel entregan cada uno sus julios, y los
+ * julios se suman: es energía, no una nota media. Poner el panel grande y el
+ * pequeño a la vez sobre la espalda entrega de verdad la suma de los dos, y
+ * ninguna de las dos cifras por separado describiría el rato.
+ *
+ * Las **ondas se juntan por longitud**. Si las dos lámparas tienen un pico a
+ * 660 nm, lo que le llega a la piel a 660 nm es la suma de las dos
+ * irradiancias, no dos cosas distintas que casualmente coinciden. Enseñarlas
+ * separadas obligaría a sumar de cabeza para saber cuánto rojo hay.
+ *
+ * Y los **picos de Karu se unen**, que es la razón de fondo por la que alguien
+ * enciende dos lámparas: una cubre 660 y 850, la otra 810, y juntas cubren tres
+ * de los cuatro. Eso solo se ve si se miran juntas.
+ *
+ * ## La distancia va por lámpara
+ *
+ * Cada una con la suya, porque cada una está donde está. Es lo que impide que
+ * esto sea un atajo: una lámpara al doble de distancia aporta la cuarta parte,
+ * y la suma lo refleja.
+ */
+export function dosisDeSesion(sesion: SesionPBM, catalogo: Lampara[]): DosisSesion {
   const segundos = Math.max(0, sesion.minutos) * 60
+  const puestas = lamparasDe(sesion)
 
-  const porOnda: DosisDeOnda[] = lampara.ondas.map((o) => {
-    const irradiancia = o.irradiancia * factor
-    return { nm: o.nm, irradiancia, julios: (irradiancia * segundos) / 1000 }
-  })
+  const porLampara: DosisDeLampara[] = []
+  /** Las irradiancias por longitud de onda, ya sumadas entre lámparas. */
+  const porNm = new Map<number, number>()
+  let perdidas = 0
+  const nmsCubiertos: number[] = []
 
-  const julios = porOnda.reduce((t, o) => t + o.julios, 0)
-  const juliosMitocondria = porOnda.reduce((t, o) => {
-    const banda = bandaDe(o.nm)
-    if (!banda || BANDAS[banda].proposito !== 'mitocondria') return t
-    return t + o.julios * BANDAS[banda].peso
-  }, 0)
+  for (const puesta of puestas) {
+    const lampara = catalogo.find((l) => l.id === puesta.lamparaId)
+    // Una lámpara que se borró no se puede calcular, y sumar cero es más
+    // honesto que inventarle una lámpara media. Se dice cuántas faltan.
+    if (!lampara) {
+      perdidas++
+      continue
+    }
+
+    const factor = factorDistancia(puesta.distanciaCm, lampara.distanciaRefCm)
+    let julios = 0
+    let juliosMitocondria = 0
+
+    for (const o of lampara.ondas) {
+      const irradiancia = o.irradiancia * factor
+      porNm.set(o.nm, (porNm.get(o.nm) ?? 0) + irradiancia)
+      nmsCubiertos.push(o.nm)
+
+      const j = (irradiancia * segundos) / 1000
+      julios += j
+      const banda = bandaDe(o.nm)
+      if (banda && BANDAS[banda].proposito === 'mitocondria') {
+        juliosMitocondria += j * BANDAS[banda].peso
+      }
+    }
+
+    porLampara.push({
+      lamparaId: lampara.id,
+      nombre: lampara.nombre,
+      distanciaCm: puesta.distanciaCm,
+      factorDistancia: factor,
+      julios,
+      juliosMitocondria
+    })
+  }
+
+  const porOnda: DosisDeOnda[] = [...porNm.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([nm, irradiancia]) => ({ nm, irradiancia, julios: (irradiancia * segundos) / 1000 }))
 
   return {
-    julios,
+    julios: porLampara.reduce((t, l) => t + l.julios, 0),
     porOnda,
-    juliosMitocondria,
-    picos: picosCubiertos(lampara.ondas.map((o) => o.nm)),
-    factorDistancia: factor
+    juliosMitocondria: porLampara.reduce((t, l) => t + l.juliosMitocondria, 0),
+    picos: picosCubiertos(nmsCubiertos),
+    porLampara,
+    lamparasPerdidas: perdidas
   }
 }
 
@@ -115,11 +203,11 @@ export function dosisAcumulada(
   let contadas = 0
 
   for (const s of sesiones) {
-    const lampara = lamparas.find((l) => l.id === s.lamparaId)
-    // Una sesión cuya lámpara se borró no se puede calcular, y sumar cero es
-    // más honesto que inventarle una lámpara media.
-    if (!lampara) continue
-    const d = dosisDeSesion(s, lampara)
+    const d = dosisDeSesion(s, lamparas)
+    // Una sesión de la que no queda ni una lámpara en el armario no se puede
+    // calcular, y sumar cero es más honesto que inventarle una lámpara media.
+    // Si de dos lámparas queda una, cuenta lo que esa puso: es lo que se sabe.
+    if (d.porLampara.length === 0) continue
     julios += d.julios
     juliosMitocondria += d.juliosMitocondria
     minutos += s.minutos

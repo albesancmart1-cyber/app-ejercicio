@@ -86,6 +86,7 @@ export const NUTRIENTES: Record<string, Nutrientes> = {
   pavo_pechuga: { proteinaPor100: 24, leucinaPor100: 1.8, diaas: 108, deuterioPpm: 134, antinutrientes: 'bajo' },
   cordero_chuletillas: { proteinaPor100: 18, leucinaPor100: 1.44, diaas: 110, deuterioPpm: 130, antinutrientes: 'bajo' },
   cordero_pierna: { proteinaPor100: 20, leucinaPor100: 1.6, diaas: 110, deuterioPpm: 131, antinutrientes: 'bajo' },
+  cordero_hamburguesa_romero: { proteinaPor100: 17, leucinaPor100: 1.36, diaas: 110, deuterioPpm: 132, antinutrientes: 'bajo' },
   conejo: { proteinaPor100: 21, leucinaPor100: 1.66, diaas: 110, deuterioPpm: 132, antinutrientes: 'bajo' },
   jamon_iberico: { proteinaPor100: 30, leucinaPor100: 2.4, diaas: 114, deuterioPpm: 130, antinutrientes: 'bajo' },
   jamon_serrano: { proteinaPor100: 31, leucinaPor100: 2.5, diaas: 114, deuterioPpm: 131, antinutrientes: 'bajo' },
@@ -116,6 +117,7 @@ export const NUTRIENTES: Record<string, Nutrientes> = {
   queso_parmesano: { proteinaPor100: 36, leucinaPor100: 3.5, diaas: 118, deuterioPpm: 140, antinutrientes: 'bajo' },
   queso_cabra: { proteinaPor100: 22, leucinaPor100: 2.1, diaas: 118, deuterioPpm: 143, antinutrientes: 'bajo' },
   queso_fresco: { proteinaPor100: 12, leucinaPor100: 1.15, diaas: 118, deuterioPpm: 148, antinutrientes: 'bajo' },
+  queso_philadelphia: { proteinaPor100: 6, leucinaPor100: 0.58, diaas: 118, deuterioPpm: 145, antinutrientes: 'bajo' },
   requeson: { proteinaPor100: 11, leucinaPor100: 1.1, diaas: 118, deuterioPpm: 149, antinutrientes: 'bajo' },
   leche_entera: { proteinaPor100: 3.2, leucinaPor100: 0.32, diaas: 116, deuterioPpm: 150, antinutrientes: 'bajo' },
 

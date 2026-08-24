@@ -159,6 +159,51 @@ describe('lo que se guarda al parar', () => {
     expect(alParar(enCurso('lampara', 1200), 1210)).toEqual([])
   })
 
+  it('con dos lámparas a la vez guarda las dos, cada una con su distancia', () => {
+    const puestas = [
+      { lamparaId: 'panel', distanciaCm: 40 },
+      { lamparaId: 'bombilla', distanciaCm: 10 }
+    ]
+    const r = alParar(
+      enCurso('lampara', 1200, {
+        lamparaId: 'panel',
+        distanciaCm: 40,
+        lamparas: puestas,
+        zona: 'espalda'
+      }),
+      1210
+    )
+    const s = de(r, 'sesionPBM')!.sesion
+    expect(s.lamparas).toEqual(puestas)
+    // Y una sola sesión: estuviste debajo de las dos a la vez, no dos ratos.
+    expect(r).toHaveLength(1)
+    expect(s.minutos).toBe(10)
+  })
+
+  it('la primera va además suelta, para que lo que leía una lámpara siga leyendo', () => {
+    const r = alParar(
+      enCurso('lampara', 1200, {
+        lamparas: [
+          { lamparaId: 'panel', distanciaCm: 40 },
+          { lamparaId: 'bombilla', distanciaCm: 10 }
+        ],
+        zona: 'espalda'
+      }),
+      1210
+    )
+    const s = de(r, 'sesionPBM')!.sesion
+    expect(s.lamparaId).toBe('panel')
+    expect(s.distanciaCm).toBe(40)
+  })
+
+  it('con una sola no se guarda la lista, para no repetir lo que ya está arriba', () => {
+    const r = alParar(
+      enCurso('lampara', 1200, { lamparaId: 'panel', distanciaCm: 30, zona: 'espalda' }),
+      1210
+    )
+    expect(de(r, 'sesionPBM')!.sesion.lamparas).toBeUndefined()
+  })
+
   it('la oscuridad se guarda con la fecha de la mañana en que uno se levanta', () => {
     // Apagar a las 23:30 del domingo y levantarse a las 07:00 es la noche del
     // lunes: es la que explica el peso del lunes. Ver `NocheRegistrada`.
