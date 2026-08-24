@@ -15,6 +15,7 @@ import { useState } from 'react'
 import { useAppData, actions } from '../store/store'
 import { useToday } from '../store/clock'
 import { Boton, Etiqueta, Regla, CampoNumero } from '../components/ui'
+import QueHaceEstaOnda, { TablaDelEspectro } from '../components/QueHaceEstaOnda'
 import SelectorDeLamparas, {
   lamparasListas,
   type LamparaPuesta
@@ -733,7 +734,8 @@ function Lamparas({ hoy }: { hoy: string }) {
       {lamparas.length === 0 && !creando && (
         <p className="dim" style={{ marginTop: 8 }}>
           Crea la tuya con el nombre que quieras y todas sus longitudes de onda con su irradiancia.
-          Vale cualquier valor de 280 a 3 000 nm: ultravioleta, violeta, verde, rojo o infrarrojo.
+          Vale cualquier valor de 280 a 50 000 nm: del ultravioleta B al infrarrojo lejano de una
+          sauna, pasando por el violeta, el verde y el rojo.
           Con eso calculo lo que te ha dado de verdad cada sesión.
         </p>
       )}
@@ -971,14 +973,17 @@ function Lamparas({ hoy }: { hoy: string }) {
           </div>
           {nm !== undefined && bandaDe(nm) === null && (
             <p className="faint" style={{ marginTop: 6 }}>
-              {escribirNm(nm)} se sale del rango que sirve para esto (280 a 3 000 nm). Revísalo: es
-              fácil escribir 66 en vez de 660.
+              {escribirNm(nm)} se sale del rango que sirve para esto (280 a 50 000 nm). Revísalo:
+              es fácil escribir 66 en vez de 660.
             </p>
           )}
           {nm !== undefined && bandaDe(nm) !== null && (
-            <p className="faint" style={{ marginTop: 6 }}>
-              {nombreDe(nm)}. {BANDAS[bandaDe(nm)!].queHace}
-            </p>
+            <>
+              <p className="faint" style={{ marginTop: 6 }}>
+                {nombreDe(nm)}. {BANDAS[bandaDe(nm)!].queHace}
+              </p>
+              <QueHaceEstaOnda nm={nm} />
+            </>
           )}
           <Boton
             tono="callado"
@@ -1174,6 +1179,8 @@ export default function Luz() {
       <DosRelojesCard hoy={hoy} lat={coord.lat} lon={coord.lon} />
       <DiaDeReparar hoy={hoy} lat={coord.lat} lon={coord.lon} />
       <Lamparas hoy={hoy} />
+
+      <TablaDelEspectro />
       <Balance hoy={hoy} lat={coord.lat} lon={coord.lon} />
       <Compensaciones />
       <EstacionesRobadas {...comunes} />

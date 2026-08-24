@@ -10,6 +10,17 @@
  */
 import { chromium } from 'playwright-core'
 import { readFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+
+/*
+ * El apartado del espectro se reescribe desde `domain/espectro.ts` antes de
+ * componer nada. Va aquí y no como un paso aparte que haya que recordar:
+ * un manual que se genera con una tabla vieja dentro es peor que no tenerla.
+ */
+execFileSync('node', [new URL('espectro-a-html.mjs', import.meta.url).pathname], {
+  stdio: 'inherit',
+  cwd: new URL('..', import.meta.url).pathname
+})
 
 const HTML = new URL('../docs/manual/manual.html', import.meta.url)
 const SALIDA = new URL('../docs/manual/Ritmo-manual.pdf', import.meta.url).pathname

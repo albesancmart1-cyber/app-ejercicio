@@ -55,13 +55,28 @@ describe('el reparto en bandas', () => {
     // Quien teclea 66 en vez de 660 tiene una errata, y taparla sería peor.
     expect(bandaDe(66)).toBeNull()
     expect(bandaDe(279)).toBeNull()
-    expect(bandaDe(3001)).toBeNull()
+    expect(bandaDe(50001)).toBeNull()
     expect(bandaDe(NaN)).toBeNull()
     expect(nombreDe(66)).toBe('Fuera de rango')
   })
 
-  it('el extremo justo de 3 000 nm sigue siendo luz', () => {
-    expect(bandaDe(NM_MAXIMO)).toBe('infrarrojo_medio')
+  it('el infrarrojo lejano entra: una sauna emite a diez micras y eso es luz', () => {
+    expect(bandaDe(3000)).toBe('infrarrojo_lejano')
+    expect(bandaDe(10000)).toBe('infrarrojo_lejano')
+    expect(bandaDe(NM_MAXIMO)).toBe('infrarrojo_lejano')
+  })
+
+  it('y es calor, no mitocondria: contarlo como rojo sería contar una cosa por otra', () => {
+    // A diez micras el agua absorbe tan fuerte que la luz se para en la primera
+    // capa de células. El calor llega hondo, pero por conducción.
+    expect(propositoDe(10000)).toBe('calor')
+    expect(BANDAS.infrarrojo_lejano.peso).toBe(0)
+  })
+
+  it('a partir de las tres micras se escribe en micras, que es como se nombra', () => {
+    expect(escribirNm(660)).toBe('660 nm')
+    expect(escribirNm(10000)).toBe('10 µm')
+    expect(escribirNm(50000)).toBe('50 µm')
   })
 })
 

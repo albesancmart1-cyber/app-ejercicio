@@ -269,6 +269,20 @@ costar un toque, y ese toque tenía que alimentar todo lo ya construido.
   → src/screens/Luz.tsx :: Corregir la lámpara
 - [x] pbm-editar-avisa · Y se avisa de que las sesiones ya apuntadas se recalculan
   → src/screens/Luz.tsx :: se recalculan
+- [x] espectro-completo · Qué hace cada longitud de onda, del UVB al infrarrojo lejano
+  → src/domain/espectro.ts :: ESPECTRO
+- [x] espectro-con-fuentes · Cada tramo cita de dónde sale, con año o con norma
+  → src/domain/espectro.test.ts :: sin una sola fuente
+- [x] espectro-donde-tecleas · Lo dice donde hace falta: al teclear la onda de tu lámpara
+  → src/components/QueHaceEstaOnda.tsx :: QueHaceEstaOnda
+- [x] espectro-bifasico · Empieza avisando de que pasarse inhibe, no de bondades
+  → src/components/QueHaceEstaOnda.tsx :: bifásica
+- [x] espectro-desmiente · Y desmonta lo que se repite y no se sostiene
+  → src/domain/espectro.ts :: ojo
+- [x] espectro-lejano-es-calor · El infrarrojo lejano cuenta como calor, no como mitocondria
+  → src/domain/luz.ts :: infrarrojo_lejano
+- [x] espectro-no-receta · Ni dosis, ni minutos, ni protocolos: se explica, no se receta
+  → src/domain/espectro.test.ts :: no receta
 - [x] medir-a-mano · Se puede apuntar un rato que ya pasó, con su hora
   → src/screens/Medir.tsx :: AMano
 - [x] medir-entreno-en-marcha · El entreno empezado en «Hoy» se ve corriendo aquí
@@ -467,4 +481,4 @@ Estas también son promesas, y romperlas sería peor que no cumplir una función
 
 ---
 
-TOTAL: 180
+TOTAL: 187

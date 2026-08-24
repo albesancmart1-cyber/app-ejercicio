@@ -4145,3 +4145,48 @@ textarea:focus {
   margin-top: var(--sp-2);
   padding-left: var(--sp-4);
 }
+
+/* ── El espectro, tramo a tramo ───────────────────────────────────────
+ *
+ * Dos botones que no parecen botones: uno para abrir un tramo y otro para
+ * desplegar la tabla. Van sin caja porque son navegación dentro de una
+ * tarjeta, no acciones — y una caja más aquí convertiría una referencia que
+ * se consulta de vez en cuando en la parte más ruidosa de la pantalla.
+ */
+.enlace-sobrio {
+  background: none;
+  border: 0;
+  padding: 4px 0;
+  margin: 0;
+  font: inherit;
+  color: var(--accent);
+  cursor: pointer;
+  text-align: left;
+}
+.enlace-sobrio:hover { text-decoration: underline; }
+
+.fila-espectro {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--separator);
+  padding: 9px 0;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.fila-espectro[aria-expanded='true'] { border-bottom-color: transparent; }
+
+.lista-efectos {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: var(--label-2);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+.lista-efectos li { margin-bottom: 7px; }
+.lista-efectos li::marker { color: var(--label-3); }

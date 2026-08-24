@@ -31,6 +31,7 @@ export type Banda =
   | 'rojo'
   | 'infrarrojo_cercano'
   | 'infrarrojo_medio'
+  | 'infrarrojo_lejano'
 
 /**
  * Para qué sirve cada banda en el balance del día.
@@ -39,7 +40,7 @@ export type Banda =
  * intercambiables: la mitocondria no se alimenta de azul y el reloj no se pone
  * en hora con infrarrojo.
  */
-export type Proposito = 'mitocondria' | 'reloj' | 'ultravioleta' | 'ninguno'
+export type Proposito = 'mitocondria' | 'reloj' | 'ultravioleta' | 'calor' | 'ninguno'
 
 export interface DefinicionBanda {
   /** Desde (inclusive) y hasta (exclusive), en nanómetros. */
@@ -126,7 +127,7 @@ export const BANDAS: Record<Banda, DefinicionBanda> = {
     nombre: 'Infrarrojo cercano',
     proposito: 'mitocondria',
     peso: 1,
-    queHace: 'Penetra centímetros de tejido. Llega donde el rojo se queda.'
+    queHace: 'Hasta unos cinco milímetros de piel: lo que más entra. Llega donde el rojo se queda.'
   },
   infrarrojo_medio: {
     desde: 1400,
@@ -135,6 +136,21 @@ export const BANDAS: Record<Banda, DefinicionBanda> = {
     proposito: 'mitocondria',
     peso: 0.4,
     queHace: 'Calor radiante. Lo que da una hoguera y no da ninguna pantalla.'
+  },
+  /*
+   * El infrarrojo lejano es **calor y solo calor**, y por eso tiene propósito
+   * propio en vez de contarse como mitocondria: a diez micras el agua absorbe
+   * tan fuerte que la luz se para en la primera capa de células. El calor sí
+   * llega hondo, pero por conducción y por la sangre, como el de una manta.
+   * Sumarlo a los julios de la mitocondria sería contar una cosa como otra.
+   */
+  infrarrojo_lejano: {
+    desde: 3000,
+    hasta: 50000,
+    nombre: 'Infrarrojo lejano',
+    proposito: 'calor',
+    peso: 0,
+    queHace: 'El calor de una sauna o una estufa. Se queda en la piel y calienta desde ahí.'
   }
 }
 
@@ -142,7 +158,7 @@ const ORDEN = Object.keys(BANDAS) as Banda[]
 
 /** El rango que la app admite. Fuera de aquí no es luz que sirva para esto. */
 export const NM_MINIMO = BANDAS.uvb.desde
-export const NM_MAXIMO = BANDAS.infrarrojo_medio.hasta
+export const NM_MAXIMO = BANDAS.infrarrojo_lejano.hasta
 
 /**
  * En qué banda cae una longitud de onda, o `null` si se sale del rango.
@@ -157,8 +173,8 @@ export function bandaDe(nm: number): Banda | null {
     const d = BANDAS[b]
     if (nm >= d.desde && nm < d.hasta) return b
   }
-  // El extremo superior entra en la última banda: 3 000 nm sigue siendo luz.
-  return nm === NM_MAXIMO ? 'infrarrojo_medio' : null
+  // El extremo superior entra en la última banda: 50 000 nm sigue siendo luz.
+  return nm === NM_MAXIMO ? 'infrarrojo_lejano' : null
 }
 
 /** El nombre de la banda de una longitud de onda, para enseñarlo al lado. */
@@ -248,7 +264,17 @@ export function colorDe(nm: number): string {
   }
 }
 
-/** Una longitud de onda como se escribe: «660 nm». */
+/**
+ * Una longitud de onda como se escribe: «660 nm», «10 µm».
+ *
+ * A partir del infrarrojo medio se pasa a micras porque es como se nombran esas
+ * ondas en todas partes: nadie dice que una sauna emite a «10 000 nm», dice que
+ * emite a diez micras, y escribirlo con cinco cifras lo hace ilegible sin
+ * hacerlo más exacto.
+ */
 export function escribirNm(nm: number): string {
+  if (nm >= 3000) {
+    return `${(nm / 1000).toLocaleString('es-ES', { maximumFractionDigits: 1 })} µm`
+  }
   return `${nm.toLocaleString('es-ES', { maximumFractionDigits: 0 })} nm`
 }

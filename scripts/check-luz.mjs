@@ -181,6 +181,43 @@ await page.getByRole('button', { name: 'Guardar sesión' }).click()
 await page.waitForTimeout(400)
 comprobar(((await datos()).sesionesPBM ?? []).length === 1, 'la sesión debería guardarse')
 
+// ── Qué hace cada longitud de onda ─────────────────────────────────────
+/*
+ * La tabla del espectro. Se comprueba que está, que se abre, que dice de dónde
+ * sale cada cosa, y —lo que más importa— que empieza por la advertencia de la
+ * respuesta bifásica en vez de por una lista de bondades.
+ */
+await page.getByRole('button', { name: 'Abrir la tabla' }).click()
+await page.waitForTimeout(400)
+const espectro = page.locator('.card').filter({ hasText: 'Qué hace cada longitud de onda' })
+const listaDeOndas = await espectro.innerText()
+comprobar(listaDeOndas.includes('bifásica'), 'la tabla debería abrir avisando de que pasarse inhibe')
+comprobar(listaDeOndas.includes('UVB corto'), 'y llegar desde el UVB…')
+comprobar(listaDeOndas.includes('Infrarrojo lejano'), '…hasta el infrarrojo lejano')
+
+await espectro.getByRole('button', { name: /^UVA/ }).click()
+await page.waitForTimeout(400)
+const uva = await espectro.innerText()
+comprobar(uva.includes('Lo absorbe'), 'cada tramo debería decir qué molécula lo absorbe')
+comprobar(uva.includes('Hasta dónde llega'), 'y hasta dónde llega en el tejido')
+comprobar(uva.includes('óxido nítrico'), 'con lo documentado del tramo')
+comprobar(/\b(19|20)\d{2}\b/.test(uva), 'y su fuente con el año, que es lo que lo hace comprobable')
+await page.screenshot({ path: `${OUT}/luz-07-espectro.png`, fullPage: true })
+
+await espectro.getByRole('button', { name: /^Infrarrojo lejano/ }).click()
+await page.waitForTimeout(400)
+const lejano = await espectro.innerText()
+comprobar(
+  lejano.includes('micras'),
+  'el infrarrojo lejano debería decir que se queda en micras, no en centímetros'
+)
+comprobar(
+  lejano.includes('Ojo'),
+  'y desmontar lo que se lee por ahí, que es la mitad de la razón de tener esta tabla'
+)
+await espectro.getByRole('button', { name: 'Cerrar' }).click()
+await page.waitForTimeout(300)
+
 // ── Corregir una lámpara sin borrarla y volver a escribirla ────────────
 /*
  * El dato que más se equivoca uno al teclear es la irradiancia, y es justo el
