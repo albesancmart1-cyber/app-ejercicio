@@ -348,16 +348,48 @@ describe('la mesa', () => {
 
 describe('los dos relojes', () => {
   it('comer antes de ver luz resta', () => {
+    // Sale dentro de la ventana del pulso, así que hay reloj central que medir.
     const parte = parteDelDia(
       base({
         ahoraMin: 20 * 60,
-        salidas: [salida(13 * 60, 30)],
-        comidas: { date: JUNIO, comidas: [{ hora: '07:00', texto: 'café', alimentos: [] }] }
+        salidas: [salida(7 * 60, 30)],
+        comidas: { date: JUNIO, comidas: [{ hora: '05:30', texto: 'café', alimentos: [] }] }
       })
     )
     const r = parte.puntos.find((x) => x.id === 'relojes')
     expect(r?.signo).toBe('contra')
     expect(r?.titulo).toMatch(/antes de ver luz/)
+  })
+
+  /*
+   * Quien entra a trabajar antes de que amanezca no puede ver el amanecer, y la
+   * app lo sabe. Devolverle su desayuno como una falta sería reprocharle su
+   * turno — justo lo que esta app tiene prohibido hacer.
+   */
+  it('pero sin pulso de mañana no resta: no hay contra qué medir', () => {
+    const parte = parteDelDia(
+      base({
+        ahoraMin: 20 * 60,
+        salidas: [salida(15 * 60, 30)],
+        comidas: { date: JUNIO, comidas: [{ hora: '09:45', texto: 'café', alimentos: [] }] }
+      })
+    )
+    const r = parte.puntos.find((x) => x.id === 'relojes')
+    expect(r?.signo).toBe('no_habia')
+    expect(r?.titulo).toMatch(/no hay con qué comparar/)
+  })
+
+  it('y se dice por qué, en vez de callarse y dejar la duda', () => {
+    const parte = parteDelDia(
+      base({
+        ahoraMin: 20 * 60,
+        salidas: [salida(15 * 60, 30)],
+        comidas: { date: JUNIO, comidas: [{ hora: '09:45', texto: 'café', alimentos: [] }] }
+      })
+    )
+    const r = parte.puntos.find((x) => x.id === 'relojes')
+    expect(r?.porque).toMatch(/fuera de esa ventana/)
+    expect(r?.porque).toMatch(/no que comieras pronto/)
   })
 
   it('y hacerlo en el orden bueno suma', () => {

@@ -635,7 +635,11 @@ function DosRelojesCard({ hoy, lat, lon }: { hoy: string; lat: number; lon: numb
 
       <div className="row" style={{ marginTop: 10 }}>
         <span className="dim">Central · lo pone la luz</span>
-        <span>{r.central !== undefined ? escribirHora(r.central) : '—'}</span>
+        <span className={r.falta === 'pulso' ? 'faint' : undefined}>
+          {r.central !== undefined
+            ? `${escribirHora(r.central)}${r.falta === 'pulso' ? ' · fuera de la ventana' : ''}`
+            : '—'}
+        </span>
       </div>
       <div className="row" style={{ padding: '7px 0' }}>
         <span className="dim">Periférico · lo pone la comida</span>
@@ -657,11 +661,21 @@ function DosRelojesCard({ hoy, lat, lon }: { hoy: string; lat: number; lon: numb
         </>
       ) : (
         <p className="faint" style={{ marginTop: 10 }}>
-          {r.falta === 'luz'
-            ? 'Falta apuntar algún rato fuera para saber cuándo se puso en hora tu reloj central.'
-            : r.falta === 'comida'
-              ? 'Falta apuntar la primera comida del día — el café cuenta.'
-              : 'Apunta un rato fuera y tu primera comida, y te digo la distancia entre los dos.'}
+          {r.falta === 'pulso' ? (
+            <>
+              Hoy hubo luz, pero <strong>no en la ventana que pone el reloj en hora</strong>. Sin
+              ese pulso de mañana no sé dónde está tu reloj central, así que medir tu primera
+              comida contra la luz que viste por la tarde no diría nada — y desde luego no que
+              comieras pronto. Si tu turno te lo impide, no es una falta tuya: es que hoy no hubo
+              contra qué medir.
+            </>
+          ) : r.falta === 'luz' ? (
+            'Falta apuntar algún rato fuera para saber cuándo se puso en hora tu reloj central.'
+          ) : r.falta === 'comida' ? (
+            'Falta apuntar la primera comida del día — el café cuenta.'
+          ) : (
+            'Apunta un rato fuera y tu primera comida, y te digo la distancia entre los dos.'
+          )}
         </p>
       )}
     </div>

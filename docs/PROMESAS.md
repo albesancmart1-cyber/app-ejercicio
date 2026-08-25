@@ -512,9 +512,13 @@ Estas también son promesas, y romperlas sería peor que no cumplir una función
   → src/screens/Session.tsx :: no suma julios
 - [x] no-vende-lamparas · No recomienda marcas, dosis ni aparatos
   → src/domain/compensaciones.test.ts :: no recomienda marcas
+- [x] relojes-sin-pulso-no-juzga · Sin pulso de mañana no se da distancia entre relojes
+  → src/domain/relojes.ts :: falta: 'pulso'
+- [x] relojes-sin-pulso-se-explica · Y se dice por qué, en vez de callarse y dejar la duda
+  → src/domain/parte.ts :: no hay con qué comparar
 - [x] no-dejes-tu-trabajo · Da por hecha tu jornada y trabaja con los huecos que tienes
   → src/ui-copy.test.ts :: no te dice que dejes tu trabajo
 
 ---
 
-TOTAL: 205
+TOTAL: 207

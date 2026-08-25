@@ -358,12 +358,17 @@ describe('la luz entra en la explicación del peso', () => {
   })
   /** Cinco días seguidos comiendo a las 07:10 y sin pisar la calle hasta las 10. */
   const DIAS = ['2026-03-20', '2026-03-19', '2026-03-18', '2026-03-17', '2026-03-16']
+  /*
+   * Salen dentro de la ventana del pulso: sin él no hay reloj central contra el
+   * que medir la comida, y la app no da distancia ninguna — que es lo correcto,
+   * pero no es lo que se prueba aquí.
+   */
   const luz = {
     coord: MADRID,
-    salidas: DIAS.map((d) => salida(d, 10 * 60)),
+    salidas: DIAS.map((d) => salida(d, 7 * 60 + 30)),
     desfasePara: tz
   }
-  const comidas = DIAS.map((d) => comiendo(d, '07:10'))
+  const comidas = DIAS.map((d) => comiendo(d, '06:00'))
 
   it('sin coordenadas, la explicación es la de siempre y no falta nada', () => {
     const sinLuz = factoresDeHoy([], [], '2026-03-21', comidas, undefined)
@@ -391,7 +396,9 @@ describe('la luz entra en la explicación del peso', () => {
   })
 
   it('no haber salido por la mañana también cuenta, y dice cuánto atrasa', () => {
-    const f = factoresDeHoy([], [], '2026-03-21', comidas, undefined, luz)
+    // Con las salidas a media mañana no hay pulso, que es justo lo que se mira.
+    const sinPulso = { ...luz, salidas: DIAS.map((d) => salida(d, 11 * 60)) }
+    const f = factoresDeHoy([], [], '2026-03-21', comidas, undefined, sinPulso)
     const pulso = f.find((x) => x.id === 'sin-pulso-manana')
     expect(pulso).toBeDefined()
     expect(pulso!.texto).toContain('doce minutos')

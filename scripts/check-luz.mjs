@@ -181,6 +181,63 @@ await page.getByRole('button', { name: 'Guardar sesión' }).click()
 await page.waitForTimeout(400)
 comprobar(((await datos()).sesionesPBM ?? []).length === 1, 'la sesión debería guardarse')
 
+// ── Los dos relojes, sin reprocharle su turno a nadie ──────────────────
+/*
+ * El caso de quien entra a trabajar antes de que amanezca: come a las 09:45 y
+ * no ve luz natural hasta las tres de la tarde. Antes la app le decía que había
+ * comido cinco horas antes de ver luz, que suena a reproche y no lo es — la
+ * propia app sabe que a esa hora no había amanecido.
+ */
+await page.evaluate(() => {
+  const d = JSON.parse(localStorage.getItem('ritmo-data-v1'))
+  const hoy = new Date().toISOString().slice(0, 10)
+  d.salidas = [{ id: 'tarde', date: hoy, desde: 15 * 60, minutos: 40, filtro: 'ninguno', tipo: 'fuera' }]
+  d.comidas = [{ date: hoy, comidas: [{ hora: '09:45', texto: 'café', alimentos: [] }] }]
+  localStorage.setItem('ritmo-data-v1', JSON.stringify(d))
+})
+await page.reload({ waitUntil: 'networkidle' })
+await page.locator('.tab', { hasText: 'Luz' }).click()
+await page.waitForTimeout(400)
+
+const relojes = await texto()
+comprobar(
+  relojes.includes('no en la ventana que pone el reloj en hora'),
+  'sin pulso de mañana, los dos relojes deberían decir que no hay contra qué medir'
+)
+comprobar(
+  relojes.includes('no es una falta tuya'),
+  'y decirlo sin reprochar el turno de nadie'
+)
+comprobar(
+  !/Comiste \d+ h/.test(relojes),
+  'y sobre todo no dar una distancia contra un amanecer que no se vio'
+)
+comprobar(
+  relojes.includes('fuera de la ventana'),
+  'marcando además la hora del reloj central como lo que es'
+)
+await page.screenshot({ path: `${OUT}/luz-09-relojes-sin-pulso.png`, fullPage: true })
+
+// Y con pulso de mañana sí se da la cifra, que es el otro lado de lo mismo.
+await page.evaluate(() => {
+  const d = JSON.parse(localStorage.getItem('ritmo-data-v1'))
+  const hoy = new Date().toISOString().slice(0, 10)
+  /*
+   * El navegador del recorrido va en UTC, así que a Madrid le amanece hacia las
+   * 06:00 y la ventana del pulso se cierra a las 07:29. Se sale a las 06:30,
+   * bien dentro, para que esto no dependa de la fecha en que se ejecute.
+   */
+  d.salidas = [{ id: 'pulso', date: hoy, desde: 6 * 60 + 30, minutos: 40, filtro: 'ninguno', tipo: 'amanecer' }]
+  localStorage.setItem('ritmo-data-v1', JSON.stringify(d))
+})
+await page.reload({ waitUntil: 'networkidle' })
+await page.locator('.tab', { hasText: 'Luz' }).click()
+await page.waitForTimeout(400)
+comprobar(
+  (await texto()).includes('Comiste'),
+  'y con pulso de mañana sí debería darse la distancia entre los dos'
+)
+
 // ── Qué hace cada longitud de onda ─────────────────────────────────────
 /*
  * La tabla del espectro. Se comprueba que está, que se abre, que dice de dónde

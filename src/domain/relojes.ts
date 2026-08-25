@@ -61,8 +61,14 @@ export interface DosRelojes {
   distanciaMin?: number
   /** Si la distancia pasa del umbral que se considera desincronización. */
   desincronizado: boolean
-  /** Qué falta para poder decir algo, cuando falta. */
-  falta?: 'luz' | 'comida' | 'ambas'
+  /**
+   * Qué falta para poder decir algo, cuando falta.
+   *
+   * `pulso` es el caso que se añadió después y el que más importa: **hubo luz,
+   * pero no en la ventana que pone el reloj en hora**. Ver el sol a las tres de
+   * la tarde no es una referencia contra la que medir la primera comida.
+   */
+  falta?: 'luz' | 'comida' | 'ambas' | 'pulso'
 }
 
 /**
@@ -129,6 +135,24 @@ export function dosRelojes(
             ? 'luz'
             : 'comida'
     }
+  }
+
+  /*
+   * La distancia solo significa algo si el reloj central llegó a ponerse en
+   * hora, y eso lo hace **el pulso de la mañana**, no cualquier luz.
+   *
+   * Sin él, `primeraLuz` devuelve la primera luz que hubo —las tres de la tarde
+   * si es cuando saliste— y restarle la primera comida daba cifras como «has
+   * comido cinco horas antes de ver luz». Suena a reproche y no lo es: quien
+   * entra a trabajar a las 06:45 no puede ver el amanecer, la app lo sabe, y
+   * medir su desayuno contra un amanecer que no vio es medir contra nada.
+   *
+   * Así que aquí no se dice un número peor: se dice que no se sabe. Es la misma
+   * regla que el resto de la app —lo que no se puede calcular no se calcula—, y
+   * es lo que impide que la jornada de alguien se le devuelva como una falta.
+   */
+  if (!huboPulsoDeManana(fechaIso, coord, salidas, desfaseMin)) {
+    return { central, periferico, desincronizado: false, falta: 'pulso' }
   }
 
   const distanciaMin = periferico - central

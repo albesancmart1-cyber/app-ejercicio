@@ -579,6 +579,30 @@ function mesa(d: DatosDelParte, out: Punto[]): void {
 
 function relojes(d: DatosDelParte, out: Punto[]): void {
   const r = dosRelojes(d.hoy, d.coord, d.salidas, d.comidas, d.desfaseMin)
+
+  /*
+   * Hubo luz, pero fuera de la ventana que pone el reloj en hora. Se dice, y se
+   * dice como «ni suma ni resta», que es lo que es: no hay contra qué medir la
+   * primera comida, así que no se puede sacar ninguna conclusión de ella.
+   *
+   * Va aquí y no en silencio a propósito. Callarlo dejaría a quien entra a
+   * trabajar antes del amanecer preguntándose por qué su parte no dice nada de
+   * los relojes justo el día en que más pendiente está.
+   */
+  if (r.falta === 'pulso' && r.periferico !== undefined) {
+    out.push(
+      p(
+        'relojes',
+        'relojes',
+        'no_habia',
+        'Hoy no hay con qué comparar tu primera comida',
+        'El reloj central lo pone la luz de la mañana, y hoy la que hubo llegó fuera de esa ventana. Sin ese pulso no sé dónde está tu reloj central, así que medir tu primera comida contra la luz de la tarde no diría nada — y desde luego no que comieras pronto.',
+        { cuando: r.periferico }
+      )
+    )
+    return
+  }
+
   if (r.distanciaMin === undefined) return
 
   out.push(

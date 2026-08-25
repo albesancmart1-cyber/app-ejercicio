@@ -102,9 +102,36 @@ describe('el reloj periférico: la primera comida', () => {
 
 describe('la distancia entre los dos relojes', () => {
   it('comer antes de ver luz da negativo, que es el caso que importa', () => {
-    const r = dosRelojes(DIA, MADRID, [salida(DIA, 10 * 60)], comidas(DIA, '07:10'), INVIERNO)
+    // Salir a las 07:30 sí cae en la ventana del pulso —civil 06:49, orto 07:16—
+    // así que hay reloj central contra el que medir, y la comida llegó antes.
+    const r = dosRelojes(DIA, MADRID, [salida(DIA, 7 * 60 + 30)], comidas(DIA, '06:00'), INVIERNO)
     expect(r.distanciaMin).toBeLessThan(0)
     expect(r.desincronizado).toBe(true)
+  })
+
+  /*
+   * El caso de quien entra a trabajar antes de que amanezca, que es medio
+   * mundo. Antes salía «has comido cinco horas antes de ver luz», que suena a
+   * reproche y no lo es: la app ya sabe que a esa hora no había amanecido.
+   */
+  it('sin pulso de mañana no se da distancia, porque no hay contra qué medirla', () => {
+    // Sale a las tres de la tarde: hubo luz, pero muy fuera de la ventana.
+    const r = dosRelojes(DIA, MADRID, [salida(DIA, 15 * 60)], comidas(DIA, '09:45'), INVIERNO)
+    expect(r.distanciaMin).toBeUndefined()
+    expect(r.falta).toBe('pulso')
+    // Y sobre todo: no se marca como desincronizado. No es una falta suya.
+    expect(r.desincronizado).toBe(false)
+  })
+
+  it('pero las dos horas se siguen enseñando: lo que falta es la conclusión', () => {
+    const r = dosRelojes(DIA, MADRID, [salida(DIA, 15 * 60)], comidas(DIA, '09:45'), INVIERNO)
+    expect(r.central).toBe(15 * 60)
+    expect(r.periferico).toBe(9 * 60 + 45)
+  })
+
+  it('y la luz de media mañana tampoco vale: la ventana se cierra en el orto más hora y media', () => {
+    const r = dosRelojes(DIA, MADRID, [salida(DIA, 10 * 60)], comidas(DIA, '07:10'), INVIERNO)
+    expect(r.falta).toBe('pulso')
   })
 
   it('ver luz y luego comer es lo normal, y no se marca', () => {
@@ -146,23 +173,33 @@ describe('la distancia entre los dos relojes', () => {
 
 describe('la racha de días desincronizados', () => {
   const dias = ['2026-03-21', '2026-03-20', '2026-03-19', '2026-03-18']
-  const salidasTarde = dias.map((d) => salida(d, 10 * 60))
-  const comiendoTemprano = dias.map((d) => comidas(d, '07:00'))
+  /* Salen dentro de la ventana del pulso, así que hay reloj central que medir. */
+  const conPulso = dias.map((d) => salida(d, 7 * 60 + 30))
+  const comiendoTemprano = dias.map((d) => comidas(d, '06:00'))
 
   it('cuenta los días seguidos en que se comió antes de ver luz', () => {
-    expect(rachaDesincronizada('2026-03-21', MADRID, salidasTarde, comiendoTemprano, tz)).toBe(4)
+    expect(rachaDesincronizada('2026-03-21', MADRID, conPulso, comiendoTemprano, tz)).toBe(4)
   })
 
   it('un día bueno la corta', () => {
     const conUnoBueno = comiendoTemprano.map((c) =>
       c.date === '2026-03-20' ? comidas(c.date, '13:00') : c
     )
-    expect(rachaDesincronizada('2026-03-21', MADRID, salidasTarde, conUnoBueno, tz)).toBe(1)
+    expect(rachaDesincronizada('2026-03-21', MADRID, conPulso, conUnoBueno, tz)).toBe(1)
   })
 
   it('un día sin datos también la corta, en vez de darlo por bueno o por malo', () => {
     const conHueco = comiendoTemprano.filter((c) => c.date !== '2026-03-20')
-    expect(rachaDesincronizada('2026-03-21', MADRID, salidasTarde, conHueco, tz)).toBe(1)
+    expect(rachaDesincronizada('2026-03-21', MADRID, conPulso, conHueco, tz)).toBe(1)
+  })
+
+  it('y un día sin pulso de mañana también, porque ahí no se sabe nada', () => {
+    // Quien no pudo ver el amanecer no entra en una racha de días malos: no hay
+    // dato, y una racha construida sobre «no se sabe» sería un reproche vacío.
+    const sinPulsoUnDia = conPulso.map((s) =>
+      s.date === '2026-03-20' ? salida(s.date, 15 * 60) : s
+    )
+    expect(rachaDesincronizada('2026-03-21', MADRID, sinPulsoUnDia, comiendoTemprano, tz)).toBe(1)
   })
 
   it('sin nada apuntado, cero', () => {
