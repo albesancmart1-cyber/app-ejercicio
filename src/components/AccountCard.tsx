@@ -27,10 +27,13 @@ import { Input } from '@appica/ui-react/input'
  * se guarda allí, y la app instalada te sigue viendo como un dispositivo nuevo.
  * La salida es no salir de la app: **pegar aquí el enlace en vez de pulsarlo**.
  * El enlace lleva el testigo dentro, y canjearlo es una petición que la app
- * puede hacer ella misma. No hace falta tocar nada en el servidor, que es lo
- * que lo hace viable: enseñar además un código de seis cifras depende de las
- * plantillas de correo, y esas no se dejan editar sin un servidor de correo
- * propio. Si algún día lo hay, el código también se acepta aquí.
+ * puede hacer ella misma, sin tocar nada en el servidor. No hay una tercera
+ * vía: Firebase no manda códigos de cifras por correo, no existe eso en su
+ * API. O se pulsa el enlace, o se pega.
+ *
+ * Firebase pide además el correo al canjear —para que un enlace interceptado no
+ * baste por sí solo—, y por eso el campo de arriba sigue haciendo falta al
+ * pegar. Como el enlace se pide desde esta misma pantalla, ya está escrito.
  *
  * Todo esto es opcional. Si esta versión no lleva nube configurada, la tarjeta
  * lo dice y la app sigue funcionando igual, guardando en este dispositivo.
@@ -202,7 +205,7 @@ export default function AccountCard() {
                   autoComplete="off"
                   autoCapitalize="off"
                   spellCheck={false}
-                  placeholder="https://…/auth/v1/verify?token=…"
+                  placeholder="https://…/__/auth/action?mode=signIn&oobCode=…"
                   value={acceso}
                   onChange={(e) => setAcceso(e.target.value)}
                 />

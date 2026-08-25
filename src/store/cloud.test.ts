@@ -1,24 +1,25 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 /**
- * Lo que se prueba aquí es el trato con Supabase, que es donde se puede meter
- * la pata en silencio: mandar algo que la API no reconoce no da error, se
- * ignora y el fallo aparece dos pasos más allá, cuando el enlace del correo
- * lleva a un sitio que no es.
+ * Lo que se prueba aquí es el trato con Firebase, que es donde se puede meter
+ * la pata en silencio: mandarle algo que su API no reconoce no siempre da
+ * error, y el fallo aparece dos pasos más allá, cuando el enlace del correo
+ * lleva a un sitio que no es o vuelve sin nada dentro.
  */
 
-const NUBE = 'https://falso.supabase.co'
-const APP = 'https://albesancmart1-cyber.github.io'
-const RUTA = '/app-ejercicio/'
+const CLAVE = 'clave-publica'
+const PROYECTO = 'ritmo-de-prueba'
+const APP = 'https://ritmo.netlify.app'
+const RUTA = '/'
 
 /** Un navegador de mentira: solo lo que cloud.ts toca de verdad. */
-function montarNavegador(hash = '') {
+function montarNavegador(search = '') {
   const guardado = new Map<string, string>()
-  const sitio = { origin: APP, pathname: RUTA, search: '', hash }
+  const sitio = { origin: APP, pathname: RUTA, search, hash: '', hostname: 'ritmo.netlify.app' }
   vi.stubGlobal('location', sitio)
   vi.stubGlobal('history', {
     replaceState: (_e: unknown, _t: unknown, url: string) => {
-      sitio.hash = url.includes('#') ? url.slice(url.indexOf('#')) : ''
+      sitio.search = url.includes('?') ? url.slice(url.indexOf('?')) : ''
     }
   })
   vi.stubGlobal('localStorage', {
@@ -31,23 +32,45 @@ function montarNavegador(hash = '') {
 
 /** Carga el módulo ya con las variables puestas: se leen al importarlo. */
 async function cargarNube() {
-  vi.stubEnv('VITE_SUPABASE_URL', NUBE)
-  vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'clave-publica')
+  vi.stubEnv('VITE_FIREBASE_API_KEY', CLAVE)
+  vi.stubEnv('VITE_FIREBASE_PROJECT_ID', PROYECTO)
   vi.resetModules()
   return import('./cloud')
 }
 
 /** Apunta las llamadas para poder mirarlas después. */
-function espiarLlamadas() {
-  const llamadas: { url: string; cuerpo: unknown }[] = []
+function espiarLlamadas(respuesta: unknown = {}) {
+  const llamadas: { url: string; cuerpo: Record<string, unknown> | null }[] = []
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string, init: RequestInit = {}) => {
-      llamadas.push({ url, cuerpo: init.body ? JSON.parse(String(init.body)) : null })
-      return new Response('{}', { status: 200 })
+      let cuerpo: Record<string, unknown> | null = null
+      if (init.body) {
+        try {
+          cuerpo = JSON.parse(String(init.body))
+        } catch {
+          cuerpo = Object.fromEntries(new URLSearchParams(String(init.body)))
+        }
+      }
+      llamadas.push({ url, cuerpo })
+      return new Response(JSON.stringify(respuesta), { status: 200 })
     })
   )
   return llamadas
+}
+
+/** Lo que devuelve Firebase cuando el enlace vale. */
+const SESION_BUENA = {
+  idToken: 'tok',
+  refreshToken: 'ref',
+  expiresIn: '3600',
+  email: 'alberto@ejemplo.com',
+  localId: 'uid-1'
+}
+
+/** Un error de Firebase, con la forma exacta que tiene el suyo. */
+function falloDeFirebase(mensaje: string, status = 400) {
+  return new Response(JSON.stringify({ error: { code: status, message: mensaje } }), { status })
 }
 
 afterEach(() => {
@@ -56,11 +79,7 @@ afterEach(() => {
 })
 
 describe('pedir el enlace del correo', () => {
-  it('manda la dirección de vuelta donde la API la lee: en la URL', async () => {
-    // El fallo que esto vigila: mandarla en el cuerpo como `emailRedirectTo`
-    // —que es lo que acepta la biblioteca de Supabase, no su API— hacía que
-    // Supabase la ignorase y el enlace volviera al «Site URL» del proyecto,
-    // que es la raíz del dominio y ahí no hay ninguna app.
+  it('pide que el enlace vuelva a esta app, y no a la raíz del dominio', async () => {
     montarNavegador()
     const llamadas = espiarLlamadas()
     const { pedirEnlace } = await cargarNube()
@@ -68,33 +87,10 @@ describe('pedir el enlace del correo', () => {
     await pedirEnlace('alberto@ejemplo.com')
 
     expect(llamadas).toHaveLength(1)
-    const { searchParams } = new URL(llamadas[0].url)
-    expect(searchParams.get('redirect_to')).toBe(`${APP}${RUTA}`)
+    expect(llamadas[0].cuerpo?.continueUrl).toBe(`${APP}${RUTA}`)
   })
 
-  it('y esa dirección es la de la app, no la raíz del dominio', async () => {
-    montarNavegador()
-    const llamadas = espiarLlamadas()
-    const { pedirEnlace } = await cargarNube()
-
-    await pedirEnlace('alberto@ejemplo.com')
-
-    const vuelta = new URL(llamadas[0].url).searchParams.get('redirect_to')!
-    expect(vuelta).toContain('/app-ejercicio/')
-    expect(vuelta).not.toBe(`${APP}/`)
-  })
-
-  it('el cuerpo lleva el correo y crea la cuenta si no existe', async () => {
-    montarNavegador()
-    const llamadas = espiarLlamadas()
-    const { pedirEnlace } = await cargarNube()
-
-    await pedirEnlace('alberto@ejemplo.com')
-
-    expect(llamadas[0].cuerpo).toEqual({ email: 'alberto@ejemplo.com', create_user: true })
-  })
-
-  it('abriéndola por index.html, la vuelta sigue siendo la carpeta de la app', async () => {
+  it('y desde un subdirectorio, la vuelta es la carpeta de la app', async () => {
     const { sitio } = montarNavegador()
     sitio.pathname = '/app-ejercicio/index.html'
     const llamadas = espiarLlamadas()
@@ -102,164 +98,112 @@ describe('pedir el enlace del correo', () => {
 
     await pedirEnlace('alberto@ejemplo.com')
 
-    expect(new URL(llamadas[0].url).searchParams.get('redirect_to')).toBe(`${APP}${RUTA}`)
+    expect(llamadas[0].cuerpo?.continueUrl).toBe(`${APP}/app-ejercicio/`)
+  })
+
+  it('pide el tipo de correo que trae el testigo de vuelta, no el que se canjea solo', async () => {
+    // `canHandleCodeInApp` en falso hace que Firebase mande un enlace que se
+    // canjea en su propia página y no deja nada aquí: se entra en su web, no
+    // en la app.
+    montarNavegador()
+    const llamadas = espiarLlamadas()
+    const { pedirEnlace } = await cargarNube()
+
+    await pedirEnlace('alberto@ejemplo.com')
+
+    expect(llamadas[0].cuerpo?.requestType).toBe('EMAIL_SIGNIN')
+    expect(llamadas[0].cuerpo?.canHandleCodeInApp).toBe(true)
+  })
+
+  it('la clave va en la URL, que es donde Firebase la lee', async () => {
+    montarNavegador()
+    const llamadas = espiarLlamadas()
+    const { pedirEnlace } = await cargarNube()
+
+    await pedirEnlace('alberto@ejemplo.com')
+
+    expect(new URL(llamadas[0].url).searchParams.get('key')).toBe(CLAVE)
+    expect(llamadas[0].url).toContain('accounts:sendOobCode')
+  })
+
+  it('guarda el correo, porque hará falta al canjear y el enlace no lo trae', async () => {
+    const { guardado } = montarNavegador()
+    espiarLlamadas()
+    const { pedirEnlace } = await cargarNube()
+
+    await pedirEnlace('  alberto@ejemplo.com  ')
+
+    expect(guardado.get('ritmo-correo-pendiente')).toBe('alberto@ejemplo.com')
   })
 })
 
 /**
- * Entrar con código.
+ * Los dos errores de instalación que no se adivinan por el número.
  *
- * Existe porque en iOS la app instalada en la pantalla de inicio tiene su
- * propio almacén, separado del de Safari, y el enlace del correo siempre abre
- * Safari. Por enlace es imposible entrar en la app instalada.
+ * El acceso por enlace viene apagado de fábrica y el dominio hay que darlo de
+ * alta a mano. Con el mensaje crudo de Firebase, ninguno de los dos lleva a
+ * saber qué hay que tocar.
  */
-describe('entrar tecleando el código del correo', () => {
-  /** Un Supabase que solo acepta el código con una etiqueta concreta. */
-  function nubeQueAcepta(tipoBueno: string) {
-    const intentos: string[] = []
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (_url: string, init: RequestInit = {}) => {
-        const cuerpo = JSON.parse(String(init.body))
-        intentos.push(cuerpo.type)
-        if (cuerpo.type !== tipoBueno) return new Response('{}', { status: 403 })
-        return new Response(
-          JSON.stringify({
-            access_token: 'tok',
-            refresh_token: 'ref',
-            expires_in: 3600,
-            user: { email: 'alberto@ejemplo.com' }
-          }),
-          { status: 200 }
-        )
-      })
-    )
-    return intentos
-  }
-
-  it('con una cuenta que ya existía, el código entra', async () => {
-    const { guardado } = montarNavegador()
-    nubeQueAcepta('email')
-    const { entrarConCodigo } = await cargarNube()
-
-    const sesion = await entrarConCodigo('alberto@ejemplo.com', '123456')
-
-    expect(sesion.accessToken).toBe('tok')
-    expect(sesion.email).toBe('alberto@ejemplo.com')
-    expect(guardado.get('ritmo-sesion')).toBeTruthy()
-  })
-
-  it('y con una cuenta recién creada también, aunque la API lo etiquete distinto', async () => {
-    // El correo de confirmación de una cuenta nueva lleva el código con otro
-    // tipo, y desde el cliente no hay forma de saber cuál de los dos vino.
+describe('los fallos de montaje se cuentan diciendo qué falta', () => {
+  it('el acceso por enlace apagado manda a la pantalla exacta', async () => {
     montarNavegador()
-    const intentos = nubeQueAcepta('signup')
-    const { entrarConCodigo } = await cargarNube()
+    vi.stubGlobal('fetch', vi.fn(async () => falloDeFirebase('OPERATION_NOT_ALLOWED')))
+    const { pedirEnlace } = await cargarNube()
 
-    await entrarConCodigo('alberto@ejemplo.com', '123456')
-
-    expect(intentos).toContain('email')
-    expect(intentos).toContain('signup')
+    await expect(pedirEnlace('alberto@ejemplo.com')).rejects.toThrow(/Sign-in method|Email link/i)
   })
 
-  it('deja de probar en cuanto uno funciona', async () => {
+  it('el dominio sin autorizar dice cuál es el dominio', async () => {
     montarNavegador()
-    const intentos = nubeQueAcepta('email')
-    const { entrarConCodigo } = await cargarNube()
+    vi.stubGlobal('fetch', vi.fn(async () => falloDeFirebase('UNAUTHORIZED_DOMAIN')))
+    const { pedirEnlace } = await cargarNube()
 
-    await entrarConCodigo('alberto@ejemplo.com', '123456')
-
-    expect(intentos).toEqual(['email'])
+    await expect(pedirEnlace('alberto@ejemplo.com')).rejects.toThrow(/ritmo\.netlify\.app/)
   })
 
-  it('el código va sin espacios ni guiones, se escriba como se escriba', async () => {
+  it('un enlace gastado se explica en vez de soltar el código', async () => {
     montarNavegador()
-    const enviados: string[] = []
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (_u: string, init: RequestInit = {}) => {
-        enviados.push(JSON.parse(String(init.body)).token)
-        return new Response(
-          JSON.stringify({ access_token: 't', refresh_token: 'r', expires_in: 3600 }),
-          { status: 200 }
-        )
-      })
-    )
-    const { entrarConCodigo } = await cargarNube()
+    vi.stubGlobal('fetch', vi.fn(async () => falloDeFirebase('EXPIRED_OOB_CODE')))
+    const { entrarConEnlace } = await cargarNube()
 
-    await entrarConCodigo('alberto@ejemplo.com', '123 456')
-
-    expect(enviados[0]).toBe('123456')
-  })
-
-  it('un código corto ni se manda: se avisa y punto', async () => {
-    montarNavegador()
-    const espia = vi.fn()
-    vi.stubGlobal('fetch', espia)
-    const { entrarConCodigo, ErrorNube } = await cargarNube()
-
-    await expect(entrarConCodigo('alberto@ejemplo.com', '123')).rejects.toBeInstanceOf(ErrorNube)
-    expect(espia).not.toHaveBeenCalled()
-  })
-
-  it('un código que no vale se explica, no se traga', async () => {
-    montarNavegador()
-    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 403 })))
-    const { entrarConCodigo } = await cargarNube()
-
-    await expect(entrarConCodigo('alberto@ejemplo.com', '000000')).rejects.toThrow(
-      /no vale|caducado|usado/i
-    )
-  })
-
-  it('y si falla no deja media sesión guardada', async () => {
-    const { guardado } = montarNavegador()
-    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 403 })))
-    const { entrarConCodigo } = await cargarNube()
-
-    await entrarConCodigo('alberto@ejemplo.com', '000000').catch(() => {})
-
-    expect(guardado.get('ritmo-sesion')).toBeUndefined()
+    await expect(
+      entrarConEnlace('alberto@ejemplo.com', 'https://x.firebaseapp.com/__/auth/action?mode=signIn&oobCode=abc123def456ghi789')
+    ).rejects.toThrow(/una sola vez|gastado|cópialo/i)
   })
 })
 
-/**
- * Entrar pegando el enlace.
- *
- * Es la vía que funciona sin tocar nada en Supabase, y por tanto la que de
- * verdad resuelve el caso de la app instalada en iOS: editar las plantillas de
- * correo para que enseñen un código exige un servidor de correo propio.
- */
 describe('sacar el testigo de un enlace pegado', () => {
+  const ENLACE =
+    'https://ritmo.firebaseapp.com/__/auth/action?mode=signIn&oobCode=abc123def456ghi789&apiKey=k&continueUrl=https%3A%2F%2Fritmo.netlify.app%2F&lang=es'
+
   it('del enlace tal cual viene en el correo', async () => {
     montarNavegador()
     const { testigoDeEnlace } = await cargarNube()
 
-    const r = testigoDeEnlace(
-      'https://abc.supabase.co/auth/v1/verify?token=pkce_abc123def456ghi&type=magiclink&redirect_to=https://ejemplo.com/app/'
-    )
-
-    expect(r).toEqual({ testigo: 'pkce_abc123def456ghi', tipo: 'magiclink' })
-  })
-
-  it('también si el correo lo llama token_hash', async () => {
-    montarNavegador()
-    const { testigoDeEnlace } = await cargarNube()
-
-    expect(
-      testigoDeEnlace('https://abc.supabase.co/auth/v1/verify?token_hash=abc123def456ghi789&type=email')
-    ).toEqual({ testigo: 'abc123def456ghi789', tipo: 'email' })
+    expect(testigoDeEnlace(ENLACE)).toEqual({ testigo: 'abc123def456ghi789' })
   })
 
   it('aguanta los saltos de línea que mete el correo al copiar', async () => {
     montarNavegador()
     const { testigoDeEnlace } = await cargarNube()
 
-    const r = testigoDeEnlace(
-      '  https://abc.supabase.co/auth/v1/verify?token=abc123def456\n  ghi789&type=signup  '
-    )
+    const r = testigoDeEnlace('  https://ritmo.firebaseapp.com/__/auth/action?mode=signIn&oobCode=abc123def456\n  ghi789  ')
 
     expect(r?.testigo).toBe('abc123def456ghi789')
+  })
+
+  it('y lo encuentra aunque venga anidado dentro de continueUrl', async () => {
+    // Pasa cuando el enlace ya ha rebotado una vez: el bueno acaba metido
+    // dentro del parámetro de vuelta del otro. Mirando solo el primer nivel se
+    // quedaba fuera el caso más habitual al copiar del correo abierto.
+    montarNavegador()
+    const { testigoDeEnlace } = await cargarNube()
+
+    const anidado =
+      'https://ritmo.netlify.app/?continueUrl=' +
+      encodeURIComponent('https://ritmo.firebaseapp.com/__/auth/action?mode=signIn&oobCode=zzz111yyy222xxx333')
+
+    expect(testigoDeEnlace(anidado)).toEqual({ testigo: 'zzz111yyy222xxx333' })
   })
 
   it('y un testigo suelto, por si alguien lo saca a mano', async () => {
@@ -267,8 +211,7 @@ describe('sacar el testigo de un enlace pegado', () => {
     const { testigoDeEnlace } = await cargarNube()
 
     expect(testigoDeEnlace('abcdefghij0123456789klmn')).toEqual({
-      testigo: 'abcdefghij0123456789klmn',
-      tipo: undefined
+      testigo: 'abcdefghij0123456789klmn'
     })
   })
 
@@ -278,82 +221,59 @@ describe('sacar el testigo de un enlace pegado', () => {
 
     expect(testigoDeEnlace('')).toBeNull()
     expect(testigoDeEnlace('hola qué tal')).toBeNull()
-    expect(testigoDeEnlace('https://ejemplo.com/sin-token?a=1')).toBeNull()
-    // Seis cifras son un código, no un testigo de enlace.
+    expect(testigoDeEnlace('https://ejemplo.com/sin-testigo?a=1')).toBeNull()
     expect(testigoDeEnlace('123456')).toBeNull()
   })
 })
 
 describe('entrar pegando el enlace', () => {
-  function nubeQueAcepta(tipoBueno: string, testigoBueno: string) {
-    const cuerpos: Record<string, string>[] = []
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (_url: string, init: RequestInit = {}) => {
-        const c = JSON.parse(String(init.body))
-        cuerpos.push(c)
-        if (c.type !== tipoBueno || c.token_hash !== testigoBueno) {
-          return new Response('{}', { status: 403 })
-        }
-        return new Response(
-          JSON.stringify({
-            access_token: 'tok',
-            refresh_token: 'ref',
-            expires_in: 3600,
-            user: { email: 'alberto@ejemplo.com' }
-          }),
-          { status: 200 }
-        )
-      })
-    )
-    return cuerpos
-  }
-
-  const ENLACE =
-    'https://abc.supabase.co/auth/v1/verify?token=abc123def456ghi789&type=magiclink&redirect_to=x'
+  const ENLACE = 'https://ritmo.firebaseapp.com/__/auth/action?mode=signIn&oobCode=abc123def456ghi789'
 
   it('canjea el testigo sin pasar por el navegador', async () => {
     const { guardado } = montarNavegador()
-    const cuerpos = nubeQueAcepta('magiclink', 'abc123def456ghi789')
+    const llamadas = espiarLlamadas(SESION_BUENA)
     const { entrarConEnlace } = await cargarNube()
 
     const sesion = await entrarConEnlace('alberto@ejemplo.com', ENLACE)
 
     expect(sesion.accessToken).toBe('tok')
+    expect(sesion.uid).toBe('uid-1')
     expect(guardado.get('ritmo-sesion')).toBeTruthy()
-    // Se manda como `token_hash`, que es lo que espera la API para un enlace.
-    expect(cuerpos[0].token_hash).toBe('abc123def456ghi789')
+    expect(llamadas[0].url).toContain('accounts:signInWithEmailLink')
   })
 
-  it('prueba primero el tipo que trae el propio enlace', async () => {
+  it('manda el correo junto al testigo, que Firebase no canjea sin él', async () => {
     montarNavegador()
-    const cuerpos = nubeQueAcepta('magiclink', 'abc123def456ghi789')
+    const llamadas = espiarLlamadas(SESION_BUENA)
     const { entrarConEnlace } = await cargarNube()
 
     await entrarConEnlace('alberto@ejemplo.com', ENLACE)
 
-    expect(cuerpos).toHaveLength(1)
-    expect(cuerpos[0].type).toBe('magiclink')
+    expect(llamadas[0].cuerpo).toEqual({
+      email: 'alberto@ejemplo.com',
+      oobCode: 'abc123def456ghi789'
+    })
   })
 
-  it('y si ese no cuela, sigue probando: una cuenta nueva trae otro tipo', async () => {
-    montarNavegador()
-    const cuerpos = nubeQueAcepta('signup', 'abc123def456ghi789')
+  it('si no se escribe el correo, tira del que se guardó al pedir el enlace', async () => {
+    const { guardado } = montarNavegador()
+    guardado.set('ritmo-correo-pendiente', 'alberto@ejemplo.com')
+    const llamadas = espiarLlamadas(SESION_BUENA)
     const { entrarConEnlace } = await cargarNube()
 
-    await entrarConEnlace('alberto@ejemplo.com', ENLACE)
+    await entrarConEnlace('', ENLACE)
 
-    expect(cuerpos.map((c) => c.type)).toContain('signup')
+    expect(llamadas[0].cuerpo?.email).toBe('alberto@ejemplo.com')
   })
 
-  it('un enlace ya gastado se explica diciendo qué hacer', async () => {
+  it('y sin correo por ningún lado lo pide, en vez de mandar una petición que va a fallar', async () => {
     montarNavegador()
-    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 403 })))
+    const espia = vi.fn()
+    vi.stubGlobal('fetch', espia)
     const { entrarConEnlace } = await cargarNube()
 
-    await expect(entrarConEnlace('alberto@ejemplo.com', ENLACE)).rejects.toThrow(
-      /una sola vez|gastado|cópialo/i
-    )
+    await expect(entrarConEnlace('', ENLACE)).rejects.toThrow(/correo/i)
+    expect(espia).not.toHaveBeenCalled()
   })
 
   it('pegar algo que no es el enlace se dice antes de molestar al servidor', async () => {
@@ -367,94 +287,399 @@ describe('entrar pegando el enlace', () => {
     )
     expect(espia).not.toHaveBeenCalled()
   })
+
+  it('y si falla no deja media sesión guardada', async () => {
+    const { guardado } = montarNavegador()
+    vi.stubGlobal('fetch', vi.fn(async () => falloDeFirebase('INVALID_OOB_CODE')))
+    const { entrarConEnlace } = await cargarNube()
+
+    await entrarConEnlace('alberto@ejemplo.com', ENLACE).catch(() => {})
+
+    expect(guardado.get('ritmo-sesion')).toBeUndefined()
+  })
+
+  it('al entrar se olvida el correo pendiente: ya no hace falta', async () => {
+    const { guardado } = montarNavegador()
+    guardado.set('ritmo-correo-pendiente', 'alberto@ejemplo.com')
+    espiarLlamadas(SESION_BUENA)
+    const { entrarConEnlace } = await cargarNube()
+
+    await entrarConEnlace('alberto@ejemplo.com', ENLACE)
+
+    expect(guardado.get('ritmo-correo-pendiente')).toBeUndefined()
+  })
 })
 
-describe('la app distingue sola lo que le pegan', () => {
-  it('seis cifras van por la vía del código', async () => {
+describe('lo que se pega y no es un enlace', () => {
+  it('unas cifras se explican: Firebase no manda códigos', async () => {
     montarNavegador()
-    const cuerpos: Record<string, string>[] = []
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (_u: string, init: RequestInit = {}) => {
-        cuerpos.push(JSON.parse(String(init.body)))
-        return new Response(
-          JSON.stringify({ access_token: 't', refresh_token: 'r', expires_in: 3600 }),
-          { status: 200 }
-        )
-      })
-    )
+    const espia = vi.fn()
+    vi.stubGlobal('fetch', espia)
     const { entrarConAcceso } = await cargarNube()
 
-    await entrarConAcceso('alberto@ejemplo.com', '424242')
-
-    expect(cuerpos[0].token).toBe('424242')
-    expect(cuerpos[0].token_hash).toBeUndefined()
+    await expect(entrarConAcceso('alberto@ejemplo.com', '424242')).rejects.toThrow(
+      /no manda códigos/i
+    )
+    expect(espia).not.toHaveBeenCalled()
   })
 
   it('un enlace va por la vía del enlace, aunque lleve cifras dentro', async () => {
     montarNavegador()
-    const cuerpos: Record<string, string>[] = []
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (_u: string, init: RequestInit = {}) => {
-        cuerpos.push(JSON.parse(String(init.body)))
-        return new Response(
-          JSON.stringify({ access_token: 't', refresh_token: 'r', expires_in: 3600 }),
-          { status: 200 }
-        )
-      })
-    )
+    const llamadas = espiarLlamadas(SESION_BUENA)
     const { entrarConAcceso } = await cargarNube()
 
     await entrarConAcceso(
       'alberto@ejemplo.com',
-      'https://abc.supabase.co/auth/v1/verify?token=123456abcdef7890ghij&type=email'
+      'https://ritmo.firebaseapp.com/__/auth/action?mode=signIn&oobCode=123456abcdef7890ghij'
     )
 
-    expect(cuerpos[0].token_hash).toBe('123456abcdef7890ghij')
+    expect(llamadas[0].cuerpo?.oobCode).toBe('123456abcdef7890ghij')
   })
 })
 
-describe('cuando el enlace vuelve con un fallo', () => {
-  it('lo cuenta en castellano en vez de quedarse callada', async () => {
-    montarNavegador(
-      '#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired'
-    )
-    const { recogerFalloDeLaUrl } = await cargarNube()
+describe('volver del enlace pulsado', () => {
+  it('canjea lo que trae la URL y deja la sesión guardada', async () => {
+    const { guardado } = montarNavegador('?mode=signIn&oobCode=abc123def456ghi789&apiKey=k&lang=es')
+    guardado.set('ritmo-correo-pendiente', 'alberto@ejemplo.com')
+    espiarLlamadas(SESION_BUENA)
+    const { recogerSesionDeLaUrl } = await cargarNube()
 
-    const queja = recogerFalloDeLaUrl()
+    const sesion = await recogerSesionDeLaUrl()
 
-    expect(queja).toMatch(/ya no vale/i)
-    expect(queja).toMatch(/pide otro/i)
+    expect(sesion?.accessToken).toBe('tok')
+    expect(guardado.get('ritmo-sesion')).toBeTruthy()
   })
 
-  it('y limpia la barra de direcciones, que el error no tiene que quedarse ahí', async () => {
-    const { sitio } = montarNavegador('#error_code=otp_expired')
-    const { recogerFalloDeLaUrl } = await cargarNube()
+  it('y limpia la barra de direcciones, que un testigo en el historial no pinta nada', async () => {
+    const { sitio, guardado } = montarNavegador('?mode=signIn&oobCode=abc123def456ghi789&apiKey=k')
+    guardado.set('ritmo-correo-pendiente', 'alberto@ejemplo.com')
+    espiarLlamadas(SESION_BUENA)
+    const { recogerSesionDeLaUrl } = await cargarNube()
 
-    recogerFalloDeLaUrl()
+    await recogerSesionDeLaUrl()
 
-    expect(sitio.hash).toBe('')
+    expect(sitio.search).toBe('')
   })
 
-  it('un fallo que no conocemos se enseña tal cual, con su código', async () => {
-    montarNavegador('#error_code=server_error&error_description=Algo+ha+ido+mal')
-    const { recogerFalloDeLaUrl } = await cargarNube()
+  it('sin nada en la URL no inventa ninguna sesión ni llama a nadie', async () => {
+    montarNavegador()
+    const espia = vi.fn()
+    vi.stubGlobal('fetch', espia)
+    const { recogerSesionDeLaUrl } = await cargarNube()
 
-    expect(recogerFalloDeLaUrl()).toBe('El enlace ha fallado (server_error). Algo ha ido mal')
+    expect(await recogerSesionDeLaUrl()).toBeNull()
+    expect(espia).not.toHaveBeenCalled()
   })
 
-  it('sin fallo en la URL no inventa ninguno', async () => {
-    montarNavegador('#access_token=tok&refresh_token=ref')
-    const { recogerFalloDeLaUrl } = await cargarNube()
+  it('el enlace abierto en otro dispositivo se explica, no se queda callado', async () => {
+    // Sin el correo guardado no hay canje posible: Firebase lo exige. Callarlo
+    // dejaba una pantalla que no hace nada al volver del correo.
+    montarNavegador('?mode=signIn&oobCode=abc123def456ghi789')
+    const espia = vi.fn()
+    vi.stubGlobal('fetch', espia)
+    const { recogerSesionDeLaUrl, recogerFalloDeLaUrl } = await cargarNube()
 
-    expect(recogerFalloDeLaUrl()).toBeNull()
+    expect(await recogerSesionDeLaUrl()).toBeNull()
+    expect(recogerFalloDeLaUrl()).toMatch(/correo/i)
+    expect(espia).not.toHaveBeenCalled()
   })
 
-  it('ni con la URL limpia', async () => {
+  it('un canje que falla también se cuenta', async () => {
+    const { guardado } = montarNavegador('?mode=signIn&oobCode=abc123def456ghi789')
+    guardado.set('ritmo-correo-pendiente', 'alberto@ejemplo.com')
+    vi.stubGlobal('fetch', vi.fn(async () => falloDeFirebase('EXPIRED_OOB_CODE')))
+    const { recogerSesionDeLaUrl, recogerFalloDeLaUrl } = await cargarNube()
+
+    expect(await recogerSesionDeLaUrl()).toBeNull()
+    expect(recogerFalloDeLaUrl()).toMatch(/ya no vale/i)
+  })
+
+  it('sin fallo no inventa ninguno', async () => {
     montarNavegador()
     const { recogerFalloDeLaUrl } = await cargarNube()
 
     expect(recogerFalloDeLaUrl()).toBeNull()
+  })
+})
+
+describe('la sesión guardada', () => {
+  it('una de la versión anterior no se intenta usar contra Firebase', async () => {
+    // La app hablaba antes con otro proveedor y guardaba en la misma clave.
+    // Usarla aquí daría un error raro en la primera petición en vez de un
+    // «entra otra vez», que es lo que de verdad hay que hacer.
+    const { guardado } = montarNavegador()
+    guardado.set(
+      'ritmo-sesion',
+      JSON.stringify({ accessToken: 'viejo', refreshToken: 'viejo', expiraEn: Date.now() + 1e7 })
+    )
+    const { sesionGuardada } = await cargarNube()
+
+    expect(sesionGuardada()).toBeNull()
+  })
+
+  it('cerrar sesión se lleva también el correo pendiente', async () => {
+    const { guardado } = montarNavegador()
+    guardado.set('ritmo-sesion', JSON.stringify({ proveedor: 'firebase', accessToken: 'a', refreshToken: 'b', uid: 'u' }))
+    guardado.set('ritmo-correo-pendiente', 'alberto@ejemplo.com')
+    const { cerrarSesion } = await cargarNube()
+
+    cerrarSesion()
+
+    expect(guardado.get('ritmo-sesion')).toBeUndefined()
+    expect(guardado.get('ritmo-correo-pendiente')).toBeUndefined()
+  })
+
+  it('renovarla habla en formato de formulario, que es lo único que ese endpoint entiende', async () => {
+    const { guardado } = montarNavegador()
+    guardado.set(
+      'ritmo-sesion',
+      JSON.stringify({
+        proveedor: 'firebase',
+        accessToken: 'viejo',
+        refreshToken: 'ref',
+        uid: 'uid-1',
+        email: 'alberto@ejemplo.com',
+        expiraEn: Date.now() - 1000
+      })
+    )
+    const llamadas = espiarLlamadas({ id_token: 'nuevo', refresh_token: 'ref2', expires_in: '3600', user_id: 'uid-1' })
+    const { sesionValida } = await cargarNube()
+
+    const s = await sesionValida()
+
+    expect(llamadas[0].url).toContain('securetoken.googleapis.com')
+    expect(llamadas[0].cuerpo).toEqual({ grant_type: 'refresh_token', refresh_token: 'ref' })
+    expect(s?.accessToken).toBe('nuevo')
+    // El correo no viene en la respuesta del refresco: si no se arrastrara, la
+    // pantalla de Ajustes se quedaría sin saber quién ha entrado.
+    expect(s?.email).toBe('alberto@ejemplo.com')
+  })
+})
+
+describe('los datos', () => {
+  function conSesion() {
+    const { guardado, sitio } = montarNavegador()
+    guardado.set(
+      'ritmo-sesion',
+      JSON.stringify({
+        proveedor: 'firebase',
+        accessToken: 'tok',
+        refreshToken: 'ref',
+        uid: 'uid-1',
+        email: 'alberto@ejemplo.com',
+        expiraEn: Date.now() + 1e7
+      })
+    )
+    return { guardado, sitio }
+  }
+
+  it('van al documento de esta cuenta y de ninguna otra', async () => {
+    conSesion()
+    const llamadas = espiarLlamadas({})
+    const { subir } = await cargarNube()
+
+    await subir({ version: 1 } as never)
+
+    expect(llamadas[0].url).toContain(`/projects/${PROYECTO}/databases/(default)/documents/usuarios/uid-1`)
+  })
+
+  it('se guardan como un solo texto: lo que sube es exactamente lo que baja', async () => {
+    conSesion()
+    const llamadas = espiarLlamadas({})
+    const { subir } = await cargarNube()
+
+    await subir({ version: 3, sessions: [{ id: 'a' }] } as never)
+
+    const campos = (llamadas[0].cuerpo as { fields: Record<string, { stringValue?: string }> }).fields
+    expect(JSON.parse(campos.datos.stringValue!)).toEqual({ version: 3, sessions: [{ id: 'a' }] })
+  })
+
+  it('la máscara está puesta, para no borrar lo que no se toca', async () => {
+    conSesion()
+    const llamadas = espiarLlamadas({})
+    const { subir } = await cargarNube()
+
+    await subir({ version: 1 } as never)
+
+    const p = new URL(llamadas[0].url).searchParams.getAll('updateMask.fieldPaths')
+    expect(p).toContain('datos')
+    expect(p).toContain('actualizado_en')
+  })
+
+  it('bajarlos deshace el texto', async () => {
+    conSesion()
+    espiarLlamadas({ fields: { datos: { stringValue: '{"version":3}' } } })
+    const { descargar } = await cargarNube()
+
+    expect(await descargar()).toEqual({ version: 3 })
+  })
+
+  it('una cuenta nueva no tiene documento, y eso no es un error', async () => {
+    // Firestore contesta 404 a un documento que aún no existe. Tratarlo como
+    // fallo hacía que la primera sincronización de una cuenta nueva no subiera
+    // nada y se quedara diciendo que algo había ido mal.
+    conSesion()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify({ error: { message: 'Document not found' } }), { status: 404 }))
+    )
+    const { descargar } = await cargarNube()
+
+    expect(await descargar()).toBeNull()
+  })
+
+  it('pero la base de datos sin crear sí lo es, y se dice cómo crearla', async () => {
+    conSesion()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({ error: { message: 'The database (default) does not exist for project ritmo' } }),
+            { status: 404 }
+          )
+      )
+    )
+    const { descargar } = await cargarNube()
+
+    await expect(descargar()).rejects.toThrow(/Firestore Database|Crear base de datos/i)
+  })
+
+  it('las reglas sin publicar se cuentan diciendo qué publicar', async () => {
+    conSesion()
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('PERMISSION_DENIED', { status: 403 })))
+    const { descargar } = await cargarNube()
+
+    await expect(descargar()).rejects.toThrow(/firestore\.rules/i)
+  })
+})
+
+describe('el buzón de medidas', () => {
+  function conSesion() {
+    const { guardado } = montarNavegador()
+    guardado.set(
+      'ritmo-sesion',
+      JSON.stringify({
+        proveedor: 'firebase',
+        accessToken: 'tok',
+        refreshToken: 'ref',
+        uid: 'uid-1',
+        email: 'alberto@ejemplo.com',
+        expiraEn: Date.now() + 1e7
+      })
+    )
+  }
+
+  const documento = (id: string, campos: Record<string, unknown>) => ({
+    name: `projects/${PROYECTO}/databases/(default)/documents/usuarios/uid-1/medidas/${id}`,
+    fields: campos
+  })
+
+  it('deshace los tipos de Firestore, que no guarda JSON sino campos etiquetados', async () => {
+    conSesion()
+    espiarLlamadas({
+      documents: [
+        documento('m1', {
+          tipo: { stringValue: 'sol' },
+          date: { stringValue: '2026-08-25' },
+          // El entero viene como cadena: es así en su API, no es un error.
+          desde: { integerValue: '405' },
+          hasta: { integerValue: '528' },
+          distancia_cm: { nullValue: null },
+          origen: { stringValue: 'reloj' },
+          creado_en: { timestampValue: '2026-08-25T06:45:00Z' }
+        })
+      ]
+    })
+    const { bajarMedidas } = await cargarNube()
+
+    expect(await bajarMedidas()).toEqual([
+      {
+        id: 'm1',
+        tipo: 'sol',
+        date: '2026-08-25',
+        desde: 405,
+        hasta: 528,
+        piel: null,
+        cielo: null,
+        filtro: null,
+        lamparaId: null,
+        zona: null,
+        distanciaCm: null,
+        origen: 'reloj'
+      }
+    ])
+  })
+
+  it('las ordena por cuándo se dejaron, aquí y no en la consulta', async () => {
+    // Firestore, al ordenar por un campo, se salta en silencio los documentos
+    // que no lo tienen: un aparato que no pusiera `creado_en` desaparecería del
+    // buzón sin que nadie se enterase.
+    conSesion()
+    espiarLlamadas({
+      documents: [
+        documento('tarde', { creado_en: { timestampValue: '2026-08-25T18:00:00Z' }, tipo: { stringValue: 'b' } }),
+        documento('sin-fecha', { tipo: { stringValue: 'c' } }),
+        documento('pronto', { creado_en: { timestampValue: '2026-08-25T06:00:00Z' }, tipo: { stringValue: 'a' } })
+      ]
+    })
+    const { bajarMedidas } = await cargarNube()
+
+    const ids = (await bajarMedidas()).map((m) => m.id)
+    expect(ids).toHaveLength(3)
+    expect(ids.indexOf('pronto')).toBeLessThan(ids.indexOf('tarde'))
+    expect(ids).toContain('sin-fecha')
+  })
+
+  it('el buzón vacío es una lista vacía, no un fallo', async () => {
+    conSesion()
+    espiarLlamadas({})
+    const { bajarMedidas } = await cargarNube()
+
+    expect(await bajarMedidas()).toEqual([])
+  })
+
+  it('borrar lo recogido va una a una, a su documento', async () => {
+    conSesion()
+    const llamadas = espiarLlamadas({})
+    const { borrarMedidas } = await cargarNube()
+
+    await borrarMedidas(['m1', 'm2'])
+
+    expect(llamadas).toHaveLength(2)
+    expect(llamadas[0].url).toContain('/usuarios/uid-1/medidas/m1')
+    expect(llamadas[1].url).toContain('/usuarios/uid-1/medidas/m2')
+  })
+
+  it('borrar algo que ya no está es justo lo que queríamos que pasara', async () => {
+    conSesion()
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 404 })))
+    const { borrarMedidas } = await cargarNube()
+
+    await expect(borrarMedidas(['m1'])).resolves.toBeUndefined()
+  })
+
+  it('y sin nada que borrar no se llama a nadie', async () => {
+    conSesion()
+    const espia = vi.fn()
+    vi.stubGlobal('fetch', espia)
+    const { borrarMedidas } = await cargarNube()
+
+    await borrarMedidas([])
+
+    expect(espia).not.toHaveBeenCalled()
+  })
+})
+
+describe('sin nube configurada', () => {
+  it('la app lo dice y no se inventa un servidor', async () => {
+    montarNavegador()
+    vi.stubEnv('VITE_FIREBASE_API_KEY', '')
+    vi.stubEnv('VITE_FIREBASE_PROJECT_ID', '')
+    vi.resetModules()
+    const { hayNube, pedirEnlace } = await import('./cloud')
+
+    expect(hayNube()).toBe(false)
+    await expect(pedirEnlace('alberto@ejemplo.com')).rejects.toThrow(/no hay ninguna nube/i)
   })
 })

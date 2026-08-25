@@ -83,10 +83,10 @@ watchOS es obligatoriamente nativa y se compila con Xcode en un Mac.
 El proyecto de Xcode de `ios/` es el sitio donde vivirá cuando se escriba: una
 app de watchOS es una diana más dentro del mismo proyecto.
 
-Lo que sí está montado ya es **la vía de entrada**: la tabla `ritmo_medidas` de
-`supabase/esquema.sql` y `src/domain/buzon.ts`. Cualquier cosa que sepa hacer
-una petición HTTP puede dejar ahí una medida, y el móvil la recoge y la mete
-donde va la próxima vez que sincroniza.
+Lo que sí está montado ya es **la vía de entrada**: la subcolección
+`usuarios/{uid}/medidas` de `firebase/firestore.rules` y `src/domain/buzon.ts`.
+Cualquier cosa que sepa hacer una petición HTTP puede dejar ahí una medida, y el
+móvil la recoge y la mete donde va la próxima vez que sincroniza.
 
 ### Qué manda quien mida
 
@@ -122,9 +122,9 @@ la misma medida no duplica nada.
 | **Atajos (Shortcuts)** | Sí | Sí |
 | **App de watchOS** | No | Sí |
 
-**Atajos** es la única vía sin Mac. Se crea un atajo que hace una petición POST
-a `ritmo_medidas` y se pone en la esfera del reloj. No es bonito, pero se
-instala hoy y no cuesta nada.
+**Atajos** es la única vía sin Mac. Se crea un atajo que hace una petición al
+buzón —`usuarios/{uid}/medidas` en Firestore— y se pone en la esfera del reloj.
+No es bonito, pero se instala hoy y no cuesta nada.
 
 **Una app de watchOS** necesita Xcode y una cuenta de Apple. Con cuenta
 gratuita el perfil caduca a los **7 días** y hay que reinstalar desde el Mac —es

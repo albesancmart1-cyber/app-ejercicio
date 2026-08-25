@@ -1,0 +1,46 @@
+# Cómo se construye y se publica Ritmo en Netlify.
+#
+# Netlify sirve desde la raíz del dominio, así que aquí **no** se pone
+# `BASE_PATH`: `vite.config.ts` usa «/» cuando no está, que es lo correcto.
+# GitHub Pages sí lo necesita —vive en un subdirectorio— y por eso la variable
+# existe y se pone solo allí.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  # La misma que usa el recorrido de pruebas y el flujo de GitHub.
+  NODE_VERSION = "22"
+
+# Todo lo que no sea un fichero real cae en el index.
+#
+# Hace falta por el acceso con enlace de correo: el enlace vuelve a la app con
+# los datos de la sesión en la URL, y si el servidor contestara 404 en vez de
+# devolver el index, entrar desde el correo dejaría al usuario en una página de
+# error con su sesión dentro y sin nadie que la lea.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# El service worker y el manifiesto no se cachean en el CDN.
+#
+# Si un `sw.js` viejo se queda cacheado, la app instalada se queda congelada en
+# la versión de antes y no hay forma de sacarla de ahí desde el móvil. Los
+# ficheros con hash en el nombre sí se cachean para siempre, que es de lo que
+# vive el arranque rápido.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/manifest.webmanifest"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

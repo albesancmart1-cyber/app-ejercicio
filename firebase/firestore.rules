@@ -1,0 +1,48 @@
+// Las reglas de Ritmo en Firestore.
+//
+// Un documento por cuenta con el JSON entero dentro. La app fusiona en el
+// dispositivo (src/domain/merge.ts) y sube el resultado ya resuelto, así que
+// la base de datos no necesita saber nada de sesiones, mediciones ni
+// check-ins: solo guardar y devolver lo que le den, y asegurarse de que cada
+// uno solo toca lo suyo.
+//
+// Esto es lo que hace inofensiva la clave que viaja dentro de la app. La clave
+// de la API web de Firebase identifica al proyecto y nada más: no autoriza. Sin
+// haber entrado por correo, `request.auth` es nulo y aquí abajo no se abre nada.
+//
+// Se pega entero en Panel → Firestore Database → Reglas → Publicar.
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Los datos de la cuenta ────────────────────────────
+    // El nombre del documento es el uid de quien entró, así que la regla se
+    // escribe sola: solo tú, y solo el tuyo.
+    match /usuarios/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+
+      // ── El buzón de medidas ─────────────────────────────
+      // Para lo que se mide desde otro sitio que no es el móvil: el reloj, un
+      // atajo, lo que venga. Documentos pequeños que el móvil recoge al
+      // sincronizar, mete donde van (src/domain/buzon.ts) y borra.
+      //
+      // El id lo pone quien escribe y no la base de datos, a propósito: ese
+      // mismo id acaba siendo el del rato de sol o la sesión que se guarda en
+      // el móvil, y es lo que permite que recoger dos veces no duplique nada.
+      match /medidas/{medida} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+    }
+
+    // Todo lo demás, cerrado. Está escrito aunque Firestore ya deniegue por
+    // defecto: las reglas se suman —basta que una permita para que se permita—,
+    // así que esto no tapa nada de arriba, solo deja dicho por escrito que fuera
+    // de `usuarios/{uid}` no hay nada que abrir. Si algún día aparece aquí una
+    // colección nueva, que sea porque alguien la escribió a propósito.
+    match /{documento=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -5,8 +5,8 @@ import WatchConnectivity
 ///
 /// ## Por qué no habla con la nube directamente
 ///
-/// Sería lo primero que uno piensa: el reloj tiene WiFi, y en Supabase ya hay
-/// una tabla esperando. El problema es entrar. La sesión de Ritmo va por enlace
+/// Sería lo primero que uno piensa: el reloj tiene WiFi, y en Firestore ya hay
+/// un buzón esperando. El problema es entrar. La sesión de Ritmo va por enlace
 /// al correo, y en un reloj no hay dónde pegar un enlace ni teclado en el que
 /// escribir un token. Meter la autenticación en el reloj significaría teclear
 /// algo largo en una pantalla de cuatro centímetros, o guardar una credencial

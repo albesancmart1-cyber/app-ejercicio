@@ -99,8 +99,14 @@ describe('las pantallas de carga', () => {
 })
 
 describe('el manifiesto', () => {
-  it('tiene identidad fija, para que cambiar la ruta no cree una app nueva', () => {
-    expect(CONFIG).toMatch(/id: '/)
+  it('lleva `id`, para que cambiar el start_url no cree una app nueva', () => {
+    // Sin `id`, la identidad de la app instalada la fija el `start_url`: el día
+    // que ese cambie, el móvil la trata como otra app y quien la tuviera puesta
+    // se queda con la vieja. Va atado al `base` y no escrito a mano porque la
+    // app vive en dos sitios con rutas distintas —Netlify en la raíz, GitHub
+    // Pages en un subdirectorio—, y una identidad escrita a mano dejaría a una
+    // de las dos apuntando a una ruta que en su servidor no existe.
+    expect(CONFIG).toContain('id: process.env.BASE_PATH')
   })
 
   it('se queda en vertical: se usa con una mano y de pie en la calle', () => {

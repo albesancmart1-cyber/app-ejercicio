@@ -743,31 +743,48 @@ un hilo con un orden —cómo estás, qué toca, empezar— y partirlo en dos ob
 Por defecto todo se guarda **en el dispositivo** y no sale de ahí. Si quieres entrar desde el móvil y
 desde el ordenador con los mismos datos, la app puede usar una nube — hay que darla de alta una vez.
 
+Conviene decir qué es «la nube» aquí, porque la palabra engaña: **la base de datos de la app es tu
+móvil**. Todo vive en `localStorage`, la app arranca y funciona entera sin cuenta y sin red, y
+Firestore es solo el sitio de paso donde dos dispositivos se ponen de acuerdo. Mientras el móvil
+conserve su almacén, cambiar de proveedor de nube —o quedarse sin ninguno— no pierde nada.
+
 ### Ponerla en marcha (una vez, unos cinco minutos)
 
-1. Crea un proyecto gratuito en [supabase.com](https://supabase.com).
-2. En el **SQL Editor** del panel, pega y ejecuta [`supabase/esquema.sql`](supabase/esquema.sql).
-   Crea la tabla y —lo importante— activa el **aislamiento por filas**, que es lo que hace que cada
-   cuenta solo pueda leer y escribir lo suyo.
-3. En **Authentication → URL Configuration**, añade a *Redirect URLs* la dirección de la app
-   (`https://<usuario>.github.io/app-ejercicio/`).
-4. En **Project Settings → API**, copia el *Project URL* y la clave *anon public*.
-5. En GitHub, **Settings → Secrets and variables → Actions → Variables**, crea
-   `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` con esos dos valores.
+Los cinco pasos, con las pantallas exactas y qué hacer cuando algo falla, están en
+[`firebase/README.md`](firebase/README.md). En resumen:
+
+1. Crea un proyecto gratuito en [console.firebase.google.com](https://console.firebase.google.com).
+2. **Authentication → Sign-in method → Email/Password**: activa el interruptor de arriba **y** el de
+   abajo, *Email link (passwordless sign-in)*. El de abajo viene apagado y es el que hace falta.
+3. **Firestore Database → Crear base de datos** (modo producción) y, en la pestaña **Reglas**, pega
+   y publica [`firebase/firestore.rules`](firebase/firestore.rules). Es lo que hace que cada cuenta
+   solo pueda leer y escribir lo suyo.
+4. **Authentication → Settings → Authorized domains**: añade el dominio de Netlify. Sin esto Firebase
+   ni siquiera manda el correo.
+5. En Netlify, **Site configuration → Environment variables**, crea `VITE_FIREBASE_API_KEY` y
+   `VITE_FIREBASE_PROJECT_ID` con el `apiKey` y el `projectId` del proyecto.
 
 En el siguiente despliegue aparece la tarjeta **«Tu cuenta»** en Ajustes. Si las variables no están,
 la app se construye igual y guarda solo en el dispositivo: la nube es opcional de principio a fin.
 
-La clave *anon* va dentro del paquete y **es pública a propósito**: sin sesión iniciada no abre nada,
-porque cada fila exige la sesión de su dueño. Lo que protege los datos es la política de la base de
-datos, no esconder la clave.
+La `apiKey` va dentro del paquete y **es pública a propósito**: identifica al proyecto, no autoriza
+nada. Lo que protege los datos son las reglas de Firestore, no esconder la clave.
 
 ### Cómo entra uno
 
 Con el **correo, sin contraseña**: pides un enlace, lo abres, y ya estás dentro. Una contraseña más
-es una contraseña más que perder, y en una app de una sola persona no aporta nada. Al volver del
-enlace los tokens llegan en el fragmento de la URL; se guardan y **el fragmento se limpia**, para que
-no queden en el historial ni se compartan al copiar la dirección.
+es una contraseña más que perder, y en una app de una sola persona no aporta nada.
+
+El enlace no trae la sesión hecha: trae un **testigo de un solo uso** que la app canjea con una
+petición, mandando además el correo al que se envió —de modo que un enlace interceptado no basta por
+sí solo—. En cuanto se canjea, los parámetros se quitan de la barra de direcciones para que no queden
+en el historial ni se compartan al copiar la dirección.
+
+Y hay una segunda vía que parece un rodeo y no lo es: **pegar el enlace dentro de la app en vez de
+pulsarlo**. En iOS, una app añadida a la pantalla de inicio tiene su propio almacén, separado del de
+Safari, y el enlace del correo siempre abre Safari: pulsándolo se entra en Safari y la app instalada
+te sigue viendo como un dispositivo nuevo. Pegándolo, el canje ocurre dentro de la app. Firebase no
+manda códigos de cifras por correo —no existe esa vía en su API—, así que estas dos son todas.
 
 ### Qué pasa cuando los dos lados tienen cosas distintas
 
@@ -792,24 +809,27 @@ entrena en sitios sin cobertura—, así que la nube nunca está en el camino cr
 escribe en local como siempre y la sincronización va por detrás. Si falla, se queda marcado como
 pendiente y se sube solo al recuperar la conexión. Cerrar sesión tampoco borra nada de aquí.
 
-`node scripts/check-nube.mjs` comprueba todo esto en navegador contra un Supabase simulado, sin
+`node scripts/check-nube.mjs` comprueba todo esto en navegador contra un Firebase simulado, sin
 necesidad de una cuenta real.
 
-## Instalarla en el móvil
+## Publicarla e instalarla en el móvil
 
-Cada subida a la rama principal despliega la app sola en GitHub Pages
-(`.github/workflows/deploy.yml`), y solo publica si los tests pasan. La URL es
-**https://albesancmart1-cyber.github.io/app-ejercicio/**.
+Se publica en **Netlify**, que construye la app al subir un cambio. Toda la configuración de la
+construcción está en [`netlify.toml`](netlify.toml) —el comando, la carpeta, la versión de Node, el
+redirect que hace falta para el enlace del correo y qué se cachea y qué no—, así que en el panel de
+Netlify no hay que rellenar nada salvo las dos variables de la nube. Los pasos, en
+[`docs/DESPLEGAR.md`](docs/DESPLEGAR.md).
 
-Ábrela ahí en el móvil y añádela a la pantalla de inicio: en Android, menú de Chrome → «Instalar
+Sigue existiendo el despliegue en **GitHub Pages** (`.github/workflows/deploy.yml`), que además pasa
+los tests antes de publicar y activa Pages la primera vez (`enablement: true`). Se pueden tener los
+dos a la vez: la app funciona en los dos sitios porque la ruta la decide `BASE_PATH` al construir
+—en la raíz para Netlify, `/app-ejercicio/` para Pages—. Lo que hay que recordar teniendo los dos es
+que son dos dominios distintos: los dos tienen que estar en la lista de dominios autorizados de
+Firebase, y una sesión iniciada en uno no vale en el otro.
+
+Ábrela en el móvil y añádela a la pantalla de inicio: en Android, menú de Chrome → «Instalar
 aplicación»; en iPhone, Safari → compartir → «Añadir a pantalla de inicio». Queda con su icono, a
 pantalla completa y funcionando sin conexión.
-
-El propio workflow activa Pages la primera vez (`enablement: true`), así que no hace falta tocar
-nada en los ajustes del repositorio.
-
-En local la app se sirve en la raíz y en Pages bajo `/app-ejercicio/`. Lo controla `BASE_PATH` en
-`vite.config.ts`, que el workflow define al construir.
 
 ## Desarrollo
 
@@ -842,10 +862,10 @@ npm run preview   # servir la build
   app se migran solos, sin perder nada, marcando lo deducido y sin volver a cambiar al reabrir.
 - `node scripts/comparar-motores.mjs` — genera seis meses de historial con las decisiones de la propia
   app y compara semana a semana lo que ve el motor viejo con lo que ve el nuevo.
-- `node scripts/check-nube.mjs` — interceptando el tráfico a Supabase, comprueba pedir el enlace,
-  recoger la sesión del fragmento de la URL, fusionar los datos de dos dispositivos sin perder nada,
+- `node scripts/check-nube.mjs` — interceptando el tráfico a Firebase, comprueba pedir el enlace,
+  canjear el testigo que vuelve en la URL, fusionar los datos de dos dispositivos sin perder nada,
   que lo borrado no resucite y que cerrar sesión no borre nada de aquí. Necesita una build hecha con
-  `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` puestas a cualquier valor.
+  `VITE_FIREBASE_API_KEY` y `VITE_FIREBASE_PROJECT_ID` puestas a cualquier valor.
 - `node scripts/check-cardio.mjs` — comprueba que un día de cardio ofrece varias actividades, que cada
   una trae sus minutos equivalentes y que al cambiar se ajusta la dosis y se explica.
 - `node scripts/check-molestias.mjs` — comprueba que en el test diario se pueden marcar varias zonas

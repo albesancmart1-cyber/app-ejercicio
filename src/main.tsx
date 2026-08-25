@@ -66,16 +66,18 @@ window.addEventListener('online', () => {
 })
 
 /*
- * El enlace del correo puede caer con la app ya abierta —instalada, el sistema
- * la trae al frente en vez de cargarla de nuevo—, y entonces solo cambia el
- * fragmento de la URL: no hay recarga y la sesión se quedaría sin recoger.
+ * Aquí había un oyente de `hashchange`, y ya no hace falta.
+ *
+ * El proveedor de antes devolvía la sesión en el **fragmento** de la URL, y un
+ * fragmento se puede cambiar sin recargar: con la app ya abierta —instalada, el
+ * sistema la trae al frente en vez de cargarla de nuevo— el enlace del correo
+ * cambiaba el fragmento, no había arranque, y la sesión se quedaba sin recoger.
+ *
+ * Firebase la devuelve en la **consulta** (`?mode=signIn&oobCode=…`), y ahí no
+ * hay ese agujero: cambiar la consulta es siempre una navegación, así que el
+ * arranque de arriba corre y `iniciarSync` la recoge. Si algún día el enlace
+ * volviera por el fragmento, esto tendría que volver.
  */
-window.addEventListener('hashchange', () => {
-  if (!/access_token|error/.test(location.hash)) return
-  iniciarSync().then((haySesion) => {
-    if (haySesion) sincronizar(actions.snapshot, actions.replaceAll)
-  })
-})
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

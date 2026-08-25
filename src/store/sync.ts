@@ -82,10 +82,13 @@ export function ultimaNovedad(): string | null {
  */
 export async function iniciarSync(): Promise<boolean> {
   if (!hayNube()) return false
-  // Si el enlace volvió con un fallo hay que mirarlo antes: viene por el mismo
-  // sitio que la sesión, y callárselo deja al usuario sin saber qué ha pasado.
+  // Primero se canjea el enlace, si venimos de él, y después se pregunta si
+  // aquello dejó una queja. El orden importa: con Firebase el enlace no trae la
+  // sesión hecha sino un testigo que hay que canjear, y el fallo —que ya no
+  // vale, que falta el correo— solo se sabe al intentarlo. Callárselo dejaba al
+  // usuario mirando una pantalla que no hace nada.
+  const deLaUrl = await recogerSesionDeLaUrl()
   const fallo = recogerFalloDeLaUrl()
-  const deLaUrl = recogerSesionDeLaUrl()
   const sesion = deLaUrl ?? sesionGuardada()
   if (!sesion) {
     anunciar(fallo ? { estado: 'error', mensaje: fallo } : { estado: 'fuera' })

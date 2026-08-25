@@ -43,10 +43,17 @@ export default defineConfig({
         description:
           'Entrenamiento que acompaña: escucha tu cuerpo, respeta tus ritmos y te recomienda el entreno que necesitas hoy.',
         lang: 'es',
-        // `id` fija la identidad de la app instalada: sin él, cambiar el
-        // `start_url` algún día haría que el móvil la trate como otra app
-        // distinta y quien la tuviera puesta se quedaría con la vieja.
-        id: '/app-ejercicio/',
+        /*
+         * `id` fija la identidad de la app instalada: sin él, cambiar el
+         * `start_url` algún día haría que el móvil la trate como otra app
+         * distinta y quien la tuviera puesta se quedaría con la vieja.
+         *
+         * Va atado al `base` y no escrito a mano porque la app vive en dos
+         * sitios con rutas distintas —Netlify en la raíz, GitHub Pages en un
+         * subdirectorio— y una identidad fija a mano dejaría una de las dos
+         * apuntando a una ruta que no existe en su servidor.
+         */
+        id: process.env.BASE_PATH ?? '/',
         display: 'standalone',
         // Vertical y bloqueada: la app se usa con una mano, de pie en la calle,
         // y girándola no hay nada que ganar.
