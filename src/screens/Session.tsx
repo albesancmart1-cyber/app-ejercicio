@@ -76,7 +76,13 @@ import ExerciseAnimation from '../components/ExerciseAnimation'
 import ExercisePicker from '../components/ExercisePicker'
 import ExerciseSheet from '../components/ExerciseSheet'
 import { patternOf } from '../data/patterns'
-import { Boton, CampoNumero, Escala, Interruptor, Opcion } from '../components/ui'
+import { Boton, CampoNumero, Escala, Interruptor, Opcion, Regla } from '../components/ui'
+import type {
+  EntornoDeEntreno,
+  Lampara,
+  PerfilDeLuz,
+  Profile
+} from '../domain/types'
 import { escribirNumero } from '../domain/numeros'
 import {
   ajustar as ajustarDescanso,
@@ -160,6 +166,14 @@ export default function SessionScreen({ session }: { session: Session }) {
     session.exercises.map((e) => (e.logs ? e : { ...e, logs: initLogs(e.plan) }))
   )
   const [startedAt, setStartedAt] = useState<number | undefined>(session.startedAt)
+  /*
+   * El entorno se elige **antes** de empezar, con el plan delante, porque es
+   * cuando uno sabe dónde va a entrenar. Preguntarlo al terminar sería pedirle
+   * a alguien que se acuerde de cómo estaba la luz hace hora y media.
+   */
+  const [entorno, setEntorno] = useState<EntornoDeEntreno | undefined>(
+    () => session.entorno ?? entornoPorDefecto(data.profile, data.perfilesLuz ?? [])
+  )
   const [rpe, setRpe] = useState<1 | 2 | 3 | 4 | 5 | null>(null)
   const [finishing, setFinishing] = useState(false)
   /*
@@ -690,7 +704,7 @@ export default function SessionScreen({ session }: { session: Session }) {
   function empezar() {
     const ahora = Date.now()
     setStartedAt(ahora)
-    actions.saveSession({ ...session, exercises, startedAt: ahora })
+    actions.saveSession({ ...session, exercises, startedAt: ahora, entorno })
   }
 
   function descartar() {
@@ -1525,6 +1539,12 @@ export default function SessionScreen({ session }: { session: Session }) {
 
       {!enMarcha ? (
         <>
+          <EntornoDelEntreno
+            entorno={entorno}
+            perfiles={data.perfilesLuz ?? []}
+            lamparas={data.lamparas ?? []}
+            onCambiar={setEntorno}
+          />
           <Boton tono="primario" onClick={empezar}>
             Empezar entrenamiento
           </Boton>
@@ -1563,6 +1583,131 @@ export default function SessionScreen({ session }: { session: Session }) {
             Guardar el entreno
           </Boton>
         </div>
+      )}
+    </div>
+  )
+}
+
+/* ══════════════════════════════════════════════ EL ENTORNO ══ */
+
+/**
+ * Empieza con el sitio que el usuario ya declaró como habitual.
+ *
+ * Si tiene un perfil de luz marcado como el suyo, se pone ese: la mayoría de la
+ * gente entrena siempre en el mismo sitio, y hacerle elegirlo cada día
+ * convertiría un dato útil en un peaje.
+ */
+function entornoPorDefecto(
+  perfil: Profile | null,
+  perfiles: PerfilDeLuz[]
+): EntornoDeEntreno | undefined {
+  const sitio = perfiles.find((p) => p.id === perfil?.perfilLuzHabitualId) ?? perfiles[0]
+  return sitio ? { perfilLuzId: sitio.id } : undefined
+}
+
+/**
+ * Bajo qué luz vas a entrenar.
+ *
+ * Una hora de entreno es una hora del día, y el día lo mide esta app entero.
+ * Entrenar en un sótano con fluorescentes y entrenar en un garaje con la
+ * persiana subida no son el mismo día para tu reloj, aunque las series sean
+ * idénticas — y antes la app contaba el entreno como un bloque de tiempo sin
+ * luz de ninguna clase.
+ *
+ * Lo que más cambia de todo es lo de abajo: **los descansos**. Dos minutos
+ * entre series repetidos veinte veces son cuarenta minutos, y si se pasan en la
+ * puerta son cuarenta minutos de calle que no contaban en ninguna parte.
+ */
+function EntornoDelEntreno({
+  entorno,
+  perfiles,
+  lamparas,
+  onCambiar
+}: {
+  entorno: EntornoDeEntreno | undefined
+  perfiles: PerfilDeLuz[]
+  lamparas: Lampara[]
+  onCambiar: (e: EntornoDeEntreno) => void
+}) {
+  const e = entorno ?? {}
+  const cambiar = (parte: Partial<EntornoDeEntreno>) => onCambiar({ ...e, ...parte })
+  const ambiente = e.lamparasAmbiente ?? []
+
+  return (
+    <div className="card" style={{ marginBottom: 14 }}>
+      <p className="eyebrow">Bajo qué luz vas a entrenar</p>
+      <p className="dim" style={{ marginTop: 8 }}>
+        Una hora de entreno es una hora de tu día. Esto es lo que hace que cuente como tal.
+      </p>
+
+      <div className="options" style={{ marginTop: 12 }}>
+        <Opcion activa={e.fuera === true} onElegir={() => cambiar({ fuera: !e.fuera })}>
+          Al aire libre
+        </Opcion>
+        <Opcion
+          activa={e.descansosFuera === true}
+          onElegir={() => cambiar({ descansosFuera: !e.descansosFuera })}
+        >
+          Descansos fuera
+        </Opcion>
+      </div>
+      <p className="faint" style={{ marginTop: 8 }}>
+        {e.fuera
+          ? 'Todo el rato cuenta como estar fuera.'
+          : e.descansosFuera
+            ? 'Los descansos entre series cuentan como estar fuera. Es el rato que más se pierde.'
+            : 'Si sales a la puerta entre series, dilo: son más minutos de los que parece.'}
+      </p>
+
+      {!e.fuera && perfiles.length > 0 && (
+        <>
+          <Regla />
+          <p className="eyebrow">En qué sitio</p>
+          <div className="options-col" style={{ marginTop: 10 }}>
+            {perfiles.map((p) => (
+              <Opcion
+                key={p.id}
+                activa={e.perfilLuzId === p.id}
+                onElegir={() => cambiar({ perfilLuzId: p.id })}
+              >
+                {p.nombre}
+              </Opcion>
+            ))}
+          </div>
+          <p className="faint" style={{ marginTop: 8 }}>
+            Se usa el mismo perfil de luz que tu jornada: temperatura, lux, si hay ventana y qué
+            filtro llevas. Un gimnasio es un sitio cerrado más.
+          </p>
+        </>
+      )}
+
+      {!e.fuera && lamparas.length > 0 && (
+        <>
+          <Regla />
+          <p className="eyebrow">Con alguna lámpara iluminando la sala</p>
+          <div className="options-col" style={{ marginTop: 10 }}>
+            {lamparas.map((l) => (
+              <Opcion
+                key={l.id}
+                activa={ambiente.includes(l.id)}
+                onElegir={() =>
+                  cambiar({
+                    lamparasAmbiente: ambiente.includes(l.id)
+                      ? ambiente.filter((x) => x !== l.id)
+                      : [...ambiente, l.id]
+                  })
+                }
+              >
+                {l.nombre}
+              </Opcion>
+            ))}
+          </div>
+          <p className="faint" style={{ marginTop: 8 }}>
+            Iluminando el cuarto, no apuntando a una zona. Se apunta porque describe el ambiente,
+            pero <strong>no suma julios</strong>: una lámpara a una distancia que nadie ha medido no
+            entrega una dosis que se pueda calcular. Para eso está la baldosa de Lámpara en Medir.
+          </p>
+        </>
       )}
     </div>
   )

@@ -1156,6 +1156,7 @@ function Balance({ hoy, lat, lon }: { hoy: string; lat: number; lon: number }) {
     sol: (data.sol ?? []).find((s) => s.date === hoy),
     sesionesPBM: (data.sesionesPBM ?? []).filter((s) => s.date === hoy),
     lamparas: data.lamparas,
+    sessions: (data.sessions ?? []).filter((s) => s.date === hoy),
     fichaje: (data.fichajes ?? []).find((f) => f.date === hoy),
     ...(noche ? { oscuridadDesde: noche.apagado, oscuridadHasta: noche.levantado } : {})
   })
@@ -1181,14 +1182,26 @@ function Balance({ hoy, lat, lon }: { hoy: string; lat: number; lon: number }) {
           <p className="faint" style={{ marginTop: 4 }}>
             {b.detalle}
           </p>
+          {b.referencia && (
+            <p className="faint" style={{ marginTop: 2, opacity: 0.75 }}>
+              {b.referencia}
+            </p>
+          )}
         </div>
       ))}
 
       <Regla />
       <p className="faint">
-        El cien por cien no es una cifra de manual: es lo que el sol te ofrecía hoy en tu sitio y en
-        esta fecha. No hay consenso sobre cuántos julios de luz roja necesita alguien al día, y
-        poner un número inventado sería venderte algo. Cuando una barra dice «no había», es que no
+        El cien por cien es <strong>media jornada al aire libre</strong>, calculada sobre lo que el
+        sol ofrecía hoy en tu sitio y en esta fecha. No es un número de manual: el ser humano
+        moderno pasa alrededor del 92 % de su tiempo en interiores, y medio día fuera es el listón
+        que separa con claridad una vida de dentro de una de fuera. Antes el cien por cien era el
+        día entero, un máximo que nadie alcanza y que por eso no decía nada.
+      </p>
+      <p className="faint" style={{ marginTop: 8 }}>
+        Llenar la de ultravioleta <strong>no es un objetivo</strong>. Estar fuera medio día es sano;
+        estar al sol de mediodía medio día no lo es, y esa diferencia la marca el tiempo hasta
+        enrojecer, que va aparte y es el que manda. Y cuando una barra dice «no había», es que no
         había: en diciembre, aquí, la vitamina D no es posible y no es culpa tuya.
       </p>
     </div>

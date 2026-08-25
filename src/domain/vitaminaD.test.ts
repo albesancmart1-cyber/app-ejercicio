@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   ELEVACION_MINIMA,
   K_UI_POR_MIN_UVI,
+  UI_POR_MED_CUERPO_ENTERO,
   F_FOTOTIPO,
   MED_J_M2,
   ORDEN_FOTOTIPO,
@@ -146,12 +147,15 @@ describe('los factores de la persona', () => {
 
 describe('las UI por minuto', () => {
   it('cuadran con la referencia de Holick a cuerpo entero', () => {
-    // 20 min de cuerpo entero al mediodía de junio deberían caer en la horquilla
-    // clásica de 10 000–20 000 UI para una dosis eritemal mínima.
+    /*
+     * Veinte minutos de cuerpo entero al mediodía de junio en Madrid son algo
+     * más de una MED —la quemadura llega a los quince—, así que la cifra tiene
+     * que salir por encima de la horquilla de una MED y no muy por encima.
+     */
     const porMin = uiPorMinuto(73, 'entero', { fototipo: 'II', edad: 30, altitudM: 0 })
     const enVeinte = porMin * 20
-    expect(enVeinte).toBeGreaterThan(10000)
-    expect(enVeinte).toBeLessThan(20000)
+    expect(enVeinte).toBeGreaterThan(15000)
+    expect(enVeinte).toBeLessThan(30000)
   })
 
   /*
@@ -161,18 +165,48 @@ describe('las UI por minuto', () => {
    * UI— con la referencia en la que `k` está definido. Si alguien mueve una
    * constante y rompe la coherencia entre las dos mitades del modelo, salta.
    */
-  it('y `k` cuadra con la MED, que es de donde tenía que salir', () => {
-    const W_POR_UVI = 0.025
-    // En la referencia: sol en la vertical, 300 DU, índice UV 12,5.
-    const uvi = indiceUV(90, OZONO_DE_REFERENCIA)
-    const minutosDeUnaMed = MED_J_M2.II / (uvi * W_POR_UVI) / 60
-    // Fototipo II, 20 años, a nivel del mar, cuerpo entero.
-    const enUnaMed = uiPorMinuto(90, 'entero', { fototipo: 'II', edad: 20, altitudM: 0 }) * minutosDeUnaMed
+  /*
+   * La prueba que ata `k` a la literatura, y que además guarda la esquina en la
+   * que estuvo mal: **el anclaje tiene que estar donde se midió el dato**.
+   *
+   * La equivalencia «una MED a cuerpo entero ≈ 10 000–20 000 UI» se midió con
+   * gente al sol de verano a media latitud, no con el sol en la vertical.
+   * Anclarla en el cenit —donde el factor de la vitamina D vale 1 por
+   * construcción— y aplicar después ese factor descontaba dos veces lo mismo, y
+   * la cifra salía cerca de la mitad de lo que debía.
+   */
+  it('y `k` cuadra con la MED en el sol donde esa MED se midió', () => {
+    const uvi = indiceUV(60, OZONO_DE_REFERENCIA)
+    const minutosDeUnaMed = MED_J_M2.II / (uvi * 0.025) / 60
+    const enUnaMed =
+      uiPorMinuto(60, 'entero', { fototipo: 'II', edad: 20, altitudM: 0 }, 1, OZONO_DE_REFERENCIA) *
+      minutosDeUnaMed
+    expect(enUnaMed).toBeCloseTo(UI_POR_MED_CUERPO_ENTERO, -2)
+    // Y sigue dentro de la horquilla publicada, que es de 10 000 a 20 000.
     expect(enUnaMed).toBeGreaterThan(10000)
-    expect(enUnaMed).toBeLessThan(14000)
-    // Y `k` es el número que hace que eso salga, no un número suelto.
-    expect(K_UI_POR_MIN_UVI).toBeGreaterThan(18)
-    expect(K_UI_POR_MIN_UVI).toBeLessThan(24)
+    expect(enUnaMed).toBeLessThan(20000)
+  })
+
+  it('con el sol más alto se saca más vitamina D por cada MED, y eso es el punto', () => {
+    /*
+     * Es lo que `factorVitaminaD` aporta y lo que un `k` fijo por punto de
+     * índice UV no podía decir: la proporción entre lo que sintetizas y lo que
+     * te quemas mejora cuando el sol sube, porque la banda de la vitamina D
+     * paga el camino por la atmósfera mucho más cara que la de la quemadura.
+     */
+    const porMed = (elev: number) => {
+      const min = MED_J_M2.II / (indiceUV(elev, OZONO_DE_REFERENCIA) * 0.025) / 60
+      return uiPorMinuto(elev, 'entero', { fototipo: 'II', edad: 20 }, 1, OZONO_DE_REFERENCIA) * min
+    }
+    expect(porMed(80)).toBeGreaterThan(porMed(60))
+    expect(porMed(60)).toBeGreaterThan(porMed(40))
+  })
+
+  it('`k` no es un número escrito a mano: se despeja del anclaje', () => {
+    // Si alguien mueve el anclaje, `k` se mueve solo. Y si alguien vuelve a
+    // ponerlo en el cenit, esto baja a ~21 y la prueba de arriba salta.
+    expect(K_UI_POR_MIN_UVI).toBeGreaterThan(30)
+    expect(K_UI_POR_MIN_UVI).toBeLessThan(40)
   })
 
   it('con el sol bajo son poquísimas, pero ya no son cero', () => {

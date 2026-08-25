@@ -483,6 +483,8 @@ export interface Session {
   startedAt?: number
   /** Duración total en segundos, guardada al terminar. */
   durationSec?: number
+  /** Bajo qué luz se entrenó, y si los descansos fueron a la calle. */
+  entorno?: EntornoDeEntreno
   /**
    * El descanso que está corriendo ahora mismo, si lo hay.
    *
@@ -494,6 +496,47 @@ export interface Session {
    * no un contador que haya que ir restando.
    */
   descanso?: DescansoEnCurso
+}
+
+/**
+ * Bajo qué luz entrenaste.
+ *
+ * ## Por qué la app pregunta esto
+ *
+ * Porque una hora de entreno es una hora del día, y el día lo mide esta app
+ * entero. Entrenar a las siete de la tarde en un sótano con fluorescentes y
+ * entrenar a las siete de la tarde en un garaje con la persiana subida no son
+ * el mismo día para tu reloj, aunque las series sean idénticas. Antes la app
+ * contaba el entreno como un bloque de tiempo sin luz de ninguna clase, que es
+ * como decir que ese rato no existió para el reloj.
+ *
+ * Se reutiliza el **perfil de luz** que ya existe para la jornada —temperatura,
+ * lux, si hay ventana y qué filtro llevas— porque un gimnasio es un sitio
+ * cerrado más, y describirlo dos veces de dos maneras habría sido pedirle al
+ * usuario el mismo dato con otro nombre.
+ */
+export interface EntornoDeEntreno {
+  /** El sitio, con su luz. El mismo `PerfilDeLuz` que usa el trabajo. */
+  perfilLuzId?: string
+  /**
+   * Lámparas encendidas **iluminando la sala**, no aplicadas a una zona.
+   *
+   * Van aparte de las sesiones de fotobiomodulación a propósito: una lámpara
+   * que ilumina un cuarto desde una distancia que nadie ha medido no entrega
+   * una dosis que se pueda calcular, y fingir que sí la convertiría en julios
+   * inventados. Se apuntan porque describen el ambiente, no porque sumen.
+   */
+  lamparasAmbiente?: string[]
+  /** Si se entrenó al aire libre. Entonces todo el rato cuenta como calle. */
+  fuera?: boolean
+  /**
+   * Si los descansos se pasaron fuera.
+   *
+   * Es lo que más cambia un entreno de interior: dos minutos entre series,
+   * repetidos veinte veces, son media hora de calle que hasta ahora no contaba
+   * en ninguna parte.
+   */
+  descansosFuera?: boolean
 }
 
 /** Un descanso corriendo: contra el reloj, no contra un contador. */

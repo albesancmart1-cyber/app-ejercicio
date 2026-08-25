@@ -844,6 +844,24 @@ toca el horizonte, no su centro, y la atmósfera además lo levanta ópticamente
 esos dos efectos es la diferencia entre acertar el amanecer y equivocarlo en cuatro minutos.</p>
 
 <h3>El balance de cuatro barras</h3>
+<div class="caja">
+  <span class="et">Qué es el cien por cien</span>
+  <p><strong>Media jornada al aire libre</strong>, calculada sobre lo que el sol ofrecía hoy en
+  tu sitio y en esta fecha. Antes era el día entero, y era una mala referencia: medía lo que el
+  cielo ofrecía, no lo que una persona puede coger. Una barra cuyo máximo nadie alcanza no dice
+  nada, porque siempre estás al ocho por ciento de algo.</p>
+  <p>La mitad sale de poner el listón donde está la diferencia que importa. El ser humano
+  moderno pasa alrededor del <strong>92&nbsp;% de su tiempo en interiores</strong> y sale una
+  mediana de poco más de una hora al día; quien trabaja fuera recibe en torno al 10&nbsp;% del
+  ultravioleta ambiental disponible, y hasta el 14&nbsp;% medido en obreros de la construcción
+  —la diferencia entre «estar fuera» y «recibir» es la sombra, la ropa y que un cuerpo de pie
+  no es un sensor tumbado—. Medio día fuera es exigente, alcanzable, y separa con claridad una
+  vida de dentro de una de fuera.</p>
+  <p><strong>Llenar la de ultravioleta no es un objetivo.</strong> Estar fuera medio día es
+  sano; estar al sol de mediodía medio día no lo es, y esa diferencia la marca el tiempo hasta
+  enrojecer, que va aparte y es el que manda. Cada barra dice además su referencia en minutos,
+  para que se sepa contra qué se está midiendo.</p>
+</div>
 <p>Cuánto de lo que el día ofrecía has cogido. Cada barra se mide contra el arco
 <strong>de tu sitio</strong>, así que nadie sale peor parado por vivir donde vive.</p>
 <table>
@@ -1287,12 +1305,30 @@ para lo que sirve.</p>
   nuestro, en vez de escondido dentro de la fórmula.</li>
 </ul>
 
-<h4>La comprobación que ata las dos mitades</h4>
-<p><code>k</code> no está elegido a ojo. Sale de cruzar dos cifras que ya estaban en el
-código: una MED de fototipo II son 250 J/m², y la literatura sitúa la síntesis de una MED a
-cuerpo entero en torno a 12&nbsp;000 UI. En la referencia eso da 20 UI/min para el 25&nbsp;%
-de piel, contra los 21 que se usan. Está escrito como prueba: si alguien mueve una constante
-y rompe la coherencia entre el modelo de la quemadura y el de la síntesis, la suite falla.</p>
+<h4>De dónde sale <code>k</code>, y el error que tuvo</h4>
+<p><code>k</code> no está elegido a ojo: <strong>se despeja</strong> de dos cifras. Una MED de
+fototipo II son 250 J/m², y la literatura sitúa la síntesis de una MED a cuerpo entero en el
+equivalente a tomar por boca entre <strong>10&nbsp;000 y 20&nbsp;000 UI</strong>. Se usa el
+centro, 15&nbsp;000. Ese rango es ancho porque lo es de verdad: no hay un número fino que
+poner ahí.</p>
+<div class="caja">
+  <span class="et">El error que tuvo, y cómo se vio</span>
+  <p>Durante un tiempo <code>k</code> valía 21 y la cifra de vitamina D salía cerca de la
+  mitad de lo que debía. El fallo no estaba en la fórmula sino en <strong>dónde se anclaba</strong>.
+  La equivalencia entre MED y UI no se midió con el sol en la vertical: se midió con gente al
+  sol de verano a media latitud. Anclarla en el cenit —donde el factor de la vitamina D vale 1
+  por construcción— y aplicar después ese factor descontaba <strong>dos veces lo mismo</strong>:
+  una dentro del dato empírico y otra encima.</p>
+  <p>Con el anclaje puesto donde toca —60° de altura, 300 DU— <code>k</code> sale
+  <strong>34,3</strong>. Se comprobó porque una app de referencia daba 47&nbsp;000 UI para hora
+  y media de sol donde esta daba 16&nbsp;000, y al ir a mirar el anclaje apareció el
+  doble descuento. Hay una prueba que despeja <code>k</code> del anclaje y otra que falla si
+  alguien vuelve a ponerlo en el cenit.</p>
+</div>
+<p>Y una consecuencia que ahora sí se ve: <strong>con el sol más alto se saca más vitamina D
+por cada MED</strong>, porque la banda de la síntesis paga el camino por la atmósfera mucho
+más cara que la de la quemadura. Un <code>k</code> fijo por punto de índice UV no podía decir
+eso.</p>
 
 <h4>Cuánta piel</h4>
 <table>

@@ -31,6 +31,7 @@ import type {
   TipoEnCurso
 } from './types'
 import type { RegistroHabito } from './habitos'
+import { minutosFueraDelEntreno } from './entornoEntreno'
 
 /** Un rato, en minutos desde la medianoche. `hasta` puede pasar de 1440. */
 export interface Tramo {
@@ -159,6 +160,26 @@ function trabajoDe(d: DatosDelReparto): Tramo[] {
     .map((f) => ({ desde: f.entrada, hasta: f.salida ?? d.ahoraMin }))
 }
 
+/**
+ * Los ratos del entreno que fueron al aire libre.
+ *
+ * Cuelgan de «Fuera» como cuelga el sol, porque lo son: entrenar en la calle,
+ * o salir a la puerta en los descansos, es estar fuera. Se colocan al principio
+ * del bloque del entreno, que es una simplificación y se dice: los descansos
+ * están repartidos por toda la sesión, no juntos al empezar, pero para el
+ * reparto del día lo que importa es cuántos minutos fueron, no en qué orden.
+ */
+function entrenoFueraDe(d: DatosDelReparto): Tramo[] {
+  return (d.sessions ?? [])
+    .filter((s) => s.date === d.fecha && s.startedAt !== undefined)
+    .map((s) => {
+      const inicio = new Date(s.startedAt!)
+      const desde = inicio.getHours() * 60 + inicio.getMinutes()
+      return { desde, hasta: desde + minutosFueraDelEntreno(s) }
+    })
+    .filter((t) => t.hasta > t.desde)
+}
+
 function entrenoDe(d: DatosDelReparto): Tramo[] {
   const ahora = d.ahoraMs ?? Date.now()
   return (d.sessions ?? [])
@@ -182,13 +203,22 @@ function lamparaDe(d: DatosDelReparto): Tramo[] {
 /** El reparto del día. */
 export function repartoDelDia(d: DatosDelReparto): Reparto {
   const salidas = salidasDe(d)
-  const fuera = minutosDe(salidas.map((s) => s.tramo))
+  /*
+   * El entreno al aire libre —o sus descansos— es calle igual que el resto, y
+   * cuelga de «Fuera» como cuelga el sol. Antes se contaba solo como entreno,
+   * así que salir a la puerta entre series no aparecía en ninguna parte.
+   */
+  const delEntreno = entrenoFueraDe(d)
+  const fuera = minutosDe([...salidas.map((s) => s.tramo), ...delEntreno])
 
   const dentro: Rama[] = []
   for (const t of [...BAJO_FUERA, 'soloFuera' as const]) {
     const suyos = salidas.filter((s) => s.tipo === t).map((s) => s.tramo)
     const min = minutosDe(suyos)
     if (min > 0) dentro.push({ id: t, nombre: NOMBRES[t], minutos: min })
+  }
+  if (minutosDe(delEntreno) > 0) {
+    dentro.push({ id: 'entreno', nombre: NOMBRES.entreno, minutos: minutosDe(delEntreno) })
   }
 
   const ramas: Rama[] = []

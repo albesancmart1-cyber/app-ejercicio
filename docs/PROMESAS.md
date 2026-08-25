@@ -494,6 +494,22 @@ Estas también son promesas, y romperlas sería peor que no cumplir una función
   → src/domain/vitaminaD.ts :: autorregulación no la tienes
 - [x] uvb-curva-es-gruesa · La curva de la vitamina D se declara reconstruida a trazo grueso
   → src/domain/espectroAccion.ts :: reconstruido a trazo grueso
+- [x] vitd-anclada-donde-se-midio · `k` se calibra en el sol donde se midió la MED, no en el cenit
+  → src/domain/vitaminaD.ts :: ELEVACION_DE_CALIBRACION
+- [x] vitd-k-se-despeja · `k` no es un número escrito a mano: sale del anclaje
+  → src/domain/vitaminaD.ts :: UI_POR_MED_CUERPO_ENTERO
+- [x] barras-media-jornada · El 100 % es media jornada fuera, no el día entero
+  → src/domain/balanceLuz.ts :: PARTE_DEL_DIA_QUE_CUENTA
+- [x] barras-dicen-su-referencia · Cada barra dice contra qué se mide, en minutos
+  → src/domain/balanceLuz.ts :: referencia
+- [x] barras-uv-no-es-objetivo · Llenar la de ultravioleta no se presenta como una meta
+  → src/screens/Luz.tsx :: no es un objetivo
+- [x] entreno-bajo-que-luz · Se pregunta bajo qué luz entrenas, antes de empezar
+  → src/screens/Session.tsx :: EntornoDelEntreno
+- [x] entreno-descansos-fuera · Los descansos pasados en la calle cuentan como estar fuera
+  → src/domain/entornoEntreno.ts :: minutosFueraDelEntreno
+- [x] entreno-ambiente-no-suma · Una lámpara iluminando la sala se apunta pero no inventa julios
+  → src/screens/Session.tsx :: no suma julios
 - [x] no-vende-lamparas · No recomienda marcas, dosis ni aparatos
   → src/domain/compensaciones.test.ts :: no recomienda marcas
 - [x] no-dejes-tu-trabajo · Da por hecha tu jornada y trabaja con los huecos que tienes
@@ -501,4 +517,4 @@ Estas también son promesas, y romperlas sería peor que no cumplir una función
 
 ---
 
-TOTAL: 197
+TOTAL: 205

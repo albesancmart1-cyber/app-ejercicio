@@ -24,9 +24,10 @@
  * curva de respuesta está plana; y después del ocaso, donde cuenta en contra.
  * Por eso el azul se puntúa por ventanas y no por lux acumulados.
  */
-import type { DiaDeSol, Fichaje, Lampara, SalidaAlExterior, SesionPBM } from './types'
+import type { DiaDeSol, Fichaje, Lampara, SalidaAlExterior, SesionPBM, Session } from './types'
 import { ALTURAS, arcoDelDia, elevacionSolar, type Coordenadas } from './arcoSolar'
 import { dosisAcumulada } from './fotobiomodulacion'
+import { minutosFueraDelEntreno } from './entornoEntreno'
 import { PASO_DE_AZUL, juzgarHueco } from './jornada'
 import { minutosDe } from './reparto'
 
@@ -50,6 +51,22 @@ export interface BarraBalance {
   fraccion: number | null
   /** Qué explica ese número, en una línea. */
   detalle: string
+  /**
+   * Contra qué se mide el cien por cien.
+   *
+   * Va aparte del detalle porque son dos preguntas distintas —«cuánto llevo» y
+   * «cuánto es todo»— y porque una barra que no dice contra qué se mide es una
+   * barra que no significa nada. Ausente en las que no tienen referencia
+   * numérica, como la del azul, que va por ventanas y no por cantidad.
+   */
+  referencia?: string
+}
+
+/** Un rato en horas y minutos, para las referencias de las barras. */
+function escribirRato(min: number): string {
+  const h = Math.floor(min / 60)
+  const m = Math.round(min % 60)
+  return h > 0 ? `${h} h ${String(m).padStart(2, '0')} min` : `${m} min`
 }
 
 export interface BalanceDelDia {
@@ -74,6 +91,49 @@ function disponibleRojoMin(fecha: string, coord: Coordenadas, desfase?: number):
 }
 
 /**
+ * Qué parte del día disponible se toma como el cien por cien de la barra.
+ *
+ * ## Por qué no es el cien por cien
+ *
+ * Hasta ahora lo era, y era una mala referencia. La barra de rojo se llenaba
+ * con **todos** los minutos de sol del día —quince horas fuera en un junio de
+ * Madrid— y la de ultravioleta con la ventana de UVB entera. Eso no es una
+ * referencia humana, es una astronómica: mide lo que el cielo ofrecía, no lo
+ * que una persona puede coger. Una barra cuyo máximo nadie puede alcanzar no
+ * dice nada, porque siempre estás al ocho por ciento de algo.
+ *
+ * Y en el caso del ultravioleta era peor que inútil. Llenar esa barra serían
+ * varias dosis eritemáticas seguidas: un máximo que **no deberías querer
+ * alcanzar**.
+ *
+ * ## De dónde sale la mitad
+ *
+ * De poner el listón donde está la diferencia que importa. El ser humano
+ * moderno pasa alrededor del **92 % de su tiempo en interiores**, y sale una
+ * mediana de poco más de una hora al día. Del otro lado, quien trabaja fuera
+ * recibe en torno al 10 % del ultravioleta ambiental disponible, y hasta el
+ * 14 % medido en obreros de la construcción — la diferencia entre «estar
+ * fuera» y «recibir» es la sombra, la ropa y que un cuerpo de pie no es un
+ * sensor tumbado.
+ *
+ * La mitad del día disponible al aire libre es exigente y es alcanzable, y
+ * separa con claridad a quien vive dentro de quien vive fuera. Ese es el
+ * trabajo de una referencia.
+ *
+ * ## Lo que esto no significa
+ *
+ * Que llenar la barra de ultravioleta sea un objetivo. Estar fuera medio día
+ * es sano; **estar al sol de mediodía medio día no lo es**, y esa diferencia la
+ * marca el tiempo hasta enrojecer, que la app enseña aparte y es el que manda.
+ * Esta barra mide si tu día se parece al de alguien que vive fuera. No es una
+ * receta de cuánto sol tomar.
+ */
+export const PARTE_DEL_DIA_QUE_CUENTA = 0.5
+
+/** Cuánto tiempo pasa en interiores el ser humano moderno, de media. */
+export const HORAS_DENTRO_PCT = 92
+
+/**
  * Equivalencia entre una sesión de lámpara y estar al sol, en minutos.
  *
  * Es una conversión **aproximada y a la baja**, y se dice: un panel entrega en
@@ -94,6 +154,8 @@ export interface DatosDelDia {
   sesionesPBM?: SesionPBM[]
   lamparas?: Lampara[]
   fichaje?: Fichaje
+  /** Los entrenos del día, por si alguno se hizo fuera o con descansos fuera. */
+  sessions?: Session[]
   /** Minutos desde medianoche en que se apagó todo y en que se levantó. */
   oscuridadDesde?: number
   oscuridadHasta?: number
@@ -108,7 +170,17 @@ function minutosFuera(d: DatosDelDia): number {
   const conHora = minutosDe(
     (d.salidas ?? []).map((s) => ({ desde: s.desde, hasta: s.desde + Math.max(0, s.minutos) }))
   )
-  if (conHora > 0) return conHora
+  /*
+   * El entreno aporta lo suyo: entero si fue al aire libre, y si no, los
+   * descansos que se pasaron fuera. Se suma en vez de unirse porque ocurre
+   * dentro del bloque del entreno y no se solapa con las salidas apuntadas a
+   * mano — quien está entrenando no está además apuntando un rato de sol.
+   */
+  const delEntreno = (d.sessions ?? []).reduce(
+    (t, s) => t + (s.date === d.fecha ? minutosFueraDelEntreno(s) : 0),
+    0
+  )
+  if (conHora > 0 || delEntreno > 0) return conHora + delEntreno
   // Si no hay salidas con hora, vale lo apuntado en el diario de sol de siempre.
   return d.sol?.minutos ?? 0
 }
@@ -132,10 +204,12 @@ function barraRojo(d: DatosDelDia): BarraBalance {
   if (fuera > 0) partes.push(`${Math.round(fuera)} min fuera`)
   if (lampara.sesiones > 0) partes.push(`lámpara ${lampara.juliosMitocondria.toFixed(0)} J/cm²`)
 
+  const referencia = disponible * PARTE_DEL_DIA_QUE_CUENTA
   return {
     banda: 'rojo',
-    fraccion: Math.min(1, (fuera + equivalente) / disponible),
-    detalle: partes.length ? partes.join(' + ') : 'Ni un minuto fuera, ni lámpara.'
+    fraccion: Math.min(1, (fuera + equivalente) / referencia),
+    detalle: partes.length ? partes.join(' + ') : 'Ni un minuto fuera, ni lámpara.',
+    referencia: `El 100 % es media jornada de sol fuera: ${escribirRato(referencia)} hoy.`
   }
 }
 
@@ -163,15 +237,17 @@ function barraUltravioleta(d: DatosDelDia): BarraBalance {
     if (hasta > desde) dentro += hasta - desde
   }
 
+  const referencia = ventana * PARTE_DEL_DIA_QUE_CUENTA
   return {
     banda: 'ultravioleta',
-    fraccion: Math.min(1, dentro / ventana),
+    fraccion: Math.min(1, dentro / referencia),
     detalle:
       dentro > 0
         ? `${Math.round(dentro)} min dentro de la ventana`
         : d.fichaje
           ? 'Estabas dentro toda la ventana. No es un fallo tuyo: es tu turno.'
-          : 'Ni un minuto dentro de la ventana de hoy.'
+          : 'Ni un minuto dentro de la ventana de hoy.',
+    referencia: `El 100 % es media ventana de UVB: ${escribirRato(referencia)} hoy. No es un objetivo que haya que llenar — quien manda es el tiempo hasta enrojecer.`
   }
 }
 

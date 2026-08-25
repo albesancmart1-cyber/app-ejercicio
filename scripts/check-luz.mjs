@@ -373,8 +373,20 @@ comprobar(balance.includes('Rojo e infrarrojo'), 'el balance debería traer sus 
 comprobar(balance.includes('Ultravioleta'), 'incluida la de ultravioleta')
 comprobar(balance.includes('Oscuridad de noche'), 'y la de oscuridad')
 comprobar(
-  balance.includes('no es una cifra de manual'),
-  'y decir contra qué se mide el cien por cien'
+  balance.includes('media jornada al aire libre'),
+  'y decir contra qué se mide el cien por cien: media jornada fuera, no el día entero'
+)
+comprobar(
+  balance.includes('92 %'),
+  'con el dato que lo justifica: el 92 % del tiempo en interiores'
+)
+comprobar(
+  balance.includes('El 100 % es media jornada de sol fuera'),
+  'y cada barra con su referencia en minutos, no solo el texto general'
+)
+comprobar(
+  balance.includes('no es un objetivo'),
+  'diciendo que la de ultravioleta no hay que llenarla: manda el tiempo hasta enrojecer'
 )
 await page.screenshot({ path: `${OUT}/luz-06-balance.png`, fullPage: true })
 

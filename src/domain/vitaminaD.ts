@@ -166,8 +166,6 @@ export const FOTOTIPO_POR_DEFECTO: Fototipo = 'III'
 
 /* ══════════════════════════════════════════════ LA FÓRMULA ══ */
 
-/** UI por minuto y por unidad de índice UV efectivo, en la referencia. */
-export const K_UI_POR_MIN_UVI = 21
 
 /**
  * La altura por debajo de la cual la síntesis es residual.
@@ -553,9 +551,6 @@ export const MED_J_M2: Record<Fototipo, number> = {
   VI: 1000
 }
 
-/** Un punto de índice UV son 0,025 W/m² de irradiancia eritemática. */
-const W_POR_UVI = 0.025
-
 /**
  * Por debajo de este índice UV no se habla de quemarse.
  *
@@ -581,7 +576,7 @@ export function minutosParaQuemarse(
   const uvi = indiceUV(elevacionGrados, ozono) * cieloFactor
   if (uvi < UVI_QUE_QUEMA) return null
   const med = MED_J_M2[quien.fototipo ?? FOTOTIPO_POR_DEFECTO]
-  return med / (uvi * W_POR_UVI) / 60
+  return med / (uvi * W_M2_POR_UVI) / 60
 }
 
 /**
@@ -606,6 +601,55 @@ export function minutosParaQuemarseConLampara(
   )
   if (wM2 <= 0) return null
   return MED_J_M2[quien.fototipo ?? FOTOTIPO_POR_DEFECTO] / wM2 / 60
+}
+
+/* ══════════════════════════════════════════════ LA CALIBRACIÓN ══ */
+
+/**
+ * Cuántas UI equivale una dosis eritemática mínima a cuerpo entero.
+ *
+ * Es **el** número del que cuelga toda la cifra de vitamina D de esta app, así
+ * que conviene decir de dónde sale y qué margen tiene. La literatura sitúa una
+ * MED de fototipo II a cuerpo entero en el equivalente a tomar por boca entre
+ * **10 000 y 20 000 UI**, y se usa el centro de esa horquilla. Es un rango
+ * ancho, y esa anchura es real: no hay un número fino que poner aquí.
+ */
+export const UI_POR_MED_CUERPO_ENTERO = 15000
+
+/**
+ * En qué sol se midió esa equivalencia, y por qué importa tanto.
+ *
+ * Aquí estaba el fallo, y era grande. `k` se calibraba con el **sol en la
+ * vertical**, que es donde `factorVitaminaD` vale 1 por construcción. Pero la
+ * equivalencia entre MED y UI no se midió con el sol en el cenit: se midió con
+ * gente al sol de verano a media latitud, que es donde vive quien usa esto. Al
+ * anclarla en el cenit y aplicar después el factor de la vitamina D —que a 60°
+ * de altura ya vale 0,72— se estaba **descontando dos veces** lo mismo: una vez
+ * dentro del dato empírico y otra vez encima.
+ *
+ * El resultado era una cifra que salía cerca de la mitad de lo que debía. Con
+ * el anclaje puesto donde toca, `k` pasa de 21 a unos 34.
+ */
+const ELEVACION_DE_CALIBRACION = 60
+const OZONO_DE_CALIBRACION = 300
+
+/**
+ * UI por minuto y por unidad de índice UV efectivo.
+ *
+ * **No es un número elegido**: se despeja de las dos cifras de arriba y de la
+ * MED del fototipo II, que ya estaba en este fichero. Si alguien cambia el
+ * anclaje, `k` se mueve solo, y hay una prueba que lo comprueba.
+ */
+export const K_UI_POR_MIN_UVI = calibrar()
+
+function calibrar(): number {
+  const uvi = indiceUV(ELEVACION_DE_CALIBRACION, OZONO_DE_CALIBRACION)
+  const uviD = uviVitaminaD(ELEVACION_DE_CALIBRACION, OZONO_DE_CALIBRACION)
+  /** Cuánto tarda un fototipo II en llegar a una MED con ese sol. */
+  const minutosDeUnaMed = MED_J_M2.II / (uvi * W_M2_POR_UVI) / 60
+  /** Y a cuerpo entero, que es como está dada la equivalencia. */
+  const fPielEntero = PIEL_PCT.entero / PIEL_DE_REFERENCIA
+  return UI_POR_MED_CUERPO_ENTERO / minutosDeUnaMed / fPielEntero / uviD
 }
 
 /* ══════════════════════════════════════════════ LA SEMANA ══ */
