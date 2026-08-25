@@ -329,6 +329,18 @@ costar un toque, y ese toque tenía que alimentar todo lo ya construido.
   → src/screens/Medir.tsx :: cierra la noche
 - [x] noche-estimada-se-dice · Una noche cerrada por la app se marca, no se hace pasar por medida
   → src/domain/types.ts :: estimado
+- [x] gafas-noche-cuenta · El rato con gafas de bloqueo antes de apagar cuenta como noche
+  → src/domain/gafasRojas.ts :: oscuridadDeLaNoche
+- [x] gafas-rojas-valen-mas · Las rojas cuentan casi el doble que las ámbar, y se dice por qué
+  → src/domain/gafasRojas.ts :: CUENTA_COMO_OSCURO
+- [x] gafas-no-son-oscuridad · Un minuto con gafas nunca vale un minuto a oscuras
+  → src/domain/gafasRojas.ts :: DESCUENTO_POR_USO
+- [x] gafas-noche-por-separado · La noche medida y la noche ayudada se enseñan aparte, no sumadas en una cifra
+  → src/domain/balanceLuz.ts :: con gafas, que valen
+- [x] gafas-coste-con-y-sin · Cada cosa encendida dice lo que cuesta con las gafas puestas y sin ellas
+  → src/domain/estaciones.ts :: conGafas
+- [x] gafas-lo-que-no-tapan · Se dice lo que las gafas no tapan, incluido lo que no tapan en absoluto
+  → src/domain/gafasRojas.ts :: LO_QUE_NO_TAPAN
 - [x] medir-fichar · Fichar y salir del trabajo desde el mismo sitio
   → src/screens/Medir.tsx :: saveFichaje
 - [x] medir-trabajo-a-mano · La jornada se puede apuntar a mano, porque fichar se olvida
@@ -521,4 +533,4 @@ Estas también son promesas, y romperlas sería peor que no cumplir una función
 
 ---
 
-TOTAL: 207
+TOTAL: 213

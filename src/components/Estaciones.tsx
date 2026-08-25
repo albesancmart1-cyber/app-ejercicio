@@ -18,10 +18,11 @@ import {
   rachaDeSol,
   skygazing
 } from '../domain/estaciones'
-import type { CheckIn, NocheRegistrada, SalidaAlExterior } from '../domain/types'
+import type { CheckIn, Filtro, NocheRegistrada, SalidaAlExterior } from '../domain/types'
+import { GAFAS, LO_QUE_NO_TAPAN, gafasDe, oscuridadDeLaNoche } from '../domain/gafasRojas'
 import { minutosDeHora } from '../domain/relojes'
 import { actions } from '../store/store'
-import { Boton, Etiqueta, Regla } from './ui'
+import { Boton, Etiqueta, Opcion, Regla } from './ui'
 
 interface Props {
   hoy: string
@@ -38,6 +39,10 @@ interface Props {
  * Cuánto duró una noche, envolviendo la medianoche.
  *
  * Apagar a las 23:00 y levantarse a las 07:00 son ocho horas, no menos dieciséis.
+ *
+ * Cuenta a secas los minutos con todo apagado. El rato con las gafas puestas va
+ * aparte, en `oscuridadDeLaNoche`, para que una noche medida y una noche
+ * ayudada no se enseñen nunca con la misma cifra sin decir cuál es cuál.
  */
 export function minutosDeNoche(n: NocheRegistrada): number {
   return n.levantado >= n.apagado ? n.levantado - n.apagado : 1440 - n.apagado + n.levantado
@@ -175,6 +180,11 @@ export function HigieneDeLuz({ hoy, lat, lon, checkIns, noches }: Props) {
   const [apuntando, setApuntando] = useState(false)
   const [apagado, setApagado] = useState(noche ? escribirHora(noche.apagado) : '23:00')
   const [levantado, setLevantado] = useState(noche ? escribirHora(noche.levantado) : '07:00')
+  const [gafas, setGafas] = useState<Filtro | ''>(noche?.gafas ?? '')
+  const [gafasDesde, setGafasDesde] = useState(
+    noche?.gafasDesde !== undefined ? escribirHora(noche.gafasDesde) : ''
+  )
+  const cuenta = noche ? oscuridadDeLaNoche(noche) : null
 
   return (
     <div className="card">
@@ -198,13 +208,35 @@ export function HigieneDeLuz({ hoy, lat, lon, checkIns, noches }: Props) {
 
       <Regla />
       {noche ? (
-        <div className="row">
-          <span className="dim">Anoche</span>
-          <span>
-            {escribirHora(noche.apagado)} → {escribirHora(noche.levantado)}{' '}
-            <span className="faint">({escribirDuracion(minutosDeNoche(noche))})</span>
-          </span>
-        </div>
+        <>
+          <div className="row">
+            <span className="dim">Anoche</span>
+            <span>
+              {escribirHora(noche.apagado)} → {escribirHora(noche.levantado)}{' '}
+              <span className="faint">({escribirDuracion(minutosDeNoche(noche))})</span>
+            </span>
+          </div>
+          {cuenta && cuenta.valen > 0 && (
+            <>
+              <div className="row" style={{ padding: '7px 0' }}>
+                <span className="dim">Antes, con {(gafasDe(cuenta.filtro)?.nombre ?? 'gafas').toLowerCase()}</span>
+                <span>
+                  {escribirHora(noche.gafasDesde!)} → {escribirHora(noche.apagado)}{' '}
+                  <span className="faint">({escribirDuracion(cuenta.conGafas)})</span>
+                </span>
+              </div>
+              <div className="row" style={{ padding: '7px 0' }}>
+                <span className="dim">Noche que cuenta</span>
+                <span>{escribirDuracion(cuenta.total)}</span>
+              </div>
+              <p className="faint">
+                Ese rato con las gafas vale {escribirDuracion(cuenta.valen)} de oscuridad, no los{' '}
+                {escribirDuracion(cuenta.conGafas)} enteros. Se enseña por separado a propósito: una
+                noche medida y una noche ayudada no pueden salir con la misma cifra.
+              </p>
+            </>
+          )}
+        </>
       ) : null}
 
       {!apuntando ? (
@@ -237,14 +269,56 @@ export function HigieneDeLuz({ hoy, lat, lon, checkIns, noches }: Props) {
             La última luz que se apagó, no la hora de meterse en la cama. Con esto dejo de suponer
             tu oscuridad y paso a saberla.
           </p>
+
+          <Regla />
+          <p className="eyebrow">¿Y antes, con gafas?</p>
+          <p className="faint" style={{ marginBottom: 10 }}>
+            Si te las pusiste con la casa todavía encendida, ese rato cuenta. No entero, pero
+            cuenta: es la forma de hacer de noche sin apagarlo todo al ocaso.
+          </p>
+          <div className="options" style={{ marginTop: 10 }}>
+            <Opcion activa={gafas === ''} onElegir={() => setGafas('')}>
+              Sin gafas
+            </Opcion>
+            {GAFAS.map((g) => (
+              <Opcion key={g.id} activa={gafas === g.id} onElegir={() => setGafas(g.id)}>
+                {g.nombre}
+              </Opcion>
+            ))}
+          </div>
+          {gafas !== '' && (
+            <div className="fade-in">
+              <p className="faint" style={{ marginTop: 8 }}>
+                {gafasDe(gafas)?.que}
+              </p>
+              <label className="field" style={{ marginTop: 10 }}>
+                <span className="bar-label">Me las puse</span>
+                <input
+                  type="time"
+                  value={gafasDesde}
+                  onChange={(e) => setGafasDesde(e.target.value)}
+                  aria-label="Hora en que me puse las gafas"
+                />
+              </label>
+            </div>
+          )}
+
           <Boton
             tono="primario"
-            disabled={!apagado || !levantado}
+            disabled={!apagado || !levantado || (gafas !== '' && !gafasDesde)}
             onClick={() => {
               const a = minutosDeHora(apagado)
               const l = minutosDeHora(levantado)
               if (a === undefined || l === undefined) return
-              actions.saveNoche({ date: hoy, apagado: a, levantado: l })
+              const g = gafas === '' ? undefined : minutosDeHora(gafasDesde)
+              actions.saveNoche({
+                date: hoy,
+                apagado: a,
+                levantado: l,
+                // Sin hora no hay tramo que contar, así que las gafas tampoco
+                // se guardan: dejar el filtro suelto haría creer que algo suma.
+                ...(gafas !== '' && g !== undefined ? { gafas, gafasDesde: g } : {})
+              })
               setApuntando(false)
             }}
           >
@@ -263,12 +337,23 @@ export function HigieneDeLuz({ hoy, lat, lon, checkIns, noches }: Props) {
       ) : (
         <div className="fade-in">
           <Regla />
+          <div className="row">
+            <span className="faint">Cada cosa encendida</span>
+            <span className="faint">Sin gafas · con gafas</span>
+          </div>
           {h.costes.map((c) => (
             <div key={c.id} style={{ padding: '9px 0' }}>
               <div className="row">
                 <span className="dim">{c.que}</span>
-                <span className="faint">−{c.cuesta} min</span>
+                {/* Sin partir: «−90 · −10 min» roto en dos líneas se lee como
+                    dos cifras sueltas y deja de ser una comparación. */}
+                <span className="faint" style={{ whiteSpace: 'nowrap' }}>
+                  −{c.cuesta} · <strong>−{c.conGafas}</strong> min
+                </span>
               </div>
+              <p className="faint" style={{ marginTop: 3 }}>
+                {c.loQueQueda}
+              </p>
               {c.enVezDe && (
                 <p className="faint" style={{ marginTop: 3 }}>
                   {c.enVezDe}
@@ -279,6 +364,28 @@ export function HigieneDeLuz({ hoy, lat, lon, checkIns, noches }: Props) {
           <p className="faint" style={{ marginTop: 6 }}>
             En minutos de oscuridad y no en una nota, porque los minutos son la unidad en que se
             mide la amplitud. Son órdenes de magnitud, no medidas de laboratorio.
+          </p>
+
+          <Regla />
+          <p className="eyebrow">Por qué las gafas bajan tanto</p>
+          <p className="faint" style={{ marginTop: 8 }}>
+            Porque el reloj central no mide la luz con los conos ni con los bastones: la mide con
+            unas células propias de la retina cuya sensibilidad tiene el pico en <strong>480 nm</strong>{' '}
+            y ya casi no responde pasados los 550. Es un canal, y un canal se puede tapar antes de
+            que la señal entre. Por eso las rojas —que cortan por 550— valen bastante más que las
+            ámbar, que cortan por 480 y dejan pasar el verde entero.
+          </p>
+          <p className="eyebrow" style={{ marginTop: 12 }}>
+            Y lo que no tapan
+          </p>
+          {LO_QUE_NO_TAPAN.map((x) => (
+            <p className="faint" key={x} style={{ marginTop: 4 }}>
+              · {x}
+            </p>
+          ))}
+          <p className="faint" style={{ marginTop: 8 }}>
+            Fíjate en las dos filas donde la segunda cifra casi no baja. No es un descuido: son
+            justo los dos sitios donde unas gafas no pueden hacer nada.
           </p>
           <Boton tono="callado" onClick={() => setAbierto(false)}>
             Cerrar

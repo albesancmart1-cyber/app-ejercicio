@@ -1031,6 +1031,17 @@ export interface NocheRegistrada {
    * enseña marcada y se dice de dónde salió.
    */
   estimado?: boolean
+  /**
+   * Minutos desde medianoche en que se pusieron las gafas de bloqueo, si se
+   * pusieron antes de apagar la luz.
+   *
+   * Es lo que permite hacer de noche con la casa encendida: el reloj central
+   * mide la luz por un canal estrecho de la retina, y ese canal se puede tapar.
+   * Ver `src/domain/gafasRojas.ts`, que es donde está el cuánto y el hasta dónde.
+   */
+  gafasDesde?: number
+  /** Cuáles: las rojas y las ámbar no valen lo mismo, ni de lejos. */
+  gafas?: Filtro
 }
 
 /**

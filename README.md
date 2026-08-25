@@ -850,6 +850,10 @@ npm run preview   # servir la build
   Requiere `npm run preview` en marcha; define `OUT_DIR` para el destino de las capturas.
 - `node scripts/check-midnight.mjs` — comprueba el cambio de día falseando el reloj del navegador,
   con la app abierta y recuperándola de segundo plano.
+- `node scripts/check-gafas.mjs` — comprueba que el rato con gafas de bloqueo antes de apagar se
+  puede apuntar y suma noche, que suma **menos** de lo que dura, que lo medido y lo ayudado salen
+  con cifras separadas, que las ámbar cuentan menos que las rojas, y que la fila que las gafas no
+  arreglan —dormir con luz de la calle entrando— sigue costando lo mismo con ellas que sin ellas.
 - `node scripts/check-volumen.mjs` — siembra distintos historiales y comprueba en navegador que el
   nivel de volumen sube al asimilar, baja con la recuperación tocada, y se explica en cada caso.
 - `node scripts/check-mixta.mjs` — siembra un día de cardio y comprueba que la sesión mixta conserva

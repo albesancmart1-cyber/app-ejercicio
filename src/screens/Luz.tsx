@@ -70,6 +70,7 @@ import { PICOS_KARU } from '../domain/luz'
 import { sumarDiaIso } from '../domain/arcoSolar'
 import { dosRelojes, escribirDistancia } from '../domain/relojes'
 import { COMPENSACIONES, LO_QUE_LA_LAMPARA_NO_TAPA } from '../domain/compensaciones'
+import { oscuridadDeLaNoche } from '../domain/gafasRojas'
 import { MESES_LARGOS } from '../domain/estaciones'
 import {
   CalloSolar,
@@ -1172,7 +1173,16 @@ function Balance({ hoy, lat, lon }: { hoy: string; lat: number; lon: number }) {
     lamparas: data.lamparas,
     sessions: (data.sessions ?? []).filter((s) => s.date === hoy),
     fichaje: (data.fichajes ?? []).find((f) => f.date === hoy),
-    ...(noche ? { oscuridadDesde: noche.apagado, oscuridadHasta: noche.levantado } : {})
+    ...(noche
+      ? {
+          oscuridadDesde: noche.apagado,
+          oscuridadHasta: noche.levantado,
+          // El rato con las gafas puestas antes de apagar cuenta en las dos
+          // barras de la noche, y no igual en las dos: ver `balanceLuz.ts`.
+          gafasDesde: noche.gafasDesde,
+          gafas: noche.gafas
+        }
+      : {})
   })
 
   return (
@@ -1248,8 +1258,13 @@ export default function Luz() {
     salidas: data.salidas,
     checkIns: data.checkIns,
     noches: data.noches,
-    // Las estaciones se leen con la noche **de anoche**, que es la que ya pasó.
-    oscuridadReal: nocheDeAnoche ? minutosDeNoche(nocheDeAnoche) : undefined
+    /*
+     * Las estaciones se leen con la noche **de anoche**, que es la que ya pasó,
+     * y con las gafas dentro: quien se las pone a las nueve está viviendo un
+     * mes más oscuro que quien tiene el techo encendido hasta las doce, y esa
+     * comparación es justo lo que mide esta tarjeta.
+     */
+    oscuridadReal: nocheDeAnoche ? oscuridadDeLaNoche(nocheDeAnoche).total : undefined
   }
 
   return (

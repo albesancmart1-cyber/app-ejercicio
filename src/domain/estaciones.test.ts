@@ -174,6 +174,40 @@ describe('la higiene de la noche', () => {
     expect(conAlternativa).toBe(COSTES.length)
   })
 
+  it('cada uno dice también lo que cuesta con las gafas puestas', () => {
+    // La primera columna sola es una lista de reproches: en enero, apagarlo
+    // todo al ocaso es no hacer nada desde las seis de la tarde.
+    for (const c of COSTES) {
+      expect(c.conGafas).toBeGreaterThanOrEqual(0)
+      expect(c.conGafas).toBeLessThanOrEqual(c.cuesta)
+    }
+  })
+
+  it('y ninguno baja a cero: siempre queda algo, y se dice qué', () => {
+    for (const c of COSTES) {
+      expect(c.conGafas).toBeGreaterThan(0)
+      expect(c.loQueQueda.length).toBeGreaterThan(20)
+    }
+  })
+
+  it('hay al menos uno que las gafas no arreglan en absoluto', () => {
+    /*
+     * Es la regla de la casa: una herramienta que tenga un remedio para todo
+     * está mintiendo en algo. Dormir con luz de la calle entrando no lo tapan,
+     * porque a esa hora las gafas están en la mesilla y no en tu cara.
+     */
+    const sinRemedio = COSTES.filter((c) => c.conGafas === c.cuesta)
+    expect(sinRemedio.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('el móvil baja menos que la luz del techo, y no es un descuido', () => {
+    // El techo es luz y nada más; el móvil engancha por lo que sale en él, y
+    // eso no lo apaga ningún filtro.
+    const techo = COSTES.find((c) => c.id === 'techo')!
+    const movil = COSTES.find((c) => c.id === 'movil')!
+    expect(movil.conGafas / movil.cuesta).toBeGreaterThan(techo.conGafas / techo.cuesta)
+  })
+
   it('recoge lo declarado en el test de la mañana, si se declaró', () => {
     const checkIns = [{ date: '2026-03-21', lightHygiene: true }] as unknown as CheckIn[]
     expect(higieneDeNoche('2026-03-21', MADRID, checkIns).cuidada).toBe(true)

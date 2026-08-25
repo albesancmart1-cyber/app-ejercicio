@@ -182,6 +182,30 @@ describe('la barra de azul, que va por ventanas y no por cantidad', () => {
     expect(b.fraccion).toBeLessThan(1)
   })
 
+  it('ponerse las gafas al ocaso vale lo mismo que apagar la luz', () => {
+    /*
+     * Esta barra pregunta si hubo **azul** después del ocaso, y las dos clases
+     * de gafas cortan el azul: eso lo hacen las dos bien. Sin esto, quien se
+     * las pone a las nueve y apaga a las doce salía castigado por una luz que
+     * no le llegó a los ojos.
+     */
+    const conGafas = barra(
+      balanceDelDia(
+        dia({ oscuridadDesde: 23 * 60 + 59, oscuridadHasta: 7 * 60, gafasDesde: 19 * 60, gafas: 'rojo' })
+      ),
+      'azul'
+    )
+    expect(conGafas.detalle).not.toContain('azul después del ocaso')
+  })
+
+  it('y las gafas sin hora de ponérselas no libran de nada', () => {
+    const b = barra(
+      balanceDelDia(dia({ oscuridadDesde: 23 * 60 + 59, gafas: 'rojo' })),
+      'azul'
+    )
+    expect(b.detalle).toContain('azul después del ocaso')
+  })
+
   it('el mejor día posible llega a uno', () => {
     const v = ventanaDeFase('2026-03-21', MADRID, INVIERNO)
     const b = barra(
@@ -230,6 +254,63 @@ describe('la barra de oscuridad', () => {
 
   it('sin apuntar, no hay barra, en vez de un cero injusto', () => {
     expect(barra(balanceDelDia(dia()), 'oscuridad').fraccion).toBeNull()
+  })
+
+  it('el rato con las gafas puestas antes de apagar suma', () => {
+    // Es la salida de la higiene nocturna: en enero, apagarlo todo al ocaso es
+    // no hacer nada desde las seis de la tarde.
+    const sin = barra(
+      balanceDelDia(dia({ oscuridadDesde: 23 * 60, oscuridadHasta: 6 * 60 })),
+      'oscuridad'
+    ).fraccion!
+    const con = barra(
+      balanceDelDia(
+        dia({ oscuridadDesde: 23 * 60, oscuridadHasta: 6 * 60, gafasDesde: 21 * 60, gafas: 'rojo' })
+      ),
+      'oscuridad'
+    ).fraccion!
+    expect(con).toBeGreaterThan(sin)
+  })
+
+  it('pero suma menos de lo que dura: no es lo mismo que apagar', () => {
+    const b = barra(
+      balanceDelDia(
+        dia({ oscuridadDesde: 23 * 60, oscuridadHasta: 6 * 60, gafasDesde: 21 * 60, gafas: 'rojo' })
+      ),
+      'oscuridad'
+    )
+    // Dos horas con gafas no son dos horas de noche. Si lo fueran, la barra
+    // diría que la casa encendida da igual mientras lleves algo en la cara.
+    expect(b.detalle).toMatch(/con gafas/)
+    expect(b.detalle).not.toMatch(/9 h 00 min a oscuras/)
+  })
+
+  it('y las ámbar suman bastante menos que las rojas', () => {
+    const noche = { oscuridadDesde: 23 * 60, oscuridadHasta: 6 * 60, gafasDesde: 21 * 60 } as const
+    const rojas = barra(balanceDelDia(dia({ ...noche, gafas: 'rojo' })), 'oscuridad').fraccion!
+    const ambar = barra(balanceDelDia(dia({ ...noche, gafas: 'ambar' })), 'oscuridad').fraccion!
+    expect(ambar).toBeLessThan(rojas)
+  })
+
+  it('el detalle dice las dos cosas por separado, no una cifra redonda', () => {
+    // Una noche medida y una noche ayudada no pueden salir con el mismo número
+    // sin decir cuál es cuál.
+    const b = barra(
+      balanceDelDia(
+        dia({ oscuridadDesde: 23 * 60, oscuridadHasta: 6 * 60, gafasDesde: 21 * 60, gafas: 'rojo' })
+      ),
+      'oscuridad'
+    )
+    expect(b.detalle).toContain('7 h 00 min a oscuras')
+    expect(b.detalle).toContain('2 h 00 min con gafas')
+  })
+
+  it('sin decir cuáles, el tramo con gafas no cuenta', () => {
+    const b = barra(
+      balanceDelDia(dia({ oscuridadDesde: 23 * 60, oscuridadHasta: 6 * 60, gafasDesde: 21 * 60 })),
+      'oscuridad'
+    )
+    expect(b.detalle).toBe('7 h 00 min a oscuras')
   })
 })
 

@@ -24,12 +24,21 @@
  * curva de respuesta está plana; y después del ocaso, donde cuenta en contra.
  * Por eso el azul se puntúa por ventanas y no por lux acumulados.
  */
-import type { DiaDeSol, Fichaje, Lampara, SalidaAlExterior, SesionPBM, Session } from './types'
+import type {
+  DiaDeSol,
+  Fichaje,
+  Filtro,
+  Lampara,
+  SalidaAlExterior,
+  SesionPBM,
+  Session
+} from './types'
 import { ALTURAS, arcoDelDia, elevacionSolar, type Coordenadas } from './arcoSolar'
 import { dosisAcumulada } from './fotobiomodulacion'
 import { minutosFueraDelEntreno } from './entornoEntreno'
 import { PASO_DE_AZUL, juzgarHueco } from './jornada'
 import { minutosDe } from './reparto'
+import { minutosConGafas, minutosQueValen } from './gafasRojas'
 
 /** Las cuatro cosas que se miden, y que no son intercambiables entre sí. */
 export type Banda4 = 'rojo' | 'ultravioleta' | 'azul' | 'oscuridad'
@@ -159,6 +168,14 @@ export interface DatosDelDia {
   /** Minutos desde medianoche en que se apagó todo y en que se levantó. */
   oscuridadDesde?: number
   oscuridadHasta?: number
+  /**
+   * Y en que se pusieron las gafas de bloqueo, si se pusieron antes de apagar.
+   *
+   * Cuenta para las dos barras de la noche, pero no igual en las dos: ver
+   * `barraAzul` y `barraOscuridad`, que es donde está la diferencia y por qué.
+   */
+  gafasDesde?: number
+  gafas?: Filtro
 }
 
 /** Minutos al aire libre apuntados hoy, vengan de donde vengan. */
@@ -308,13 +325,26 @@ function barraAzul(d: DatosDelDia): BarraBalance {
   )
   if (algoDeDia) puntos++
 
-  // El tercer tercio se conserva salvo que se demuestre lo contrario: si no hay
-  // dato de la noche, no se penaliza a nadie por no haberlo apuntado.
+  /*
+   * El tercer tercio se conserva salvo que se demuestre lo contrario: si no hay
+   * dato de la noche, no se penaliza a nadie por no haberlo apuntado.
+   *
+   * Aquí las gafas cuentan enteras, y en la barra de oscuridad no. No es una
+   * incoherencia: esta barra pregunta si hubo **azul** después del ocaso, y las
+   * dos clases de gafas cortan el azul —eso lo hacen las dos bien—. La otra
+   * pregunta cuánta noche hubo para la melatonina, y eso lo mide una célula que
+   * tiene el pico en 480 nm y sigue respondiendo al verde, que es justo lo que
+   * las ámbar dejan pasar. Misma noche, dos preguntas distintas.
+   */
   const ocaso = arco.pasos.orto.tarde
+  const seApagoElAzul =
+    d.gafasDesde !== undefined && d.gafas !== undefined
+      ? Math.min(d.oscuridadDesde ?? d.gafasDesde, d.gafasDesde)
+      : d.oscuridadDesde
   const trasnochoConLuz =
     ocaso !== null &&
-    d.oscuridadDesde !== undefined &&
-    d.oscuridadDesde > ocaso + MINUTOS_DE_TARDE_QUE_PASAN
+    seApagoElAzul !== undefined &&
+    seApagoElAzul > ocaso + MINUTOS_DE_TARDE_QUE_PASAN
   if (!trasnochoConLuz) puntos++
   else partes.push('azul después del ocaso')
 
@@ -337,15 +367,34 @@ function barraOscuridad(d: DatosDelDia): BarraBalance {
   }
 
   // La noche cruza la medianoche: se envuelve el día.
-  const minutos =
+  const aOscuras =
     d.oscuridadHasta >= d.oscuridadDesde
       ? d.oscuridadHasta - d.oscuridadDesde
       : 1440 - d.oscuridadDesde + d.oscuridadHasta
 
+  /*
+   * El rato con las gafas puestas antes de apagar cuenta, pero con descuento:
+   * las rojas valen 0,9 de un minuto a oscuras y las ámbar 0,5. El porqué está
+   * en `gafasRojas.ts`, y se resume en que la célula que mide esto tiene el
+   * pico en 480 nm y las ámbar dejan pasar el verde entero.
+   *
+   * Solo cuenta el tramo de **antes** de apagar. Desde que se apaga todo ya hay
+   * oscuridad de verdad, y sumar las gafas ahí sería contar el minuto dos veces.
+   */
+  const conGafas = minutosConGafas(d.gafasDesde, d.oscuridadDesde)
+  const valen = minutosQueValen(conGafas, d.gafas)
+  const minutos = aOscuras + valen
+
+  const escrito = (m: number) =>
+    `${Math.floor(m / 60)} h ${String(Math.round(m % 60)).padStart(2, '0')} min`
+
   return {
     banda: 'oscuridad',
     fraccion: Math.min(1, minutos / nocheQueTocaba),
-    detalle: `${Math.floor(minutos / 60)} h ${String(Math.round(minutos % 60)).padStart(2, '0')} min a oscuras`
+    detalle:
+      valen > 0
+        ? `${escrito(aOscuras)} a oscuras y ${escrito(conGafas)} con gafas, que valen ${escrito(valen)}`
+        : `${escrito(aOscuras)} a oscuras`
   }
 }
 
