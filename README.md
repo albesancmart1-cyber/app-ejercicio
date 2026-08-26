@@ -741,7 +741,8 @@ un hilo con un orden —cómo estás, qué toca, empezar— y partirlo en dos ob
 ## Tus datos en cualquier dispositivo
 
 Por defecto todo se guarda **en el dispositivo** y no sale de ahí. Si quieres entrar desde el móvil y
-desde el ordenador con los mismos datos, la app puede usar una nube — hay que darla de alta una vez.
+desde el ordenador con los mismos datos, la app puede usar una nube — hay que darla de alta una vez. Y sirve para algo más que para no
+perder nada: lo que dejes midiendo en un dispositivo se ve, y se puede parar, desde el otro.
 
 Conviene decir qué es «la nube» aquí, porque la palabra engaña: **la base de datos de la app es tu
 móvil**. Todo vive en `localStorage`, la app arranca y funciona entera sin cuenta y sin red, y
@@ -772,19 +773,41 @@ nada. Lo que protege los datos son las reglas de Firestore, no esconder la clave
 
 ### Cómo entra uno
 
-Con el **correo, sin contraseña**: pides un enlace, lo abres, y ya estás dentro. Una contraseña más
-es una contraseña más que perder, y en una app de una sola persona no aporta nada.
+Con **correo y contraseña**. Aquí había un acceso por enlace mágico, y se ha ido por una razón
+concreta: en iOS, una app añadida a la pantalla de inicio **tiene su propio almacén**, separado del
+de Safari, y el enlace del correo siempre abre Safari. Pulsarlo entraba en Safari y dejaba la app
+instalada viéndote como un dispositivo nuevo; la salida era copiar el enlace y pegarlo dentro de la
+app, que funciona pero son tres pasos y uno de ellos —«no lo pulses»— va contra el instinto.
 
-El enlace no trae la sesión hecha: trae un **testigo de un solo uso** que la app canjea con una
-petición, mandando además el correo al que se envió —de modo que un enlace interceptado no basta por
-sí solo—. En cuanto se canjea, los parámetros se quitan de la barra de direcciones para que no queden
-en el historial ni se compartan al copiar la dirección.
+Una contraseña se teclea dentro de la app, igual en el móvil, en el ordenador y en la app instalada.
+Para el caso que de verdad importa —te dejaste el sol corriendo en el móvil y abres el ordenador
+para pararlo— es la diferencia entre diez segundos y una excursión por el correo.
 
-Y hay una segunda vía que parece un rodeo y no lo es: **pegar el enlace dentro de la app en vez de
-pulsarlo**. En iOS, una app añadida a la pantalla de inicio tiene su propio almacén, separado del de
-Safari, y el enlace del correo siempre abre Safari: pulsándolo se entra en Safari y la app instalada
-te sigue viendo como un dispositivo nuevo. Pegándolo, el canje ocurre dentro de la app. Firebase no
-manda códigos de cifras por correo —no existe esa vía en su API—, así que estas dos son todas.
+**Un solo botón** entra o crea la cuenta. En una app de una sola persona, «registrarse» y «entrar»
+son la misma intención escrita dos veces. Se prueba a entrar y, si el correo no tenía cuenta, se
+crea; al revés no vale, porque el fallo «ese correo ya existe» le diría a cualquiera qué correos
+están registrados. El enlace al correo sigue existiendo para una sola cosa: recuperar la contraseña,
+que es el único sitio donde un enlace de un solo uso es la herramienta correcta.
+
+### Lo que estás midiendo, en los dos sitios
+
+Empiezas a tomar el sol en el móvil, abres el ordenador, y allí la baldosa está encendida y contando
+—diciendo además que eso empezó en el móvil, para que no parezca un fallo—. Y se puede **parar desde
+allí**: no es un reflejo, es el mismo interruptor.
+
+Por debajo no hay nada exótico. `enCurso` se fusiona como todo lo demás (`src/domain/merge.ts`), su
+identidad es el tipo y el día, y **parar deja lápida**: sin ella, el móvil volvería a subir su copia
+en la siguiente sincronización y la baldosa se encendería otra vez un minuto después de haberla
+apagado. Esas lápidas se podan solas a la semana, que es lo que las distingue de las de verdad: un
+rato de sol de hace días no es un borrado que haya que recordar, es basura.
+
+Con la app a la vista se mira la nube cada veinte segundos (`arrancarLatido`). No escribe si no ha
+cambiado nada, así que dos dispositivos abiertos y quietos solo leen.
+
+De paso se arregló un agujero que llevaba ahí desde el principio: `salidas`, `sesionesPBM`,
+`fichajes`, `noches`, `lamparas`, `habitos` y `analiticas` **no se fusionaban**. Venían de la copia
+local y la de la nube se tiraba entera. Con un solo dispositivo no se notaba nunca; con dos, medir
+el sol en el móvil y abrir el ordenador borraba lo del móvil en la siguiente subida.
 
 ### Qué pasa cuando los dos lados tienen cosas distintas
 
@@ -866,10 +889,14 @@ npm run preview   # servir la build
   app se migran solos, sin perder nada, marcando lo deducido y sin volver a cambiar al reabrir.
 - `node scripts/comparar-motores.mjs` — genera seis meses de historial con las decisiones de la propia
   app y compara semana a semana lo que ve el motor viejo con lo que ve el nuevo.
-- `node scripts/check-nube.mjs` — interceptando el tráfico a Firebase, comprueba pedir el enlace,
-  canjear el testigo que vuelve en la URL, fusionar los datos de dos dispositivos sin perder nada,
-  que lo borrado no resucite y que cerrar sesión no borre nada de aquí. Necesita una build hecha con
-  `VITE_FIREBASE_API_KEY` y `VITE_FIREBASE_PROJECT_ID` puestas a cualquier valor.
+- `node scripts/check-nube.mjs` — interceptando el tráfico a Firebase, comprueba entrar con
+  contraseña, que una mala se explique sin delatar si ese correo existe, que un correo nuevo cree la
+  cuenta solo, fusionar los datos de dos dispositivos sin perder nada, que sincronizar sin cambios no
+  escriba, que lo borrado no resucite y que cerrar sesión no borre nada de aquí. Necesita una build
+  hecha con `VITE_FIREBASE_API_KEY` y `VITE_FIREBASE_PROJECT_ID` puestas a cualquier valor.
+- `node scripts/check-dos-aparatos.mjs` — dos contextos de navegador contra **el mismo** Firebase de
+  mentira: empezar a tomar el sol en uno, verlo en el otro con el aparato de origen dicho, pararlo
+  desde allí y comprobar que al primero se le apaga solo sin perder el rato medido.
 - `node scripts/check-cardio.mjs` — comprueba que un día de cardio ofrece varias actividades, que cada
   una trae sus minutos equivalentes y que al cambiar se ajusta la dosis y se explica.
 - `node scripts/check-molestias.mjs` — comprueba que en el test diario se pueden marcar varias zonas

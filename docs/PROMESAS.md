@@ -213,6 +213,22 @@ Marcar una casilla sin escribir el código **rompe la suite**. Es deliberado.
   → src/store/store.ts :: STORAGE_KEY
 - [x] datos-sync · Sincronización entre dispositivos si la quieres
   → src/store/sync.ts :: sincronizar
+- [x] cuenta-contrasena · Se entra con correo y contraseña, que funciona igual en la app instalada
+  → src/store/cloud.ts :: entrar
+- [x] cuenta-un-solo-boton · El mismo botón entra o crea la cuenta, sin decidir cuál pulsar
+  → src/store/cloud.ts :: entrarOCrear
+- [x] cuenta-sin-delatar · Equivocarse de contraseña no revela si ese correo tiene cuenta
+  → src/store/cloud.ts :: credenciales
+- [x] sync-medir-completo · Lo que mide «Medir» viaja entre dispositivos y no lo pisa el otro
+  → src/domain/merge.ts :: claveDeSalida
+- [x] sync-en-marcha · Lo que dejaste midiendo en un dispositivo se ve en el otro
+  → src/domain/merge.ts :: claveDeCurso
+- [x] sync-parar-desde-el-otro · Y se puede parar desde allí sin que resucite
+  → src/store/store.ts :: cerrarEnCurso
+- [x] sync-de-donde-salio · Se dice en qué aparato empezó, para que no parezca un fallo
+  → src/screens/Medir.tsx :: LoDeOtroAparato
+- [x] sync-latido · Se mira la nube sola cada poco mientras la app está a la vista
+  → src/store/sync.ts :: arrancarLatido
 - [x] datos-csv · Exportar a CSV
   → src/domain/csv.ts :: sesionesACsv
 - [x] datos-importar · Importar de Hevy y de Strong
@@ -533,4 +549,4 @@ Estas también son promesas, y romperlas sería peor que no cumplir una función
 
 ---
 
-TOTAL: 213
+TOTAL: 221

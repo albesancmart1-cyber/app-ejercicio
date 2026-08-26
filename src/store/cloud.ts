@@ -1,31 +1,49 @@
 /**
- * La nube: entrar con el correo y dejar los datos donde los vea cualquier
- * dispositivo.
+ * La nube: entrar con tu correo y tu contraseña, y dejar los datos donde los
+ * vea cualquier dispositivo.
  *
- * Se habla con Firebase por HTTP, sin su biblioteca. Son tres endpoints de
- * autenticación y dos de datos, y la app no tiene ninguna dependencia en
- * tiempo de ejecución más allá de React: meter el SDK de Firebase —que son
- * varios cientos de kilobytes— para esto sería pagar mucho por muy poco, y
- * encima en una app que tiene que arrancar sin conexión.
+ * Se habla con Firebase por HTTP, sin su biblioteca. Son cuatro endpoints de
+ * autenticación y dos de datos, y la app no tiene ninguna dependencia en tiempo
+ * de ejecución más allá de React: meter el SDK de Firebase —que son varios
+ * cientos de kilobytes— para esto sería pagar mucho por muy poco, y encima en
+ * una app que tiene que arrancar sin conexión.
  *
- * **Aquí «la nube» no es la base de datos de la app.** Los datos viven en el
- * dispositivo, en `localStorage`, y la app funciona entera sin conexión y sin
- * cuenta. Esto de aquí es solo el sitio de paso para que dos dispositivos se
- * pongan de acuerdo: se baja lo de allí, se fusiona con lo de aquí
- * (`src/domain/merge.ts`) y se vuelve a subir el resultado. Por eso cambiar de
- * proveedor no puede perder nada mientras el móvil conserve su almacén.
+ * **Aquí «la nube» no sustituye al dispositivo.** Los datos viven en
+ * `localStorage` y la app funciona entera sin conexión y sin cuenta; esto es lo
+ * que hace que dos dispositivos se pongan de acuerdo. Se baja lo de allí, se
+ * fusiona con lo de aquí (`src/domain/merge.ts`) y se vuelve a subir el
+ * resultado. Un local-first bien hecho da lo mismo que uno que dependa del
+ * servidor —lo que empieces en el móvil aparece en el ordenador en segundos—
+ * sin el precio de quedarte sin app cuando no hay cobertura.
  *
- * **Entrar es por enlace al correo.** Ni contraseñas que recordar ni
- * contraseñas que perder, que en una app de una sola persona es todo ventaja.
- * Firebase no manda códigos de seis cifras por correo —no existe esa vía en su
- * API—, así que la única forma de entrar es el enlace, y hay dos maneras de
- * usarlo: pulsarlo, o pegarlo aquí dentro. La segunda es la que salva a la app
- * instalada en iOS; ver `entrarConEnlace`.
+ * ## Por qué contraseña y no enlace al correo
  *
- * **Qué se guarda.** Un documento por cuenta en `usuarios/{uid}` con el JSON
- * entero dentro de un solo campo de texto. Las reglas de seguridad
- * (`firebase/firestore.rules`) atan cada documento a su dueño, así que la clave
- * que va en el paquete es justo eso, pública: sin sesión no abre nada.
+ * Antes esto entraba por enlace mágico, y tenía un problema que no se arregla
+ * con más código: **en iOS, una app añadida a la pantalla de inicio tiene su
+ * propio almacén, separado del de Safari**, y el enlace del correo siempre abre
+ * Safari. Pulsarlo entraba en Safari y dejaba la app instalada viéndote como un
+ * dispositivo nuevo. La salida era copiar el enlace y pegarlo dentro de la app:
+ * funciona, pero son tres pasos y uno de ellos —«no lo pulses»— va contra el
+ * instinto de cualquiera.
+ *
+ * Una contraseña se teclea **dentro** de la app, en el móvil, en el ordenador y
+ * en la app instalada por igual, y no hay nada que copiar ni ventana que
+ * caduque. Para entrar en el segundo dispositivo mientras el primero está
+ * midiendo, que es de lo que va todo esto, es la diferencia entre diez segundos
+ * y una excursión por el correo.
+ *
+ * El enlace no desaparece del todo: sigue siendo como se recupera una
+ * contraseña olvidada, que es el único sitio donde un enlace de un solo uso es
+ * exactamente la herramienta correcta.
+ *
+ * ## Qué se guarda
+ *
+ * Un documento por cuenta en `usuarios/{uid}` con el JSON entero dentro de un
+ * solo campo de texto. Las reglas de seguridad (`firebase/firestore.rules`)
+ * atan cada documento a su dueño, así que la clave que va en el paquete es
+ * justo eso, pública: sin sesión no abre nada. Y la contraseña no pasa por
+ * aquí más que para canjearla por un testigo: no se guarda ni se vuelve a
+ * mandar.
  */
 import type { AppData } from '../domain/types'
 import type { MedidaDeFuera } from '../domain/buzon'
@@ -42,12 +60,10 @@ const SUBCOLECCION_MEDIDAS = 'medidas'
 
 const CLAVE_SESION = 'ritmo-sesion'
 /**
- * El correo con el que se pidió el enlace, guardado aquí porque Firebase lo
- * exige al canjearlo y el enlace no lo trae dentro. Es su forma de que un
- * enlace interceptado no sirva por sí solo: hace falta además saber a quién se
- * mandó.
+ * El último correo con el que se entró, para poder rellenarlo solo la próxima
+ * vez. No es la contraseña, que no se guarda en ninguna parte.
  */
-const CLAVE_CORREO = 'ritmo-correo-pendiente'
+const CLAVE_CORREO = 'ritmo-ultimo-correo'
 
 /** ¿Se ha configurado una nube? Sin esto la app funciona igual, pero local. */
 export function hayNube(): boolean {
@@ -88,7 +104,8 @@ function guardarSesion(s: SesionNube | null) {
   else localStorage.removeItem(CLAVE_SESION)
 }
 
-function correoPendiente(): string {
+/** El correo con el que se entró la última vez, para no volver a teclearlo. */
+export function ultimoCorreo(): string {
   try {
     return localStorage.getItem(CLAVE_CORREO) ?? ''
   } catch {
@@ -96,12 +113,11 @@ function correoPendiente(): string {
   }
 }
 
-function guardarCorreoPendiente(email: string | null) {
+function recordarCorreo(email: string) {
   try {
-    if (email) localStorage.setItem(CLAVE_CORREO, email)
-    else localStorage.removeItem(CLAVE_CORREO)
+    localStorage.setItem(CLAVE_CORREO, email)
   } catch {
-    /* almacén lleno o bloqueado: se pedirá el correo a mano */
+    /* almacén lleno o bloqueado: se teclea otra vez y ya está */
   }
 }
 
@@ -109,6 +125,9 @@ function guardarCorreoPendiente(email: string | null) {
 export class ErrorNube extends Error {}
 
 /* ══════════════════════════════════════════════════ AUTENTICACIÓN ══ */
+
+/** Lo que Firebase exige, y es poco. Se dice antes de mandar nada. */
+export const LARGO_MINIMO_DE_CONTRASENA = 6
 
 /**
  * Una llamada a Identity Toolkit. Devuelve el JSON, o lanza con el motivo ya
@@ -135,168 +154,58 @@ function codigoDeError(json: Record<string, unknown>): string {
 /**
  * Traduce los fallos de autenticación a algo accionable.
  *
- * Los dos primeros son los que se ven al montar el proyecto y no se adivinan
- * nunca por el número del error: el método de acceso por enlace viene apagado
- * de fábrica, y el dominio desde el que se pide tiene que estar en la lista de
- * dominios autorizados o Firebase se niega a mandar el correo.
+ * El primero es el que se ve al montar el proyecto y no se adivina nunca por el
+ * número del error: el acceso por contraseña viene apagado de fábrica.
+ *
+ * Y ojo con `INVALID_LOGIN_CREDENTIALS`: Firebase dejó de distinguir «ese
+ * correo no existe» de «esa contraseña no es» a propósito, para que nadie pueda
+ * averiguar qué correos tienen cuenta probando. Aquí eso obliga a dar un
+ * mensaje que cubra los dos casos, y está bien que así sea.
  */
 function quejaDeIdentidad(status: number, json: Record<string, unknown>): string {
   const codigo = codigoDeError(json)
 
-  if (/OPERATION_NOT_ALLOWED/.test(codigo))
-    return 'Tu proyecto de Firebase tiene apagado el acceso por enlace al correo. Panel → Authentication → Sign-in method → «Email/Password» → activa «Email link (passwordless sign-in)».'
-  if (/UNAUTHORIZED_DOMAIN|INVALID_CONTINUE_URI|MISSING_CONTINUE_URI/.test(codigo))
-    return `Firebase no reconoce el sitio desde el que estás entrando (${location.hostname}). Panel → Authentication → Settings → Authorized domains → añade ese dominio.`
+  if (/OPERATION_NOT_ALLOWED|PASSWORD_LOGIN_DISABLED|ADMIN_ONLY_OPERATION/.test(codigo))
+    return 'Tu proyecto de Firebase tiene apagado el acceso por contraseña. Panel → Authentication → Sign-in method → activa «Email/Password».'
   if (/CONFIGURATION_NOT_FOUND/.test(codigo))
     return 'Ese proyecto de Firebase no tiene la autenticación activada todavía. Panel → Authentication → «Comenzar».'
   if (/API key not valid|API_KEY_INVALID/i.test(codigo))
     return 'La clave de Firebase que lleva esta versión no vale para ningún proyecto. Revisa VITE_FIREBASE_API_KEY.'
-  if (/INVALID_EMAIL|MISSING_EMAIL/.test(codigo))
-    return 'Ese correo no tiene buena pinta. Míralo otra vez.'
-  if (/EXPIRED_OOB_CODE|INVALID_OOB_CODE|MISSING_OOB_CODE/.test(codigo))
-    return 'Ese enlace ya no vale. Sirve una sola vez y caduca al rato, así que si lo pulsaste antes ya está gastado: pide otro correo y esta vez cópialo sin abrirlo.'
+
+  if (/EMAIL_EXISTS/.test(codigo))
+    return 'Ya hay una cuenta con ese correo. Entra con tu contraseña, o pide una nueva si no la recuerdas.'
+  if (/INVALID_LOGIN_CREDENTIALS|EMAIL_NOT_FOUND|INVALID_PASSWORD/.test(codigo))
+    return 'El correo o la contraseña no son. Míralo otra vez, y si no la recuerdas pide una nueva aquí abajo.'
+  if (/WEAK_PASSWORD/.test(codigo))
+    return `Esa contraseña es demasiado corta. Firebase pide ${LARGO_MINIMO_DE_CONTRASENA} caracteres como mínimo.`
+  if (/INVALID_EMAIL|MISSING_EMAIL/.test(codigo)) return 'Ese correo no tiene buena pinta. Míralo otra vez.'
+  if (/MISSING_PASSWORD/.test(codigo)) return 'Te falta escribir la contraseña.'
   if (/USER_DISABLED/.test(codigo)) return 'Esa cuenta está desactivada en el panel de Firebase.'
+
+  if (/UNAUTHORIZED_DOMAIN|INVALID_CONTINUE_URI/.test(codigo))
+    return `Firebase no reconoce el sitio desde el que estás entrando (${location.hostname}). Panel → Authentication → Settings → Authorized domains → añade ese dominio.`
+  if (/EXPIRED_OOB_CODE|INVALID_OOB_CODE|MISSING_OOB_CODE/.test(codigo))
+    return 'Ese enlace ya no vale: sirve una sola vez y caduca al rato. Pide otro correo de contraseña nueva.'
+
   if (/TOO_MANY_ATTEMPTS_TRY_LATER|QUOTA_EXCEEDED/.test(codigo))
-    return 'Firebase ha cortado por exceso de intentos. Espera un rato largo antes de volver a pedir otro correo; el último que te llegó, si no lo has usado, sigue sirviendo.'
+    return 'Firebase ha cortado por exceso de intentos. Espera un rato antes de volver a probar.'
   if (/TOKEN_EXPIRED|INVALID_REFRESH_TOKEN|USER_NOT_FOUND/.test(codigo))
-    return 'Tu sesión ha caducado. Vuelve a entrar con tu correo.'
+    return 'Tu sesión ha caducado. Vuelve a entrar con tu correo y tu contraseña.'
 
   return `${codigo || 'Error desconocido'} (${status})`
 }
 
 /**
- * A dónde tiene que volver el enlace del correo: a esta misma app, que es lo
- * único que sabe qué hacer con el testigo. El dominio tiene que estar en la
- * lista de dominios autorizados del panel de Firebase, o el correo ni se manda.
+ * A dónde tiene que volver el enlace de contraseña nueva: a esta misma app, que
+ * es lo único que sabe qué hacer con él. El dominio tiene que estar en la lista
+ * de dominios autorizados del panel de Firebase, o el correo ni se manda.
  */
 export function dondeVuelve(): string {
   return location.origin + location.pathname.replace(/index\.html$/, '')
 }
 
-/**
- * Pide el enlace de acceso al correo.
- *
- * `canHandleCodeInApp` tiene que ir en `true` aunque esto no sea una app
- * nativa: es lo que hace que Firebase mande un enlace que vuelve a
- * `continueUrl` con el testigo dentro, en vez de uno que se canjea solo en su
- * propia página y no deja nada aquí.
- *
- * El correo se guarda antes de pedir nada, porque hará falta al volver:
- * Firebase exige mandar el correo junto al testigo, y el enlace no lo trae.
- */
-export async function pedirEnlace(email: string): Promise<void> {
-  const limpio = email.trim()
-  guardarCorreoPendiente(limpio)
-  await identidad('sendOobCode', {
-    requestType: 'EMAIL_SIGNIN',
-    email: limpio,
-    continueUrl: dondeVuelve(),
-    canHandleCodeInApp: true
-  })
-}
-
-/**
- * Lo que hay que sacar de un enlace del correo para poder canjearlo aquí.
- *
- * El enlace de Firebase es una dirección a su propia página de acción con el
- * testigo dentro: `…/__/auth/action?mode=signIn&oobCode=<testigo>&apiKey=…`.
- * Ese `oobCode` es lo único que hace falta; el resto de la dirección es el
- * paseo por el navegador que aquí precisamente queremos evitar.
- *
- * Se acepta el enlace entero pegado tal cual —con espacios o saltos de línea
- * que meta el correo al copiar—, y también el testigo suelto, por si alguien
- * lo extrae a mano. Y se mira también dentro de `continueUrl`, porque cuando
- * el enlace ya ha rebotado una vez el testigo acaba anidado ahí dentro.
- */
-export function testigoDeEnlace(texto: string): { testigo: string } | null {
-  const limpio = texto.trim().replace(/\s+/g, '')
-  if (!limpio) return null
-
-  if (/[?&#]/.test(limpio)) {
-    const testigo = testigoDeParametros(limpio)
-    return testigo ? { testigo } : null
-  }
-
-  // Un testigo suelto: lo bastante largo como para no confundirlo con nada.
-  return /^[A-Za-z0-9_-]{20,}$/.test(limpio) ? { testigo: limpio } : null
-}
-
-/**
- * Busca el testigo en los parámetros de una dirección, entrando también en los
- * que a su vez son direcciones (`continueUrl`, `link`). Firebase anida el
- * enlace bueno dentro del suyo cuando pasa por la página de acción, así que
- * mirar solo el primer nivel se dejaba fuera el caso más común al copiar.
- */
-function testigoDeParametros(url: string, profundidad = 0): string | null {
-  const trozos = url.split(/[?#]/).slice(1).join('&')
-  if (!trozos) return null
-  const p = new URLSearchParams(trozos)
-  const directo = p.get('oobCode')
-  if (directo) return directo
-  if (profundidad >= 3) return null
-  for (const clave of ['continueUrl', 'link', 'url']) {
-    const anidado = p.get(clave)
-    if (anidado && /[?&#]/.test(anidado)) {
-      const dentro = testigoDeParametros(anidado, profundidad + 1)
-      if (dentro) return dentro
-    }
-  }
-  return null
-}
-
-/**
- * Entrar pegando el enlace del correo, sin salir de la app.
- *
- * Existe por una limitación de iOS que no tiene vuelta: **una app añadida a la
- * pantalla de inicio tiene su propio almacén, separado del de Safari**. No
- * comparten ni sesión ni datos. Y el enlace del correo siempre se abre en
- * Safari, porque iOS no sabe abrir un enlace dentro de una app instalada. Con
- * lo cual, pulsando el enlace es imposible entrar en la app instalada: entras
- * en Safari, la sesión se guarda ahí, y la app de la pantalla de inicio sigue
- * viéndote como un dispositivo nuevo.
- *
- * Pegarlo sí funciona, porque el canje ocurre dentro de la propia app. Y no
- * hace falta configurar nada extra para ello: el enlace ya trae el testigo.
- *
- * **El enlace hay que copiarlo, no pulsarlo**: sirve una sola vez, así que
- * abrirlo primero en el navegador lo gasta.
- */
-export async function entrarConEnlace(email: string, texto: string): Promise<SesionNube> {
-  const encontrado = testigoDeEnlace(texto)
-  if (!encontrado) {
-    throw new ErrorNube(
-      'Eso no parece el enlace del correo. Mantén pulsado el enlace, elige «Copiar enlace» y pégalo aquí entero.'
-    )
-  }
-  const correo = email.trim() || correoPendiente()
-  if (!correo) {
-    throw new ErrorNube(
-      'Me falta saber a qué correo se mandó ese enlace: Firebase lo pide junto al enlace para que uno solo no baste. Escríbelo arriba y vuelve a darle a «Entrar».'
-    )
-  }
-  return canjear(encontrado.testigo, correo)
-}
-
-/**
- * Entrar con lo que sea que haya pegado el usuario. Antes había dos vías —el
- * enlace y un código de seis cifras— y esto elegía; con Firebase el código no
- * existe, así que solo queda una. Se mantiene la función porque es la que usa
- * la pantalla, y porque decir «eso no es un enlace» aquí es mejor que dejar
- * que falle el servidor.
- */
-export async function entrarConAcceso(email: string, texto: string): Promise<SesionNube> {
-  const soloCifras = texto.replace(/\D/g, '')
-  if (!texto.includes('/') && soloCifras.length >= 4 && soloCifras.length <= 8) {
-    throw new ErrorNube(
-      'Firebase no manda códigos de cifras, solo el enlace. Copia el enlace entero del correo —manteniéndolo pulsado, sin abrirlo— y pégalo aquí.'
-    )
-  }
-  return entrarConEnlace(email, texto)
-}
-
-/** Canjea el testigo por una sesión y la guarda. */
-async function canjear(oobCode: string, email: string): Promise<SesionNube> {
-  const json = await identidad('signInWithEmailLink', { email, oobCode })
+/** Lo que devuelve Firebase al entrar, hecho sesión y guardado. */
+function desdeRespuesta(json: Record<string, unknown>, email: string): SesionNube {
   const sesion: SesionNube = {
     accessToken: String(json.idToken ?? ''),
     refreshToken: String(json.refreshToken ?? ''),
@@ -306,54 +215,134 @@ async function canjear(oobCode: string, email: string): Promise<SesionNube> {
     proveedor: 'firebase'
   }
   if (!sesion.accessToken || !sesion.uid) {
-    throw new ErrorNube('Firebase ha aceptado el enlace pero no ha devuelto una sesión utilizable.')
+    throw new ErrorNube('Firebase ha aceptado los datos pero no ha devuelto una sesión utilizable.')
   }
   guardarSesion(sesion)
-  guardarCorreoPendiente(null)
+  recordarCorreo(sesion.email)
   return sesion
 }
 
 /**
- * Lo que dejó el intento de recoger la sesión de la URL, para que
- * `recogerFalloDeLaUrl` lo cuente. Es una variable de módulo y no un lanzamiento
- * porque quien llama a esto está arrancando la app: que el arranque no siga
- * porque el enlace estaba gastado sería peor que enseñarlo y seguir.
+ * Lo que se comprueba aquí antes de molestar al servidor.
+ *
+ * No es validación por gusto: un correo sin arroba y una contraseña de tres
+ * letras son dos viajes de ida y vuelta para que te digan lo mismo que se sabe
+ * desde aquí, y encima cuentan para el límite de intentos de Firebase.
  */
-let falloPendiente: string | null = null
+function revisar(email: string, password: string): string | null {
+  if (!email.includes('@') || email.length < 5) return 'Escribe un correo válido.'
+  if (password.length < LARGO_MINIMO_DE_CONTRASENA) {
+    return `La contraseña son ${LARGO_MINIMO_DE_CONTRASENA} caracteres como mínimo.`
+  }
+  return null
+}
+
+/** Crear la cuenta. La primera vez, y solo la primera. */
+export async function crearCuenta(email: string, password: string): Promise<SesionNube> {
+  const limpio = email.trim()
+  const queja = revisar(limpio, password)
+  if (queja) throw new ErrorNube(queja)
+  return desdeRespuesta(
+    await identidad('signUp', { email: limpio, password, returnSecureToken: true }),
+    limpio
+  )
+}
+
+/** Entrar en una cuenta que ya existe. */
+export async function entrar(email: string, password: string): Promise<SesionNube> {
+  const limpio = email.trim()
+  const queja = revisar(limpio, password)
+  if (queja) throw new ErrorNube(queja)
+  return desdeRespuesta(
+    await identidad('signInWithPassword', { email: limpio, password, returnSecureToken: true }),
+    limpio
+  )
+}
 
 /**
- * Recoge la sesión que viene en la URL tras pulsar el enlace del correo, y
- * limpia la barra de direcciones. Devuelve la sesión si la había.
+ * Entrar sin tener que saber de antemano si la cuenta existe.
  *
- * **Es asíncrona, y con Supabase no lo era.** Supabase mandaba los tokens ya
- * hechos en el fragmento de la URL: bastaba leerlos. Firebase manda un testigo
- * de un solo uso (`?mode=signIn&oobCode=…`) que hay que canjear con una
- * petición. Es más trabajo y a cambio es más seguro: un enlace que se quede en
- * el historial ya no lleva la sesión dentro, y canjearlo exige además el correo.
+ * En una app de una sola persona, «registrarse» y «entrar» son la misma
+ * intención escrita dos veces, y obligar a elegir el botón correcto solo sirve
+ * para equivocarse. Se prueba a entrar y, si el correo no tiene cuenta, se
+ * crea. Al revés no vale: intentar crearla primero le diría a cualquiera qué
+ * correos ya están registrados, que es justo lo que Firebase se esfuerza en no
+ * decir.
  */
-export async function recogerSesionDeLaUrl(): Promise<SesionNube | null> {
-  falloPendiente = null
-  const p = new URLSearchParams(location.search)
-  const oobCode = p.get('oobCode')
-  if (!oobCode || p.get('mode') !== 'signIn') return null
-
-  // Fuera de la barra de direcciones antes de canjear: sirve una sola vez, y
-  // dejarlo ahí solo consigue que recargar la página dé un error confuso.
-  limpiarUrl()
-
-  const email = correoPendiente()
-  if (!email) {
-    falloPendiente =
-      'He recibido el enlace, pero en este dispositivo no consta a qué correo se mandó. Escribe tu correo aquí abajo y pega el enlace en el campo de acceso, o pide otro desde este mismo dispositivo.'
-    return null
+export async function entrarOCrear(email: string, password: string): Promise<SesionNube> {
+  let credenciales: ErrorNube
+  try {
+    return await entrar(email, password)
+  } catch (e) {
+    const dice = e instanceof ErrorNube ? e.message : ''
+    // Solo se cae hacia crear si el fallo es «esas credenciales no valen». Un
+    // proyecto mal montado o un corte de red no se arreglan creando cuentas.
+    if (!(e instanceof ErrorNube) || !/correo o la contraseña no son/.test(dice)) throw e
+    credenciales = e
   }
 
   try {
-    return await canjear(oobCode, email)
+    return await crearCuenta(email, password)
   } catch (e) {
-    falloPendiente = e instanceof ErrorNube ? e.message : 'No he podido validar el enlace del correo.'
-    return null
+    /*
+     * Si crear dice que el correo ya existe, es que la cuenta estaba y lo que
+     * falló arriba fue la contraseña. Dejar salir ese mensaje contestaba «ya
+     * hay una cuenta con ese correo» a quien acababa de teclear mal su propia
+     * contraseña, que es de las cosas más desconcertantes que puede decir una
+     * pantalla de acceso. Se devuelve el fallo de verdad, que es el de antes.
+     */
+    if (e instanceof ErrorNube && /Ya hay una cuenta/.test(e.message)) throw credenciales
+    throw e
   }
+}
+
+/**
+ * Pide por correo el enlace para poner una contraseña nueva.
+ *
+ * Es el único sitio donde un enlace de un solo uso es la herramienta correcta:
+ * demuestra que el correo es tuyo, que es precisamente lo que hay que demostrar
+ * cuando ya no te acuerdas de nada más.
+ */
+export async function pedirNuevaContrasena(email: string): Promise<void> {
+  const limpio = email.trim()
+  if (!limpio.includes('@')) throw new ErrorNube('Escribe un correo válido.')
+  await identidad('sendOobCode', {
+    requestType: 'PASSWORD_RESET',
+    email: limpio,
+    continueUrl: dondeVuelve()
+  })
+}
+
+/**
+ * El testigo de contraseña nueva que viene en la URL, si venimos de ese enlace.
+ *
+ * Se lee y se limpia la barra de direcciones de una vez: sirve una sola vez, y
+ * dejarlo ahí solo consigue que recargar la página dé un error confuso.
+ */
+export function codigoDeResetEnLaUrl(): string | null {
+  const p = new URLSearchParams(location.search)
+  const oobCode = p.get('oobCode')
+  if (!oobCode || p.get('mode') !== 'resetPassword') return null
+  limpiarUrl()
+  return oobCode
+}
+
+/**
+ * Pone la contraseña nueva y entra con ella.
+ *
+ * Firebase no devuelve sesión al cambiarla —solo confirma el correo al que
+ * pertenecía el testigo—, así que se entra a continuación con lo que se acaba
+ * de poner. Hacerlo aquí y no en la pantalla evita el paso más absurdo posible:
+ * teclear la contraseña nueva dos veces seguidas.
+ */
+export async function ponerNuevaContrasena(oobCode: string, password: string): Promise<SesionNube> {
+  if (password.length < LARGO_MINIMO_DE_CONTRASENA) {
+    throw new ErrorNube(`La contraseña son ${LARGO_MINIMO_DE_CONTRASENA} caracteres como mínimo.`)
+  }
+  const json = await identidad('resetPassword', { oobCode, newPassword: password })
+  const email = String(json.email ?? '')
+  if (!email) throw new ErrorNube('Firebase no ha dicho de qué cuenta era ese enlace.')
+  return entrar(email, password)
 }
 
 function limpiarUrl() {
@@ -366,27 +355,18 @@ function limpiarUrl() {
 }
 
 /**
- * Si el enlace volvió con un fallo en vez de con la sesión, lo cuenta en
- * castellano y limpia la barra de direcciones.
- *
- * Hay dos sitios de donde puede venir: lo que dejó `recogerSesionDeLaUrl` al
- * intentar canjear, y un error que Firebase haya puesto en la propia URL.
- * Callárselo dejaba al usuario sin saber por qué el enlace no hacía nada.
+ * Si el enlace del correo volvió con un fallo, lo cuenta en castellano y limpia
+ * la barra de direcciones. Callárselo dejaba al usuario sin saber por qué el
+ * enlace no hacía nada.
  */
 export function recogerFalloDeLaUrl(): string | null {
-  if (falloPendiente) {
-    const x = falloPendiente
-    falloPendiente = null
-    return x
-  }
-
   const p = new URLSearchParams(location.search)
   const codigo = p.get('error_code') ?? p.get('error')
   if (!codigo) return null
   limpiarUrl()
 
   if (/expired|invalid|access_denied/i.test(codigo))
-    return 'Ese enlace ya no vale: solo sirve una vez y caduca al poco de mandarlo. Pide otro y ábrelo en cuanto llegue, en este mismo dispositivo.'
+    return 'Ese enlace ya no vale: solo sirve una vez y caduca al poco de mandarlo. Pide otro y ábrelo en cuanto llegue.'
   const detalle = (p.get('error_description') ?? '').replace(/\+/g, ' ')
   return `El enlace ha fallado (${codigo}). ${detalle}`
 }
@@ -408,7 +388,7 @@ async function renovar(sesion: SesionNube): Promise<SesionNube> {
   })
   if (!res.ok) {
     guardarSesion(null)
-    throw new ErrorNube('Tu sesión ha caducado. Vuelve a entrar con tu correo.')
+    throw new ErrorNube('Tu sesión ha caducado. Vuelve a entrar con tu correo y tu contraseña.')
   }
   const json = (await res.json()) as Record<string, unknown>
   const nueva: SesionNube = {
@@ -447,7 +427,6 @@ export async function quienSoy(sesion: SesionNube): Promise<string> {
 
 export function cerrarSesion(): void {
   guardarSesion(null)
-  guardarCorreoPendiente(null)
 }
 
 /* ═════════════════════════════════════════════════════ LOS DATOS ══ */

@@ -18,13 +18,13 @@ sincronizar: en Ajustes pone que todo se guarda en este dispositivo, y ya.
    plan Spark (gratuito). Google Analytics se puede desactivar: no hace falta
    para nada de esto.
 
-2. **Activar el acceso por enlace al correo.** Panel → **Authentication** →
+2. **Activar el acceso por contraseña.** Panel → **Authentication** →
    **Comenzar** → **Sign-in method** → **Email/Password** → activar el
-   interruptor de arriba y **también** el de abajo, **Email link (passwordless
-   sign-in)** → *Guardar*.
+   interruptor de arriba → *Guardar*.
 
-   El de abajo viene apagado y es el que importa. Sin él, la app dice
-   «tu proyecto tiene apagado el acceso por enlace al correo».
+   Solo el de arriba. El de abajo —*Email link (passwordless sign-in)*— ya no
+   hace falta: la app entra con contraseña, y el correo solo se usa para
+   recuperarla si se olvida.
 
 3. **Crear la base de datos y publicar las reglas.** Panel → **Firestore
    Database** → **Crear base de datos** → *modo producción* → la región más
@@ -39,8 +39,8 @@ sincronizar: en Ajustes pone que todo se guarda en este dispositivo, y ya.
    (`ritmo.netlify.app`, o el que sea).
 
    `localhost` ya viene en la lista, así que en el ordenador funciona de
-   entrada. Sin este paso Firebase **ni siquiera manda el correo**: contesta
-   que el dominio no está autorizado.
+   entrada. Entrar con contraseña funciona sin esto, pero el correo de
+   **contraseña olvidada** no se manda si el dominio no está en la lista.
 
 5. **Copiar las dos claves y ponerlas en Netlify.** Panel → engranaje →
    **Configuración del proyecto** → *Tus apps* → app web (crear una si no hay,
@@ -95,32 +95,19 @@ se guarda en el móvil, y es lo que hace que recoger dos veces no duplique nada.
 ## La app instalada en el móvil
 
 En iOS, una app añadida a la pantalla de inicio **tiene su propio almacén**,
-separado del de Safari: no comparten ni sesión ni datos. Y el enlace del correo
-siempre se abre en Safari, porque iOS no sabe abrir un enlace dentro de una app
-instalada. Resultado: entras por el enlace, la sesión se queda en Safari, y la
-app de la pantalla de inicio te sigue viendo como un dispositivo nuevo.
+separado del de Safari: no comparten ni sesión ni datos. Así que al instalarla
+hay que entrar otra vez dentro de ella.
 
-No es un fallo ni tiene arreglo por la vía de pulsar el enlace. La app resuelve
-esto dejando **pegar el enlace en vez de pulsarlo**: el enlace lleva el testigo
-dentro y la app lo canjea ella misma, sin salir. Desde la app instalada:
-
-1. Ajustes → Tu cuenta → escribe el correo → **Mandarme el acceso**.
-2. Abre el correo y **mantén pulsado** el enlace → *Copiar enlace*.
-   **No lo pulses**: sirve una sola vez y abrirlo lo gasta.
-3. Vuelve a la app, pégalo en el campo y **Entrar**.
-
-Firebase pide el correo además del enlace —para que un enlace interceptado no
-baste por sí solo—, y por eso el campo del correo tiene que estar relleno al
-pegarlo. Si lo pediste desde esa misma app, ya lo sabe y lo rellena solo.
-
-Con Firebase **no hay código de seis cifras**: no existe esa vía en su API de
-acceso por correo. La única forma de entrar es el enlace, pulsándolo o
-pegándolo.
+Con contraseña eso es teclear el correo y la contraseña y ya está — y es
+justamente por esto por lo que la app dejó el acceso por enlace mágico: el
+enlace del correo siempre abre Safari, porque iOS no sabe abrir un enlace dentro
+de una app instalada, así que pulsándolo entrabas en Safari y la app instalada
+te seguía viendo como un dispositivo nuevo.
 
 ## Si la app no entra
 
-- **«Tu proyecto de Firebase tiene apagado el acceso por enlace al correo»** —
-  paso 2, el segundo interruptor, el de *Email link (passwordless sign-in)*.
+- **«Tu proyecto de Firebase tiene apagado el acceso por contraseña»** —
+  paso 2: el interruptor de *Email/Password*.
 - **«Firebase no reconoce el sitio desde el que estás entrando»** — paso 4:
   falta el dominio en *Authorized domains*. Fíjate en cuál dice, que si has
   entrado por la URL de un despliegue de prueba de Netlify
@@ -129,15 +116,13 @@ pegándolo.
   pestaña *Reglas*, y darle a **Publicar** (guardar no basta).
 - **«Tu proyecto de Firebase no tiene creada la base de datos»** — paso 3, la
   primera mitad. Es distinto de que las reglas estén mal.
-- **«Ese enlace ya no vale»** — cada enlace sirve **una sola vez** y caduca al
-  rato. Hay que abrir el último que llegó, y desde el mismo dispositivo donde
-  se pidió. Si lo pulsaste antes de copiarlo, ya se gastó.
-- **«En este dispositivo no consta a qué correo se mandó»** — pediste el enlace
-  en un sitio y lo abriste en otro. Escribe el correo en el campo de arriba y
-  pega el enlace en el de abajo; con las dos cosas entra igual.
-- **«Firebase ha cortado por exceso de intentos»** — el envío de correos del
-  plan gratuito tiene cupo. No se arregla reintentando: el último enlace que
-  llegó, si no se ha usado, sigue sirviendo.
+- **«El correo o la contraseña no son»** — cubre los dos casos a propósito:
+  Firebase dejó de distinguirlos para que nadie averigüe qué correos tienen
+  cuenta probando. Si no la recuerdas, «No me acuerdo de la contraseña».
+- **«Ese enlace ya no vale»** — el de contraseña nueva sirve **una sola vez** y
+  caduca al rato. Pide otro.
+- **«Firebase ha cortado por exceso de intentos»** — hay cupo tanto de intentos
+  de entrada como de correos. No se arregla reintentando: espera un rato.
 - **En Ajustes no aparece la tarjeta de cuenta** — la versión publicada se
   construyó sin las variables. Repasar el paso 5 y volver a desplegar.
 - **En el móvil entro por el enlace, pero la app de la pantalla de inicio sale
@@ -146,7 +131,6 @@ pegándolo.
 
 ## El correo que manda Firebase
 
-Se puede cambiar el texto en Panel → **Authentication** → **Templates** →
-*Email address sign-in*, y ahí también se pone el nombre del remitente. Lo que
-**no** se puede es meter en él un código de cifras: la plantilla solo sabe
-poner el enlace.
+Solo se manda uno, el de contraseña olvidada. Se puede cambiar el texto en
+Panel → **Authentication** → **Templates** → *Password reset*, y ahí también se
+pone el nombre del remitente.

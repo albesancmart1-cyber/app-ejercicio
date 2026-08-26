@@ -26,11 +26,11 @@ import {
   borrarMedidas,
   cerrarSesion,
   descargar,
-  entrarConAcceso,
+  entrarOCrear,
   hayNube,
+  ponerNuevaContrasena,
   quienSoy,
   recogerFalloDeLaUrl,
-  recogerSesionDeLaUrl,
   sesionGuardada,
   sesionValida,
   subir
@@ -82,21 +82,18 @@ export function ultimaNovedad(): string | null {
  */
 export async function iniciarSync(): Promise<boolean> {
   if (!hayNube()) return false
-  // Primero se canjea el enlace, si venimos de él, y después se pregunta si
-  // aquello dejó una queja. El orden importa: con Firebase el enlace no trae la
-  // sesión hecha sino un testigo que hay que canjear, y el fallo —que ya no
-  // vale, que falta el correo— solo se sabe al intentarlo. Callárselo dejaba al
-  // usuario mirando una pantalla que no hace nada.
-  const deLaUrl = await recogerSesionDeLaUrl()
+  // Si el enlace de contraseña nueva volvió con un fallo hay que mirarlo antes
+  // de nada: callárselo deja al usuario sin saber por qué el enlace del correo
+  // no ha hecho nada.
   const fallo = recogerFalloDeLaUrl()
-  const sesion = deLaUrl ?? sesionGuardada()
+  const sesion = sesionGuardada()
   if (!sesion) {
     anunciar(fallo ? { estado: 'error', mensaje: fallo } : { estado: 'fuera' })
     return false
   }
   anunciar({ estado: 'dentro', email: sesion.email, pendiente: true })
-  // El correo no viene en el fragmento de la URL: se pregunta aparte, y si falla
-  // no pasa nada grave —es solo lo que se enseña en Ajustes—.
+  // El correo se confirma aparte, y si falla no pasa nada grave: es solo lo que
+  // se enseña en Ajustes.
   try {
     const email = await quienSoy(sesion)
     if (estado.estado === 'dentro') anunciar({ ...estado, email })
@@ -161,7 +158,18 @@ export async function sincronizar(
     }
 
     escribir(resultado)
-    await subir(resultado)
+    /*
+     * Solo se sube si el resultado difiere de lo que había allí.
+     *
+     * Importa desde que esto se repite solo cada pocos segundos: sin la
+     * comparación, dos dispositivos abiertos y quietos escribirían el mismo
+     * documento cientos de veces al día para no cambiar nada. Y el caso de una
+     * cuenta recién hecha —sin nada en la nube— entra igual, porque entonces no
+     * hay con qué comparar y se sube.
+     */
+    if (remoto === null || JSON.stringify(resultado) !== JSON.stringify(remoto)) {
+      await subir(resultado)
+    }
     if (recogidos.length > 0) await borrarMedidas(recogidos).catch(() => {})
     anunciar({ estado: 'dentro', email: sesion.email, ultima: Date.now(), pendiente: false })
     return { ok: true, novedad: ultimoResumen }
@@ -175,25 +183,86 @@ export async function sincronizar(
 }
 
 /**
- * Entrar con lo que traiga el correo —el enlace pegado o el código— que es la
- * única vía que funciona en la app instalada en iOS: ver `entrarConAcceso` en
- * `./cloud`.
+ * Entrar con correo y contraseña, y traerse lo que haya en la nube.
+ *
+ * Se sincroniza **inmediatamente** después de entrar, y no en el siguiente
+ * ciclo: quien acaba de escribir su contraseña en el ordenador porque se dejó
+ * el sol corriendo en el móvil no quiere esperar a nada.
  */
-export async function entrarConAccesoYSincronizar(
+export async function entrarYSincronizar(
   email: string,
-  texto: string,
+  password: string,
+  leer: () => AppData,
+  escribir: (data: AppData) => void
+): Promise<{ ok: boolean; novedad: string | null; error?: string }> {
+  return conSesionNueva(() => entrarOCrear(email, password), leer, escribir)
+}
+
+/** Poner la contraseña nueva del enlace del correo, y entrar con ella. */
+export async function cambiarContrasenaYSincronizar(
+  oobCode: string,
+  password: string,
+  leer: () => AppData,
+  escribir: (data: AppData) => void
+): Promise<{ ok: boolean; novedad: string | null; error?: string }> {
+  return conSesionNueva(() => ponerNuevaContrasena(oobCode, password), leer, escribir)
+}
+
+async function conSesionNueva(
+  abrir: () => Promise<{ email: string }>,
   leer: () => AppData,
   escribir: (data: AppData) => void
 ): Promise<{ ok: boolean; novedad: string | null; error?: string }> {
   try {
-    const sesion = await entrarConAcceso(email, texto)
+    const sesion = await abrir()
     anunciar({ estado: 'dentro', email: sesion.email, pendiente: true })
   } catch (e) {
-    const mensaje = e instanceof ErrorNube ? e.message : 'No he podido validar ese acceso.'
+    const mensaje = e instanceof ErrorNube ? e.message : 'No he podido entrar con eso.'
     anunciar({ estado: 'error', mensaje })
     return { ok: false, novedad: null, error: mensaje }
   }
   return sincronizar(leer, escribir)
+}
+
+/**
+ * Cada cuánto se vuelve a mirar la nube con la app abierta.
+ *
+ * Es lo que hace que empezar a medir el sol en el móvil se vea en el ordenador,
+ * y que pararlo desde el ordenador apague la baldosa del móvil. Veinte segundos
+ * es lo bastante rápido para que se sienta inmediato y lo bastante lento para
+ * no gastar el cupo gratuito de Firestore: con la comprobación de «no ha
+ * cambiado nada» de arriba, un dispositivo quieto solo lee.
+ */
+export const LATIDO_MS = 20_000
+
+let latido: ReturnType<typeof setInterval> | null = null
+
+/**
+ * Mira la nube cada poco **mientras la app está a la vista**.
+ *
+ * Solo con la pestaña visible: una app en segundo plano no le enseña nada a
+ * nadie, y en el móvil sería gastar batería para que no la mire ninguno. Al
+ * volver al frente se mira una vez enseguida, que es justo el momento en que
+ * uno quiere ver si se dejó algo corriendo en el otro sitio.
+ */
+export function arrancarLatido(leer: () => AppData, escribir: (data: AppData) => void): void {
+  if (!hayNube() || latido !== null) return
+
+  const toca = () => {
+    if (document.visibilityState !== 'visible') return
+    if (estado.estado !== 'dentro') return
+    sincronizar(leer, escribir)
+  }
+
+  latido = setInterval(toca, LATIDO_MS)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') toca()
+  })
+}
+
+export function pararLatido(): void {
+  if (latido !== null) clearInterval(latido)
+  latido = null
 }
 
 export function salir(): void {
@@ -201,7 +270,7 @@ export function salir(): void {
   anunciar({ estado: 'fuera' })
 }
 
-/** Para la pantalla de Ajustes: entrando, a la espera del enlace. */
+/** Para la pantalla de Ajustes: a la espera del correo de contraseña nueva. */
 export function esperandoEnlace(email: string): void {
   anunciar({ estado: 'entrando', email })
 }

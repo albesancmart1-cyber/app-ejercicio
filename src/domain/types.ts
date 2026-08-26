@@ -1077,6 +1077,23 @@ export interface EnCurso {
   date: string
   /** Minutos desde la medianoche local en que empezó. */
   desde: number
+  /**
+   * Cuándo se tocó por última vez: al empezar, y en cada cambio de cielo o de
+   * lámpara mientras corre.
+   *
+   * Está para que esto se pueda fusionar entre dispositivos como todo lo demás.
+   * Sin marca de tiempo, dos copias del mismo rato no se pueden ordenar y la
+   * fusión tendría que elegir a ciegas cuál de las dos es la buena.
+   */
+  updatedAt?: number
+  /**
+   * Cómo se llama el aparato donde se empezó.
+   *
+   * Solo para poder decirlo: «lo empezaste en el móvil». Una baldosa que
+   * aparece encendida sola, sin explicación, se lee como un fallo de la app y
+   * no como lo que es.
+   */
+  aparato?: string
   piel?: PielExpuesta
   /**
    * El cielo con el que se empezó. Se conserva para lo ya guardado y para lo

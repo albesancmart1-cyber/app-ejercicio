@@ -1990,42 +1990,6 @@ textarea:focus {
 }
 
 
-/* Pasos numerados: cuando el orden importa, el número lo dice mejor que un
-   guion. Se usa en el acceso pegando el enlace, donde saltarse el segundo paso
-   —copiar en vez de pulsar— es justo lo que hace que no funcione. */
-.steps {
-  list-style: none;
-  counter-reset: paso;
-  margin-top: var(--sp-2);
-}
-
-.steps li {
-  counter-increment: paso;
-  position: relative;
-  padding-left: 28px;
-  margin-top: var(--sp-2);
-  font-size: var(--text-body);
-  line-height: var(--leading-body);
-  color: var(--label-2);
-}
-
-.steps li::before {
-  content: counter(paso);
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--fill-2);
-  color: var(--label);
-  font-size: var(--text-caption);
-  font-weight: var(--w-medium);
-  display: grid;
-  place-items: center;
-}
-
-
 /* ── Tipo de serie ──────────────────────────────────────── */
 /*
  * El número de la serie es también el botón que cambia su tipo. Se toca y

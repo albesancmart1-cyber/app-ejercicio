@@ -5,7 +5,7 @@ import App from './App'
 // en el orden de capas correcto, que es lo único que hace que convivan.
 import './styles/appica.css'
 import { actions } from './store/store'
-import { estadoDeSync, iniciarSync, sincronizar } from './store/sync'
+import { arrancarLatido, estadoDeSync, iniciarSync, sincronizar } from './store/sync'
 import { hayReloj, recogerDelReloj } from './store/reloj'
 
 /**
@@ -34,6 +34,16 @@ setInterval(applyDaytime, 5 * 60 * 1000)
 iniciarSync().then((haySesion) => {
   if (haySesion) sincronizar(actions.snapshot, actions.replaceAll)
 })
+
+/*
+ * Y se sigue mirando cada poco mientras la app esté a la vista.
+ *
+ * Es lo que hace que lo que dejaste midiendo en el móvil aparezca en el
+ * ordenador —y que pararlo desde allí apague la baldosa del móvil— sin tener
+ * que darle a «sincronizar» a mano. Se arranca aquí y no dentro de un
+ * componente porque no es de ninguna pantalla: es de la app.
+ */
+arrancarLatido(actions.snapshot, actions.replaceAll)
 
 /**
  * Y lo que el reloj haya medido, si la app va dentro del contenedor nativo.

@@ -2,7 +2,14 @@ import { useSyncExternalStore } from 'react'
 import { todayIsoAt } from './clock'
 import { VERSION_ACTUAL, migrar } from './migrate'
 import type { DiaDeComidas, DiaDeSol, EdicionAlimento, ExposicionSolar, AppData, BodyMeasurement, CheckIn, EnCurso, Fichaje, Lampara, PerfilDeLuz, Profile, Routine, NocheRegistrada, SalidaAlExterior, SesionPBM, Suplemento, Session, TipoEnCurso } from '../domain/types'
-import { claveDeMedicion, claveDeRutina, claveDeSesion, type Lapida } from '../domain/merge'
+import {
+  claveDeCurso,
+  claveDeMedicion,
+  claveDeRutina,
+  claveDeSesion,
+  type Lapida
+} from '../domain/merge'
+import { nombreDeEsteAparato } from './aparato'
 import { decirleElSitio } from './reloj'
 
 const STORAGE_KEY = 'ritmo-data-v1'
@@ -327,15 +334,31 @@ export const actions = {
       ...s,
       enCurso: [
         ...(s.enCurso ?? []).filter((y) => !(y.tipo === x.tipo && y.date === x.date)),
-        x
+        /*
+         * La marca de tiempo se pone aquí y no en quien llama porque esto es
+         * también el camino de los cambios a mitad —cambiar el cielo o la
+         * lámpara vuelve a pasar por aquí con el objeto modificado—, y un
+         * cambio sin marca nueva perdería contra la copia vieja del otro
+         * dispositivo. El aparato se conserva si ya lo traía: sigue siendo el
+         * sitio donde esto empezó, aunque lo esté tocando otro.
+         */
+        { ...x, updatedAt: Date.now(), aparato: x.aparato ?? nombreDeEsteAparato() }
       ]
     }))
   },
-  /** Y lo cierra, sin tocar lo demás que siga en marcha. */
+  /**
+   * Y lo cierra, sin tocar lo demás que siga en marcha.
+   *
+   * Deja lápida a propósito. Sin ella, el otro dispositivo —que todavía tiene
+   * el rato abierto en su copia— lo volvería a subir en la siguiente
+   * sincronización y aparecería otra vez encendido un minuto después de
+   * haberlo parado. Se podan solas: ver `PODA_DE_CURSOS` en `domain/merge.ts`.
+   */
   cerrarEnCurso(tipo: TipoEnCurso, date: string) {
     setState((s) => ({
       ...s,
-      enCurso: (s.enCurso ?? []).filter((y) => !(y.tipo === tipo && y.date === date))
+      enCurso: (s.enCurso ?? []).filter((y) => !(y.tipo === tipo && y.date === date)),
+      deleted: conLapida(s, claveDeCurso(tipo, date))
     }))
   },
   saveAnalitica(a: import('../domain/analiticas').Analitica) {

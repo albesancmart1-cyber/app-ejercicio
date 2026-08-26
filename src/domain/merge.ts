@@ -15,8 +15,38 @@
  * el móvil, el ordenador todavía la tiene y al fusionar volvería a aparecer. Por
  * eso lo borrado deja una **lápida** —qué era y cuándo se borró— y la unión la
  * respeta mientras nadie haya vuelto a crear esa misma cosa después.
+ *
+ * ## Lo que está en marcha ahora mismo
+ *
+ * `enCurso` se fusiona como todo lo demás, y eso es lo que hace que empezar a
+ * medir el sol en el móvil se vea desde el ordenador y se pueda parar desde
+ * allí. Su identidad es `tipo` + `date`, porque no puede haber dos ratos de sol
+ * del mismo día corriendo a la vez, y **pararlo deja lápida**: sin ella, el
+ * móvil volvería a subir el suyo en la siguiente sincronización y el rato
+ * resucitaría un minuto después de haberlo parado.
+ *
+ * Esas lápidas se podan solas (ver `PODA_DE_CURSOS`), que es lo que las
+ * distingue de las de verdad: un rato de sol de hace una semana no es algo que
+ * haya que recordar haber borrado, es basura.
  */
-import type { DiaDeComidas, DiaDeSol, EdicionAlimento, AppData, BodyMeasurement, CheckIn, Routine, Session } from './types'
+import type {
+  AppData,
+  BodyMeasurement,
+  CheckIn,
+  DiaDeComidas,
+  DiaDeSol,
+  EdicionAlimento,
+  EnCurso,
+  Fichaje,
+  Lampara,
+  NocheRegistrada,
+  Routine,
+  SalidaAlExterior,
+  SesionPBM,
+  Session
+} from './types'
+import type { RegistroHabito } from './habitos'
+import type { Analitica } from './analiticas'
 
 /** Qué se borró y cuándo, para que la fusión no lo resucite. */
 export interface Lapida {
@@ -46,6 +76,44 @@ export function claveDeSol(fecha: string): string {
 export function claveDeAlimento(id: string): string {
   return `alimento:${id}`
 }
+export function claveDeSalida(id: string): string {
+  return `salida:${id}`
+}
+export function claveDePBM(id: string): string {
+  return `pbm:${id}`
+}
+export function claveDeFichaje(id: string): string {
+  return `fichaje:${id}`
+}
+export function claveDeLampara(id: string): string {
+  return `lampara:${id}`
+}
+export function claveDeNoche(fecha: string): string {
+  return `noche:${fecha}`
+}
+export function claveDeAnalitica(fecha: string): string {
+  return `analitica:${fecha}`
+}
+export function claveDeHabito(habito: string, fecha: string): string {
+  return `habito:${habito}:${fecha}`
+}
+/** Lo que está en marcha: no puede haber dos del mismo tipo el mismo día. */
+export function claveDeCurso(tipo: string, fecha: string): string {
+  return `curso:${tipo}:${fecha}`
+}
+
+/**
+ * Cuánto se guarda la lápida de algo que estaba en marcha.
+ *
+ * Las lápidas normales son para siempre: haber borrado una sesión es un hecho
+ * que no caduca. La de un rato de sol parado, no: lo único que tiene que hacer
+ * es sobrevivir a que el otro dispositivo se conecte y se entere. Una semana es
+ * de sobra —y si algún aparato tardara más, lo que traería sería un rato
+ * abierto de hace días, que la app ya sabe cerrar sola (`medir.ts`,
+ * `pareceOlvidado`)—, y a cambio esto impide que la lista crezca para siempre a
+ * razón de una lápida por baldosa y día.
+ */
+export const PODA_DE_CURSOS = 7 * 24 * 60 * 60 * 1000
 
 /** Cuándo se tocó por última vez. Lo que no lo lleva es de antes de sincronizar. */
 function cuando(x: { updatedAt?: number }): number {
@@ -71,10 +139,14 @@ function unir<T extends { updatedAt?: number }>(
   return [...porClave.values()]
 }
 
-/** Une las lápidas de las dos copias, quedándose con el borrado más reciente. */
-export function unirLapidas(a: Lapida[] = [], b: Lapida[] = []): Lapida[] {
+/**
+ * Une las lápidas de las dos copias, quedándose con el borrado más reciente y
+ * tirando las de cosas en marcha que ya no le importan a nadie.
+ */
+export function unirLapidas(a: Lapida[] = [], b: Lapida[] = [], ahora = Date.now()): Lapida[] {
   const porClave = new Map<string, Lapida>()
   for (const l of [...a, ...b]) {
+    if (l.clave.startsWith('curso:') && ahora - l.at > PODA_DE_CURSOS) continue
     const previa = porClave.get(l.clave)
     if (!previa || l.at > previa.at) porClave.set(l.clave, l)
   }
@@ -134,6 +206,53 @@ export function fusionar(local: AppData, remoto: AppData): { data: AppData; resu
     claveAlimento
   ).filter(vivo(claveAlimento))
 
+  /*
+   * Todo lo que escribe la pantalla de «Medir».
+   *
+   * Antes esto no se fusionaba: venía de `...local` y la copia de la nube se
+   * tiraba entera. Con un solo dispositivo no se notaba nunca, y con dos era un
+   * agujero de los serios —medir el sol en el móvil y abrir el ordenador
+   * borraba lo del móvil en la siguiente subida—. Todas estas listas ya traían
+   * `id` y `updatedAt`, así que no hacía falta inventar identidad: solo usarla.
+   */
+  const claveSalida = (x: SalidaAlExterior) => claveDeSalida(x.id)
+  const clavePBM = (x: SesionPBM) => claveDePBM(x.id)
+  const claveFichaje = (x: Fichaje) => claveDeFichaje(x.id)
+  const claveLampara = (x: Lampara) => claveDeLampara(x.id)
+  const claveNoche = (x: NocheRegistrada) => claveDeNoche(x.date)
+  const claveAnalitica = (x: Analitica) => claveDeAnalitica(x.date)
+  const claveHabito = (x: RegistroHabito) => claveDeHabito(x.habito, x.date)
+  const claveCurso = (x: EnCurso) => claveDeCurso(x.tipo, x.date)
+
+  const salidas = unir(local.salidas ?? [], remoto.salidas ?? [], claveSalida).filter(
+    vivo(claveSalida)
+  )
+  const sesionesPBM = unir(local.sesionesPBM ?? [], remoto.sesionesPBM ?? [], clavePBM).filter(
+    vivo(clavePBM)
+  )
+  const fichajes = unir(local.fichajes ?? [], remoto.fichajes ?? [], claveFichaje).filter(
+    vivo(claveFichaje)
+  )
+  const lamparas = unir(local.lamparas ?? [], remoto.lamparas ?? [], claveLampara).filter(
+    vivo(claveLampara)
+  )
+  const noches = unir(local.noches ?? [], remoto.noches ?? [], claveNoche).filter(vivo(claveNoche))
+  const analiticas = unir(local.analiticas ?? [], remoto.analiticas ?? [], claveAnalitica).filter(
+    vivo(claveAnalitica)
+  )
+  const habitos = unir(local.habitos ?? [], remoto.habitos ?? [], claveHabito).filter(
+    vivo(claveHabito)
+  )
+
+  /*
+   * Y lo que está en marcha ahora mismo, que es lo que permite parar desde el
+   * ordenador un rato que empezó en el móvil. La lápida que deja `cerrarEnCurso`
+   * es lo que impide que el otro dispositivo lo resucite al subir el suyo.
+   */
+  const enCurso = unir(local.enCurso ?? [], remoto.enCurso ?? [], claveCurso).filter(
+    vivo(claveCurso)
+  )
+
   // El perfil es uno solo: no se puede unir por partes sin inventarse cosas, así
   // que gana el que se guardó más tarde.
   const perfilLocalEn = local.profileUpdatedAt ?? 0
@@ -164,6 +283,14 @@ export function fusionar(local: AppData, remoto: AppData): { data: AppData; resu
       comidas: comidas.length > 0 ? [...comidas].sort((a, b) => (a.date < b.date ? -1 : 1)) : undefined,
       sol: sol.length > 0 ? [...sol].sort((a, b) => (a.date < b.date ? -1 : 1)) : undefined,
       alimentosEditados: alimentosEditados.length > 0 ? alimentosEditados : undefined,
+      salidas: salidas.length > 0 ? salidas : undefined,
+      sesionesPBM: sesionesPBM.length > 0 ? sesionesPBM : undefined,
+      fichajes: fichajes.length > 0 ? fichajes : undefined,
+      lamparas: lamparas.length > 0 ? lamparas : undefined,
+      noches: noches.length > 0 ? noches : undefined,
+      analiticas: analiticas.length > 0 ? analiticas : undefined,
+      habitos: habitos.length > 0 ? habitos : undefined,
+      enCurso: enCurso.length > 0 ? enCurso : undefined,
       deleted: lapidas.length > 0 ? lapidas : undefined
     },
     resumen: {

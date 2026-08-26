@@ -36,6 +36,7 @@ import { useEffect, useState } from 'react'
 import { ToggleGroup } from '@appica/ui-react/toggle-group'
 import { Toggle } from '@appica/ui-react/toggle'
 import { actions, useAppData } from '../store/store'
+import { nombreDeEsteAparato } from '../store/aparato'
 import { useToday } from '../store/clock'
 import { Boton, Etiqueta, Opcion, Regla } from '../components/ui'
 import Icon from '../components/Icon'
@@ -266,6 +267,8 @@ export default function Medir({ onEntrenar }: { onEntrenar?: () => void }) {
       </header>
 
       <SolAhora hoy={hoy} coord={coord} ahora={ahora} perfil={data.profile} />
+
+      <LoDeOtroAparato abiertos={abiertos} hoy={hoy} ahora={ahora} />
 
       {/*
         Las utilidades van aquí y no en la hoja de estilos a propósito:
@@ -580,6 +583,53 @@ function BaldosaBoton({
       <span className="baldosa-nombre">{baldosa.nombre}</span>
       <span className="baldosa-pie">{pie}</span>
     </Toggle>
+  )
+}
+
+/**
+ * Lo que dejaste corriendo en el otro dispositivo.
+ *
+ * La rejilla ya lo enseña —la baldosa está encendida y contando—, pero
+ * encendida sola y sin explicación se lee como un fallo de la app: uno está
+ * seguro de no haber pulsado eso en este ordenador. Basta una línea que diga de
+ * dónde salió para que deje de ser un misterio y pase a ser lo que es.
+ *
+ * Y dice explícitamente que se puede parar desde aquí, porque esa es la parte
+ * que nadie adivina: la baldosa parece un reflejo de lo que pasa en el móvil, y
+ * es el mismo interruptor.
+ */
+function LoDeOtroAparato({
+  abiertos,
+  hoy,
+  ahora
+}: {
+  abiertos: EnCurso[]
+  hoy: string
+  ahora: number
+}) {
+  const aqui = nombreDeEsteAparato()
+  const deFuera = abiertos.filter((x) => x.aparato !== undefined && x.aparato !== aqui)
+  if (deFuera.length === 0) return null
+
+  const nombreDe = (x: EnCurso) =>
+    BALDOSAS.find((b) => b.tipo === x.tipo)?.nombre ?? NOMBRES_TIPO[x.tipo]
+
+  return (
+    <div className="card fade-in" style={{ marginBottom: 12 }}>
+      <p className="eyebrow">Ya estabas midiendo</p>
+      {deFuera.map((x) => {
+        const lleva = minutosAbiertoDesde(x, hoy, ahora)
+        return (
+          <p className="dim" key={`${x.tipo}:${x.date}`} style={{ marginTop: 6 }}>
+            <strong>{nombreDe(x)}</strong> lleva {lleva < 1 ? 'menos de un minuto' : escribirDuracion(lleva)}
+            , y lo empezaste en {x.aparato}.
+          </p>
+        )
+      })}
+      <p className="faint" style={{ marginTop: 8 }}>
+        No es un reflejo: es el mismo interruptor. Puedes pararlo desde aquí y allí se apagará solo.
+      </p>
+    </div>
   )
 }
 

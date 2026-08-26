@@ -80,9 +80,9 @@ compartir → «Añadir a pantalla de inicio». Queda con su icono, a pantalla
 completa y funcionando sin conexión.
 
 En iOS, la app instalada tiene su **propio almacén**, separado del de Safari: si
-entraste con tu correo en Safari, dentro de la app hay que volver a entrar. Y
-allí el enlace del correo no se pulsa, se pega; está explicado en
-[`firebase/README.md`](../firebase/README.md).
+entraste con tu cuenta en Safari, dentro de la app hay que volver a entrar. Con
+el mismo correo y la misma contraseña, y ya está — que es justamente por lo que
+el acceso dejó de ser por enlace al correo.
 
 ## Y GitHub Pages, ¿qué?
 

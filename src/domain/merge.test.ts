@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  PODA_DE_CURSOS,
+  claveDeCurso,
   claveDeMedicion,
   claveDeRutina,
   claveDeSesion,
@@ -7,7 +9,16 @@ import {
   resumirFusion,
   unirLapidas
 } from './merge'
-import type { AppData, BodyMeasurement, CheckIn, Profile, Routine, Session } from './types'
+import type {
+  AppData,
+  BodyMeasurement,
+  CheckIn,
+  EnCurso,
+  Profile,
+  Routine,
+  SalidaAlExterior,
+  Session
+} from './types'
 
 const perfil = (name: string): Profile => ({
   name,
@@ -272,5 +283,164 @@ describe('las rutinas también viajan entre dispositivos', () => {
   it('sin rutinas en ninguno de los dos, no se inventa la lista', () => {
     const { data } = fusionar(datos(), datos())
     expect(data.routines).toBeUndefined()
+  })
+})
+
+/* ══════════════════════════════════════════════ LO QUE MIDE «MEDIR» ══ */
+
+const salida = (id: string, date: string, desde: number, updatedAt?: number): SalidaAlExterior => ({
+  id,
+  date,
+  desde,
+  minutos: 30,
+  updatedAt,
+  filtro: 'ninguno'
+})
+
+/*
+ * Los ratos en marcha se fechan con el reloj de verdad y no con números de
+ * juguete: sus lápidas se podan por antigüedad real, así que un `at: 200` es
+ * una lápida de 1970 y se tira antes de poder hacer nada.
+ */
+const AHORA = Date.now()
+
+const curso = (
+  tipo: EnCurso['tipo'],
+  date: string,
+  haceMin = 30,
+  aparato?: string
+): EnCurso => ({ tipo, date, desde: 600, updatedAt: AHORA - haceMin * 60_000, aparato })
+
+const lapidaDeCurso = (tipo: string, date: string, haceMin: number) => ({
+  clave: claveDeCurso(tipo, date),
+  at: AHORA - haceMin * 60_000
+})
+
+describe('lo que se mide en un dispositivo no lo borra el otro', () => {
+  it('los ratos de sol del móvil sobreviven al ordenador', () => {
+    /*
+     * Esto no se fusionaba: `salidas` venía de la copia local y la de la nube
+     * se tiraba entera. Con un solo dispositivo no se notaba nunca; con dos,
+     * medir el sol en el móvil y abrir el ordenador borraba lo del móvil en la
+     * siguiente subida.
+     */
+    const movil = datos({ salidas: [salida('s1', '2026-08-25', 600)] })
+    const ordenador = datos({ salidas: [salida('s2', '2026-08-24', 660)] })
+
+    const { data } = fusionar(ordenador, movil)
+
+    expect((data.salidas ?? []).map((s) => s.id).sort()).toEqual(['s1', 's2'])
+  })
+
+  it('y con el mismo rato en los dos lados, gana el tocado más tarde', () => {
+    const viejo = datos({ salidas: [{ ...salida('s1', '2026-08-25', 600, 100), minutos: 10 }] })
+    const nuevo = datos({ salidas: [{ ...salida('s1', '2026-08-25', 600, 200), minutos: 45 }] })
+
+    expect(fusionar(viejo, nuevo).data.salidas![0].minutos).toBe(45)
+  })
+
+  it('las noches, los fichajes, las lámparas y los hábitos van por el mismo camino', () => {
+    const movil = datos({
+      noches: [{ date: '2026-08-25', apagado: 1380, levantado: 420 }],
+      fichajes: [
+        { id: 'f1', date: '2026-08-25', entrada: 405, luz: { nombre: 'taller', temperaturaK: 5700, lux: 450, ventana: false, filtro: 'ninguno' } }
+      ]
+    })
+    const ordenador = datos({
+      lamparas: [{ id: 'l1', nombre: 'Panel', distanciaRefCm: 15, ondas: [{ nm: 660, irradiancia: 30 }] }],
+      habitos: [{ date: '2026-08-25', habito: 'frio', nivel: 2, minutos: 3 }]
+    })
+
+    const { data } = fusionar(movil, ordenador)
+
+    expect(data.noches).toHaveLength(1)
+    expect(data.fichajes).toHaveLength(1)
+    expect(data.lamparas).toHaveLength(1)
+    expect(data.habitos).toHaveLength(1)
+  })
+
+  it('dos hábitos distintos del mismo día no se pisan', () => {
+    // La identidad de un hábito es el hábito **y** la fecha: con la fecha sola,
+    // apuntar frío borraba el grounding de ese día.
+    const a = datos({ habitos: [{ date: '2026-08-25', habito: 'frio', nivel: 2 }] })
+    const b = datos({ habitos: [{ date: '2026-08-25', habito: 'grounding', nivel: 1 }] })
+
+    expect(fusionar(a, b).data.habitos).toHaveLength(2)
+  })
+})
+
+describe('lo que está en marcha se ve desde el otro dispositivo', () => {
+  it('el sol empezado en el móvil aparece en el ordenador', () => {
+    const ordenador = datos({})
+    const movil = datos({ enCurso: [curso('sol', '2026-08-25', 25, 'el iPhone')] })
+
+    const { data } = fusionar(ordenador, movil)
+
+    expect(data.enCurso).toHaveLength(1)
+    expect(data.enCurso![0].aparato).toBe('el iPhone')
+  })
+
+  it('y pararlo desde el ordenador no lo resucita el móvil', () => {
+    /*
+     * El caso entero, que es de lo que va todo esto. Sin la lápida, el móvil
+     * —que todavía tiene el rato abierto en su copia— lo volvería a subir en la
+     * siguiente sincronización y la baldosa se encendería otra vez un minuto
+     * después de haberla apagado.
+     */
+    const ordenador = datos({ enCurso: [], deleted: [lapidaDeCurso('sol', '2026-08-25', 1)] })
+    const movil = datos({ enCurso: [curso('sol', '2026-08-25', 25)] })
+
+    expect(fusionar(ordenador, movil).data.enCurso).toBeUndefined()
+  })
+
+  it('pero volver a empezarlo después sí cuenta', () => {
+    // Parar a las diez y volver a empezar a las once es la misma clave y tiene
+    // que sobrevivir: es lo que distingue una lápida de un veto.
+    const parado = datos({ deleted: [lapidaDeCurso('sol', '2026-08-25', 60)] })
+    const otraVez = datos({ enCurso: [curso('sol', '2026-08-25', 5)] })
+
+    expect(fusionar(parado, otraVez).data.enCurso).toHaveLength(1)
+  })
+
+  it('cambiar el cielo a mitad en un dispositivo gana sobre la copia vieja del otro', () => {
+    const viejo = datos({ enCurso: [{ ...curso('sol', '2026-08-25', 30), cielo: 'limpio' }] })
+    const tocado = datos({ enCurso: [{ ...curso('sol', '2026-08-25', 5), cielo: 'velado' }] })
+
+    expect(fusionar(viejo, tocado).data.enCurso![0].cielo).toBe('velado')
+  })
+
+  it('dos cosas distintas en marcha a la vez conviven: el día se solapa', () => {
+    const movil = datos({ enCurso: [curso('sol', '2026-08-25')] })
+    const ordenador = datos({ enCurso: [curso('grounding', '2026-08-25')] })
+
+    expect(fusionar(movil, ordenador).data.enCurso).toHaveLength(2)
+  })
+})
+
+describe('las lápidas de lo que estaba en marcha se podan solas', () => {
+  it('la de hace un mes se tira: no es un borrado que haya que recordar', () => {
+    /*
+     * Las lápidas de verdad son para siempre —haber borrado una sesión es un
+     * hecho que no caduca—, pero una por baldosa y día haría crecer la lista
+     * para siempre. Lo único que tiene que hacer es sobrevivir a que el otro
+     * dispositivo se entere.
+     */
+    const vieja = [lapidaDeCurso('sol', '2026-07-01', 30 * 24 * 60)]
+
+    expect(unirLapidas(vieja, [], AHORA)).toEqual([])
+  })
+
+  it('la de esta mañana se queda, que es para lo que está', () => {
+    const dehoy = [lapidaDeCurso('sol', '2026-08-25', 1)]
+
+    expect(unirLapidas(dehoy, [], AHORA)).toHaveLength(1)
+    // Y aguanta justo hasta el plazo, que es lo que se le pide.
+    expect(unirLapidas([lapidaDeCurso('sol', '2026-08-25', PODA_DE_CURSOS / 60_000 - 1)], [], AHORA)).toHaveLength(1)
+  })
+
+  it('y las de verdad no se podan nunca, por viejas que sean', () => {
+    const vieja = [{ clave: claveDeSesion('a'), at: AHORA - 365 * 24 * 60 * 60 * 1000 }]
+
+    expect(unirLapidas(vieja, [], AHORA)).toHaveLength(1)
   })
 })

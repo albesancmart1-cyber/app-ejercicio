@@ -1,7 +1,15 @@
 import { useEffect, useState } from 'react'
-import { ErrorNube, hayNube, pedirEnlace } from '../store/cloud'
 import {
-  entrarConAccesoYSincronizar,
+  ErrorNube,
+  LARGO_MINIMO_DE_CONTRASENA,
+  codigoDeResetEnLaUrl,
+  hayNube,
+  pedirNuevaContrasena,
+  ultimoCorreo
+} from '../store/cloud'
+import {
+  cambiarContrasenaYSincronizar,
+  entrarYSincronizar,
   escucharSync,
   esperandoEnlace,
   estadoDeSync,
@@ -14,101 +22,86 @@ import { Field, FieldLabel } from '@appica/ui-react/field'
 import { Input } from '@appica/ui-react/input'
 
 /**
- * Entrar con el correo para tener los datos en cualquier dispositivo.
+ * Entrar con el correo y la contraseña para tener los datos —y lo que esté
+ * corriendo— en cualquier dispositivo.
  *
- * Sin contraseña: se pide un correo y se entra desde ahí. En una app de una
- * sola persona, una contraseña más es una contraseña más que perder.
+ * ## Por qué contraseña y no enlace al correo
  *
- * **Hay dos formas de entrar y no es por gusto.** El enlace es lo cómodo, pero
- * en la app instalada en iOS no sirve, y no hay manera de que sirva: una app
- * añadida a la pantalla de inicio tiene su propio almacén, separado del de
- * Safari, y el enlace del correo siempre abre Safari porque iOS no sabe abrir
- * un enlace dentro de una app instalada. Resultado: entras en Safari, la sesión
- * se guarda allí, y la app instalada te sigue viendo como un dispositivo nuevo.
- * La salida es no salir de la app: **pegar aquí el enlace en vez de pulsarlo**.
- * El enlace lleva el testigo dentro, y canjearlo es una petición que la app
- * puede hacer ella misma, sin tocar nada en el servidor. No hay una tercera
- * vía: Firebase no manda códigos de cifras por correo, no existe eso en su
- * API. O se pulsa el enlace, o se pega.
+ * Aquí había un acceso por enlace mágico, y se ha ido por una razón concreta:
+ * **en iOS, una app añadida a la pantalla de inicio tiene su propio almacén**,
+ * separado del de Safari, y el enlace del correo siempre abre Safari. Pulsarlo
+ * entraba en Safari y dejaba la app instalada viéndote como un dispositivo
+ * nuevo. La salida era copiar el enlace y pegarlo aquí dentro: funciona, pero
+ * son tres pasos y uno de ellos —«no lo pulses»— va contra el instinto.
  *
- * Firebase pide además el correo al canjear —para que un enlace interceptado no
- * baste por sí solo—, y por eso el campo de arriba sigue haciendo falta al
- * pegar. Como el enlace se pide desde esta misma pantalla, ya está escrito.
+ * Una contraseña se teclea dentro de la app, igual en los tres sitios, y no hay
+ * nada que copiar ni ventana que caduque. Para el caso que de verdad importa
+ * —te dejaste el sol corriendo en el móvil y abres el ordenador para pararlo—
+ * es la diferencia entre diez segundos y una excursión por el correo.
+ *
+ * ## Un solo botón para entrar y para registrarse
+ *
+ * En una app de una sola persona, «crear cuenta» y «entrar» son la misma
+ * intención escrita dos veces, y obligar a elegir el botón correcto solo sirve
+ * para equivocarse de botón. Se prueba a entrar y, si el correo no tenía
+ * cuenta, se crea. El porqué del orden —y no al revés— está en `entrarOCrear`.
  *
  * Todo esto es opcional. Si esta versión no lleva nube configurada, la tarjeta
  * lo dice y la app sigue funcionando igual, guardando en este dispositivo.
  */
 
-/** ¿Se está viendo la app instalada, y no una pestaña del navegador? */
-function esAppInstalada(): boolean {
-  return (
-    window.matchMedia?.('(display-mode: standalone)').matches === true ||
-    // Safari en iOS no implementa `display-mode` y usa esto en su lugar.
-    (navigator as { standalone?: boolean }).standalone === true
-  )
-}
-
 export default function AccountCard() {
   const [estado, setEstado] = useState(estadoDeSync())
-  const [email, setEmail] = useState('')
-  const [acceso, setAcceso] = useState('')
+  const [email, setEmail] = useState(ultimoCorreo())
+  const [password, setPassword] = useState('')
   const [aviso, setAviso] = useState<string | null>(null)
-  const [enviando, setEnviando] = useState(false)
-  const [validando, setValidando] = useState(false)
-  const [pedido, setPedido] = useState(false)
-  const instalada = esAppInstalada()
+  const [entrando, setEntrando] = useState(false)
+  const [pidiendo, setPidiendo] = useState(false)
+  /*
+   * Si venimos del enlace de contraseña nueva, el testigo se lee **una vez** al
+   * montar: sirve una sola vez y lo primero que hace es limpiar la barra de
+   * direcciones, así que leerlo en cada render lo perdería.
+   */
+  const [reset] = useState(() => (hayNube() ? codigoDeResetEnLaUrl() : null))
 
   useEffect(() => escucharSync(setEstado), [])
 
-  async function enviarCorreo() {
-    const limpio = email.trim()
-    if (!limpio.includes('@')) {
-      setAviso('Escribe un correo válido para poder mandarte el acceso.')
-      return
-    }
-    setEnviando(true)
-    setAviso(null)
-    try {
-      await pedirEnlace(limpio)
-      esperandoEnlace(limpio)
-      setPedido(true)
-      setAviso(
-        instalada
-          ? `Te he mandado un correo a ${limpio}. Ábrelo y sigue los pasos de aquí abajo.`
-          : `Te he mandado un correo a ${limpio}. Pulsa el enlace desde este mismo dispositivo.`
-      )
-    } catch (e) {
-      setAviso(e instanceof ErrorNube ? e.message : 'No he podido mandar el correo.')
-    } finally {
-      setEnviando(false)
-    }
-  }
+  const corto = password.length < LARGO_MINIMO_DE_CONTRASENA
 
-  async function validarAcceso() {
-    setValidando(true)
+  async function entrarAhora() {
+    setEntrando(true)
     setAviso(null)
-    const r = await entrarConAccesoYSincronizar(
-      email.trim(),
-      acceso,
-      actions.snapshot,
-      actions.replaceAll
-    )
-    setValidando(false)
+    const r = reset
+      ? await cambiarContrasenaYSincronizar(reset, password, actions.snapshot, actions.replaceAll)
+      : await entrarYSincronizar(email.trim(), password, actions.snapshot, actions.replaceAll)
+    setEntrando(false)
+    // La contraseña no se queda en memoria más de lo necesario, salga bien o mal.
+    setPassword('')
     if (r.ok) {
-      setAcceso('')
       setAviso(r.novedad ?? 'Ya estás dentro. Tus datos se han juntado con los de la nube.')
     } else {
       setAviso(r.error ?? 'No he podido entrar con eso.')
     }
   }
 
-  /** Pegar desde el portapapeles, que en el móvil es lo natural. */
-  async function pegar() {
+  async function olvidada() {
+    const limpio = email.trim()
+    if (!limpio.includes('@')) {
+      setAviso('Escribe tu correo aquí arriba y te mando el enlace para ponerte otra.')
+      return
+    }
+    setPidiendo(true)
+    setAviso(null)
     try {
-      const texto = await navigator.clipboard.readText()
-      if (texto.trim()) setAcceso(texto.trim())
-    } catch {
-      setAviso('Tu navegador no me deja leer el portapapeles. Pega el enlace a mano en el campo.')
+      await pedirNuevaContrasena(limpio)
+      esperandoEnlace(limpio)
+      setAviso(
+        `Te he mandado un correo a ${limpio}. Abre el enlace desde este dispositivo y podrás poner una contraseña nueva aquí mismo.`
+      )
+    } catch (e) {
+      setAviso(e instanceof ErrorNube ? e.message : 'No he podido mandar el correo.')
+    } finally {
+      setPidiendo(false)
     }
   }
 
@@ -143,16 +136,16 @@ export default function AccountCard() {
 
       {fuera ? (
         <>
-          <p className="dim">
-            Entra con tu correo y tus datos estarán en cualquier dispositivo donde entres. Sin
-            contraseña: te mando un correo y listo.
-          </p>
-
-          {instalada && (
-            <p className="dim" style={{ marginTop: 10 }}>
-              Estás en la app instalada. Aquí el enlace del correo <strong>no lo pulses</strong>:
-              se abriría en el navegador, y para iOS el navegador y esta app son dos sitios
-              distintos que no comparten nada. <strong>Cópialo y pégalo aquí abajo.</strong>
+          {reset ? (
+            <p className="dim">
+              Vienes del enlace del correo. Escribe aquí la contraseña nueva y entro contigo
+              directamente, sin pedírtela dos veces.
+            </p>
+          ) : (
+            <p className="dim">
+              Entra con tu correo y tendrás tus datos en cualquier dispositivo donde entres, y lo
+              que dejes midiendo en uno lo verás —y lo podrás parar— desde el otro. Si es la
+              primera vez, con esto mismo te creo la cuenta.
             </p>
           )}
 
@@ -162,64 +155,54 @@ export default function AccountCard() {
             </p>
           )}
 
-          <Field className="field" style={{ marginTop: 14 }}>
-            <FieldLabel>Tu correo</FieldLabel>
+          {!reset && (
+            <Field className="field" style={{ marginTop: 14 }}>
+              <FieldLabel>Tu correo</FieldLabel>
+              <Input
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                placeholder="tu@correo.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </Field>
+          )}
+
+          <Field className="field" style={{ marginTop: reset ? 14 : 10 }}>
+            <FieldLabel>{reset ? 'Tu contraseña nueva' : 'Tu contraseña'}</FieldLabel>
             <Input
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              placeholder="tu@correo.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              type="password"
+              /*
+               * `current-password` cuando entras y `new-password` cuando la
+               * cambias: es lo que hace que el gestor de contraseñas del móvil
+               * ofrezca la guardada en un caso y proponga una nueva en el otro.
+               */
+              autoComplete={reset ? 'new-password' : 'current-password'}
+              placeholder={`Mínimo ${LARGO_MINIMO_DE_CONTRASENA} caracteres`}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !corto && !entrando) entrarAhora()
+              }}
             />
           </Field>
-          <Boton tono="primario" disabled={enviando} onClick={enviarCorreo}>
-            {enviando ? 'Enviando…' : pedido ? 'Mandarme otro correo' : 'Mandarme el acceso'}
+
+          <Boton tono="primario" disabled={entrando || corto} onClick={entrarAhora}>
+            {entrando ? 'Entrando…' : reset ? 'Poner esta contraseña y entrar' : 'Entrar'}
           </Boton>
 
-          {pedido && (
-            <div className="fade-in" style={{ marginTop: 6 }}>
+          {!reset && (
+            <>
               <Regla />
-              <p className="eyebrow">
-                {instalada ? 'Entrar pegando el enlace' : '¿El enlace no te sirve?'}
+              <Boton tono="callado" disabled={pidiendo} onClick={olvidada}>
+                {pidiendo ? 'Enviando…' : 'No me acuerdo de la contraseña'}
+              </Boton>
+              <p className="faint" style={{ marginTop: 8 }}>
+                Te mando un enlace al correo para ponerte otra. Es el único sitio donde hace falta
+                un enlace: es lo que demuestra que ese correo es tuyo.
               </p>
-              {!instalada && (
-                <p className="dim" style={{ marginBottom: 10 }}>
-                  Si estás intentando entrar en la app instalada en el móvil, el enlace no vale
-                  ahí. Cópialo y pégalo <strong>dentro de la app</strong>, en esta misma pantalla.
-                </p>
-              )}
-              <ol className="steps">
-                <li>Abre el correo que te acabo de mandar.</li>
-                <li>
-                  <strong>Mantén pulsado</strong> el enlace y elige «Copiar enlace». No lo pulses:
-                  sirve una sola vez y abrirlo lo gasta.
-                </li>
-                <li>Vuelve aquí y pégalo.</li>
-              </ol>
-              <Field className="field" style={{ marginTop: 12 }}>
-  <FieldLabel>El enlace del correo</FieldLabel>
-  <Input
-                  type="text"
-                  inputMode="url"
-                  autoComplete="off"
-                  autoCapitalize="off"
-                  spellCheck={false}
-                  placeholder="https://…/__/auth/action?mode=signIn&oobCode=…"
-                  value={acceso}
-                  onChange={(e) => setAcceso(e.target.value)}
-                />
-</Field>
-              <Boton tono="secundario" onClick={pegar}>
-                Pegar lo copiado
-              </Boton>
-              <Boton tono="primario"
-                disabled={validando || acceso.trim().length < 6}
-                onClick={validarAcceso}
-              >
-                {validando ? 'Comprobando…' : 'Entrar'}
-              </Boton>
-            </div>
+            </>
           )}
         </>
       ) : (
@@ -239,13 +222,11 @@ export default function AccountCard() {
             </p>
           )}
 
-          {!instalada && (
-            <p className="faint" style={{ marginTop: 10 }}>
-              Si añades la app a la pantalla de inicio, tendrás que volver a entrar dentro de ella:
-              para iOS son dos sitios distintos. Allí pide otro correo y, en vez de pulsar el
-              enlace, cópialo y pégalo dentro de la app.
-            </p>
-          )}
+          <p className="faint" style={{ marginTop: 10 }}>
+            Si añades la app a la pantalla de inicio, tendrás que entrar otra vez dentro de ella:
+            para iOS el navegador y la app instalada son dos sitios distintos con almacenes
+            separados. Con el mismo correo y la misma contraseña, y ya está.
+          </p>
 
           <div style={{ marginTop: 14 }}>
             <Boton tono="primario"
