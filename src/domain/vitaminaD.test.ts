@@ -4,7 +4,10 @@ import {
   K_UI_POR_MIN_UVI,
   UI_POR_MED_CUERPO_ENTERO,
   F_FOTOTIPO,
+  FOTOTIPO_POR_DEFECTO,
   MED_J_M2,
+  factorFototipo,
+  medDe,
   ORDEN_FOTOTIPO,
   ORDEN_PIEL,
   PIEL_PCT,
@@ -746,5 +749,43 @@ describe('quemarse con una lámpara', () => {
       ondas: [{ nm: 660, irradiancia: 18 }]
     }
     expect(minutosParaQuemarseConLampara(roja, 15, { fototipo: 'III' })).toBeNull()
+  })
+})
+
+describe('un fototipo que no es ninguno de los seis no rompe la cifra', () => {
+  it('cae al fototipo por defecto en vez de dar NaN', () => {
+    /*
+     * El fototipo sale de `localStorage`, y ahí puede haber lo que dejara una
+     * versión vieja, una copia importada a mano o un dato editado. Con el
+     * acceso directo a la tabla, cualquiera de esas tres cosas convertía todas
+     * las cifras de vitamina D del día en NaN, y la app las pintaba tal cual:
+     * «NaN UI». Un número raro se discute; un NaN no se puede ni mirar.
+     */
+    const raro = 3 as unknown as Fototipo
+
+    expect(factorFototipo(raro)).toBe(F_FOTOTIPO[FOTOTIPO_POR_DEFECTO])
+    expect(medDe(raro)).toBe(MED_J_M2[FOTOTIPO_POR_DEFECTO])
+    expect(Number.isNaN(factorFototipo(raro))).toBe(false)
+  })
+
+  it('y sin fototipo dicho, lo mismo: es lo que hace la app cuando aún no lo sabe', () => {
+    expect(factorFototipo(undefined)).toBe(F_FOTOTIPO[FOTOTIPO_POR_DEFECTO])
+    expect(medDe(undefined)).toBe(MED_J_M2[FOTOTIPO_POR_DEFECTO])
+  })
+
+  it('la cifra de una lámpara con un fototipo raro sale finita, que es lo que importa', () => {
+    const uvb: Lampara = {
+      id: 'uvb',
+      nombre: 'UVB',
+      distanciaRefCm: 30,
+      ondas: [
+        { nm: 297, irradiancia: 0.05 },
+        { nm: 365, irradiancia: 2 }
+      ]
+    }
+    const ui = uiPorMinutoDeLampara(uvb, 30, 'torso', { fototipo: 3 as unknown as Fototipo })
+
+    expect(Number.isFinite(ui)).toBe(true)
+    expect(ui).toBeGreaterThan(0)
   })
 })

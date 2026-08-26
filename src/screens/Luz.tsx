@@ -70,6 +70,7 @@ import { PICOS_KARU } from '../domain/luz'
 import { sumarDiaIso } from '../domain/arcoSolar'
 import { dosRelojes, escribirDistancia } from '../domain/relojes'
 import { COMPENSACIONES, LO_QUE_LA_LAMPARA_NO_TAPA } from '../domain/compensaciones'
+import HistorialPBM from '../components/HistorialPBM'
 import { oscuridadDeLaNoche } from '../domain/gafasRojas'
 import { MESES_LARGOS } from '../domain/estaciones'
 import {
@@ -1274,6 +1275,17 @@ export default function Luz() {
       <DosRelojesCard hoy={hoy} lat={coord.lat} lon={coord.lon} />
       <DiaDeReparar hoy={hoy} lat={coord.lat} lon={coord.lon} />
       <Lamparas hoy={hoy} />
+      {/*
+        El histórico va justo debajo del armario de lámparas y no en otra
+        pantalla: lo que uno quiere al mirar una lámpara es qué ha hecho con
+        ella, y tenerlo a un desplazamiento de distancia es la diferencia entre
+        consultarlo y no consultarlo nunca.
+      */}
+      <HistorialPBM
+        sesiones={data.sesionesPBM}
+        lamparas={data.lamparas}
+        perfil={data.profile ?? null}
+      />
 
       <TablaDelEspectro />
       <Balance hoy={hoy} lat={coord.lat} lon={coord.lon} />

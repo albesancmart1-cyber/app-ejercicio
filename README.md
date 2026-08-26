@@ -894,6 +894,9 @@ npm run preview   # servir la build
   cuenta solo, fusionar los datos de dos dispositivos sin perder nada, que sincronizar sin cambios no
   escriba, que lo borrado no resucite y que cerrar sesión no borre nada de aquí. Necesita una build
   hecha con `VITE_FIREBASE_API_KEY` y `VITE_FIREBASE_PROJECT_ID` puestas a cualquier valor.
+- `node scripts/check-historial-pbm.mjs` — comprueba que cada sesión de lámpara se ve con su dosis en
+  julios y su distancia —la misma lámpara los mismos minutos a 15 y a 45 cm son 72 y 8 J/cm²—, y que
+  la vitamina D aparece **solo** en las sesiones donde alguna lámpara llega al ultravioleta B.
 - `node scripts/check-dos-aparatos.mjs` — dos contextos de navegador contra **el mismo** Firebase de
   mentira: empezar a tomar el sol en uno, verlo en el otro con el aparato de origen dicho, pararlo
   desde allí y comprobar que al primero se le apaga solo sin perder el rato medido.

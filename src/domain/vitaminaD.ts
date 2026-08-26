@@ -164,6 +164,23 @@ export const FOTOTIPOS: Record<Fototipo, string> = {
 
 export const FOTOTIPO_POR_DEFECTO: Fototipo = 'III'
 
+/**
+ * El factor de un fototipo, aguantando que no sea uno de los seis.
+ *
+ * Parece defensa por defensa y no lo es: el fototipo sale de `localStorage`, y
+ * ahí puede haber lo que dejara una versión vieja, una copia importada a mano o
+ * un dato editado. Con el acceso directo, cualquiera de esas tres cosas
+ * convertía **todas** las cifras de vitamina D del día en `NaN`, y la app las
+ * pintaba tal cual: «NaN UI». Un número raro se discute; un NaN no se puede ni
+ * mirar.
+ *
+ * Ante la duda se usa el fototipo por defecto, que es lo mismo que hace la app
+ * cuando el usuario no lo ha dicho todavía.
+ */
+export function factorFototipo(f: Fototipo | undefined): number {
+  return F_FOTOTIPO[f as Fototipo] ?? F_FOTOTIPO[FOTOTIPO_POR_DEFECTO]
+}
+
 /* ══════════════════════════════════════════════ LA FÓRMULA ══ */
 
 
@@ -256,7 +273,7 @@ export function uiPorMinuto(
   return (
     uvi *
     K_UI_POR_MIN_UVI *
-    F_FOTOTIPO[quien.fototipo ?? FOTOTIPO_POR_DEFECTO] *
+    factorFototipo(quien.fototipo) *
     factorPiel(piel) *
     factorEdad(quien.edad) *
     factorAltitud(quien.altitudM) *
@@ -391,7 +408,7 @@ export function uiPorMinutoDeLampara(
   return (
     (wM2 / W_M2_POR_UVI) *
     K_UI_POR_MIN_UVI *
-    F_FOTOTIPO[quien.fototipo ?? FOTOTIPO_POR_DEFECTO] *
+    factorFototipo(quien.fototipo) *
     factorPiel(piel) *
     factorEdad(quien.edad)
   )
@@ -552,6 +569,17 @@ export const MED_J_M2: Record<Fototipo, number> = {
 }
 
 /**
+ * La dosis eritematosa de un fototipo, aguantando que no sea uno de los seis.
+ *
+ * Va aquí pegada a su tabla y no arriba con `factorFototipo` por un susto ya
+ * vivido en este fichero: una constante usada antes de su definición revienta
+ * al cargar el módulo. Aquí no puede pasar.
+ */
+export function medDe(f: Fototipo | undefined): number {
+  return MED_J_M2[f as Fototipo] ?? MED_J_M2[FOTOTIPO_POR_DEFECTO]
+}
+
+/**
  * Por debajo de este índice UV no se habla de quemarse.
  *
  * Uno es el escalón más bajo que reportan los servicios meteorológicos, y por
@@ -575,7 +603,7 @@ export function minutosParaQuemarse(
 ): number | null {
   const uvi = indiceUV(elevacionGrados, ozono) * cieloFactor
   if (uvi < UVI_QUE_QUEMA) return null
-  const med = MED_J_M2[quien.fototipo ?? FOTOTIPO_POR_DEFECTO]
+  const med = medDe(quien.fototipo)
   return med / (uvi * W_M2_POR_UVI) / 60
 }
 
@@ -600,7 +628,7 @@ export function minutosParaQuemarseConLampara(
     0
   )
   if (wM2 <= 0) return null
-  return MED_J_M2[quien.fototipo ?? FOTOTIPO_POR_DEFECTO] / wM2 / 60
+  return medDe(quien.fototipo) / wM2 / 60
 }
 
 /* ══════════════════════════════════════════════ LA CALIBRACIÓN ══ */

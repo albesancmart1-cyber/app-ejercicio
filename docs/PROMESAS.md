@@ -229,6 +229,14 @@ Marcar una casilla sin escribir el código **rompe la suite**. Es deliberado.
   → src/screens/Medir.tsx :: LoDeOtroAparato
 - [x] sync-latido · Se mira la nube sola cada poco mientras la app está a la vista
   → src/store/sync.ts :: arrancarLatido
+- [x] pbm-historico · El histórico de sesiones de lámpara, una por una
+  → src/components/HistorialPBM.tsx :: HistorialPBM
+- [x] pbm-dosis-no-minutos · Cada sesión se mide en julios y con su distancia, no en minutos
+  → src/components/HistorialPBM.tsx :: conQue
+- [x] pbm-vitamina-d · Una sesión con ultravioleta B dice cuánta vitamina D hizo
+  → src/domain/vitaminaD.ts :: uiDeSesionPBM
+- [x] fototipo-nunca-nan · Un fototipo que no reconoce no convierte la cifra en NaN
+  → src/domain/vitaminaD.ts :: factorFototipo
 - [x] datos-csv · Exportar a CSV
   → src/domain/csv.ts :: sesionesACsv
 - [x] datos-importar · Importar de Hevy y de Strong
@@ -549,4 +557,4 @@ Estas también son promesas, y romperlas sería peor que no cumplir una función
 
 ---
 
-TOTAL: 221
+TOTAL: 225
