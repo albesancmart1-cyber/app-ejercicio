@@ -71,6 +71,7 @@ import { sumarDiaIso } from '../domain/arcoSolar'
 import { dosRelojes, escribirDistancia } from '../domain/relojes'
 import { COMPENSACIONES, LO_QUE_LA_LAMPARA_NO_TAPA } from '../domain/compensaciones'
 import HistorialPBM from '../components/HistorialPBM'
+import LineaDelDia from '../components/LineaDelDia'
 import { oscuridadDeLaNoche } from '../domain/gafasRojas'
 import { MESES_LARGOS } from '../domain/estaciones'
 import {
@@ -1271,6 +1272,17 @@ export default function Luz() {
   return (
     <div className="card-wrap fade-in">
       <ArcoDeHoy hoy={hoy} lat={coord.lat} lon={coord.lon} />
+      {/*
+        Justo detrás del arco y antes que nada más: para decidir a qué hora
+        salir, esto es lo primero que se mira, y tenerlo abajo del todo era
+        tenerlo en ninguna parte.
+      */}
+      <LineaDelDia
+        hoy={hoy}
+        coord={coord}
+        ahoraMin={new Date().getHours() * 60 + new Date().getMinutes()}
+        desfaseMin={desfaseHorario(hoy)}
+      />
       <Jornada hoy={hoy} lat={coord.lat} lon={coord.lon} />
       <DosRelojesCard hoy={hoy} lat={coord.lat} lon={coord.lon} />
       <DiaDeReparar hoy={hoy} lat={coord.lat} lon={coord.lon} />

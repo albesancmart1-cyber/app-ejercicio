@@ -237,6 +237,12 @@ Marcar una casilla sin escribir el código **rompe la suite**. Es deliberado.
   → src/domain/vitaminaD.ts :: uiDeSesionPBM
 - [x] fototipo-nunca-nan · Un fototipo que no reconoce no convierte la cifra en NaN
   → src/domain/vitaminaD.ts :: factorFototipo
+- [x] linea-del-dia · El día entero en orden: primera luz, UVA, UVB, cénit, atardecer y gafas
+  → src/components/LineaDelDia.tsx :: hitosDelDia
+- [x] linea-que-cambia · Cada hito dice qué cambia en el cuerpo, no cómo se llama el fenómeno
+  → src/components/LineaDelDia.tsx :: que
+- [x] linea-ya-pasado · Lo que ya ha pasado se ve apagado, y se señala qué viene ahora
+  → src/components/LineaDelDia.tsx :: siguiente
 - [x] datos-csv · Exportar a CSV
   → src/domain/csv.ts :: sesionesACsv
 - [x] datos-importar · Importar de Hevy y de Strong
@@ -557,4 +563,4 @@ Estas también son promesas, y romperlas sería peor que no cumplir una función
 
 ---
 
-TOTAL: 225
+TOTAL: 228
