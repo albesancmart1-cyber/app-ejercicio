@@ -33,20 +33,9 @@ import type {
   AppData,
   BodyMeasurement,
   CheckIn,
-  DiaDeComidas,
-  DiaDeSol,
-  EdicionAlimento,
-  EnCurso,
-  Fichaje,
-  Lampara,
-  NocheRegistrada,
   Routine,
-  SalidaAlExterior,
-  SesionPBM,
   Session
 } from './types'
-import type { RegistroHabito } from './habitos'
-import type { Analitica } from './analiticas'
 
 /** Qué se borró y cuándo, para que la fusión no lo resucite. */
 export interface Lapida {
@@ -66,40 +55,6 @@ export function claveDeCheckIn(fecha: string): string {
 }
 export function claveDeRutina(id: string): string {
   return `rutina:${id}`
-}
-export function claveDeComidas(fecha: string): string {
-  return `comidas:${fecha}`
-}
-export function claveDeSol(fecha: string): string {
-  return `sol:${fecha}`
-}
-export function claveDeAlimento(id: string): string {
-  return `alimento:${id}`
-}
-export function claveDeSalida(id: string): string {
-  return `salida:${id}`
-}
-export function claveDePBM(id: string): string {
-  return `pbm:${id}`
-}
-export function claveDeFichaje(id: string): string {
-  return `fichaje:${id}`
-}
-export function claveDeLampara(id: string): string {
-  return `lampara:${id}`
-}
-export function claveDeNoche(fecha: string): string {
-  return `noche:${fecha}`
-}
-export function claveDeAnalitica(fecha: string): string {
-  return `analitica:${fecha}`
-}
-export function claveDeHabito(habito: string, fecha: string): string {
-  return `habito:${habito}:${fecha}`
-}
-/** Lo que está en marcha: no puede haber dos del mismo tipo el mismo día. */
-export function claveDeCurso(tipo: string, fecha: string): string {
-  return `curso:${tipo}:${fecha}`
 }
 
 /**
@@ -184,9 +139,6 @@ export function fusionar(local: AppData, remoto: AppData): { data: AppData; resu
   const claveMedicion = (m: BodyMeasurement) => claveDeMedicion(m.date)
 
   const claveRutina = (r: Routine) => claveDeRutina(r.id)
-  const claveComidas = (d: DiaDeComidas) => claveDeComidas(d.date)
-  const claveSol = (d: DiaDeSol) => claveDeSol(d.date)
-  const claveAlimento = (e: EdicionAlimento) => claveDeAlimento(e.id)
 
   const sessions = unir(local.sessions, remoto.sessions, claveSesion).filter(vivo(claveSesion))
   const routines = unir(local.routines ?? [], remoto.routines ?? [], claveRutina).filter(
@@ -195,62 +147,6 @@ export function fusionar(local: AppData, remoto: AppData): { data: AppData; resu
   const checkIns = unir(local.checkIns, remoto.checkIns, claveCheckIn).filter(vivo(claveCheckIn))
   const measurements = unir(local.measurements, remoto.measurements, claveMedicion).filter(
     vivo(claveMedicion)
-  )
-  const comidas = unir(local.comidas ?? [], remoto.comidas ?? [], claveComidas).filter(
-    vivo(claveComidas)
-  )
-  const sol = unir(local.sol ?? [], remoto.sol ?? [], claveSol).filter(vivo(claveSol))
-  const alimentosEditados = unir(
-    local.alimentosEditados ?? [],
-    remoto.alimentosEditados ?? [],
-    claveAlimento
-  ).filter(vivo(claveAlimento))
-
-  /*
-   * Todo lo que escribe la pantalla de «Medir».
-   *
-   * Antes esto no se fusionaba: venía de `...local` y la copia de la nube se
-   * tiraba entera. Con un solo dispositivo no se notaba nunca, y con dos era un
-   * agujero de los serios —medir el sol en el móvil y abrir el ordenador
-   * borraba lo del móvil en la siguiente subida—. Todas estas listas ya traían
-   * `id` y `updatedAt`, así que no hacía falta inventar identidad: solo usarla.
-   */
-  const claveSalida = (x: SalidaAlExterior) => claveDeSalida(x.id)
-  const clavePBM = (x: SesionPBM) => claveDePBM(x.id)
-  const claveFichaje = (x: Fichaje) => claveDeFichaje(x.id)
-  const claveLampara = (x: Lampara) => claveDeLampara(x.id)
-  const claveNoche = (x: NocheRegistrada) => claveDeNoche(x.date)
-  const claveAnalitica = (x: Analitica) => claveDeAnalitica(x.date)
-  const claveHabito = (x: RegistroHabito) => claveDeHabito(x.habito, x.date)
-  const claveCurso = (x: EnCurso) => claveDeCurso(x.tipo, x.date)
-
-  const salidas = unir(local.salidas ?? [], remoto.salidas ?? [], claveSalida).filter(
-    vivo(claveSalida)
-  )
-  const sesionesPBM = unir(local.sesionesPBM ?? [], remoto.sesionesPBM ?? [], clavePBM).filter(
-    vivo(clavePBM)
-  )
-  const fichajes = unir(local.fichajes ?? [], remoto.fichajes ?? [], claveFichaje).filter(
-    vivo(claveFichaje)
-  )
-  const lamparas = unir(local.lamparas ?? [], remoto.lamparas ?? [], claveLampara).filter(
-    vivo(claveLampara)
-  )
-  const noches = unir(local.noches ?? [], remoto.noches ?? [], claveNoche).filter(vivo(claveNoche))
-  const analiticas = unir(local.analiticas ?? [], remoto.analiticas ?? [], claveAnalitica).filter(
-    vivo(claveAnalitica)
-  )
-  const habitos = unir(local.habitos ?? [], remoto.habitos ?? [], claveHabito).filter(
-    vivo(claveHabito)
-  )
-
-  /*
-   * Y lo que está en marcha ahora mismo, que es lo que permite parar desde el
-   * ordenador un rato que empezó en el móvil. La lápida que deja `cerrarEnCurso`
-   * es lo que impide que el otro dispositivo lo resucite al subir el suyo.
-   */
-  const enCurso = unir(local.enCurso ?? [], remoto.enCurso ?? [], claveCurso).filter(
-    vivo(claveCurso)
   )
 
   // El perfil es uno solo: no se puede unir por partes sin inventarse cosas, así
@@ -264,8 +160,7 @@ export function fusionar(local: AppData, remoto: AppData): { data: AppData; resu
   const habia = {
     sesiones: new Set(local.sessions.map(claveSesion)),
     checkIns: new Set(local.checkIns.map(claveCheckIn)),
-    mediciones: new Set(local.measurements.map(claveMedicion)),
-    comidas: new Set((local.comidas ?? []).map(claveComidas))
+    mediciones: new Set(local.measurements.map(claveMedicion))
   }
 
   return {
@@ -280,24 +175,19 @@ export function fusionar(local: AppData, remoto: AppData): { data: AppData; resu
       checkIns: [...checkIns].sort((a, b) => (a.date < b.date ? -1 : 1)),
       measurements: [...measurements].sort((a, b) => (a.date < b.date ? -1 : 1)),
       routines: routines.length > 0 ? routines : undefined,
-      comidas: comidas.length > 0 ? [...comidas].sort((a, b) => (a.date < b.date ? -1 : 1)) : undefined,
-      sol: sol.length > 0 ? [...sol].sort((a, b) => (a.date < b.date ? -1 : 1)) : undefined,
-      alimentosEditados: alimentosEditados.length > 0 ? alimentosEditados : undefined,
-      salidas: salidas.length > 0 ? salidas : undefined,
-      sesionesPBM: sesionesPBM.length > 0 ? sesionesPBM : undefined,
-      fichajes: fichajes.length > 0 ? fichajes : undefined,
-      lamparas: lamparas.length > 0 ? lamparas : undefined,
-      noches: noches.length > 0 ? noches : undefined,
-      analiticas: analiticas.length > 0 ? analiticas : undefined,
-      habitos: habitos.length > 0 ? habitos : undefined,
-      enCurso: enCurso.length > 0 ? enCurso : undefined,
+      /*
+       * El archivo —el sol, la lámpara, la comida, los hábitos— viaja tal cual
+       * viene de `...local` y no se fusiona por clave: nada lo escribe ya, así
+       * que no hay dos versiones que reconciliar. Lo que sí hace falta es que
+       * no desaparezca, y por eso no se toca. Ver `AppData` en `types.ts`.
+       */
       deleted: lapidas.length > 0 ? lapidas : undefined
     },
     resumen: {
       sesionesAnadidas: sessions.filter((s) => !habia.sesiones.has(claveSesion(s))).length,
       checkInsAnadidos: checkIns.filter((c) => !habia.checkIns.has(claveCheckIn(c))).length,
       medicionesAnadidas: measurements.filter((m) => !habia.mediciones.has(claveMedicion(m))).length,
-      diasDeComidasAnadidos: comidas.filter((d) => !habia.comidas.has(claveComidas(d))).length,
+      diasDeComidasAnadidos: 0,
       perfilDe
     }
   }

@@ -8,7 +8,6 @@ import {
   type Profile
 } from '../domain/types'
 import { ketoAdaptationWeeksLeft, proteinTarget } from '../domain/protocol'
-import { esVerano, objetivoDhaDiario } from '../domain/dha'
 import { exerciseById } from '../data/exercises'
 import { carpetasDe, describirRutina } from '../domain/rutinas'
 import { csvASesiones, resumirImportacion, sesionesACsv, type ResultadoImportacion } from '../domain/csv'
@@ -19,20 +18,11 @@ import VolumeLevelChooser from '../components/VolumeLevelChooser'
 import { NIVEL_MAXIMO, volumePlan } from '../domain/progression'
 import { interpretTrend } from '../domain/trend'
 import { actions, todayIso, useAppData } from '../store/store'
+import Localizaciones from '../components/Localizaciones'
 import { Boton, Opcion, Pastilla, Regla } from '../components/ui'
 import { Tabs, TabsList, TabsTrigger } from '@appica/ui-react/tabs'
 import { Field, FieldLabel } from '@appica/ui-react/field'
 import { Input } from '@appica/ui-react/input'
-import Localizaciones from '../components/Localizaciones'
-import {
-  FOTOTIPOS,
-  FOTOTIPO_POR_DEFECTO,
-  MED_J_M2,
-  ORDEN_FOTOTIPO,
-  factorAltitud,
-  factorEdad,
-  type Fototipo
-} from '../domain/vitaminaD'
 
 const ALL_EQUIPMENT = Object.keys(EQUIPMENT_LABELS) as Equipment[]
 
@@ -51,7 +41,6 @@ type Seccion = 'perfil' | 'entreno' | 'comida' | 'cuenta'
 const SECCIONES: { id: Seccion; label: string }[] = [
   { id: 'perfil', label: 'Perfil' },
   { id: 'entreno', label: 'Entreno' },
-  { id: 'comida', label: 'Comida' },
   { id: 'cuenta', label: 'Cuenta' }
 ]
 
@@ -163,7 +152,6 @@ export default function Settings() {
   const ownedWeighted = WEIGHTED_EQUIPMENT.filter((eq) => profile.equipment.includes(eq))
   const protein = profile.weightKg ? proteinTarget(profile.weightKg, profile.goal) : null
   const ketoWeeks = ketoAdaptationWeeksLeft(profile.ketoSince, todayIso())
-  const objetivoDha = objetivoDhaDiario(todayIso())
 
   if (eligiendoFavorito) {
     return (
@@ -209,6 +197,7 @@ export default function Settings() {
               </Opcion>
             ))}
           </div>
+          <Localizaciones profile={profile} onChange={update} />
         </div>
 
         <div className="card">
@@ -238,7 +227,6 @@ export default function Settings() {
           </p>
         </div>
 
-        <TuPiel profile={profile} update={update} />
 
         <div className="card">
           <p className="eyebrow">Equipamiento</p>
@@ -284,7 +272,6 @@ export default function Settings() {
             </>
           )}
         </div>
-          <Localizaciones profile={profile} onChange={update} />
 
         </>
       )}
@@ -401,61 +388,6 @@ export default function Settings() {
             ))}
           </div>
         )}
-        </>
-      )}
-
-      {seccion === 'comida' && (
-        <>
-        <div className="card">
-          <p className="eyebrow">Cetosis y descanso</p>
-          <Field className="field">
-  <FieldLabel>Dieta cetogénica desde</FieldLabel>
-  <Input
-              type="date"
-              value={profile.ketoSince ?? ''}
-              onChange={(e) => update({ ketoSince: e.target.value || undefined })}
-            />
-</Field>
-          {ketoWeeks > 0 && (
-            <p className="faint" style={{ marginTop: 10 }}>
-              Quedan unas {ketoWeeks} semanas de adaptación: durante este periodo la app mantiene la
-              intensidad por debajo del máximo.
-            </p>
-          )}
-          <Regla />
-          <p className="eyebrow">DHA</p>
-          <Field className="field">
-  <FieldLabel>mg de DHA por pastilla</FieldLabel>
-  <Input
-              type="number"
-              placeholder="p. ej. 1000"
-              value={profile.dhaPillMg ?? ''}
-              onChange={(e) => update({ dhaPillMg: e.target.value ? Number(e.target.value) : undefined })}
-            />
-</Field>
-          <p className="faint" style={{ marginTop: 10 }}>
-            Objetivo de hoy: {objetivoDha.toLocaleString('es-ES')} mg
-            {esVerano(todayIso()) ? ' (subido por ser verano)' : ''}. Nunca te sugeriré más de
-            1.000 mg de suplemento al día: es el techo que la EFSA respalda para el DHA aislado.
-          </p>
-          <Regla />
-          <p className="dim">
-            {protein ? (
-              <>
-                Con {profile.weightKg} kg, apunta a <span className="accent">{protein.min}–{protein.max} g de proteína al día</span>.
-                En cetosis es lo que sostiene el músculo. Del resto no lleves cuentas: come hasta
-                saciarte de verdad y deja que la leptina regule lo demás.
-              </>
-            ) : (
-              'Añade tu peso al perfil para calcular tu objetivo diario de proteína.'
-            )}
-          </p>
-          <p className="faint" style={{ marginTop: 12 }}>
-            Sube el agua y la sal los días de entreno: en cetosis se retiene menos líquido y se pierde
-            más sodio. Si el peso salta al día siguiente de una sesión fuerte, casi siempre es agua de
-            la reparación muscular, no grasa.
-          </p>
-        </div>
         </>
       )}
 
@@ -600,78 +532,3 @@ export default function Settings() {
 
 /* ══════════════════════════════════════════════ TU PIEL Y TU ALTITUD ══ */
 
-/**
- * Los tres datos que faltaban para calcular la vitamina D con la fórmula real.
- *
- * La edad ya se pedía en el alta pero no se podía corregir después, y sin ella
- * la síntesis se calculaba con el factor de una persona de treinta años. El
- * fototipo mueve el resultado siete veces de punta a punta —de 1,5 a 0,2— y es
- * el dato que más pesa; sin él la app estaría dando por hecha una piel clara,
- * que es exactamente la clase de suposición que hace inútil una estimación.
- *
- * Los tres son opcionales y traen un valor por defecto razonable. Nadie tiene
- * que rellenar un formulario antes de poder apretar un botón.
- */
-function TuPiel({
-  profile,
-  update
-}: {
-  profile: Profile
-  update: (partial: Partial<Profile>) => void
-}) {
-  const fototipo: Fototipo = profile.fototipo ?? FOTOTIPO_POR_DEFECTO
-
-  return (
-    <div className="card">
-      <p className="eyebrow">Tu piel y tu altitud</p>
-      <p className="dim" style={{ marginTop: 8 }}>
-        Con esto y con tu sitio se calcula cuánta vitamina D fabrica tu piel en un rato de sol, y
-        cuánto tardarías en quemarte. Es una estimación: no incluye nubes, ozono ni aerosoles.
-      </p>
-
-      <div className="field-row" style={{ marginTop: 16 }}>
-        <Field className="field">
-          <FieldLabel>Edad</FieldLabel>
-          <Input
-            type="number"
-            placeholder="—"
-            value={profile.age ?? ''}
-            onChange={(e) => update({ age: e.target.value ? Number(e.target.value) : undefined })}
-          />
-        </Field>
-        <Field className="field">
-          <FieldLabel>Altitud (m)</FieldLabel>
-          <Input
-            type="number"
-            placeholder="0"
-            value={profile.altitudM ?? ''}
-            onChange={(e) =>
-              update({ altitudM: e.target.value ? Number(e.target.value) : undefined })
-            }
-          />
-        </Field>
-      </div>
-
-      <p className="faint" style={{ marginTop: 10 }}>
-        La piel sintetiza peor con los años: a los {profile.age ?? 30} vas por el{' '}
-        {Math.round(factorEdad(profile.age ?? 30) * 100)} % de lo que sintetizaba a los veinte. Y el
-        UV sube un 10 % por cada mil metros: tu altitud lo multiplica por{' '}
-        {factorAltitud(profile.altitudM).toLocaleString('es-ES', { maximumFractionDigits: 2 })}.
-      </p>
-
-      <Regla />
-      <p className="eyebrow">Fototipo</p>
-      <div className="options-col" style={{ marginTop: 10 }}>
-        {ORDEN_FOTOTIPO.map((f) => (
-          <Opcion key={f} activa={fototipo === f} onElegir={() => update({ fototipo: f })}>
-            {f} · {FOTOTIPOS[f]}
-          </Opcion>
-        ))}
-      </div>
-      <p className="faint" style={{ marginTop: 10 }}>
-        Tu fototipo aguanta {MED_J_M2[fototipo]} J/m² antes de enrojecer. Cuanta más melanina, más
-        rato al sol hace falta para lo mismo — para quemarse y para sintetizar.
-      </p>
-    </div>
-  )
-}

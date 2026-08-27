@@ -6,10 +6,6 @@ import {
   type MuscleGroup,
   type Routine
 } from '../domain/types'
-import PesoDeHoy from '../components/PesoDeHoy'
-import TresEsferas from '../components/TresEsferas'
-import type { DatosDelReloj } from '../domain/esferas'
-import SolDeHoy from '../components/SolDeHoy'
 import ResumenComparado from '../components/ResumenComparado'
 import { computeReadiness, tieneLevesRepartidas, zonasConMolestias } from '../domain/readiness'
 import { canIntensify, canMix, recommend, withMoreIntensity, withSomeStrength } from '../domain/recommender'
@@ -18,11 +14,6 @@ import { interpretTrend } from '../domain/trend'
 import { buildSession } from '../domain/workoutBuilder'
 import { actions, useAppData } from '../store/store'
 import type { AppData } from '../domain/types'
-import type { DatosDeLuz } from '../domain/explicacionPeso'
-import { coordenadasDe, ventanaContraTuJornada } from '../domain/jornada'
-import { ventanaDeFase } from '../domain/balanceLuz'
-import { desfaseHorario, minutosDeAhora } from '../domain/arcoSolar'
-import { deElPerfil } from '../domain/vitaminaD'
 import { useToday } from '../store/clock'
 import { findActiveSession } from '../domain/activeSession'
 import { razonesCortas, resumenDelPlan, tituloDeHoy } from '../domain/decision'
@@ -40,7 +31,6 @@ import WeekStrip from '../components/WeekStrip'
  */
 const SessionScreen = lazy(() => import('./Session'))
 import { Boton, CampoNumero, Escala, Etiqueta, Opcion, Regla } from '../components/ui'
-import { explicarPeso } from '../domain/explicacionPeso'
 import {
   MI_MATERIAL,
   describirLocalizacion,
@@ -106,46 +96,7 @@ function ScaleInput({
   )
 }
 
-/**
- * Lo que necesitan las tres esferas, o nada si no hay coordenadas.
- *
- * Misma regla que en el resto: sin sitio no se enseña un reloj inventado.
- */
-function datosDelReloj(data: AppData, hoy: string): DatosDelReloj | undefined {
-  const coord = coordenadasDe(data.profile)
-  if (!coord) return undefined
-  return {
-    hoy,
-    coord,
-    salidas: data.salidas,
-    checkIns: data.checkIns,
-    comidas: data.comidas,
-    desfasePara: desfaseHorario,
-    // Sin la hora, lo que hagas hoy no mueve la fase hasta mañana.
-    ahoraMin: minutosDeAhora(),
-    // De quién es la ventana de hoy. Sin esto la tarjeta mandaba salir a las
-    // siete de la mañana a quien a esa hora ya está fichado.
-    ventana: ventanaContraTuJornada(
-      hoy,
-      ventanaDeFase(hoy, coord, desfaseHorario(hoy)),
-      data.profile,
-      data.fichajes
-    )
-  }
-}
 
-/**
- * La luz para la explicación del peso, o nada.
- *
- * Devuelve `undefined` cuando no hay coordenadas, y eso es justo lo que debe
- * pasar: quien no las haya puesto sigue teniendo su explicación de siempre, sin
- * huecos ni avisos de que le falta configurar algo.
- */
-function datosDeLuz(data: AppData): DatosDeLuz | undefined {
-  const coord = coordenadasDe(data.profile)
-  if (!coord) return undefined
-  return { coord, salidas: data.salidas, desfasePara: desfaseHorario }
-}
 
 export default function Today() {
   const data = useAppData()
@@ -401,24 +352,6 @@ export default function Today() {
           <Boton tono="primario" onClick={() => setPhase('checkin')}>
             {doneToday ? 'Preparar otra sesión' : 'Empezar'}
           </Boton>
-          {datosDelReloj(data, today) && <TresEsferas datos={datosDelReloj(data, today)!} />}
-          <PesoDeHoy
-            measurements={data.measurements}
-            checkIns={data.checkIns}
-            sessions={data.sessions}
-            comidas={data.comidas}
-            alimentosEditados={data.alimentosEditados}
-            luz={datosDeLuz(data)}
-            todayIso={today}
-          />
-          <SolDeHoy
-            sol={data.sol}
-            todayIso={today}
-            coord={coordenadasDe(data.profile) ?? undefined}
-            quien={deElPerfil(data.profile)}
-            sesionesPBM={data.sesionesPBM}
-            lamparas={data.lamparas}
-          />
         </div>
       )}
 
@@ -771,17 +704,6 @@ export default function Today() {
 
           </div>
 
-          {/* La báscula explicada, recién contestado el test: es cuando se mira. */}
-          {datosDelReloj(data, today) && <TresEsferas datos={datosDelReloj(data, today)!} />}
-          <PesoDeHoy
-            measurements={data.measurements}
-            checkIns={data.checkIns}
-            sessions={data.sessions}
-            comidas={data.comidas}
-            alimentosEditados={data.alimentosEditados}
-            luz={datosDeLuz(data)}
-            todayIso={today}
-          />
 
           {/* Las tres razones, fuera de la tarjeta y en tono menor: informan sin
               competir con la decisión ni con su botón. */}

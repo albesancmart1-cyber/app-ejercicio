@@ -46,7 +46,6 @@
  * mandar.
  */
 import type { AppData } from '../domain/types'
-import type { MedidaDeFuera } from '../domain/buzon'
 
 const CLAVE_API = import.meta.env.VITE_FIREBASE_API_KEY ?? ''
 const PROYECTO = import.meta.env.VITE_FIREBASE_PROJECT_ID ?? ''
@@ -56,7 +55,6 @@ const TESTIGOS = 'https://securetoken.googleapis.com/v1/token'
 const DATOS = 'https://firestore.googleapis.com/v1'
 
 const COLECCION = 'usuarios'
-const SUBCOLECCION_MEDIDAS = 'medidas'
 
 const CLAVE_SESION = 'ritmo-sesion'
 /**
@@ -437,10 +435,6 @@ function documento(uid: string, ...resto: string[]): string {
   return `${DATOS}/projects/${encodeURIComponent(PROYECTO)}/databases/(default)/documents/${trozos}`
 }
 
-function coleccionDeMedidas(uid: string): string {
-  return documento(uid, SUBCOLECCION_MEDIDAS)
-}
-
 /**
  * Traduce los fallos de Firestore a algo accionable.
  *
@@ -561,77 +555,4 @@ export async function subir(data: AppData): Promise<void> {
   if (!res.ok) {
     throw new ErrorNube(`No he podido guardar en la nube. ${quejaDeDatos(res.status, await res.text())}`)
   }
-}
-
-/* ══════════════════════════════════════════════ EL BUZÓN DE MEDIDAS ══ */
-
-/**
- * Las medidas que otro aparato haya dejado en el buzón.
- *
- * Se piden las cerradas y las abiertas por igual: `recoger` sabe distinguirlas
- * y deja las que siguen en marcha donde estaban. Pedir solo las cerradas
- * obligaría a filtrar aquí lo mismo que ya se decide allí, y a mantener las dos
- * reglas en sitios distintos.
- *
- * Se ordena aquí y no en la consulta porque Firestore, al ordenar por un campo,
- * se salta en silencio los documentos que no lo tienen: un aparato que no
- * pusiera `creado_en` desaparecería del buzón sin que nadie se enterase.
- */
-export async function bajarMedidas(): Promise<MedidaDeFuera[]> {
-  const sesion = await dentro()
-  const res = await conDatos(`${coleccionDeMedidas(sesion.uid)}?pageSize=300`, sesion)
-  // La subcolección vacía es un 200 sin documentos, pero según cómo se haya
-  // creado la cuenta puede venir como 404: en los dos casos, buzón vacío.
-  if (res.status === 404) return []
-  if (!res.ok) {
-    throw new ErrorNube(`No he podido leer el buzón. ${quejaDeDatos(res.status, await res.text())}`)
-  }
-  const json = (await res.json()) as { documents?: unknown[] }
-  const docs = json.documents ?? []
-
-  return docs
-    .map((d) => ({ id: idDeDocumento(d), f: campos(d) }))
-    .sort((a, b) => String(a.f.creado_en ?? a.id).localeCompare(String(b.f.creado_en ?? b.id)))
-    .map(({ id, f }) => ({
-      id,
-      tipo: String(f.tipo ?? ''),
-      date: String(f.date ?? ''),
-      desde: Number(f.desde ?? 0),
-      hasta: f.hasta === null || f.hasta === undefined ? null : Number(f.hasta),
-      piel: (f.piel as string) ?? null,
-      cielo: (f.cielo as string) ?? null,
-      filtro: (f.filtro as string) ?? null,
-      lamparaId: (f.lampara_id as string) ?? null,
-      zona: (f.zona as string) ?? null,
-      distanciaCm:
-        f.distancia_cm === null || f.distancia_cm === undefined ? null : Number(f.distancia_cm),
-      origen: (f.origen as string) ?? null
-    }))
-}
-
-/**
- * Vacía del buzón lo ya recogido.
- *
- * Se borra **después** de haberlo guardado en local, nunca antes. Si esto falla
- * no se pierde nada: la próxima sincronización vuelve a recogerlas y, como cada
- * escritura lleva el id de su medida, el resultado es el mismo.
- *
- * Firestore no tiene borrado por lote en su API REST simple, así que van una a
- * una. Son unas pocas por sincronización, y que una falle no puede impedir que
- * las demás se borren: por eso se esperan todas y se mira el resultado al final.
- */
-export async function borrarMedidas(ids: string[]): Promise<void> {
-  if (ids.length === 0) return
-  const sesion = await dentro()
-  const resultados = await Promise.all(
-    ids.map(async (id) => {
-      const res = await conDatos(documento(sesion.uid, SUBCOLECCION_MEDIDAS, id), sesion, {
-        method: 'DELETE'
-      })
-      // Borrar algo que ya no está es exactamente lo que queríamos que pasara.
-      return res.ok || res.status === 404 ? null : `${res.status}`
-    })
-  )
-  const malo = resultados.find((x) => x !== null)
-  if (malo) throw new ErrorNube(`No he podido vaciar el buzón. ${quejaDeDatos(Number(malo), '')}`)
 }

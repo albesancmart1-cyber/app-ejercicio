@@ -21,11 +21,6 @@ import Icon from '../components/Icon'
 import { formatDuration } from '../components/Chrono'
 import { computeBalance } from '../domain/muscleBalance'
 import VolumeByMuscle from '../components/VolumeByMuscle'
-import { computeLeptinSignal, explicarCobertura } from '../domain/leptin'
-import { Analiticas, CurvaKeto, TarjetaDeHabito } from '../components/Habitos'
-import { deElPerfil, escribirUI, notaDeTemporada, resumenSemanal } from '../domain/vitaminaD'
-import { coordenadasDe } from '../domain/jornada'
-import { arcoDelDia } from '../domain/arcoSolar'
 import { useAppData } from '../store/store'
 import { useToday } from '../store/clock'
 import { Boton, Etiqueta, Regla } from '../components/ui'
@@ -33,7 +28,7 @@ import { Tabs, TabsList, TabsTrigger } from '@appica/ui-react/tabs'
 import { Field, FieldLabel } from '@appica/ui-react/field'
 import { Input } from '@appica/ui-react/input'
 import { escribirNumero, leerNumero } from '../domain/numeros'
-import { nombreDeDia } from '../domain/crononutricion'
+import { nombreDeDia } from '../domain/tiempo'
 
 /** Los cinco destinos de Progreso, en el orden en que se miran. */
 type Seccion = 'semana' | 'mes' | 'ano' | 'cuerpo' | 'habitos' | 'ejercicios'
@@ -53,7 +48,6 @@ const SECCIONES: { id: Seccion; label: string }[] = [
    * curva del peso. En «Yo» está lo que se configura una vez; aquí, lo que
    * cambia solo con el tiempo.
    */
-  { id: 'habitos', label: 'Hábitos' },
   { id: 'ejercicios', label: 'Ejercicios' }
 ]
 
@@ -383,23 +377,6 @@ export default function Progreso() {
   const trained = new Set(data.sessions.filter((s) => s.completed).map((s) => s.date))
   const completed = data.sessions.filter((s) => s.completed)
 
-  const leptin = computeLeptinSignal(data.checkIns, today, data.profile?.goal, data.sol)
-  const cobertura = explicarCobertura(leptin)
-  const coordPerfil = coordenadasDe(data.profile)
-  const quienToma = deElPerfil(data.profile)
-  const solSemana = resumenSemanal(data.sol, today, 7, coordPerfil ?? undefined, quienToma, {
-    sesiones: data.sesionesPBM,
-    catalogo: data.lamparas
-  })
-  /*
-   * La nota de invierno ya no sale de una lista de meses: sale de que el arco
-   * de hoy, en este sitio, no llegue al umbral de síntesis. Así aparece en
-   * Noruega en septiembre y no aparece en Quito en enero.
-   */
-  const notaSol = coordPerfil
-    ? notaDeTemporada(today, coordPerfil, arcoDelDia(today, coordPerfil).elevacionMaxima)
-    : undefined
-
   if (ficha) {
     return (
       <ExerciseSheet
@@ -482,86 +459,6 @@ export default function Progreso() {
         reading={interpretTrend(data.measurements, data.profile, data.checkIns, data.sessions, today)}
       />
 
-      <div className="card">
-        <p className="eyebrow">Señal de leptina</p>
-        {leptin.days === 0 ? (
-          <p className="dim">{leptin.muscleNote}</p>
-        ) : (
-          <>
-            <div className="row" style={{ alignItems: 'flex-end' }}>
-              <span className="score">
-                {leptin.score}
-                <small> / 100</small>
-              </span>
-              <Etiqueta acento>{leptin.level}</Etiqueta>
-            </div>
-            <div className="meter" aria-hidden="true">
-              {Array.from({ length: 10 }, (_, i) => (
-                <span key={i} className={i < Math.round(leptin.score / 10) ? 'on' : ''} />
-              ))}
-            </div>
-            {/*
-              Los días sin contestar, dichos donde se ve la cifra y no en la
-              letra pequeña del final: son parte de lo que significa el número.
-            */}
-            {cobertura && <p className="leptina-cobertura">{cobertura}</p>}
-            <p className="dim" style={{ marginTop: 14 }}>
-              {leptin.muscleNote}
-            </p>
-            {leptin.hurting.length > 0 && (
-              <>
-                <Regla />
-                <p className="eyebrow">Lo que resta</p>
-                <ul className="reasons">
-                  {leptin.hurting.map((h, i) => (
-                    <li key={i}>{h}</li>
-                  ))}
-                </ul>
-              </>
-            )}
-            {leptin.helping.length > 0 && (
-              <>
-                <Regla />
-                <p className="eyebrow">Lo que suma</p>
-                <ul className="reasons">
-                  {leptin.helping.map((h, i) => (
-                    <li key={i}>{h}</li>
-                  ))}
-                </ul>
-              </>
-            )}
-            <p className="faint" style={{ marginTop: 14 }}>
-              Calculado sobre {leptin.days} de los últimos {leptin.diasDeLaVentana} días
-              {leptin.diasSinContestar > 0 ? `, y los otros ${leptin.diasSinContestar} cuentan como días sin saber` : ''}.
-              La leptina responde a patrones, no a una noche suelta.
-            </p>
-          </>
-        )}
-      </div>
-
-      <div className="card">
-        <p className="eyebrow">Sol y vitamina D · esta semana</p>
-        {solSemana.diasConSol === 0 ? (
-          <p className="dim">
-            Sin ratos de sol apuntados esta semana. Se apuntan en «Medir», con un toque, y aquí se
-            acumula la vitamina D estimada.
-          </p>
-        ) : (
-          <>
-            <p className="dim">
-              {solSemana.diasConSol} de {solSemana.dias} días con sol
-              {solSemana.diasQueSintetizan > 0
-                ? `, ${solSemana.diasQueSintetizan} de ellos con el sol lo bastante alto para sintetizar`
-                : ''}
-              . Acumuladas {escribirUI(solSemana.ui)} de vitamina D.
-            </p>
-          </>
-        )}
-        {notaSol && (
-          <p className="faint" style={{ marginTop: 8 }}>{notaSol}</p>
-        )}
-      </div>
-
       <div className="card-wrap">
         <VolumeByMuscle
           sessions={data.sessions}
@@ -590,21 +487,6 @@ export default function Progreso() {
         </p>
       </div>
 
-        </>
-      )}
-
-      {seccion === 'habitos' && (
-        <>
-          <TarjetaDeHabito habito="grounding" registros={data.habitos} hoy={today} />
-          <TarjetaDeHabito habito="frio" registros={data.habitos} hoy={today} />
-          <TarjetaDeHabito
-            habito="ayuno"
-            registros={data.habitos}
-            hoy={today}
-            lat={data.profile?.lat}
-          />
-          {data.profile?.ketoSince && <CurvaKeto desde={data.profile.ketoSince} hoy={today} />}
-          <Analiticas analiticas={data.analiticas} hoy={today} />
         </>
       )}
 

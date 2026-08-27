@@ -17,13 +17,9 @@
  * cuando vuelve la conexión es seguro.
  */
 import { fusionar, resumirFusion } from '../domain/merge'
-import { aplicar, recoger } from '../domain/buzon'
-import { estadoDeHabito } from '../domain/habitos'
 import type { AppData } from '../domain/types'
 import {
   ErrorNube,
-  bajarMedidas,
-  borrarMedidas,
   cerrarSesion,
   descargar,
   entrarOCrear,
@@ -65,13 +61,6 @@ export function escucharSync(f: Escucha): () => void {
 
 /** Lo último que ha traído una fusión, para poder contarlo. */
 let ultimoResumen: string | null = null
-/** Cuántas medidas de otro aparato entraron en la última sincronización. */
-let ultimasMedidas = 0
-/** Cuántas medidas trajo el buzón la última vez. Para poder decirlo en «Yo». */
-export function medidasRecogidas(): number {
-  return ultimasMedidas
-}
-
 export function ultimaNovedad(): string | null {
   return ultimoResumen
 }
@@ -131,31 +120,6 @@ export async function sincronizar(
       ultimoResumen = resumirFusion(resumen)
     }
 
-    /*
-     * Lo que haya medido otro aparato —el reloj, un atajo— entra aquí, después
-     * de fusionar y antes de subir, para que suba ya con ello dentro.
-     *
-     * Se vacía el buzón **después** de haber subido, nunca antes: si algo falla
-     * en medio, la próxima sincronización vuelve a recogerlas y, como cada
-     * escritura lleva el id de su medida, el resultado es exactamente el mismo.
-     */
-    let recogidos: string[] = []
-    try {
-      const buzon = await bajarMedidas()
-      const r = recoger(buzon, (t, fecha) =>
-        t === 'frio' || t === 'grounding'
-          ? (estadoDeHabito(t, resultado.habitos, fecha).actual?.nivel ?? 1)
-          : 1
-      )
-      if (r.escrituras.length > 0) resultado = aplicar(resultado, r.escrituras)
-      // Lo que no valía se tira igual: dejarlo ahí lo reintentaría para siempre.
-      recogidos = [...r.recogidos, ...r.descartados]
-      ultimasMedidas = r.recogidos.length
-    } catch {
-      // El buzón es un extra. Que falle no puede impedir la sincronización de
-      // siempre, que es lo que de verdad no se puede perder.
-      ultimasMedidas = 0
-    }
 
     escribir(resultado)
     /*
@@ -170,7 +134,6 @@ export async function sincronizar(
     if (remoto === null || JSON.stringify(resultado) !== JSON.stringify(remoto)) {
       await subir(resultado)
     }
-    if (recogidos.length > 0) await borrarMedidas(recogidos).catch(() => {})
     anunciar({ estado: 'dentro', email: sesion.email, ultima: Date.now(), pendiente: false })
     return { ok: true, novedad: ultimoResumen }
   } catch (e) {

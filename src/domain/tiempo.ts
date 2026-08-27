@@ -269,3 +269,32 @@ export function explicarRecorte(r: Recorte): string {
     : ''
   return `De ${r.minutosAntes} a ${r.minutos} minutos: ${partes.join(' y ')}.${cola}`
 }
+
+/* ══════════════════════════════════════════════ CÓMO SE LLAMA UN DÍA ══ */
+
+const DIAS_SEMANA = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
+
+const MESES = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+]
+
+function unDiaAntes(iso: string): string {
+  const d = new Date(`${iso}T12:00:00Z`)
+  d.setUTCDate(d.getUTCDate() - 1)
+  return d.toISOString().slice(0, 10)
+}
+
+/**
+ * Cómo se llama un día por su nombre: «Hoy», «Ayer», «Martes 12 de agosto».
+ *
+ * El año solo se dice cuando no es el corriente: repetirlo cada día es ruido.
+ */
+export function nombreDeDia(iso: string, todayIso: string): string {
+  if (iso === todayIso) return 'Hoy'
+  if (iso === unDiaAntes(todayIso)) return 'Ayer'
+  const [a, m, d] = iso.split('-').map(Number)
+  const semana = DIAS_SEMANA[new Date(`${iso}T00:00:00Z`).getUTCDay()]
+  const base = `${semana[0].toUpperCase()}${semana.slice(1)} ${d} de ${MESES[m - 1]}`
+  return a === Number(todayIso.slice(0, 4)) ? base : `${base} de ${a}`
+}

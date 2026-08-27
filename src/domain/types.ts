@@ -142,15 +142,6 @@ export interface Profile {
    */
   lat?: number
   lon?: number
-  /** Cómo se llama el sitio, solo para enseñarlo: «Madrid». */
-  lugar?: string
-  /** Metros sobre el nivel del mar. Suben el UV un 10 % por cada mil. */
-  altitudM?: number
-  /** Fototipo de Fitzpatrick. Decide cuánto sintetiza y cuánto tarda en quemarse. */
-  fototipo?: import('./vitaminaD').Fototipo
-  /** Lo último que se eligió al apuntar sol, para no volver a preguntarlo. */
-  pielHabitual?: PielExpuesta
-  cieloHabitual?: import('./cielo').EstadoDelCielo
   /** Qué días se trabaja, de 0 (domingo) a 6 (sábado). Por defecto, de lunes a viernes. */
   diasLaborables?: number[]
   /** El sitio de trabajo habitual, para que fichar sea un solo toque. */
@@ -1137,37 +1128,42 @@ export interface AppData {
   checkIns: CheckIn[]
   sessions: Session[]
   measurements: BodyMeasurement[]
-  /** El diario de comidas, día a día. Ausente hasta que se apunta la primera. */
-  comidas?: DiaDeComidas[]
-  /** El sol de cada día. Se apunta cuando ocurre, no en el test de la mañana. */
-  sol?: DiaDeSol[]
-  /** Las correcciones del usuario sobre alimentos del catálogo. */
-  alimentosEditados?: EdicionAlimento[]
   /** Entrenos guardados para repetir. Ausente hasta que se guarda el primero. */
   routines?: Routine[]
-  /** Las lámparas del usuario. Ausente hasta que crea la primera. */
-  lamparas?: Lampara[]
-  /** Las sesiones de fotobiomodulación hechas. */
-  sesionesPBM?: SesionPBM[]
-  /** Los sitios con su iluminación: el taller, la oficina, casa. */
-  perfilesLuz?: PerfilDeLuz[]
-  /** Los fichajes, día a día. */
-  fichajes?: Fichaje[]
-  /** Los ratos fuera durante la jornada. */
-  salidas?: SalidaAlExterior[]
-  /** Los suplementos creados, para reutilizarlos en cualquier comida. */
-  suplementos?: Suplemento[]
-  /** Las noches apuntadas: a qué hora se apagó todo y a qué hora se levantó. */
-  noches?: NocheRegistrada[]
-  /** Las analíticas apuntadas, con sus índices calculados al vuelo. */
-  analiticas?: import('./analiticas').Analitica[]
-  /** Los hábitos hechos, día a día: grounding, frío, ayuno. */
-  habitos?: import('./habitos').RegistroHabito[]
+
   /**
-   * Lo que está en marcha ahora mismo. Varios a la vez, porque se solapan de
-   * verdad: estás fichado en el taller **y** sales quince minutos al patio.
+   * ── El archivo ──────────────────────────────────────────────
+   *
+   * Lo que apuntaba la app cuando además de entrenar medía el sol, la lámpara,
+   * la comida, la jornada y los hábitos. Nada de esto se escribe ya, y ninguna
+   * pantalla lo lee.
+   *
+   * **Se conserva a propósito, y no es dejadez.** Estos campos viven en el
+   * `localStorage` de un dispositivo que tiene meses de mediciones dentro.
+   * Quitarlos del tipo haría que la próxima escritura los borrara, y borrar los
+   * datos de alguien porque una función de la app se ha retirado es de las
+   * pocas cosas que no tienen arreglo después. Aquí siguen, viajan en la copia
+   * que exportas y en la que se sincroniza, y el día que los quieras de vuelta
+   * están enteros.
+   *
+   * Van sin tipar porque su forma ya no la comprueba nadie: son un archivo, no
+   * una estructura viva. Quien los recupere tendrá que volver a describirlos, y
+   * eso es correcto — significa que ha vuelto a hacerse cargo de ellos.
    */
-  enCurso?: EnCurso[]
+  sol?: unknown[]
+  comidas?: unknown[]
+  alimentosEditados?: unknown[]
+  suplementos?: unknown[]
+  lamparas?: unknown[]
+  sesionesPBM?: unknown[]
+  perfilesLuz?: unknown[]
+  fichajes?: unknown[]
+  salidas?: unknown[]
+  noches?: unknown[]
+  analiticas?: unknown[]
+  habitos?: unknown[]
+  enCurso?: unknown[]
+
   /**
    * Lo que se ha borrado, para que sincronizar no lo resucite. Ver
    * `src/domain/merge.ts`.

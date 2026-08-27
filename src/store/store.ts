@@ -2,15 +2,7 @@ import { useSyncExternalStore } from 'react'
 import { todayIsoAt } from './clock'
 import { VERSION_ACTUAL, migrar } from './migrate'
 import type { DiaDeComidas, DiaDeSol, EdicionAlimento, ExposicionSolar, AppData, BodyMeasurement, CheckIn, EnCurso, Fichaje, Lampara, PerfilDeLuz, Profile, Routine, NocheRegistrada, SalidaAlExterior, SesionPBM, Suplemento, Session, TipoEnCurso } from '../domain/types'
-import {
-  claveDeCurso,
-  claveDeMedicion,
-  claveDeRutina,
-  claveDeSesion,
-  type Lapida
-} from '../domain/merge'
-import { nombreDeEsteAparato } from './aparato'
-import { decirleElSitio } from './reloj'
+import { claveDeMedicion, claveDeRutina, claveDeSesion, type Lapida } from '../domain/merge'
 
 const STORAGE_KEY = 'ritmo-data-v1'
 
@@ -94,15 +86,6 @@ function conLapida(s: AppData, clave: string): Lapida[] {
 export const actions = {
   saveProfile(profile: Profile) {
     setState((s) => ({ ...s, profile, profileUpdatedAt: Date.now() }))
-    /*
-     * Y si hay reloj, se le dice dónde vives. Es lo único que viaja hacia allá,
-     * y con eso calcula la altura del sol sin red — que es justo cuando hace
-     * falta saberla. Se manda aquí y no al arrancar porque es lo único que
-     * puede cambiarlo, y fuera del contenedor no hace nada.
-     */
-    if (typeof profile.lat === 'number' && typeof profile.lon === 'number') {
-      void decirleElSitio(profile.lat, profile.lon)
-    }
   },
   saveCheckIn(checkIn: CheckIn) {
     setState((s) => ({
@@ -166,66 +149,7 @@ export const actions = {
     }))
   },
   /** Guarda el día de comidas entero, con su marca para la fusión. */
-  saveComidas(dia: DiaDeComidas) {
-    setState((s) => ({
-      ...s,
-      comidas: [
-        ...(s.comidas ?? []).filter((d) => d.date !== dia.date),
-        { ...dia, updatedAt: Date.now() }
-      ].sort((a, b) => (a.date < b.date ? -1 : 1))
-    }))
-  },
   /** Guarda el sol de un día entero, con su marca para la fusión. */
-  saveSol(dia: DiaDeSol) {
-    setState((s) => ({
-      ...s,
-      sol: [
-        ...(s.sol ?? []).filter((d) => d.date !== dia.date),
-        { ...dia, updatedAt: Date.now() }
-      ].sort((a, b) => (a.date < b.date ? -1 : 1))
-    }))
-  },
-  /**
-   * Añade una exposición al sol del día, sin pisar las que ya hubiera.
-   *
-   * Va aquí y no en la pantalla porque hace falta el día que ya estuviera
-   * guardado para poder añadirle una más, y leer el estado desde fuera del
-   * store obligaría a que quien llame sea un componente. Este no lo es: lo
-   * llama también el cierre de lo que se quedó abierto.
-   */
-  saveExposicion(fecha: string, e: ExposicionSolar) {
-    setState((s) => {
-      const dia = (s.sol ?? []).find((d) => d.date === fecha)
-      /*
-       * Con `id` sustituye en vez de añadir. Es lo que hace que recoger el
-       * buzón dos veces —un fallo de red entre recoger y borrar— no deje el
-       * mismo rato de sol apuntado dos veces. Sin `id`, se añade como siempre.
-       */
-      const previas = (dia?.exposiciones ?? []).filter((x) => !e.id || x.id !== e.id)
-      const nuevo: DiaDeSol = {
-        ...(dia ?? {}),
-        date: fecha,
-        exposiciones: [...previas, e],
-        updatedAt: Date.now()
-      }
-      return {
-        ...s,
-        sol: [...(s.sol ?? []).filter((d) => d.date !== fecha), nuevo].sort((a, b) =>
-          a.date < b.date ? -1 : 1
-        )
-      }
-    })
-  },
-  /** Guarda la corrección de un alimento del catálogo. */
-  saveEdicionAlimento(ed: EdicionAlimento) {
-    setState((s) => ({
-      ...s,
-      alimentosEditados: [
-        ...(s.alimentosEditados ?? []).filter((x) => x.id !== ed.id),
-        { ...ed, updatedAt: Date.now() }
-      ]
-    }))
-  },
   saveMeasurement(measurement: BodyMeasurement) {
     setState((s) => ({
       ...s,
@@ -241,158 +165,6 @@ export const actions = {
       measurements: s.measurements.filter((m) => m.date !== date),
       deleted: conLapida(s, claveDeMedicion(date))
     }))
-  },
-  /*
-   * Luz. Todas siguen el mismo patrón que las de arriba: reemplazar por id y
-   * poner `updatedAt`, para que la fusión entre dispositivos sepa cuál gana.
-   */
-  /**
-   * Guarda una lámpara nueva o corrige una que ya está.
-   *
-   * Al corregir **se queda donde estaba** en la lista, en vez de irse al final:
-   * arreglar una errata en la irradiancia no debería mover la lámpara de sitio
-   * y obligar a buscarla otra vez.
-   */
-  saveLampara(lampara: Lampara) {
-    setState((s) => {
-      const lista = s.lamparas ?? []
-      const conFecha = { ...lampara, updatedAt: Date.now() }
-      return {
-        ...s,
-        lamparas: lista.some((l) => l.id === lampara.id)
-          ? lista.map((l) => (l.id === lampara.id ? conFecha : l))
-          : [...lista, conFecha]
-      }
-    })
-  },
-  deleteLampara(id: string) {
-    setState((s) => ({ ...s, lamparas: (s.lamparas ?? []).filter((l) => l.id !== id) }))
-  },
-  saveSesionPBM(sesion: SesionPBM) {
-    setState((s) => ({
-      ...s,
-      sesionesPBM: [
-        ...(s.sesionesPBM ?? []).filter((x) => x.id !== sesion.id),
-        { ...sesion, updatedAt: Date.now() }
-      ]
-    }))
-  },
-  deleteSesionPBM(id: string) {
-    setState((s) => ({ ...s, sesionesPBM: (s.sesionesPBM ?? []).filter((x) => x.id !== id) }))
-  },
-  savePerfilLuz(perfil: PerfilDeLuz) {
-    setState((s) => ({
-      ...s,
-      perfilesLuz: [
-        ...(s.perfilesLuz ?? []).filter((p) => p.id !== perfil.id),
-        { ...perfil, updatedAt: Date.now() }
-      ]
-    }))
-  },
-  deletePerfilLuz(id: string) {
-    setState((s) => ({ ...s, perfilesLuz: (s.perfilesLuz ?? []).filter((p) => p.id !== id) }))
-  },
-  saveFichaje(fichaje: Fichaje) {
-    setState((s) => ({
-      ...s,
-      fichajes: [
-        ...(s.fichajes ?? []).filter((f) => f.id !== fichaje.id),
-        { ...fichaje, updatedAt: Date.now() }
-      ]
-    }))
-  },
-  deleteFichaje(id: string) {
-    setState((s) => ({ ...s, fichajes: (s.fichajes ?? []).filter((f) => f.id !== id) }))
-  },
-  saveSalida(salida: SalidaAlExterior) {
-    setState((s) => ({
-      ...s,
-      salidas: [
-        ...(s.salidas ?? []).filter((x) => x.id !== salida.id),
-        { ...salida, updatedAt: Date.now() }
-      ]
-    }))
-  },
-  deleteSalida(id: string) {
-    setState((s) => ({ ...s, salidas: (s.salidas ?? []).filter((x) => x.id !== id) }))
-  },
-  saveNoche(noche: NocheRegistrada) {
-    setState((s) => ({
-      ...s,
-      noches: [
-        ...(s.noches ?? []).filter((n) => n.date !== noche.date),
-        { ...noche, updatedAt: Date.now() }
-      ]
-    }))
-  },
-  /**
-   * Empieza algo. Sustituye lo que hubiera abierto del mismo tipo en vez de
-   * duplicarlo: darle dos veces al botón del sol es un dedo, no dos ratos.
-   */
-  abrirEnCurso(x: EnCurso) {
-    setState((s) => ({
-      ...s,
-      enCurso: [
-        ...(s.enCurso ?? []).filter((y) => !(y.tipo === x.tipo && y.date === x.date)),
-        /*
-         * La marca de tiempo se pone aquí y no en quien llama porque esto es
-         * también el camino de los cambios a mitad —cambiar el cielo o la
-         * lámpara vuelve a pasar por aquí con el objeto modificado—, y un
-         * cambio sin marca nueva perdería contra la copia vieja del otro
-         * dispositivo. El aparato se conserva si ya lo traía: sigue siendo el
-         * sitio donde esto empezó, aunque lo esté tocando otro.
-         */
-        { ...x, updatedAt: Date.now(), aparato: x.aparato ?? nombreDeEsteAparato() }
-      ]
-    }))
-  },
-  /**
-   * Y lo cierra, sin tocar lo demás que siga en marcha.
-   *
-   * Deja lápida a propósito. Sin ella, el otro dispositivo —que todavía tiene
-   * el rato abierto en su copia— lo volvería a subir en la siguiente
-   * sincronización y aparecería otra vez encendido un minuto después de
-   * haberlo parado. Se podan solas: ver `PODA_DE_CURSOS` en `domain/merge.ts`.
-   */
-  cerrarEnCurso(tipo: TipoEnCurso, date: string) {
-    setState((s) => ({
-      ...s,
-      enCurso: (s.enCurso ?? []).filter((y) => !(y.tipo === tipo && y.date === date)),
-      deleted: conLapida(s, claveDeCurso(tipo, date))
-    }))
-  },
-  saveAnalitica(a: import('../domain/analiticas').Analitica) {
-    setState((s) => ({
-      ...s,
-      analiticas: [
-        ...(s.analiticas ?? []).filter((x) => x.date !== a.date),
-        { ...a, updatedAt: Date.now() }
-      ]
-    }))
-  },
-  deleteAnalitica(date: string) {
-    setState((s) => ({ ...s, analiticas: (s.analiticas ?? []).filter((x) => x.date !== date) }))
-  },
-  saveHabito(r: import('../domain/habitos').RegistroHabito) {
-    setState((s) => ({
-      ...s,
-      habitos: [
-        ...(s.habitos ?? []).filter((x) => !(x.date === r.date && x.habito === r.habito)),
-        { ...r, updatedAt: Date.now() }
-      ]
-    }))
-  },
-  saveSuplemento(sup: Suplemento) {
-    setState((s) => ({
-      ...s,
-      suplementos: [
-        ...(s.suplementos ?? []).filter((x) => x.id !== sup.id),
-        { ...sup, updatedAt: Date.now() }
-      ]
-    }))
-  },
-  deleteSuplemento(id: string) {
-    setState((s) => ({ ...s, suplementos: (s.suplementos ?? []).filter((x) => x.id !== id) }))
   },
   /** Los datos tal cual están aquí, para sincronizar. */
   snapshot(): AppData {

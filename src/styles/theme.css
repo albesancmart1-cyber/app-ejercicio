@@ -349,7 +349,9 @@ body::after {
 
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(8px); }
+
   to { opacity: 1; transform: none; }
+
 }
 
 /* ── Tipografía ─────────────────────────────────────────── */
@@ -765,7 +767,9 @@ textarea:focus {
 /* Sin espacio de sobra, el rótulo estorba más que ayuda. */
 @media (max-width: 340px) {
   .tab span { display: none; }
+
   .tab svg { width: 26px; height: 26px; }
+
 }
 
 /* ── Marca ──────────────────────────────────────────────── */
@@ -949,6 +953,7 @@ textarea:focus {
     transform: translateY(calc(var(--tab-index, 0) * 50px));
     transition: transform 0.42s var(--ease);
   }
+
 }
 
 /*
@@ -976,6 +981,7 @@ textarea:focus {
   .app-main > .cards-grid > .card-wrap {
     display: contents;
   }
+
 }
 
 /* ── Volumen por músculo ────────────────────────────────── */
@@ -1079,9 +1085,11 @@ textarea:focus {
 .mrow-series.zone-bajo {
   color: var(--label-3);
 }
+
 .mrow-series.zone-alto {
   color: var(--zone-alto);
 }
+
 .mrow-series.zone-excesivo {
   color: var(--zone-excesivo);
 }
@@ -1133,15 +1141,19 @@ textarea:focus {
 .zband.bajo {
   background: var(--zone-bajo);
 }
+
 .zband.suficiente {
   background: color-mix(in srgb, var(--zone-suficiente) 55%, transparent);
 }
+
 .zband.optimo {
   background: var(--zone-optimo);
 }
+
 .zband.alto {
   background: color-mix(in srgb, var(--zone-alto) 70%, transparent);
 }
+
 .zband.excesivo {
   background: color-mix(in srgb, var(--zone-excesivo) 70%, transparent);
 }
@@ -1257,6 +1269,7 @@ textarea:focus {
 }
 
 .item:first-child { padding-top: 0; }
+
 .item:last-child { border-bottom: none; padding-bottom: 0; }
 
 .check {
@@ -1587,6 +1600,7 @@ textarea:focus {
   .exercise-anim animateTransform {
     display: none;
   }
+
 }
 
 .day {
@@ -1692,7 +1706,9 @@ textarea:focus {
 
 @keyframes sheet-up {
   from { transform: translateY(22px); opacity: 0; }
+
   to { transform: none; opacity: 1; }
+
 }
 
 /* El tirador de la hoja: pequeño, centrado, sin función más que decir «esto se cierra». */
@@ -1743,6 +1759,7 @@ textarea:focus {
 }
 
 .picker-groups::-webkit-scrollbar { display: none; }
+
 .picker-groups .opt { white-space: nowrap; padding: 8px 14px; font-size: 0.82rem; }
 
 .picker-list {
@@ -1823,6 +1840,7 @@ textarea:focus {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+
 }
 
 /* Tres campos en una fila caben justos: se ajusta el tamaño para que el
@@ -1848,7 +1866,6 @@ textarea:focus {
 .exercise-actions .disclose svg {
   transition: none;
 }
-
 
 /* ── Detalle de un entreno del historial ────────────────── */
 
@@ -1989,7 +2006,6 @@ textarea:focus {
   font-variant-numeric: tabular-nums;
 }
 
-
 /* ── Tipo de serie ──────────────────────────────────────── */
 /*
  * El número de la serie es también el botón que cambia su tipo. Se toca y
@@ -2027,7 +2043,6 @@ textarea:focus {
   padding-left: var(--sp-4);
 }
 
-
 /*
  * Qué discos poner, bajo la serie a la que corresponden.
  *
@@ -2041,7 +2056,6 @@ textarea:focus {
   color: var(--label-3);
   font-variant-numeric: tabular-nums;
 }
-
 
 /* ── Los destinos de Progreso ───────────────────────────── */
 
@@ -2183,7 +2197,6 @@ textarea:focus {
   color: var(--accent);
   flex: none;
 }
-
 
 /* ── La decisión del día ────────────────────────────────── */
 
@@ -2343,7 +2356,6 @@ textarea:focus {
   font-weight: var(--w-medium);
 }
 
-
 /* ── Descanso y récord, a pantalla completa ─────────────── */
 
 /*
@@ -2477,6 +2489,7 @@ textarea:focus {
   .rest-titulo {
     margin-bottom: 0;
   }
+
 }
 
 /* La celebración. Centrada, corta y sin nada que tocar para seguir. */
@@ -2551,7 +2564,6 @@ textarea:focus {
   color: var(--accent);
 }
 
-
 /* ── Récords ────────────────────────────────────────────── */
 
 /*
@@ -2604,7 +2616,6 @@ textarea:focus {
   margin: var(--sp-3) 0 var(--sp-2);
   overflow: visible;
 }
-
 
 /* ── Superseries ────────────────────────────────────────── */
 
@@ -2664,7 +2675,6 @@ textarea:focus {
   font-weight: 600;
 }
 
-
 /* ── Ajustes propios de un ejercicio ────────────────────── */
 
 .ex-prefs {
@@ -2686,7 +2696,6 @@ textarea:focus {
   line-height: var(--leading-body);
   color: var(--label-2);
 }
-
 
 /* ── Cómo está el cuerpo ────────────────────────────────── */
 
@@ -2754,7 +2763,6 @@ textarea:focus {
  * El nivel se dice con palabra y con color{
   font-size: var(--text-caption);
 }
-
 
 /* ── Modo foco ──────────────────────────────────────────── */
 
@@ -3008,7 +3016,9 @@ textarea:focus {
 
 /* Tres cuerpos, según lo que haya que enseñar. Ver `Contador`. */
 .stepper-corto { font-size: 26px; }
+
 .stepper-medio { font-size: 21px; }
+
 .stepper-largo { font-size: 17px; }
 
 /* Lo que propone el plan, todavía sin confirmar. */
@@ -3110,7 +3120,6 @@ textarea:focus {
   margin: var(--sp-4) var(--sp-1) 0;
 }
 
-
 /* ── La hoja de lo secundario ───────────────────────────── */
 
 /*
@@ -3143,6 +3152,7 @@ textarea:focus {
     transform: translateY(16px);
     opacity: 0;
   }
+
 }
 
 .hoja-acciones {
@@ -3171,24 +3181,6 @@ textarea:focus {
   border-top: 1px solid var(--separator);
 }
 
-
-/* ── Cocina ─────────────────────────────────────────────── */
-
-/*
- * Tres platos delante, sin haber pedido nada.
- *
- * La pantalla pedía dos filtros y daba una idea al pulsar un botón: elegir
- * antes de ver nada y tirar de la palanca hasta que saliera algo apetecible.
- * Quien abre esto no quiere configurar un filtro, quiere cenar; y elegir de
- * verdad es comparar, que con una sola idea es imposible.
- */
-.ideas {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-3);
-  margin-bottom: var(--sp-4);
-}
-
 .idea {
   display: flex;
   align-items: center;
@@ -3205,26 +3197,6 @@ textarea:focus {
   background: var(--surface-strong);
 }
 
-.idea-cuerpo {
-  flex: 1;
-  min-width: 0;
-}
-
-.idea-nombre {
-  display: block;
-  font-size: var(--text-subheading);
-  line-height: var(--leading-subheading);
-  font-weight: var(--w-semibold);
-}
-
-.idea-meta {
-  display: block;
-  margin-top: var(--sp-1);
-  font-size: var(--text-body);
-  line-height: var(--leading-body);
-  color: var(--label-2);
-}
-
 .idea > svg {
   width: 18px;
   height: 18px;
@@ -3232,73 +3204,10 @@ textarea:focus {
   color: var(--label-3);
 }
 
-/* Volver de una receta a las tres ideas. */
-.btn-atras {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  margin-bottom: var(--sp-4);
-  padding: var(--sp-2) 0;
-  font-size: var(--text-body);
-  color: var(--label-2);
-}
-
-.btn-atras svg {
-  width: 16px;
-  height: 16px;
-  transform: rotate(180deg);
-}
-
-/*
- * La proteína del día, como banda y no como barra que se llena. Un depósito
- * que sube invita a contar, y esta app no cuenta nada: la regla va de poco a
- * mucho para que se lea que el objetivo es una zona ancha, no una diana.
- */
-.banda-num {
-  display: flex;
-  align-items: baseline;
-  gap: var(--sp-2);
-  margin: var(--sp-2) 0 var(--sp-4);
-  font-size: var(--text-heading-lg);
-  line-height: var(--leading-heading-lg);
-  letter-spacing: var(--tracking-heading-lg);
-  font-weight: var(--w-semibold);
-  font-variant-numeric: tabular-nums;
-}
-
-.banda-num small {
-  font-size: var(--text-body);
-  font-weight: var(--w-regular);
-  color: var(--label-3);
-  letter-spacing: 0;
-}
-
 .banda {
   position: relative;
   height: 10px;
 }
-
-.banda-track {
-  position: absolute;
-  inset: 0;
-  border-radius: var(--r-pill);
-  background: var(--fill-3);
-}
-
-.banda-zona {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  border-radius: var(--r-pill);
-  background: var(--accent);
-}
-
-.banda-pies {
-  display: flex;
-  justify-content: space-between;
-  margin-top: var(--sp-2);
-}
-
 
 /* ── Yo ─────────────────────────────────────────────────── */
 
@@ -3312,7 +3221,6 @@ textarea:focus {
   line-height: var(--leading-body);
   color: var(--label-2);
 }
-
 
 /*
  * La lista de la barra, dentro de la cápsula.
@@ -3382,24 +3290,6 @@ textarea:focus {
   min-height: 30px;
 }
 
-
-/*
- * Los días que faltan por contestar, junto a la cifra de la señal.
- *
- * En ámbar y no en gris a propósito: no es una nota al pie, es lo que le quita
- * o le pone valor al número que hay justo encima. Antes esos días ni se
- * mencionaban —se caían del cálculo— y una semana con dos check-ins buenos
- * salía como «93 sobre 100, señal limpia».
- */
-.leptina-cobertura {
-  margin-top: var(--sp-3);
-  padding-left: var(--sp-3);
-  border-left: 2px solid var(--accent-soft);
-  font-size: var(--text-caption);
-  line-height: var(--leading-caption);
-  color: var(--label-2);
-}
-
 /* ── La báscula y su explicación ────────────────────────── */
 
 /* Los tres campos del test: peso, % de grasa y % de músculo, en fila. */
@@ -3459,164 +3349,9 @@ textarea:focus {
   color-scheme: dark;
 }
 
-/* La tarjeta de «por qué pesas hoy esto». */
-.peso-hoy {
-  margin-top: var(--sp-4);
-}
-
-.peso-delta {
-  font-size: var(--text-body);
-  font-weight: var(--w-semibold);
-  font-variant-numeric: tabular-nums;
-  color: var(--label-2);
-}
-
 /* Ni verde ni rojo a propósito: subir un día no es malo ni bajar es bueno —
    casi siempre es agua— y pintarlo de juicio desharía lo que el texto explica. */
-.peso-delta.sube,
-.peso-delta.baja {
-  color: var(--label-2);
-}
 
-.peso-tendencia {
-  margin-top: var(--sp-3);
-  padding-left: var(--sp-3);
-  border-left: 2px solid var(--accent-soft);
-  font-size: var(--text-caption);
-  line-height: var(--leading-caption);
-  color: var(--label-2);
-}
-
-/* ── El diario de comidas ───────────────────────────────── */
-
-/*
-  La cabecera con el día que se está mirando. El nombre en medio y las flechas
-  a los lados, a 40 px cada una para que se acierte con el pulgar.
-*/
-.diario-dias {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-}
-
-.diario-dia-nombre {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-}
-
-.diario-dias .icon-btn:disabled {
-  opacity: 0.3;
-}
-
-/* La flecha de ir hacia atrás es la misma, del revés. */
-.gira-180 {
-  transform: rotate(180deg);
-}
-
-/* La lista de días ya apuntados, para saltar a cualquiera. */
-.dias-anteriores {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-}
-
-.dia-anterior {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--sp-2);
-  width: 100%;
-  min-height: 44px;
-  padding: var(--sp-2) var(--sp-3);
-  border-radius: var(--r-control);
-  background: var(--fill-3);
-  text-align: left;
-}
-
-.dia-anterior:active {
-  background: var(--fill-2);
-}
-
-.dia-anterior-nombre {
-  font-weight: var(--w-semibold);
-}
-
-.comida-fila {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--sp-3);
-  padding: var(--sp-2) 0;
-  border-bottom: 1px solid var(--separator);
-}
-
-.comida-fila:last-of-type {
-  border-bottom: 0;
-}
-
-.comida-hora {
-  flex: none;
-  font-variant-numeric: tabular-nums;
-  font-weight: var(--w-semibold);
-  color: var(--label-2);
-  min-width: 46px;
-}
-
-.comida-cuerpo {
-  flex: 1;
-  min-width: 0;
-}
-
-.comida-texto {
-  display: block;
-}
-
-.comida-etiquetas {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-1);
-  margin-top: var(--sp-1);
-}
-
-/* La ventana del día, con la misma voz que la explicación del peso. */
-.comida-resumen {
-  margin-top: var(--sp-3);
-  padding-left: var(--sp-3);
-  border-left: 2px solid var(--accent-soft);
-  font-size: var(--text-caption);
-  line-height: var(--leading-caption);
-  color: var(--label-2);
-}
-
-.comida-form-fila {
-  display: flex;
-  gap: var(--sp-2);
-}
-
-.comida-form-fila input[type='time'] {
-  flex: none;
-  width: 104px;
-  padding: 10px 8px;
-  border-radius: var(--r-control);
-  background: var(--surface-strong);
-  border: 0;
-  color: var(--label);
-  font-variant-numeric: tabular-nums;
-  outline: none;
-  color-scheme: dark;
-}
-
-.comida-form-fila input[type='text'] {
-  flex: 1;
-  min-width: 0;
-  padding: 10px 12px;
-  border-radius: var(--r-control);
-  background: var(--surface-strong);
-  border: 0;
-  color: var(--label);
-  font-size: var(--text-body);
-  outline: none;
-}
 
 /* ── El entreno de hoy frente al último comparable ──────── */
 
@@ -3658,6 +3393,7 @@ textarea:focus {
  * boletín de notas.
  */
 .comparado-flecha.sube { color: var(--accent); }
+
 .comparado-flecha.igual,
 .comparado-flecha.baja,
 .comparado-flecha.nuevo { color: var(--label-3); }
@@ -3666,114 +3402,6 @@ textarea:focus {
   display: flex;
   flex-direction: column;
   min-width: 0;
-}
-
-/* Los alimentos de una comida, cada uno con su peso y sus etiquetas. */
-.alimento-fila {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--sp-2);
-  padding: 3px 0;
-}
-
-.alimento-gramos {
-  color: var(--label-3);
-  font-variant-numeric: tabular-nums;
-}
-
-/* El borrador de la comida que se está componiendo, antes de guardarla. */
-.comida-borrador {
-  margin-top: var(--sp-3);
-  padding: var(--sp-2) var(--sp-3);
-  border-radius: var(--r-control);
-  background: var(--fill-3);
-}
-
-.comida-form-hora {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-}
-
-.comida-form-hora input {
-  width: 120px;
-  padding: 10px 8px;
-  border-radius: var(--r-control);
-  background: var(--surface-strong);
-  border: 0;
-  color: var(--label);
-  font-variant-numeric: tabular-nums;
-  outline: none;
-  color-scheme: dark;
-}
-
-/* El peso del alimento: estrecho, que el nombre es el que manda. */
-.comida-form-fila .alimento-peso {
-  flex: none;
-  width: 84px;
-  padding: 10px 8px;
-  border-radius: var(--r-control);
-  background: var(--surface-strong);
-  border: 0;
-  color: var(--label);
-  font-size: var(--text-body);
-  font-variant-numeric: tabular-nums;
-  text-align: center;
-  outline: none;
-}
-
-/* ── El buscador de alimentos del catálogo ──────────────── */
-
-.alimento-resultados {
-  margin-top: var(--sp-2);
-  border-radius: var(--r-control);
-  background: var(--fill-3);
-  overflow: hidden;
-}
-
-.alimento-resultado {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 1px;
-  width: 100%;
-  text-align: left;
-  padding: 10px 14px;
-  min-height: 44px;
-  border-bottom: 1px solid var(--separator);
-  font-size: var(--text-body);
-}
-
-.alimento-resultado:last-child {
-  border-bottom: 0;
-}
-
-.alimento-resultado:active {
-  background: var(--fill-2);
-}
-
-/*
-  Un alimento del borrador se toca para retocarlo, así que se comporta como
-  botón: alineado a la izquierda como el texto que era y con su propio realce
-  al pulsar, para que se note que hay algo que tocar.
-*/
-.alimento-editable {
-  text-align: left;
-  padding: var(--sp-1) var(--sp-2);
-  margin: calc(var(--sp-1) * -1) calc(var(--sp-2) * -1);
-  border-radius: var(--r-control);
-}
-
-.alimento-editable:active {
-  background: var(--fill-3);
-}
-
-/* La ficha del alimento elegido, con la puerta a corregirlo. */
-.alimento-ficha {
-  margin-top: var(--sp-2);
-  padding: var(--sp-2) var(--sp-3);
-  border-radius: var(--r-control);
-  background: var(--fill-3);
 }
 
 /*
@@ -3788,245 +3416,11 @@ textarea:focus {
   margin-top: var(--sp-3);
 }
 
-.parte-grupo {
-  border-top: 1px solid var(--separator);
-}
-
-.parte-grupo:first-child {
-  border-top: 0;
-}
-
-.parte-cabecera {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  width: 100%;
-  padding: var(--sp-3) 0;
-  background: none;
-  border: 0;
-  text-align: left;
-  color: inherit;
-}
-
-.parte-marca {
-  flex: 0 0 auto;
-  width: 4px;
-  height: 18px;
-  border-radius: 2px;
-  background: var(--label-3);
-}
-
-.parte-titulo {
-  flex: 1 1 auto;
-  font-size: var(--text-body);
-  line-height: var(--leading-body);
-  font-weight: var(--w-semibold);
-}
-
-.parte-cuenta {
-  flex: 0 0 auto;
-  min-width: 22px;
-  text-align: center;
-  font-size: var(--text-caption);
-  font-variant-numeric: tabular-nums;
-  color: var(--label-2);
-  padding: 2px 6px;
-  border-radius: var(--r-pill);
-  background: var(--fill-3);
-}
-
-.parte-lista {
-  list-style: none;
-  margin: 0;
-  padding: 0 0 var(--sp-3) calc(4px + var(--sp-3));
-}
-
-.parte-punto + .parte-punto {
-  margin-top: var(--sp-4);
-}
-
-.parte-punto-titulo {
-  margin: 0;
-  font-size: var(--text-body);
-  line-height: var(--leading-body);
-}
-
-.parte-hora {
-  color: var(--label-3);
-  font-variant-numeric: tabular-nums;
-}
-
-.parte-punto-porque {
-  margin: var(--sp-1) 0 0;
-  color: var(--label-2);
-  font-size: var(--text-caption);
-  line-height: 1.5;
-}
-
-/* Los cuatro colores. «Ni suma ni resta» se queda en gris a propósito. */
-.parte-aun_puedes .parte-marca {
-  background: var(--accent);
-}
-
-.parte-favor .parte-marca {
-  background: var(--st-fresco);
-}
-
-.parte-contra .parte-marca {
-  background: var(--st-pasado);
-}
-
-/*
-  ═══════════════════════════════════════════════════ LA REJILLA DE MEDIR
-
-  Una columna de once botones anchos se lee de arriba abajo y obliga a leer para
-  encontrar el que buscas. Una rejilla se lee de un vistazo, y la posición no
-  cambia nunca: a la tercera vez el dedo va solo.
-
-  **Sin color.** Once colores distintos convertían esto en una bolsa de
-  caramelos: el ojo iba al más llamativo en vez de al que buscaba, y si algo
-  estaba en marcha acababa dependiendo del tono, que es lo que peor se ve al sol
-  de la calle. En gris, lo único que distingue una baldosa de otra es el dibujo,
-  y lo único que distingue apagada de encendida es que **se da la vuelta
-  entera** — fondo claro, tinta oscura—. Eso se ve de reojo, con el móvil a un
-  palmo y a pleno sol, que es donde se va a usar.
-
-  Dos columnas en el móvil y no tres, porque los nombres largos —«Café o
-  comida», «A oscuras»— tienen que caber en una línea; a partir de 480 px caben
-  tres. Las baldosas son cuadradas de verdad (`aspect-ratio`), que es lo que
-  hace que la rejilla se lea como una rejilla.
-*/
-.medir-cabecera {
-  padding: 0 var(--sp-1) var(--sp-2);
-}
-
-.medir-titulo {
-  font-size: var(--text-heading-lg);
-  line-height: var(--leading-heading-lg);
-  letter-spacing: var(--tracking-heading-lg);
-  font-weight: var(--w-semibold);
-  margin: var(--sp-1) 0 var(--sp-2);
-}
-
 /*
   La rejilla en sí la montan utilidades puestas en el componente, porque
   `ToggleGroup` llega con las suyas y solo `tailwind-merge` sabe quitarlas. Aquí
   queda lo que no depende de eso: a partir de 480 px caben tres columnas.
 */
-@media (min-width: 480px) {
-  .baldosas {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-.baldosa {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: flex-start;
-  gap: var(--sp-2);
-  aspect-ratio: 1;
-  padding: var(--sp-4);
-  border: 1px solid var(--separator);
-  border-radius: var(--r-control);
-  background: var(--surface);
-  color: var(--label);
-  text-align: left;
-  overflow: hidden;
-  transition:
-    background 0.22s var(--ease),
-    border-color 0.22s var(--ease),
-    color 0.22s var(--ease),
-    transform 0.12s ease-out;
-}
-
-.baldosa:active {
-  transform: scale(0.97);
-}
-
-.baldosa-icono {
-  display: block;
-  color: var(--label-2);
-}
-
-.baldosa-icono svg {
-  width: 22px;
-  height: 22px;
-}
-
-.baldosa-nombre {
-  margin-top: auto;
-  font-size: var(--text-body);
-  line-height: 1.25;
-  font-weight: var(--w-semibold);
-}
-
-.baldosa-pie {
-  font-size: var(--text-caption);
-  line-height: 1.3;
-  color: var(--label-3);
-  font-variant-numeric: tabular-nums;
-}
-
-/*
-  Encendida: se da la vuelta. No un borde más claro ni un puntito en una
-  esquina — la baldosa entera cambia de fondo y de tinta, que es lo único que se
-  distingue sin mirar y sin depender del color.
-*/
-.baldosa-viva {
-  background: var(--label);
-  border-color: var(--label);
-  color: var(--bg);
-}
-
-.baldosa-viva .baldosa-icono,
-.baldosa-viva .baldosa-pie {
-  color: var(--bg);
-}
-
-.baldosa-viva .baldosa-pie {
-  font-weight: var(--w-semibold);
-  opacity: 0.72;
-}
-
-/* El latido dice «esto está corriendo» sin ocupar una palabra. */
-.baldosa-viva .baldosa-icono {
-  animation: baldosa-late 2.4s ease-in-out infinite;
-}
-
-@keyframes baldosa-late {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .baldosa-viva .baldosa-icono {
-    animation: none;
-  }
-}
-
-/*
-  Incluida: «Fuera» mientras corre algo que ya implica estar fuera. Ni apagada
-  —porque sí está contando— ni encendida —porque no la has pulsado tú—. Se
-  queda a medio camino y sin poder pulsarse, que es exactamente lo que es.
-*/
-.baldosa-incluida {
-  border-style: dashed;
-  border-color: var(--separator-strong);
-  background: var(--fill-3);
-  opacity: 0.72;
-  cursor: default;
-}
-
-.baldosa-incluida:active {
-  transform: none;
-}
-
-/* La letra pequeña de la rejilla, pegada a ella y no flotando en medio. */
-.medir-nota {
-  margin: calc(var(--sp-4) * -1) var(--sp-1) var(--sp-4);
-}
 
 /*
   ══════════════════════════════════════════════ EN QUÉ SE TE VA EL DÍA
@@ -4042,115 +3436,4 @@ textarea:focus {
   margin-top: var(--sp-4);
 }
 
-.reparto-fila + .reparto-fila,
-.reparto > div + div {
-  margin-top: var(--sp-3);
-}
 
-.reparto-cabecera {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--sp-3);
-  margin-bottom: 5px;
-}
-
-.reparto-nombre {
-  font-size: var(--text-body);
-  line-height: 1.3;
-}
-
-.reparto-min {
-  font-size: var(--text-caption);
-  color: var(--label-2);
-  font-variant-numeric: tabular-nums;
-  flex: none;
-}
-
-.reparto-carril {
-  height: 8px;
-  border-radius: var(--r-pill);
-  background: var(--fill-3);
-  overflow: hidden;
-}
-
-.reparto-relleno {
-  height: 100%;
-  border-radius: inherit;
-  background: var(--label);
-}
-
-/* Lo que cuelga: indentado, más fino y en tono menor. */
-.reparto-dentro {
-  margin-top: var(--sp-2);
-  padding-left: var(--sp-4);
-  border-left: 1px solid var(--separator);
-  margin-left: 3px;
-}
-
-.reparto-hija + .reparto-hija {
-  margin-top: var(--sp-2);
-}
-
-.reparto-hija .reparto-nombre {
-  font-size: var(--text-caption);
-  color: var(--label-2);
-}
-
-.reparto-hija .reparto-carril {
-  height: 5px;
-}
-
-.reparto-hija .reparto-relleno {
-  background: var(--label-2);
-}
-
-.reparto-nota {
-  margin-top: var(--sp-2);
-  padding-left: var(--sp-4);
-}
-
-/* ── El espectro, tramo a tramo ───────────────────────────────────────
- *
- * Dos botones que no parecen botones: uno para abrir un tramo y otro para
- * desplegar la tabla. Van sin caja porque son navegación dentro de una
- * tarjeta, no acciones — y una caja más aquí convertiría una referencia que
- * se consulta de vez en cuando en la parte más ruidosa de la pantalla.
- */
-.enlace-sobrio {
-  background: none;
-  border: 0;
-  padding: 4px 0;
-  margin: 0;
-  font: inherit;
-  color: var(--accent);
-  cursor: pointer;
-  text-align: left;
-}
-.enlace-sobrio:hover { text-decoration: underline; }
-
-.fila-espectro {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  width: 100%;
-  background: none;
-  border: 0;
-  border-bottom: 1px solid var(--separator);
-  padding: 9px 0;
-  font: inherit;
-  cursor: pointer;
-  text-align: left;
-}
-.fila-espectro[aria-expanded='true'] { border-bottom-color: transparent; }
-
-.lista-efectos {
-  margin: 10px 0 0;
-  padding-left: 18px;
-  color: var(--label-2);
-  font-size: 0.92rem;
-  line-height: 1.5;
-}
-.lista-efectos li { margin-bottom: 7px; }
-.lista-efectos li::marker { color: var(--label-3); }

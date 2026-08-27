@@ -7,10 +7,10 @@ import Today from './screens/Today'
 import { Navigation, NavigationItem, NavigationList } from '@appica/ui-react/navigation'
 
 /*
- * Progreso, Cocina y Yo llegan aparte.
+ * Progreso y Yo llegan aparte.
  *
  * «Hoy» es la pantalla que se abre siempre y la única que hace falta para
- * decidir si hoy se entrena; las otras tres se visitan de vez en cuando y se
+ * decidir si hoy se entrena; las otras dos se visitan de vez en cuando y se
  * llevan lo más pesado de la librería —el cajón de la sesión, los medidores, la
  * curva—. Cargándolas a demanda, quien abre la app por la mañana para ver qué
  * le toca no descarga nada de eso.
@@ -19,41 +19,30 @@ import { Navigation, NavigationItem, NavigationList } from '@appica/ui-react/nav
  * service worker y el cambio es inmediato; un destello de «cargando…» sería peor
  * que el parpadeo que evita.
  */
-const Medir = lazy(() => import('./screens/Medir'))
 const Progreso = lazy(() => import('./screens/Progreso'))
-const Luz = lazy(() => import('./screens/Luz'))
-const Meals = lazy(() => import('./screens/Meals'))
 const Settings = lazy(() => import('./screens/Settings'))
 
-type Tab = 'medir' | 'hoy' | 'luz' | 'cocina' | 'progreso' | 'yo'
+type Tab = 'hoy' | 'progreso' | 'yo'
 
 /*
- * Cuatro destinos con nombre, no cuatro cajones.
+ * Tres destinos, y no seis.
  *
- * «Cuerpo» pasa a «Progreso» porque dentro conviven rendimiento y composición,
- * y el nombre solo prometía la mitad. «Ajustes» pasa a «Yo» porque ahí no solo
- * hay ajustes: hay perfil, material, rutinas y cuenta, y con el nombre viejo
- * mucha gente no entraba a configurar lo que más cambia sus entrenos.
- */
-/*
- * El orden importa. «Luz» va la segunda —y no al final— porque el arco del sol
- * es el marco dentro del cual se deciden la comida y el entreno, no un extra
- * que se consulta cuando sobra tiempo. La app entera dice que el reloj va río
- * arriba de todo lo demás; la barra tenía que decirlo también.
+ * La app llegó a tener seis pestañas —Medir, Hoy, Luz, Cocina, Progreso, Yo— y
+ * volvió a tres a propósito. Lo que se fue no estaba mal hecho: estaba de más
+ * para lo que esto es ahora, que es una app de entrenar bajo Heavy Duty. Y en
+ * Heavy Duty la disciplina que hace falta no es la de hacer más cosas, es la de
+ * no hacerlas; una barra con seis destinos empujaba justo en la otra dirección.
  *
- * Y «Medir» va la primera porque es la única que se abre **para hacer algo**:
- * las otras cinco se abren para leer. Apuntar que estás al sol tenía que costar
- * un toque desde donde estés, no tres pantallas y un formulario.
+ * «Hoy» va en medio porque es donde se abre y donde se decide. «Progreso» tiene
+ * las cargas, los récords y el peso —lo que dice si esto está funcionando— y
+ * «Yo» el perfil, el material y la cuenta.
  */
 const TABS: {
   id: Tab
   label: string
-  icon: 'medir' | 'horizon' | 'sun' | 'body' | 'plate' | 'leaf'
+  icon: 'horizon' | 'body' | 'leaf'
 }[] = [
-  { id: 'medir', label: 'Medir', icon: 'medir' },
   { id: 'hoy', label: 'Hoy', icon: 'horizon' },
-  { id: 'luz', label: 'Luz', icon: 'sun' },
-  { id: 'cocina', label: 'Cocina', icon: 'plate' },
   { id: 'progreso', label: 'Progreso', icon: 'body' },
   { id: 'yo', label: 'Yo', icon: 'leaf' }
 ]
@@ -79,11 +68,8 @@ export default function App() {
             el check-in del día nuevo empieza en blanco en vez de heredar las
             respuestas de ayer, que viven en el estado local del componente. */}
         <Suspense fallback={null}>
-          {tab === 'medir' && <Medir key={today} onEntrenar={() => setTab('hoy')} />}
           {tab === 'hoy' && <Today key={today} />}
-          {tab === 'luz' && <Luz key={today} />}
           {tab === 'progreso' && <Progreso key={today} />}
-          {tab === 'cocina' && <Meals key={today} />}
           {tab === 'yo' && <Settings />}
         </Suspense>
       </main>

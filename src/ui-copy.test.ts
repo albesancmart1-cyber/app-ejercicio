@@ -161,16 +161,13 @@ describe('la app no te dice que dejes tu trabajo', () => {
     }
   })
 
-  it('y el turno se trata como un dato, no como un defecto', () => {
-    /*
-     * Esta frase se busca en todo `src` y no solo en las pantallas porque el
-     * texto tranquilizador se **redacta en el dominio** —donde se sabe por qué
-     * la barra está a cero— y las pantallas se limitan a pintarlo. Buscarlo
-     * solo en `screens` daría un fallo que no significa nada.
-     */
-    const todo = [...ficherosDe('src/domain'), ...PANTALLAS]
-      .map((f) => readFileSync(f, 'utf-8'))
-      .join('\n')
-    expect(todo).toMatch(/no es un fallo tuyo|es tu turno|los huecos que/i)
-  })
+  /*
+   * Aquí había una segunda regla: que en alguna parte se dijera «no es un fallo
+   * tuyo, es tu turno». Se retira con la pantalla de Luz, que es donde vivía ese
+   * texto y donde tenía sentido — la app ya no sabe a qué hora sale el sol ni
+   * qué huecos te deja tu jornada, así que no tiene nada que tranquilizar.
+   *
+   * La regla de arriba se queda: aunque la app ya no hable de turnos, tampoco
+   * puede empezar a decirle a nadie que deje su trabajo.
+   */
 })
