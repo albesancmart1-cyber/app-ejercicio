@@ -11,6 +11,48 @@ obligación más.
 Es una PWA instalable en el móvil. Todos los datos viven en tu dispositivo; no hay cuentas ni
 servidor.
 
+## Heavy Duty
+
+La app entrena bajo **Heavy Duty** (Mike Mentzer, 1993, sobre el trabajo de Arthur Jones), y eso no
+es un ajuste: es lo que decide todo lo demás.
+
+La idea cabe en tres frases. El estímulo que hace crecer un músculo es la **intensidad**, no la
+cantidad: una serie llevada al fallo real lo da entero, y lo que se haga después no lo aumenta, solo
+gasta capacidad de recuperación. Esa capacidad es limitada. Y el músculo no crece en el gimnasio,
+crece después — así que entrenar antes de haberte recuperado no es entrenar de más, es entrenar en
+negativo, porque interrumpes la reparación de la sesión anterior para pedir otra.
+
+De ahí lo que hace la app: **una serie al fallo por ejercicio**, tres a siete series de trabajo por
+sesión, y muchos días entre sesiones.
+
+**«Hoy no» es la respuesta principal, no un aviso.** La mitad de las veces es lo correcto, y se da
+con la misma claridad que un plan de entreno. Cuando no toca no hay un plan B más suave debajo:
+ofrecer una sesión corta el día que tocaba descansar es exactamente lo que rompe el ciclo. Hay una
+salida —«entrenar igualmente»— y va con forma de enlace pequeño, no de botón: disponible sin empujar
+hacia ella.
+
+**El descanso crece con lo que levantas.** Un principiante se recupera en tres días; el mismo cuerpo
+doscientas sesiones después, moviendo el doble de peso, pide una semana. Es lo contrario de lo que
+hace casi todo el mundo, y es la observación central de Mentzer: la carga sube y la capacidad de
+recuperación no. El nivel no se pregunta, sale de las sesiones completadas.
+
+**Y los días mandan sobre cómo te encuentres.** Encontrarse estupendamente al día siguiente no es
+permiso para entrenar: encontrarse bien es el resultado de estar recuperándose. Al revés sí cuenta —
+con los días cumplidos pero sin disposición, tampoco se entrena, porque una serie al fallo con el
+cuerpo a medias no es media serie, es la misma factura por menos estímulo.
+
+Todo esto vive en [`src/domain/heavyDuty.ts`](src/domain/heavyDuty.ts), con el porqué de cada cifra.
+
+### Lo que la app dejó de hacer
+
+Ritmo llegó a medir el sol, la vitamina D, la fotobiomodulación, la comida, la jornada y los hábitos,
+con seis pestañas. Ahora tiene tres —Hoy, Progreso y Yo— y hace dos cosas: decirte si estás
+recuperado y darte la sesión. Lo retirado no estaba mal hecho; estaba de más para esto.
+
+**Los datos de entonces no se han borrado.** `AppData` los conserva como un archivo sin tipar y la
+fusión los deja pasar: siguen en tu dispositivo, viajan en la copia que exportas y en la que se
+sincroniza. Ver `El archivo` en [`src/domain/types.ts`](src/domain/types.ts).
+
 ## Cómo funciona
 
 1. **Perfil** — objetivo (masa, tonificar o recomposición), equipamiento disponible con el peso

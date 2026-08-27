@@ -19,6 +19,8 @@ import { findActiveSession } from '../domain/activeSession'
 import { razonesCortas, resumenDelPlan, tituloDeHoy } from '../domain/decision'
 import { aSesion, carpetasDe, describirRutina } from '../domain/rutinas'
 import Icon from '../components/Icon'
+import VeredictoHD from '../components/VeredictoHD'
+import { veredictoDelDia } from '../domain/heavyDuty'
 import VolumeLevelChooser from '../components/VolumeLevelChooser'
 import ReadinessRing from '../components/ReadinessRing'
 import WeekStrip from '../components/WeekStrip'
@@ -231,6 +233,12 @@ export default function Today() {
 
   const sitios = localizacionesDe(profile)
   const readiness = checkIn ? computeReadiness(checkIn) : null
+  /*
+   * Con el check-in de hoy si ya está contestado, y sin él si no. Los días de
+   * descanso mandan sobre la disposición —ver `veredictoDelDia`—, así que la
+   * respuesta de la portada ya es la buena aunque no se haya contestado nada.
+   */
+  const veredicto = veredictoDelDia(data.sessions, today, readiness)
 
   // Cuánto volumen toca hoy, según lo que el cuerpo viene demostrando y si la
   // composición corporal está estancada.
@@ -340,18 +348,23 @@ export default function Today() {
               <ResumenComparado session={doneToday} sessions={data.sessions} />
             </div>
           ) : (
-            <div className="card">
-              <Icon name="sun" className="sun-mark" />
-              <h2>¿Cómo estás hoy?</h2>
-              <p className="dim" style={{ marginTop: 8 }}>
-                Antes de proponerte nada, cuéntame en medio minuto cómo has dormido y cómo andas de
-                energía. Con eso decidimos si hoy toca empujar o recuperar.
-              </p>
-            </div>
+            /*
+             * El veredicto va **antes** que el check-in y no después: los días
+             * de descanso se saben sin preguntar nada, y hacerle contestar un
+             * cuestionario a alguien para decirle al final que hoy no entrena
+             * es cobrarle un peaje por una respuesta que ya se tenía.
+             */
+            <VeredictoHD
+              veredicto={veredicto}
+              onEmpezar={() => setPhase('checkin')}
+              onIgualmente={() => setPhase('checkin')}
+            />
           )}
-          <Boton tono="primario" onClick={() => setPhase('checkin')}>
-            {doneToday ? 'Preparar otra sesión' : 'Empezar'}
-          </Boton>
+          {doneToday && (
+            <Boton tono="primario" onClick={() => setPhase('checkin')}>
+              Preparar otra sesión
+            </Boton>
+          )}
         </div>
       )}
 

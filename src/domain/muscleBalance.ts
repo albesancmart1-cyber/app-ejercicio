@@ -17,7 +17,7 @@ function emptyBalance(): BalanceMap {
 }
 
 /** Un ejercicio cuenta solo si el usuario lo marcó explícitamente como hecho. */
-function wasDone(done: boolean | undefined): boolean {
+export function wasDone(done: boolean | undefined): boolean {
   return done === true
 }
 

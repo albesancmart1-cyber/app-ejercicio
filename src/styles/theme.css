@@ -3437,3 +3437,26 @@ textarea:focus {
 }
 
 
+
+/* Una salida que no invita a tomarla.
+   Se usa donde la app dice que no y aun así no cierra la puerta: entrenar el
+   día de descanso. Con forma de botón competiría con el consejo; con forma de
+   enlace pequeño está disponible sin empujar hacia ella, que es exactamente el
+   equilibrio que hace falta ahí. */
+.enlace-callado {
+  display: block;
+  width: 100%;
+  margin-top: var(--sp-3);
+  padding: var(--sp-2);
+  background: none;
+  border: 0;
+  color: var(--label-3);
+  font-size: var(--text-caption);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.enlace-callado:hover {
+  color: var(--label-2);
+}

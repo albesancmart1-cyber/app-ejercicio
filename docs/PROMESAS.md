@@ -219,6 +219,29 @@ Estas también son promesas, y romperlas sería peor que no cumplir una función
 - [x] no-cronotipo · No te asigna un cronotipo
   → src/ui-copy.test.ts :: no hay búhos ni alondras
 
+## Heavy Duty
+
+- [x] hd-una-serie · Una serie al fallo por ejercicio, y no dos
+  → src/domain/heavyDuty.ts :: SERIES_POR_EJERCICIO
+- [x] hd-sesion-breve · Entre tres y siete series de trabajo por sesión
+  → src/domain/heavyDuty.ts :: SERIES_POR_SESION
+- [x] hd-descanso-crece · El descanso entre sesiones sube con el nivel, no baja
+  → src/domain/heavyDuty.ts :: DIAS_POR_NIVEL
+- [x] hd-hoy-no · «Hoy no» es una respuesta completa, sin plan B más suave debajo
+  → src/components/VeredictoHD.tsx :: VeredictoHD
+- [x] hd-dias-mandan · Encontrarse bien no es permiso para gastar el descanso
+  → src/domain/heavyDuty.ts :: veredictoDelDia
+- [x] hd-sin-listón-bajo · Con los días cumplidos pero sin disposición, tampoco se entrena
+  → src/domain/heavyDuty.ts :: DISPOSICION_MINIMA
+- [x] hd-paron-se-dice · Dos semanas dejan de ser descanso y se vuelve con menos peso
+  → src/domain/heavyDuty.ts :: DIAS_QUE_YA_SON_PARON
+- [x] hd-que-es-el-fallo · El fallo se define, no se da por supuesto
+  → src/domain/heavyDuty.ts :: COMO_ES_UNA_SERIE
+- [x] hd-salida-sin-empujon · Se puede entrenar igualmente, y se ofrece sin invitar a ello
+  → src/styles/theme.css :: enlace-callado
+- [x] archivo-no-se-borra · Lo que medía la app antes sigue en tus datos, entero
+  → src/domain/types.ts :: El archivo
+
 ---
 
-TOTAL: 57
+TOTAL: 66
