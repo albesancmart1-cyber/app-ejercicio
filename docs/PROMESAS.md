@@ -169,8 +169,6 @@ menos cuarto ya está fichado en una nave sin ventanas.
   → index.html :: apple-mobile-web-app-title
 - [x] instalar-offline · Funciona entera sin conexión
   → vite.config.ts :: VitePWA
-- [x] instalar-capacitor · Hay proyecto de Xcode, con la misma app dentro
-  → capacitor.config.ts :: webDir
 - [x] instalar-capacitor-sin-blanco · El contenedor no arranca en blanco
   → scripts/generar-iconos.mjs :: recursos del contenedor nativo
 
@@ -216,4 +214,4 @@ Estas también son promesas, y romperlas sería peor que no cumplir una función
 
 ---
 
-TOTAL: 52
+TOTAL: 51
