@@ -10,14 +10,17 @@ lo de abajo es cómo llega el *programa* a tu móvil, no dónde están tus cosas
 
 ## 1. Bajarte el código
 
-Hace falta [Node](https://nodejs.org) 22 o superior y
-[Git](https://git-scm.com). En una terminal:
+Hace falta [Node](https://nodejs.org) 22 o superior. Si el proyecto ya está en
+tu carpeta, solo:
 
 ```bash
-git clone https://github.com/albesancmart1-cyber/app-ejercicio.git
 cd app-ejercicio
 npm install
 ```
+
+Git no es obligatorio, pero conviene tenerlo aunque no subas a ningún sitio: es
+lo que te deja ver qué cambió, comparar con ayer y volver atrás cuando algo se
+rompe. Con `git log` y `git diff` en local basta.
 
 Y para verlo funcionando mientras tocas cosas:
 
@@ -32,45 +35,41 @@ y es lo que impide publicar algo roto.
 
 ## 2. Publicarlo en Netlify
 
-Hay dos maneras, y la primera es la que conviene.
-
-### Conectando el repositorio (recomendada)
-
-Netlify construye la app él mismo cada vez que subes un cambio. Se configura
-una vez:
-
-1. En [app.netlify.com](https://app.netlify.com): **Add new site** → **Import an
-   existing project** → GitHub → elegir `app-ejercicio`.
-2. La rama: la que uses (`claude/smart-workout-app-lrleo9`).
-3. El resto **no hay que rellenarlo**: el comando, la carpeta que se publica y
-   la versión de Node ya están en [`netlify.toml`](../netlify.toml), y Netlify
-   lo lee de ahí.
-4. **Site configuration → Environment variables**: `VITE_FIREBASE_API_KEY` y
-   `VITE_FIREBASE_PROJECT_ID` (ver [`firebase/README.md`](../firebase/README.md)).
-   Sin ellas la app se construye igual, pero sin cuenta ni sincronización.
-
-A partir de ahí, `git push` publica. La dirección es la que te dé Netlify
-(`algo.netlify.app`), y se puede cambiar en **Site configuration → Change site
-name**.
-
-> Si cambias el nombre del sitio, acuérdate de añadir el nuevo dominio en
-> Firebase → Authentication → Settings → Authorized domains. Es el paso que se
-> olvida siempre, y el síntoma es que el correo del enlace deja de llegar.
-
-### Arrastrando la carpeta
-
-Para una prueba rápida, o si un día no quieres pasar por Git:
+Sin GitHub de por medio, se publica desde tu carpeta con la herramienta de
+Netlify. Una vez:
 
 ```bash
-npm run build
+npm install -g netlify-cli
+netlify login
 ```
 
-y arrastrar la carpeta `dist/` a [app.netlify.com/drop](https://app.netlify.com/drop).
+Y cada vez que quieras publicar:
 
-Funciona, pero hay que saber lo que se pierde: las variables de entorno no
-existen en ese momento —hay que ponerlas antes en el propio `npm run build`— y
-cada arrastre es un despliegue suelto sin historia. Para el día a día, la
-primera vía.
+```bash
+npm test          # que no salga nada roto
+npm run build
+netlify deploy --prod --dir=dist
+```
+
+La primera vez te preguntará si es un sitio nuevo o uno que ya existe; elige y
+lo recuerda en `.netlify/`, que no se sube a ninguna parte.
+
+Las dos variables de Firebase se ponen una vez en el panel de Netlify —**Site
+configuration → Environment variables**—, o delante del build si prefieres no
+tocar el panel:
+
+```bash
+VITE_FIREBASE_API_KEY=... VITE_FIREBASE_PROJECT_ID=... npm run build
+```
+
+> Si cambias el nombre del sitio, añade el nuevo dominio en Firebase →
+> Authentication → Settings → Authorized domains. Es el paso que se olvida
+> siempre, y el síntoma es que el correo de contraseña deja de llegar.
+
+**La otra vía, sin instalar nada:** `npm run build` y arrastrar la carpeta
+`dist/` a [app.netlify.com/drop](https://app.netlify.com/drop). Funciona, pero
+cada arrastre es un despliegue suelto sin historia y las variables tienen que ir
+en el `build` de tu terminal.
 
 ## 3. Instalarlo en el móvil
 
@@ -84,15 +83,21 @@ entraste con tu cuenta en Safari, dentro de la app hay que volver a entrar. Con
 el mismo correo y la misma contraseña, y ya está — que es justamente por lo que
 el acceso dejó de ser por enlace al correo.
 
-## Y GitHub Pages, ¿qué?
+## Las copias de seguridad son cosa tuya ahora
 
-Sigue ahí: `.github/workflows/deploy.yml` publica en
-`https://albesancmart1-cyber.github.io/app-ejercicio/` en cada subida, y también
-pasa los tests antes. Se puede tener a la vez que Netlify —la app funciona en
-los dos sitios, porque `BASE_PATH` decide la ruta al construir— o se puede
-desactivar el flujo cuando Netlify esté rodado.
+Sin repositorio remoto, la única copia del proyecto es la de tu disco. Git sigue
+funcionando en local —`git log`, `git diff`, volver atrás— pero el historial vive
+en la misma carpeta que el código, así que un disco que falle se lo lleva todo.
 
-Lo único que hay que tener en cuenta teniendo los dos: son **dos dominios
-distintos**, así que los dos tienen que estar en la lista de dominios
-autorizados de Firebase, y una sesión iniciada en uno no vale en el otro. Los
-datos sí son los mismos: entrar con el mismo correo los junta.
+Lo mínimo razonable: copiar la carpeta entera (sin `node_modules`) a un disco
+externo o a la nube que uses, de vez en cuando. Un `.zip` con fecha en el nombre
+vale.
+
+```bash
+cd ..
+tar --exclude=node_modules --exclude=dist -czf ritmo-$(date +%F).tar.gz app-ejercicio
+```
+
+Y por separado, lo que de verdad no se puede reconstruir: tus datos. Desde la
+app, **Yo → Cuenta → Exportar copia**. El código se puede volver a escribir; los
+entrenos de dos años, no.

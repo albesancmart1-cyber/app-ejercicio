@@ -23,11 +23,11 @@ npm install -g @anthropic-ai/claude-code
 
 Los instaladores y los requisitos, en [code.claude.com/docs](https://code.claude.com/docs).
 
-**3. Bajarte el proyecto** donde lo quieras tener — el escritorio vale:
+**3. Descomprimir el proyecto** donde lo quieras tener — el escritorio vale:
 
 ```bash
 cd ~/Escritorio
-git clone https://github.com/albesancmart1-cyber/app-ejercicio.git
+tar -xzf ~/Descargas/ritmo.tar.gz
 cd app-ejercicio
 npm install
 ```
@@ -51,25 +51,22 @@ Lo que sí acaba en el código son las **ideas**: los parámetros de un protocol
 el porqué de una cifra, cómo se llama un ejercicio. Se escriben con nuestras
 palabras y citando la fuente. El texto del libro no se copia.
 
-## Y GitHub, ¿qué pasa con GitHub?
+## Ya no hay GitHub
 
-Clonar no te saca de GitHub: te da **las dos cosas**. El proyecto vive en tu
-disco y `git push` sube una copia cuando tú quieras.
+El proyecto está desconectado: no hay remoto, no hay Actions, no hay despliegue
+automático. El historial de git sigue entero en tu carpeta —`git log`, `git
+diff`, volver atrás— pero vive en el mismo disco que el código.
 
-Merece la pena conservarlo aunque no vuelvas a mirarlo, por dos razones muy
-concretas. Es tu **copia de seguridad**: si mañana se te muere el disco, la app
-entera está a un `git clone`. Y es tu **historial**: todo lo retirado —el sol, la
-vitamina D, las lámparas, la comida— sigue ahí entero y se puede recuperar. Un
-proyecto solo en el escritorio es un proyecto a una avería de distancia.
+Eso deja una cosa en tus manos que antes hacía GitHub sola: **la copia de
+seguridad**. De vez en cuando, y sobre todo antes de tocar algo gordo:
 
-Si prefieres no publicar más, la alternativa razonable no es borrar el remoto
-sino **hacer el repositorio privado**: GitHub → Settings → General → abajo del
-todo, *Change repository visibility*. Conservas copia e historial y deja de estar
-a la vista.
+```bash
+cd ..
+tar --exclude=node_modules --exclude=dist -czf ritmo-$(date +%F).tar.gz app-ejercicio
+```
 
-Ojo con una cosa si lo haces: el despliegue de GitHub Pages deja de funcionar en
-un repositorio privado con cuenta gratuita. Netlify sí sigue, porque publica
-desde el código y no depende de que el repositorio sea público.
+Y por separado, lo único que no se puede reconstruir escribiendo código otra vez:
+tus datos. Desde la app, **Yo → Cuenta → Exportar copia**.
 
 ## Cómo seguimos con el libro
 

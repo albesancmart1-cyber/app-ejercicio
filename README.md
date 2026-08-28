@@ -879,22 +879,15 @@ necesidad de una cuenta real.
 
 ## Publicarla e instalarla en el móvil
 
-Se publica en **Netlify**, que construye la app al subir un cambio. Toda la configuración de la
-construcción está en [`netlify.toml`](netlify.toml) —el comando, la carpeta, la versión de Node, el
-redirect que hace falta para el enlace del correo y qué se cachea y qué no—, así que en el panel de
-Netlify no hay que rellenar nada salvo las dos variables de la nube. Los pasos, en
-[`docs/DESPLEGAR.md`](docs/DESPLEGAR.md).
-
-Sigue existiendo el despliegue en **GitHub Pages** (`.github/workflows/deploy.yml`), que además pasa
-los tests antes de publicar y activa Pages la primera vez (`enablement: true`). Se pueden tener los
-dos a la vez: la app funciona en los dos sitios porque la ruta la decide `BASE_PATH` al construir
-—en la raíz para Netlify, `/app-ejercicio/` para Pages—. Lo que hay que recordar teniendo los dos es
-que son dos dominios distintos: los dos tienen que estar en la lista de dominios autorizados de
-Firebase, y una sesión iniciada en uno no vale en el otro.
+Se publica en **Netlify** desde tu propia carpeta, con `netlify deploy --prod --dir=dist`. Toda la
+configuración de la construcción está en [`netlify.toml`](netlify.toml) —el comando, la carpeta, la
+versión de Node, el redirect que hace falta para el enlace de contraseña y qué se cachea—. Los pasos,
+en [`docs/DESPLEGAR.md`](docs/DESPLEGAR.md).
 
 Ábrela en el móvil y añádela a la pantalla de inicio: en Android, menú de Chrome → «Instalar
 aplicación»; en iPhone, Safari → compartir → «Añadir a pantalla de inicio». Queda con su icono, a
 pantalla completa y funcionando sin conexión.
+
 
 ## Desarrollo
 

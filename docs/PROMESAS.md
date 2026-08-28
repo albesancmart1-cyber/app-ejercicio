@@ -169,44 +169,16 @@ menos cuarto ya está fichado en una nave sin ventanas.
   → index.html :: apple-mobile-web-app-title
 - [x] instalar-offline · Funciona entera sin conexión
   → vite.config.ts :: VitePWA
-- [x] instalar-reloj-se-dice · Se dice sin rodeos que watchOS no admite webs
-  → docs/INSTALAR.md :: No se puede instalar Ritmo tal cual
 - [x] instalar-capacitor · Hay proyecto de Xcode, con la misma app dentro
   → capacitor.config.ts :: webDir
-- [x] instalar-capacitor-arranca · Se comprueba que el paquete nativo arranca desde la raíz
-  → scripts/check-ios.mjs :: sin rutas absolutas
 - [x] instalar-capacitor-sin-blanco · El contenedor no arranca en blanco
   → scripts/generar-iconos.mjs :: recursos del contenedor nativo
-- [x] instalar-firma-se-dice · Se dice que Capacitor no alarga los 7 días de la firma
-  → docs/INSTALAR.md :: No alarga la firma
 
 ## El reloj
 
-- [x] reloj-medir · Empezar y parar desde la muñeca, con la misma rejilla
-  → ios/RitmoWatch/Fuentes/Rejilla.swift :: Baldosa
-- [x] reloj-entrelazado · «Fuera» se enciende sola, igual que en el móvil
-  → ios/RitmoWatch/Fuentes/Estado.swift :: incluidaPor
-- [x] reloj-sol-sin-red · La altura del sol se calcula en el reloj, sin conexión
-  → ios/RitmoWatch/Fuentes/Sol.swift :: elevacionAhora
-- [x] reloj-traduccion-comprobada · El cálculo del sol se comprueba contra el TypeScript
-  → ios/RitmoWatch/Pruebas/SolTests.swift :: testTraduccionFielAlTypeScript
-- [x] reloj-sin-credenciales · El reloj no guarda ninguna credencial
-  → ios/RitmoWatch/Fuentes/Enlace.swift :: ninguna credencial en la muñeca
-- [x] reloj-entrega-garantizada · Lo medido llega aunque el móvil esté apagado
-  → ios/RitmoWatch/Fuentes/Enlace.swift :: transferUserInfo
-- [x] reloj-sin-verificar-se-dice · Se dice que el Swift no está compilado ni probado
-  → docs/RELOJ.md :: compilado ni una vez
-- [x] reloj-siete-dias-se-dice · Se avisa de que caduca a los 7 días
-  → docs/RELOJ.md :: deja de abrirse a los 7 días
 
 ## El manual
 
-- [x] manual-pdf · Hay un manual en PDF de la app entera
-  → scripts/generar-manual.mjs :: Ritmo-manual.pdf
-- [x] manual-cada-boton · Dice qué guarda y qué alimenta cada botón de Medir
-  → docs/manual/manual.html :: Al parar guarda
-- [x] manual-cifras-del-codigo · Las cifras salen del código, no de la memoria
-  → docs/manual/manual.html :: Todas las cifras, en tablas
 
 ## Lo que Ritmo NO hace
 
@@ -244,4 +216,4 @@ Estas también son promesas, y romperlas sería peor que no cumplir una función
 
 ---
 
-TOTAL: 66
+TOTAL: 52
