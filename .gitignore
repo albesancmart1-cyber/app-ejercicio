@@ -4,3 +4,9 @@ dev-dist
 *.local
 .DS_Store
 *.tsbuildinfo
+
+# Material de referencia: libros, apuntes, capturas. Se queda en tu ordenador.
+# El repositorio es público y un PDF con derechos de autor subido aquí deja
+# copia permanente en el historial. Ver material/LEEME.md.
+material/*
+!material/LEEME.md
